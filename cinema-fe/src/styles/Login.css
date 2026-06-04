@@ -134,3 +134,8 @@
   background: #e50914;
   transform: scale(1.08);
 }
+.error-message {
+  color: red;
+  margin-top: 10px;
+  font-size: 14px;
+}

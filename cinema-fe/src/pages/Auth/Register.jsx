@@ -72,9 +72,6 @@ function Register() {
               <option>Nữ</option>
               <option>Khác</option>
             </select>
-
-            <label>Mã xác thực</label>
-            <input name="captcha" type="text" placeholder="Mã xác thực" />
           </div>
 
           <p className="policy">

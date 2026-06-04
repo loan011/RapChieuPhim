@@ -19,237 +19,315 @@ function createDateRange(startDate, total = 8) {
   });
 }
 
-/* Doraemon: chỉ có ngày 02, 03, 04 */
-const showtimesByDate = {
-  "02/06 - T3": [
-    { time: "14:00", seats: 159 },
-    { time: "16:00", seats: 168 },
-    { time: "18:00", seats: 167 },
-    { time: "19:00", seats: 127 },
-    { time: "20:00", seats: 137 },
-    { time: "22:00", seats: 170, late: true },
-  ],
+/* =========================
+   SHOWTIMES THEO PHIM
+========================= */
 
-  "03/06 - T4": [
-    { time: "09:00", seats: 131 },
-    { time: "11:00", seats: 136 },
-    { time: "13:00", seats: 136 },
-    { time: "14:00", seats: 170 },
-    { time: "16:00", seats: 170 },
-    { time: "17:10", seats: 136 },
-    { time: "18:00", seats: 170 },
-    { time: "19:00", seats: 136 },
-    { time: "20:00", seats: 167 },
-    { time: "22:00", seats: 170, late: true },
-  ],
+const showtimesByMovie = {
+  doraemon: {
+    "02/06 - T3": [
+      { time: "14:00", seats: 159 },
+      { time: "16:00", seats: 168 },
+      { time: "18:00", seats: 167 },
+      { time: "19:00", seats: 127 },
+      { time: "20:00", seats: 137 },
+      { time: "22:00", seats: 170, late: true },
+    ],
+    "03/06 - T4": [
+      { time: "09:00", seats: 131 },
+      { time: "11:00", seats: 136 },
+      { time: "13:00", seats: 136 },
+      { time: "14:00", seats: 170 },
+      { time: "16:00", seats: 170 },
+      { time: "17:10", seats: 136 },
+      { time: "18:00", seats: 170 },
+      { time: "19:00", seats: 136 },
+      { time: "20:00", seats: 167 },
+      { time: "22:00", seats: 170, late: true },
+    ],
+    "04/06 - T5": [
+      { time: "10:00", seats: 150 },
+      { time: "13:30", seats: 160 },
+      { time: "16:00", seats: 170 },
+      { time: "19:00", seats: 140 },
+      { time: "22:00", seats: 170, late: true },
+    ],
+  },
 
-  "04/06 - T5": [
-    { time: "10:00", seats: 150 },
-    { time: "13:30", seats: 160 },
-    { time: "16:00", seats: 170 },
-    { time: "19:00", seats: 140 },
-    { time: "22:00", seats: 170, late: true },
-  ],
+  oc: {
+    "03/06 - T4": [
+      { time: "08:45", seats: 120 },
+      { time: "10:00", seats: 150 },
+      { time: "11:00", seats: 130 },
+      { time: "15:30", seats: 100 },
+      { time: "20:30", seats: 90 },
+    ],
+    "04/06 - T5": [
+      { time: "09:30", seats: 140 },
+      { time: "13:00", seats: 120 },
+      { time: "16:30", seats: 110 },
+      { time: "21:00", seats: 95 },
+    ],
+  },
+
+  temple: {
+    "02/06 - T3": [
+      { time: "18:15", seats: 70 },
+      { time: "21:00", seats: 134 },
+      { time: "23:15", seats: 76, late: true },
+    ],
+    "03/06 - T4": [
+      { time: "09:30", seats: 170 },
+      { time: "13:20", seats: 78 },
+      { time: "15:00", seats: 136 },
+      { time: "18:15", seats: 80 },
+      { time: "21:00", seats: 136 },
+      { time: "23:10", seats: 136, late: true },
+    ],
+    "04/06 - T5": [
+      { time: "16:45", seats: 80 },
+      { time: "22:45", seats: 177, late: true },
+    ],
+    "05/06 - T6": [
+      { time: "18:30", seats: 120 },
+      { time: "21:30", seats: 110 },
+    ],
+    "06/06 - T7": [
+      { time: "19:00", seats: 100 },
+      { time: "22:00", seats: 90, late: true },
+    ],
+  },
+
+  kuman: {
+    "02/06 - T3": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "03/06 - T4": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "04/06 - T5": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "05/06 - T6": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "06/06 - T7": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "07/06 - CN": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "08/06 - T2": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+    "09/06 - T3": [
+      { time: "17:05", seats: 136 },
+      { time: "23:00", seats: 130, late: true },
+    ],
+  },
+
+  maxo: {
+    "06/06 - T7": [
+      { time: "09:30", seats: 170 },
+      { time: "10:30", seats: 80 },
+      { time: "12:30", seats: 80 },
+      { time: "14:00", seats: 170 },
+      { time: "16:00", seats: 170 },
+      { time: "18:00", seats: 170 },
+      { time: "18:45", seats: 136 },
+      { time: "20:00", seats: 170 },
+      { time: "20:45", seats: 136 },
+      { time: "22:00", seats: 170, late: true },
+      { time: "22:45", seats: 136, late: true },
+    ],
+    "07/06 - CN": [
+      { time: "09:30", seats: 170 },
+      { time: "12:30", seats: 80 },
+      { time: "14:00", seats: 170 },
+      { time: "16:00", seats: 170 },
+      { time: "18:00", seats: 170 },
+      { time: "20:00", seats: 170 },
+      { time: "22:00", seats: 170, late: true },
+    ],
+    "08/06 - T2": [
+      { time: "10:30", seats: 80 },
+      { time: "14:00", seats: 170 },
+      { time: "16:00", seats: 170 },
+      { time: "18:45", seats: 136 },
+      { time: "20:45", seats: 136 },
+      { time: "22:45", seats: 136, late: true },
+    ],
+    "09/06 - T3": [
+      { time: "09:30", seats: 170 },
+      { time: "12:30", seats: 80 },
+      { time: "16:00", seats: 170 },
+      { time: "18:00", seats: 170 },
+      { time: "20:00", seats: 170 },
+      { time: "22:00", seats: 170, late: true },
+    ],
+  },
 };
 
-/* Ốc Mượn Hồn: chỉ có ngày 03, 04 */
-const ocShowtimesByDate = {
-  "03/06 - T4": [
-    { time: "08:45", seats: 120 },
-    { time: "10:00", seats: 150 },
-    { time: "11:00", seats: 130 },
-    { time: "15:30", seats: 100 },
-    { time: "20:30", seats: 90 },
-  ],
+/* =========================
+   DATA PHIM
+========================= */
 
-  "04/06 - T5": [
-    { time: "09:30", seats: 140 },
-    { time: "13:00", seats: 120 },
-    { time: "16:30", seats: 110 },
-    { time: "21:00", seats: 95 },
-  ],
-};
+const movies = [
+  {
+    id: "doraemon",
+    sectionClass: "",
+    title:
+      "Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển - Phiên Bản Mới",
+    shortName: "Doraemon",
+    meta: "🏷 Hoạt hình   ⏱ 101 phút",
+    format: "2D LỒNG TIẾNG",
+    trailer: "https://www.youtube.com/embed/OFNUhDb-FDo?start=2",
+    detailTitle:
+      "Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển - Phiên Bản Mới",
+    description:
+      "Trong kỳ nghỉ hè, Nobita và các bạn tranh cãi về việc đi cắm trại ở đâu. Theo ý kiến của Doraemon, họ quyết định cắm trại giữa đại dương. Sử dụng những món đồ bí mật, nhóm bạn tận hưởng chuyến cắm trại dưới đáy biển và gặp gỡ nhiều sinh vật khác nhau.",
+    details: [
+      ["Đạo diễn:", "Tetsuo Yajima"],
+      [
+        "Diễn viên:",
+        "Wasabi Mizuta, Megumi Oohara, Yumi Kakazu, Subaru Kimura, Tomokazu Seki",
+      ],
+      ["Thể loại:", "Hoạt hình"],
+      ["Thời lượng:", "101 phút"],
+      ["Ngôn ngữ:", "Tiếng Việt"],
+      ["Ngày khởi chiếu:", "22/05/2026"],
+    ],
+  },
 
-/* Ngôi Đền Kỳ Quái 5: từ ngày 07 trở về sau không còn */
-const templeShowtimesByDate = {
-  "02/06 - T3": [
-    { time: "18:15", seats: 70 },
-    { time: "21:00", seats: 134 },
-    { time: "23:15", seats: 76, late: true },
-  ],
+  {
+    id: "oc",
+    sectionClass: "oc-section",
+    title: "Ốc Mượn Hồn",
+    shortName: "Ốc Mượn Hồn",
+    meta: "🏷 Bí ẩn, Tâm lý   ⏱ 109 phút",
+    format: "2D PHỤ ĐỀ",
+    trailer: "https://www.youtube.com/embed/89AseidRuPc",
+    detailTitle: "Ốc Mượn Hồn",
+    description:
+      "Câu chuyện kể về Quân – một người chồng đau khổ khi vợ qua đời trong một tai nạn bất ngờ. Hạnh phúc tưởng chừng được hồi sinh khi linh hồn vợ anh “trở về” trong thân xác của cô đồng nghiệp, nhưng bí mật kinh hoàng dần xuất hiện.",
+    details: [
+      ["Đạo diễn:", "Đinh Tuấn Vũ"],
+      [
+        "Diễn viên:",
+        "Quốc Trường, Tiểu Vy, Anh Phạm, Yên Đan, Anh Đức, Lương Gia Huy, Nguyễn Văn Chung",
+      ],
+      ["Thể loại:", "Bí ẩn, Tâm lý"],
+      ["Thời lượng:", "109 phút"],
+      ["Ngôn ngữ:", "Tiếng Việt"],
+      ["Ngày khởi chiếu:", "01/06/2026"],
+    ],
+  },
 
-  "03/06 - T4": [
-    { time: "09:30", seats: 170 },
-    { time: "13:20", seats: 78 },
-    { time: "15:00", seats: 136 },
-    { time: "18:15", seats: 80 },
-    { time: "21:00", seats: 136 },
-    { time: "23:10", seats: 136, late: true },
-  ],
+  {
+    id: "temple",
+    sectionClass: "temple-section",
+    title: "Ngôi Đền Kỳ Quái 5",
+    shortName: "Ngôi Đền Kỳ Quái 5",
+    meta: "🏷 Kinh dị, Hài hước   ⏱ 118 phút",
+    format: "2D PHỤ ĐỀ",
+    trailer: "https://www.youtube.com/embed/lEJcARUiApo?start=2",
+    detailTitle: "Ngôi Đền Kỳ Quái 5",
+    description:
+      "Thương hiệu Kinh dị - Hài Thái Lan ăn khách nhất đã trở lại. Một năm sau khi đánh bại hồn ma Nak Tinn, nhóm bạn của Balloon và First chưa kịp tận hưởng cuộc sống bình yên thì một linh hồn báo thù bất ngờ quay trở lại và săn đuổi họ.",
+    details: [
+      ["Đạo diễn:", "Phontharis Chotkijsadarsopon"],
+      [
+        "Diễn viên:",
+        "Aim Witthawat Rattanaboonbaramee, James Bhuripat Vejvongsatechawat, Meen Phiravich Attachitsataporn, Tar Atiwat Saengtien, Kuan Denkhun Ngam-net",
+      ],
+      ["Thể loại:", "Kinh dị, Hài hước"],
+      ["Thời lượng:", "118 phút"],
+      ["Ngôn ngữ:", "Tiếng Thái"],
+      ["Ngày khởi chiếu:", "29/05/2026"],
+    ],
+  },
 
-  "04/06 - T5": [
-    { time: "16:45", seats: 80 },
-    { time: "22:45", seats: 177, late: true },
-  ],
+  {
+    id: "kuman",
+    sectionClass: "kuman-section",
+    title: "Kumanthong: Ác Quỷ Dẫn Đường",
+    shortName: "Kumanthong",
+    meta: "🏷 Kinh dị   ⏱ 110 phút",
+    format: "2D PHỤ ĐỀ",
+    trailer: "https://www.youtube.com/embed/wQA8c-v5daM",
+    detailTitle: "Kumanthong: Ác Quỷ Dẫn Đường",
+    description:
+      "Một người mẹ đơn thân, vì tương lai của đứa con trai gần như mù lòa, quyết liều mình băng qua khu rừng ma ám trong đêm tối. Nhưng khi một tà linh từ Alas Roban bắt đầu chiếm hữu đứa trẻ, cô buộc phải đối mặt với những thế lực siêu nhiên kinh hoàng và bước vào hành trình tìm kiếm sự cứu rỗi tâm linh trước khi mất đi tất cả.",
+    details: [
+      ["Đạo diễn:", "Đang cập nhật"],
+      ["Diễn viên:", "Padung Songsang, Kapol Thongplub, Nicky Na Chat Juntapun"],
+      ["Thể loại:", "Kinh dị"],
+      ["Thời lượng:", "110 phút"],
+      ["Ngôn ngữ:", "Tiếng Indonesia - Phụ đề"],
+      ["Ngày khởi chiếu:", "29/05/2026"],
+    ],
+  },
 
-  "05/06 - T6": [
-    { time: "18:30", seats: 120 },
-    { time: "21:30", seats: 110 },
-  ],
-
-  "06/06 - T7": [
-    { time: "19:00", seats: 100 },
-    { time: "22:00", seats: 90, late: true },
-  ],
-};
-
-/* Kumanthong */
-const kumanShowtimesByDate = {
-  "02/06 - T3": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "03/06 - T4": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "04/06 - T5": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "05/06 - T6": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "06/06 - T7": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "07/06 - CN": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "08/06 - T2": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-
-  "09/06 - T3": [
-    { time: "17:05", seats: 136 },
-    { time: "23:00", seats: 130, late: true },
-  ],
-};
-
-/* Ma Xó: từ ngày 06 đến ngày 09 */
-const maXoShowtimesByDate = {
-  "06/06 - T7": [
-    { time: "09:30", seats: 170 },
-    { time: "10:30", seats: 80 },
-    { time: "12:30", seats: 80 },
-    { time: "14:00", seats: 170 },
-    { time: "16:00", seats: 170 },
-    { time: "18:00", seats: 170 },
-    { time: "18:45", seats: 136 },
-    { time: "20:00", seats: 170 },
-    { time: "20:45", seats: 136 },
-    { time: "22:00", seats: 170, late: true },
-    { time: "22:45", seats: 136, late: true },
-  ],
-
-  "07/06 - CN": [
-    { time: "09:30", seats: 170 },
-    { time: "12:30", seats: 80 },
-    { time: "14:00", seats: 170 },
-    { time: "16:00", seats: 170 },
-    { time: "18:00", seats: 170 },
-    { time: "20:00", seats: 170 },
-    { time: "22:00", seats: 170, late: true },
-  ],
-
-  "08/06 - T2": [
-    { time: "10:30", seats: 80 },
-    { time: "14:00", seats: 170 },
-    { time: "16:00", seats: 170 },
-    { time: "18:45", seats: 136 },
-    { time: "20:45", seats: 136 },
-    { time: "22:45", seats: 136, late: true },
-  ],
-
-  "09/06 - T3": [
-    { time: "09:30", seats: 170 },
-    { time: "12:30", seats: 80 },
-    { time: "16:00", seats: 170 },
-    { time: "18:00", seats: 170 },
-    { time: "20:00", seats: 170 },
-    { time: "22:00", seats: 170, late: true },
-  ],
-};
+  {
+    id: "maxo",
+    sectionClass: "ma-xo-section",
+    title: "Ma Xó",
+    shortName: "Ma Xó",
+    meta: "🏷 Kinh dị   ⏱ 102 phút",
+    format: "2D PHỤ ĐỀ",
+    trailer: "https://www.youtube.com/embed/UE6Qo-uPCjQ",
+    detailTitle: "Ma Xó",
+    description:
+      "Trong cái nghèo cùng cực và nỗi sợ mất con sau một lần sảy thai, cuộc sống của vợ chồng Phú và Thảo trở nên tăm tối hơn bao giờ hết khi bà Thuận qua đời vì không có tiền chữa bệnh. Giữa lúc tuyệt vọng, Thảo nghe lời bà Tánh thực hiện nghi thức thỉnh “vong cô hồn” về làm ma xó để trấn giữ ngôi nhà và bảo vệ thai nhi. Khi thực thể trong xó nhà bắt đầu “đòi nợ”, Thảo mới bàng hoàng nhận ra thứ cô rước về là một cơn ác mộng không có đường lui.",
+    details: [
+      ["Đạo diễn:", "Phan Bá Hỷ"],
+      [
+        "Diễn viên:",
+        "Lê Khánh, Tín Nguyễn, Avin Lu, NSƯT Hạnh Thúy, Nguyễn Sỹ Hậu, Gi A Nguyễn, Leona Khánh Tiên",
+      ],
+      ["Thể loại:", "Kinh dị"],
+      ["Thời lượng:", "102 phút"],
+      ["Ngôn ngữ:", "Tiếng Việt"],
+      ["Ngày khởi chiếu:", "05/06/2026"],
+    ],
+  },
+];
 
 function Home() {
   const [startDate, setStartDate] = useState(new Date(2026, 5, 2));
   const [selectedDate, setSelectedDate] = useState("02/06 - T3");
-
-  const [selectedTime, setSelectedTime] = useState("");
-  const [selectedTempleTime, setSelectedTempleTime] = useState("");
-  const [selectedKumanTime, setSelectedKumanTime] = useState("");
-  const [selectedMaXoTime, setSelectedMaXoTime] = useState("");
-  const [selectedOcTime, setSelectedOcTime] = useState("");
-
-  const [showDetail, setShowDetail] = useState(false);
-  const [showTempleDetail, setShowTempleDetail] = useState(false);
-  const [showKumanDetail, setShowKumanDetail] = useState(false);
-  const [showMaXoDetail, setShowMaXoDetail] = useState(false);
-  const [showOcDetail, setShowOcDetail] = useState(false);
+  const [selectedTime, setSelectedTime] = useState({});
+  const [showDetail, setShowDetail] = useState({});
+  const [selectedTrailer, setSelectedTrailer] = useState(null);
 
   const dates = createDateRange(startDate);
-
-  const currentTimes = showtimesByDate[selectedDate] || [];
-  const currentTempleTimes = templeShowtimesByDate[selectedDate] || [];
-  const currentKumanTimes = kumanShowtimesByDate[selectedDate] || [];
-  const currentMaXoTimes = maXoShowtimesByDate[selectedDate] || [];
-  const currentOcTimes = ocShowtimesByDate[selectedDate] || [];
-
-  const isShowDoraemon = currentTimes.length > 0;
-  const isShowTemple = currentTempleTimes.length > 0;
-  const isShowKuman = currentKumanTimes.length > 0;
-  const isShowMaXo = currentMaXoTimes.length > 0;
-  const isShowOc = currentOcTimes.length > 0;
-
-  const hasMovies =
-    isShowDoraemon || isShowTemple || isShowKuman || isShowMaXo || isShowOc;
-
   const userEmail = localStorage.getItem("userEmail");
 
-  const selectedMessage = selectedTime
-    ? `Suất chiếu Doraemon: ${selectedDate} lúc ${selectedTime}`
-    : selectedTempleTime
-    ? `Suất chiếu Ngôi Đền Kỳ Quái 5: ${selectedDate} lúc ${selectedTempleTime}`
-    : selectedKumanTime
-    ? `Suất chiếu Kumanthong: ${selectedDate} lúc ${selectedKumanTime}`
-    : selectedMaXoTime
-    ? `Suất chiếu Ma Xó: ${selectedDate} lúc ${selectedMaXoTime}`
-    : selectedOcTime
-    ? `Suất chiếu Ốc Mượn Hồn: ${selectedDate} lúc ${selectedOcTime}`
+  const showingMovies = movies.filter((movie) => {
+    return (showtimesByMovie[movie.id]?.[selectedDate] || []).length > 0;
+  });
+
+  const hasMovies = showingMovies.length > 0;
+
+  const selectedMovie = movies.find((movie) => selectedTime[movie.id]);
+
+  const selectedMessage = selectedMovie
+    ? `Suất chiếu ${selectedMovie.shortName}: ${selectedDate} lúc ${
+        selectedTime[selectedMovie.id]
+      }`
     : "Suất chiếu muộn từ 22h00";
 
   function resetSelection() {
-    setSelectedTime("");
-    setSelectedTempleTime("");
-    setSelectedKumanTime("");
-    setSelectedMaXoTime("");
-    setSelectedOcTime("");
-
-    setShowDetail(false);
-    setShowTempleDetail(false);
-    setShowKumanDetail(false);
-    setShowMaXoDetail(false);
-    setShowOcDetail(false);
+    setSelectedTime({});
+    setShowDetail({});
+    setSelectedTrailer(null);
   }
 
   function changeDateRange(days) {
@@ -261,6 +339,17 @@ function Home() {
     setStartDate(nextStart);
     setSelectedDate(firstDateText);
     resetSelection();
+  }
+
+  function handleSelectTime(movieId, time) {
+    setSelectedTime({ [movieId]: time });
+  }
+
+  function toggleDetail(movieId) {
+    setShowDetail((prev) => ({
+      ...prev,
+      [movieId]: !prev[movieId],
+    }));
   }
 
   return (
@@ -296,7 +385,7 @@ function Home() {
 
         <nav>
           <a>LỊCH CHIẾU THEO RẠP</a>
-          <a>PHIM</a>
+          <Link to="/movies">PHIM</Link>
           <a>RẠP</a>
           <a>GIÁ VÉ</a>
           <a>TIN MỚI VÀ ƯU ĐÃI</a>
@@ -341,550 +430,89 @@ function Home() {
               {selectedMessage}
             </div>
 
-            {isShowDoraemon && (
-              <section className="movie-section">
-                <div className="poster-wrap video-wrap">
-                  <iframe
-                    src="https://www.youtube.com/embed/OFNUhDb-FDo?start=2"
-                    title="Doraemon Trailer"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  ></iframe>
-                </div>
+            {showingMovies.map((movie) => {
+              const times = showtimesByMovie[movie.id][selectedDate];
 
-                <div className="movie-info">
-                  <h1
-                    className="movie-title"
-                    onClick={() => setShowDetail(!showDetail)}
-                  >
-                    Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển -
-                    Phiên Bản Mới
-                  </h1>
-
-                  <p className="meta">🏷 Hoạt hình &nbsp;&nbsp; ⏱ 101 phút</p>
-
-                  {showDetail && (
-                    <div className="movie-detail-box">
-                      <h2>
-                        Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển
-                        - Phiên Bản Mới
-                      </h2>
-
-                      <p>
-                        Trong kỳ nghỉ hè, Nobita và các bạn tranh cãi về việc đi
-                        cắm trại ở đâu. Theo ý kiến của Doraemon, họ quyết định
-                        cắm trại giữa đại dương. Sử dụng những món đồ bí mật,
-                        nhóm bạn tận hưởng chuyến cắm trại dưới đáy biển và gặp
-                        gỡ nhiều sinh vật khác nhau.
-                      </p>
-
-                      <div className="detail-row">
-                        <b>Đạo diễn:</b>
-                        <span>Tetsuo Yajima</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Diễn viên:</b>
-                        <span>
-                          Wasabi Mizuta, Megumi Oohara, Yumi Kakazu, Subaru
-                          Kimura, Tomokazu Seki
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thể loại:</b>
-                        <span>Hoạt hình</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thời lượng:</b>
-                        <span>101 phút</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngôn ngữ:</b>
-                        <span>Tiếng Việt</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngày khởi chiếu:</b>
-                        <span>22/05/2026</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <h3>2D LỒNG TIẾNG</h3>
-
-                  <div className="time-list">
-                    {currentTimes.map((item, index) => (
-                      <div
-                        className={item.late ? "time late" : "time"}
-                        key={index}
-                      >
-                        <button
-                          className={
-                            selectedTime === item.time ? "selected-time" : ""
-                          }
-                          onClick={() => {
-                            setSelectedTime(item.time);
-                            setSelectedTempleTime("");
-                            setSelectedKumanTime("");
-                            setSelectedMaXoTime("");
-                            setSelectedOcTime("");
-                          }}
-                        >
-                          {item.time}
-                        </button>
-
-                        <p>{item.seats} ghế trống</p>
-                      </div>
-                    ))}
+              return (
+                <section
+                  className={`movie-section ${movie.sectionClass}`}
+                  key={movie.id}
+                >
+                  <div className="poster-wrap video-wrap">
+                    <iframe
+                      src={movie.trailer}
+                      title={`${movie.shortName} Trailer`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    ></iframe>
                   </div>
 
-                  {selectedTime && (
-                    <p className="selected-text">
-                      Bạn đã chọn Doraemon: {selectedDate} lúc {selectedTime}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
+                  <div className="movie-info">
+                    <h1 className="movie-title">{movie.title}</h1>
 
-            {isShowOc && (
-              <section className="movie-section oc-section">
-                <div className="poster-wrap video-wrap">
-                  <iframe
-                    src="https://www.youtube.com/embed/89AseidRuPc"
-                    title="Ốc Mượn Hồn Trailer"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  ></iframe>
-                </div>
+                    <p className="meta">{movie.meta}</p>
 
-                <div className="movie-info">
-                  <h1
-                    className="movie-title"
-                    onClick={() => setShowOcDetail(!showOcDetail)}
-                  >
-                    Ốc Mượn Hồn
-                  </h1>
+                    <div className="movie-action-ribbon">
+                      <button onClick={() => toggleDetail(movie.id)}>
+                        🎟 {showDetail[movie.id] ? "Ẩn chi tiết" : "Chi tiết"}
+                      </button>
 
-                  <p className="meta">🏷 Bí ẩn, Tâm lý &nbsp;&nbsp; ⏱ 109 phút</p>
+                      <span></span>
 
-                  {showOcDetail && (
-                    <div className="movie-detail-box">
-                      <h2>Ốc Mượn Hồn</h2>
-
-                      <p>
-                        Câu chuyện kể về Quân – một người chồng đau khổ khi vợ
-                        qua đời trong một tai nạn bất ngờ. Hạnh phúc tưởng
-                        chừng được hồi sinh khi linh hồn vợ anh “trở về” trong
-                        thân xác của cô đồng nghiệp, nhưng bí mật kinh hoàng dần
-                        xuất hiện.
-                      </p>
-
-                      <div className="detail-row">
-                        <b>Đạo diễn:</b>
-                        <span>Đinh Tuấn Vũ</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Diễn viên:</b>
-                        <span>
-                          Quốc Trường, Tiểu Vy, Anh Phạm, Yên Đan, Anh Đức,
-                          Lương Gia Huy, Nguyễn Văn Chung
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thể loại:</b>
-                        <span>Bí ẩn, Tâm lý</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thời lượng:</b>
-                        <span>109 phút</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngôn ngữ:</b>
-                        <span>Tiếng Việt</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngày khởi chiếu:</b>
-                        <span>01/06/2026</span>
-                      </div>
+                      <button onClick={() => setSelectedTrailer(movie)}>
+                        Trailer
+                      </button>
                     </div>
-                  )}
 
-                  <h3>2D PHỤ ĐỀ</h3>
+                    {showDetail[movie.id] && (
+                      <div className="movie-detail-box">
+                        <h2>{movie.detailTitle}</h2>
 
-                  <div className="time-list">
-                    {currentOcTimes.map((item, index) => (
-                      <div
-                        className={item.late ? "time late" : "time"}
-                        key={index}
-                      >
-                        <button
-                          className={
-                            selectedOcTime === item.time ? "selected-time" : ""
-                          }
-                          onClick={() => {
-                            setSelectedOcTime(item.time);
-                            setSelectedTime("");
-                            setSelectedTempleTime("");
-                            setSelectedKumanTime("");
-                            setSelectedMaXoTime("");
-                          }}
+                        <p>{movie.description}</p>
+
+                        {movie.details.map((row, index) => (
+                          <div className="detail-row" key={index}>
+                            <b>{row[0]}</b>
+                            <span>{row[1]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <h3>{movie.format}</h3>
+
+                    <div className="time-list">
+                      {times.map((item, index) => (
+                        <div
+                          className={item.late ? "time late" : "time"}
+                          key={index}
                         >
-                          {item.time}
-                        </button>
+                          <button
+                            className={
+                              selectedTime[movie.id] === item.time
+                                ? "selected-time"
+                                : ""
+                            }
+                            onClick={() => handleSelectTime(movie.id, item.time)}
+                          >
+                            {item.time}
+                          </button>
 
-                        <p>{item.seats} ghế trống</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedOcTime && (
-                    <p className="selected-text">
-                      Bạn đã chọn Ốc Mượn Hồn: {selectedDate} lúc{" "}
-                      {selectedOcTime}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {isShowTemple && (
-              <section className="movie-section temple-section">
-                <div className="poster-wrap video-wrap">
-                  <iframe
-                    src="https://www.youtube.com/embed/lEJcARUiApo?start=2"
-                    title="Ngôi Đền Kỳ Quái 5 Trailer"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  ></iframe>
-                </div>
-
-                <div className="movie-info">
-                  <h1
-                    className="movie-title"
-                    onClick={() => setShowTempleDetail(!showTempleDetail)}
-                  >
-                    Ngôi Đền Kỳ Quái 5
-                  </h1>
-
-                  <p className="meta">
-                    🏷 Kinh dị, Hài hước &nbsp;&nbsp; ⏱ 118 phút
-                  </p>
-
-                  {showTempleDetail && (
-                    <div className="movie-detail-box">
-                      <h2>Ngôi Đền Kỳ Quái 5</h2>
-
-                      <p>
-                        Thương hiệu Kinh dị - Hài Thái Lan ăn khách nhất đã trở
-                        lại. Một năm sau khi đánh bại hồn ma Nak Tinn, nhóm bạn
-                        của Balloon và First chưa kịp tận hưởng cuộc sống bình
-                        yên thì một linh hồn báo thù bất ngờ quay trở lại và săn
-                        đuổi họ.
-                      </p>
-
-                      <div className="detail-row">
-                        <b>Đạo diễn:</b>
-                        <span>Phontharis Chotkijsadarsopon</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Diễn viên:</b>
-                        <span>
-                          Aim Witthawat Rattanaboonbaramee, James Bhuripat
-                          Vejvongsatechawat, Meen Phiravich Attachitsataporn,
-                          Tar Atiwat Saengtien, Kuan Denkhun Ngam-net
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thể loại:</b>
-                        <span>Kinh dị, Hài hước</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thời lượng:</b>
-                        <span>118 phút</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngôn ngữ:</b>
-                        <span>Tiếng Thái</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngày khởi chiếu:</b>
-                        <span>29/05/2026</span>
-                      </div>
+                          <p>{item.seats} ghế trống</p>
+                        </div>
+                      ))}
                     </div>
-                  )}
 
-                  <h3>2D PHỤ ĐỀ</h3>
-
-                  <div className="time-list">
-                    {currentTempleTimes.map((item, index) => (
-                      <div
-                        className={item.late ? "time late" : "time"}
-                        key={index}
-                      >
-                        <button
-                          className={
-                            selectedTempleTime === item.time
-                              ? "selected-time"
-                              : ""
-                          }
-                          onClick={() => {
-                            setSelectedTempleTime(item.time);
-                            setSelectedTime("");
-                            setSelectedKumanTime("");
-                            setSelectedMaXoTime("");
-                            setSelectedOcTime("");
-                          }}
-                        >
-                          {item.time}
-                        </button>
-
-                        <p>{item.seats} ghế trống</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedTempleTime && (
-                    <p className="selected-text">
-                      Bạn đã chọn Ngôi Đền Kỳ Quái 5: {selectedDate} lúc{" "}
-                      {selectedTempleTime}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {isShowKuman && (
-              <section className="movie-section kuman-section">
-                <div className="poster-wrap video-wrap">
-                  <iframe
-                    src="https://www.youtube.com/embed/wQA8c-v5daM"
-                    title="Kumanthong Ác Quỷ Dẫn Đường Trailer"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  ></iframe>
-                </div>
-
-                <div className="movie-info">
-                  <h1
-                    className="movie-title"
-                    onClick={() => setShowKumanDetail(!showKumanDetail)}
-                  >
-                    Kumanthong: Ác Quỷ Dẫn Đường
-                  </h1>
-
-                  <p className="meta">🏷 Kinh dị &nbsp;&nbsp; ⏱ 110 phút</p>
-
-                  {showKumanDetail && (
-                    <div className="movie-detail-box">
-                      <h2>Kumanthong: Ác Quỷ Dẫn Đường</h2>
-
-                      <p>
-                        Một người mẹ đơn thân, vì tương lai của đứa con trai gần
-                        như mù lòa, quyết liều mình băng qua khu rừng ma ám
-                        trong đêm tối. Nhưng khi một tà linh từ Alas Roban bắt
-                        đầu chiếm hữu đứa trẻ, cô buộc phải đối mặt với những
-                        thế lực siêu nhiên kinh hoàng và bước vào hành trình tìm
-                        kiếm sự cứu rỗi tâm linh trước khi mất đi tất cả.
+                    {selectedTime[movie.id] && (
+                      <p className="selected-text">
+                        Bạn đã chọn {movie.shortName}: {selectedDate} lúc{" "}
+                        {selectedTime[movie.id]}
                       </p>
-
-                      <div className="detail-row">
-                        <b>Đạo diễn:</b>
-                        <span>Đang cập nhật</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Diễn viên:</b>
-                        <span>
-                          Padung Songsang, Kapol Thongplub, Nicky Na Chat
-                          Juntapun
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thể loại:</b>
-                        <span>Kinh dị</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thời lượng:</b>
-                        <span>110 phút</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngôn ngữ:</b>
-                        <span>Tiếng Indonesia - Phụ đề</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngày khởi chiếu:</b>
-                        <span>29/05/2026</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <h3>2D PHỤ ĐỀ</h3>
-
-                  <div className="time-list">
-                    {currentKumanTimes.map((item, index) => (
-                      <div
-                        className={item.late ? "time late" : "time"}
-                        key={index}
-                      >
-                        <button
-                          className={
-                            selectedKumanTime === item.time
-                              ? "selected-time"
-                              : ""
-                          }
-                          onClick={() => {
-                            setSelectedKumanTime(item.time);
-                            setSelectedTime("");
-                            setSelectedTempleTime("");
-                            setSelectedMaXoTime("");
-                            setSelectedOcTime("");
-                          }}
-                        >
-                          {item.time}
-                        </button>
-
-                        <p>{item.seats} ghế trống</p>
-                      </div>
-                    ))}
+                    )}
                   </div>
-
-                  {selectedKumanTime && (
-                    <p className="selected-text">
-                      Bạn đã chọn Kumanthong: Ác Quỷ Dẫn Đường: {selectedDate}{" "}
-                      lúc {selectedKumanTime}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {isShowMaXo && (
-              <section className="movie-section ma-xo-section">
-                <div className="poster-wrap video-wrap">
-                  <iframe
-                    src="https://www.youtube.com/embed/UE6Qo-uPCjQ"
-                    title="Ma Xó Trailer"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  ></iframe>
-                </div>
-
-                <div className="movie-info">
-                  <h1
-                    className="movie-title"
-                    onClick={() => setShowMaXoDetail(!showMaXoDetail)}
-                  >
-                    Ma Xó
-                  </h1>
-
-                  <p className="meta">🏷 Kinh dị &nbsp;&nbsp; ⏱ 102 phút</p>
-
-                  {showMaXoDetail && (
-                    <div className="movie-detail-box">
-                      <h2>Ma Xó</h2>
-
-                      <p>
-                        Trong cái nghèo cùng cực và nỗi sợ mất con sau một lần
-                        sảy thai, cuộc sống của vợ chồng Phú và Thảo trở nên
-                        tăm tối hơn bao giờ hết khi bà Thuận qua đời vì không có
-                        tiền chữa bệnh. Giữa lúc tuyệt vọng, Thảo nghe lời bà
-                        Tánh thực hiện nghi thức thỉnh “vong cô hồn” về làm ma
-                        xó để trấn giữ ngôi nhà và bảo vệ thai nhi. Khi thực thể
-                        trong xó nhà bắt đầu “đòi nợ”, Thảo mới bàng hoàng nhận
-                        ra thứ cô rước về là một cơn ác mộng không có đường lui.
-                      </p>
-
-                      <div className="detail-row">
-                        <b>Đạo diễn:</b>
-                        <span>Phan Bá Hỷ</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Diễn viên:</b>
-                        <span>
-                          Lê Khánh, Tín Nguyễn, Avin Lu, NSƯT Hạnh Thúy,
-                          Nguyễn Sỹ Hậu, Gi A Nguyễn, Leona Khánh Tiên
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thể loại:</b>
-                        <span>Kinh dị</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Thời lượng:</b>
-                        <span>102 phút</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngôn ngữ:</b>
-                        <span>Tiếng Việt</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <b>Ngày khởi chiếu:</b>
-                        <span>05/06/2026</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <h3>2D PHỤ ĐỀ</h3>
-
-                  <div className="time-list">
-                    {currentMaXoTimes.map((item, index) => (
-                      <div
-                        className={item.late ? "time late" : "time"}
-                        key={index}
-                      >
-                        <button
-                          className={
-                            selectedMaXoTime === item.time
-                              ? "selected-time"
-                              : ""
-                          }
-                          onClick={() => {
-                            setSelectedMaXoTime(item.time);
-                            setSelectedTime("");
-                            setSelectedTempleTime("");
-                            setSelectedKumanTime("");
-                            setSelectedOcTime("");
-                          }}
-                        >
-                          {item.time}
-                        </button>
-
-                        <p>{item.seats} ghế trống</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedMaXoTime && (
-                    <p className="selected-text">
-                      Bạn đã chọn Ma Xó: {selectedDate} lúc {selectedMaXoTime}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
+                </section>
+              );
+            })}
           </>
         )}
 
@@ -892,6 +520,30 @@ function Home() {
           <p className="selected-text">Ngày này chưa có lịch chiếu phim.</p>
         )}
       </main>
+
+      {selectedTrailer && (
+        <div className="trailer-overlay">
+          <div className="trailer-modal">
+            <button
+              className="trailer-close"
+              onClick={() => setSelectedTrailer(null)}
+            >
+              ×
+            </button>
+
+            <h2>TRAILER - {selectedTrailer.title}</h2>
+
+            <hr />
+
+            <iframe
+              src={selectedTrailer.trailer}
+              title={`Trailer ${selectedTrailer.title}`}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
