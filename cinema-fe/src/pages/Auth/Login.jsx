@@ -9,9 +9,6 @@ function Login() {
   function handleLogin(e) {
     e.preventDefault();
 
-    const customerEmail = "customer@gmail.com";
-    const customerPassword = "123456";
-
     const email = e.target.email.value.trim();
     const password = e.target.password.value.trim();
 
@@ -37,21 +34,31 @@ function Login() {
       return;
     }
 
+    // Lấy tài khoản đã đăng ký
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    if (!user) {
+      setError("Chưa có tài khoản nào được đăng ký!");
+      return;
+    }
+
     // Kiểm tra tài khoản tồn tại
-    if (email !== customerEmail) {
+    if (email !== user.email) {
       setError("Tài khoản không tồn tại!");
       return;
     }
 
     // Kiểm tra mật khẩu
-    if (password !== customerPassword) {
+    if (password !== user.password) {
       setError("Mật khẩu không đúng!");
       return;
     }
 
     // Đăng nhập thành công
-    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userEmail", user.email);
     localStorage.setItem("role", "user");
+
+    alert("Đăng nhập thành công!");
 
     navigate("/");
   }
@@ -87,16 +94,18 @@ function Login() {
             <p
               style={{
                 color: "red",
+                fontSize: "14px",
                 marginTop: "10px",
                 marginBottom: "10px",
-                fontSize: "14px",
               }}
             >
               {error}
             </p>
           )}
 
-          <p className="forgot">Quên mật khẩu?</p>
+          <Link to="/forgot-password" className="forgot">
+            Quên mật khẩu?
+          </Link>
 
           <button className="blue-btn" type="submit">
             ĐĂNG NHẬP BẰNG TÀI KHOẢN
