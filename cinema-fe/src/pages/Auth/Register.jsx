@@ -1,10 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import "../../styles/Register.css";
 
 function Register() {
   const navigate = useNavigate();
 
-  function handleRegister(e) {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleRegister(e) {
     e.preventDefault();
 
     const name = e.target.name.value.trim();
@@ -16,91 +20,98 @@ function Register() {
     const gender = e.target.gender.value;
     const policy = e.target.policy.checked;
 
-    // Họ tên
+    setError("");
+
     if (!name) {
-      alert("Vui lòng nhập họ tên!");
+      setError("Vui lòng nhập họ tên!");
       return;
     }
 
-    // Email
     if (!email) {
-      alert("Vui lòng nhập email!");
+      setError("Vui lòng nhập email!");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      alert("Email không đúng định dạng!");
+      setError("Email không đúng định dạng!");
       return;
     }
 
-    // Kiểm tra email đã tồn tại chưa
-    const existingUser = JSON.parse(localStorage.getItem("user"));
-
-    if (existingUser && existingUser.email === email) {
-      alert("Email đã được đăng ký!");
-      return;
-    }
-
-    // Mật khẩu
     if (!password) {
-      alert("Vui lòng nhập mật khẩu!");
+      setError("Vui lòng nhập mật khẩu!");
       return;
     }
 
     if (password.length < 6) {
-      alert("Mật khẩu phải có ít nhất 6 ký tự!");
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
       return;
     }
 
-    // Xác nhận mật khẩu
     if (password !== confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      setError("Mật khẩu xác nhận không khớp!");
       return;
     }
 
-    // Ngày sinh
     if (!birthday) {
-      alert("Vui lòng nhập ngày sinh!");
+      setError("Vui lòng nhập ngày sinh!");
       return;
     }
 
-    // Số điện thoại
     const phoneRegex = /^[0-9]{10}$/;
 
     if (!phoneRegex.test(phone)) {
-      alert("Số điện thoại phải gồm đúng 10 chữ số!");
+      setError("Số điện thoại phải gồm đúng 10 chữ số!");
       return;
     }
 
-    // Giới tính
     if (gender === "Giới tính") {
-      alert("Vui lòng chọn giới tính!");
+      setError("Vui lòng chọn giới tính!");
       return;
     }
 
-    // Điều khoản
     if (!policy) {
-      alert("Bạn phải đồng ý với điều khoản sử dụng!");
+      setError("Bạn phải đồng ý với điều khoản sử dụng!");
       return;
     }
 
-    // Tạo user
-    const user = {
-      name,
-      email,
-      password,
-      birthday,
-      phone,
-      gender,
-    };
+    try {
+      setLoading(true);
 
-    localStorage.setItem("user", JSON.stringify(user));
+      const response = await fetch("https://localhost:7013/api/Auth/Register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: name,
+          email: email,
+          password: password,
+          confirmPassword: confirmPassword,
+          dateOfBirth: birthday,
+          gender: gender,
+          phone: phone,
+          roleName: "Customer",
+        }),
+      });
 
-    alert("Đăng ký thành công!");
+      const data = await response.json();
 
-    navigate("/login");
+      if (!response.ok) {
+        setError(data.message || data.Message || "Đăng ký thất bại!");
+        return;
+      }
+
+      alert(data.message || data.Message || "Đăng ký thành công!");
+
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      setError("Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -176,13 +187,25 @@ function Register() {
           </div>
 
           <p className="policy">
-            <input type="checkbox" name="policy" />
-            {" "}
+            <input type="checkbox" name="policy" />{" "}
             Tôi cam kết tuân theo chính sách bảo mật và điều khoản sử dụng.
           </p>
 
-          <button className="blue-btn" type="submit">
-            ĐĂNG KÝ
+          {error && (
+            <p
+              style={{
+                color: "red",
+                fontSize: "14px",
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              {error}
+            </p>
+          )}
+
+          <button className="blue-btn" type="submit" disabled={loading}>
+            {loading ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ"}
           </button>
 
           <button type="button" className="pink-btn">

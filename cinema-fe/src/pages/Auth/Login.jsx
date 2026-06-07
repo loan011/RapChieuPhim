@@ -4,9 +4,11 @@ import "../../styles/Login.css";
 
 function Login() {
   const navigate = useNavigate();
-  const [error, setError] = useState("");
 
-  function handleLogin(e) {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
     e.preventDefault();
 
     const email = e.target.email.value.trim();
@@ -14,19 +16,16 @@ function Login() {
 
     setError("");
 
-    // Kiểm tra email rỗng
     if (!email) {
       setError("Vui lòng nhập email!");
       return;
     }
 
-    // Kiểm tra mật khẩu rỗng
     if (!password) {
       setError("Vui lòng nhập mật khẩu!");
       return;
     }
 
-    // Kiểm tra định dạng email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
@@ -34,33 +33,49 @@ function Login() {
       return;
     }
 
-    // Lấy tài khoản đã đăng ký
-    const user = JSON.parse(localStorage.getItem("user"));
+    try {
+      setLoading(true);
 
-    if (!user) {
-      setError("Chưa có tài khoản nào được đăng ký!");
-      return;
+      const response = await fetch("https://localhost:7013/api/Auth/Login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || data.Message || "Đăng nhập thất bại!");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("tokenType", data.tokenType || "Bearer");
+      localStorage.setItem("expiresAt", data.expiresAt);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("userEmail", data.user.email);
+      localStorage.setItem("role", data.user.role);
+
+      alert("Đăng nhập thành công!");
+
+      if (data.user.role === "Admin") {
+        navigate("/admin");
+      } else if (data.user.role === "Staff") {
+        navigate("/staff");
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
+    } finally {
+      setLoading(false);
     }
-
-    // Kiểm tra tài khoản tồn tại
-    if (email !== user.email) {
-      setError("Tài khoản không tồn tại!");
-      return;
-    }
-
-    // Kiểm tra mật khẩu
-    if (password !== user.password) {
-      setError("Mật khẩu không đúng!");
-      return;
-    }
-
-    // Đăng nhập thành công
-    localStorage.setItem("userEmail", user.email);
-    localStorage.setItem("role", "user");
-
-    alert("Đăng nhập thành công!");
-
-    navigate("/");
   }
 
   return (
@@ -81,6 +96,7 @@ function Login() {
             name="email"
             type="email"
             placeholder="Email"
+            autoComplete="email"
           />
 
           <label>Mật khẩu</label>
@@ -88,6 +104,7 @@ function Login() {
             name="password"
             type="password"
             placeholder="Mật khẩu"
+            autoComplete="current-password"
           />
 
           {error && (
@@ -107,8 +124,8 @@ function Login() {
             Quên mật khẩu?
           </Link>
 
-          <button className="blue-btn" type="submit">
-            ĐĂNG NHẬP BẰNG TÀI KHOẢN
+          <button className="blue-btn" type="submit" disabled={loading}>
+            {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN"}
           </button>
 
           <button type="button" className="pink-btn">
