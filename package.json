@@ -1,0 +1,9 @@
+{
+  "name": "cinema-admin",
+  "version": "1.0.0",
+  "description": "Cinema T&M Admin Panel",
+  "scripts": {
+    "dev": "npx serve . -p 3000 --no-clipboard",
+    "start": "npx serve . -p 3000 --no-clipboard"
+  }
+}
