@@ -387,7 +387,7 @@ function Home() {
           <a>LỊCH CHIẾU THEO RẠP</a>
           <Link to="/movies">PHIM</Link>
           <a>RẠP</a>
-          <a>GIÁ VÉ</a>
+          <Link to="/ticket-price">GIÁ VÉ</Link>
           <a>TIN MỚI VÀ ƯU ĐÃI</a>
           <a>NHƯỢNG QUYỀN</a>
           <a>THÀNH VIÊN</a>
