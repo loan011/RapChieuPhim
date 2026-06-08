@@ -1,12 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "../../styles/Login.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Login() {
   const navigate = useNavigate();
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -100,12 +102,24 @@ function Login() {
           />
 
           <label>Mật khẩu</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Mật khẩu"
-            autoComplete="current-password"
-          />
+
+          <div className="password-wrapper">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Mật khẩu"
+              autoComplete="current-password"
+            />
+
+            <button
+  type="button"
+  className="password-eye"
+  onClick={() => setShowPassword(!showPassword)}
+  title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+>
+  {showPassword ? <FaEyeSlash /> : <FaEye />}
+</button>
+          </div>
 
           {error && (
             <p

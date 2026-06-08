@@ -70,3 +70,47 @@
 .register-form .pink-btn {
   grid-column: 2 / 3;
 }
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 45px;
+  box-sizing: border-box;
+}
+
+/* Ẩn icon mắt mặc định của Edge/IE */
+.password-wrapper input::-ms-reveal,
+.password-wrapper input::-ms-clear {
+  display: none;
+}
+
+.password-eye {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  line-height: 1;
+  z-index: 5;
+}
+
+.password-eye svg {
+  font-size: 17px;
+  color: white;
+}
+
+.password-eye:hover {
+  opacity: 0.8;
+}
