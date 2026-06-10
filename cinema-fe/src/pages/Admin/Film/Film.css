@@ -1,0 +1,23 @@
+/* Phim */
+.admin-table thead th {
+  background: #f9fafb;
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 0.5rem 0.75rem;
+}
+
+.admin-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.admin-table td {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.movie-status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}

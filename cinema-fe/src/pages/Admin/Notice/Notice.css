@@ -1,0 +1,13 @@
+/* ThongBao */
+.thongbao-form-card {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.thongbao-history-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+}
