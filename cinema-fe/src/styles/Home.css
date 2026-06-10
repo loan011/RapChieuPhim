@@ -570,4 +570,8 @@ hr {
   .trailer-modal iframe {
     height: 260px;
   }
+  .ticket-price-page .date-slider,
+.ticket-price-page .schedule-bar {
+  display: none;
+}
 }
