@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../styles/ForgotPassword.css";
+import {
+  forgotPasswordApi,
+  resetPasswordApi,
+} from "../../services/authService";
 
 function ForgotPassword() {
   const navigate = useNavigate();
@@ -13,16 +17,6 @@ function ForgotPassword() {
   const [sendingCode, setSendingCode] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  async function readResponse(response) {
-    const text = await response.text();
-
-    try {
-      return text ? JSON.parse(text) : null;
-    } catch {
-      return { message: text };
-    }
-  }
-
   async function sendCode() {
     if (!email.trim()) {
       alert("Vui lòng nhập email trước!");
@@ -32,30 +26,12 @@ function ForgotPassword() {
     try {
       setSendingCode(true);
 
-      const response = await fetch(
-        "https://localhost:7013/api/Auth/ForgotPassword",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-          }),
-        }
-      );
+      const data = await forgotPasswordApi(email.trim());
 
-      const data = await readResponse(response);
-
-      if (!response.ok) {
-        alert(data?.message || "Gửi mã xác nhận thất bại!");
-        return;
-      }
-
-      alert(data?.message || "Mã xác nhận đã được gửi về Gmail!");
+      alert(data?.message || data?.Message || "Mã xác nhận đã được gửi về Gmail!");
     } catch (error) {
       console.error("ForgotPassword error:", error);
-      alert("Không kết nối được tới server!");
+      alert(error.message || "Không kết nối được tới server!");
     } finally {
       setSendingCode(false);
     }
@@ -64,62 +40,27 @@ function ForgotPassword() {
   async function handleReset(e) {
     e.preventDefault();
 
-    if (!email.trim()) {
-      alert("Vui lòng nhập email!");
-      return;
-    }
-
-    if (!codeInput.trim()) {
-      alert("Vui lòng nhập mã xác nhận!");
-      return;
-    }
-
-    if (!newPassword.trim()) {
-      alert("Vui lòng nhập mật khẩu mới!");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      alert("Mật khẩu phải từ 6 ký tự trở lên!");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
-      return;
-    }
+    if (!email.trim()) return alert("Vui lòng nhập email!");
+    if (!codeInput.trim()) return alert("Vui lòng nhập mã xác nhận!");
+    if (!newPassword.trim()) return alert("Vui lòng nhập mật khẩu mới!");
+    if (newPassword.length < 6) return alert("Mật khẩu phải từ 6 ký tự trở lên!");
+    if (newPassword !== confirmPassword) return alert("Mật khẩu xác nhận không khớp!");
 
     try {
       setResetting(true);
 
-      const response = await fetch(
-        "https://localhost:7013/api/Auth/ResetPassword",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            otpCode: codeInput.trim(),
-            newPassword: newPassword,
-            confirmPassword: confirmPassword,
-          }),
-        }
-      );
+      const data = await resetPasswordApi({
+        email: email.trim(),
+        otpCode: codeInput.trim(),
+        newPassword,
+        confirmPassword,
+      });
 
-      const data = await readResponse(response);
-
-      if (!response.ok) {
-        alert(data?.message || "Đổi mật khẩu thất bại!");
-        return;
-      }
-
-      alert(data?.message || "Đổi mật khẩu thành công!");
+      alert(data?.message || data?.Message || "Đổi mật khẩu thành công!");
       navigate("/login");
     } catch (error) {
       console.error("ResetPassword error:", error);
-      alert("Không kết nối được tới server!");
+      alert(error.message || "Không kết nối được tới server!");
     } finally {
       setResetting(false);
     }
