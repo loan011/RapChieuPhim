@@ -16,7 +16,6 @@ function ForgotPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // email -> code -> password
   const [step, setStep] = useState("email");
 
   const [sendingCode, setSendingCode] = useState(false);
