@@ -2,7 +2,7 @@ import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../
 
 const API_URL = getApiUrl();
 
-// GET /api/Tickets
+
 export async function getTicketList() {
   const response = await fetch(`${API_URL}/Tickets`, {
     headers: getAuthHeaders(),
@@ -12,7 +12,6 @@ export async function getTicketList() {
   return data;
 }
 
-// GET /api/Tickets/:id
 export async function getTicketById(id) {
   const response = await fetch(`${API_URL}/Tickets/${id}`, {
     headers: getAuthHeaders(),
