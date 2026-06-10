@@ -10,6 +10,16 @@ async function readResponse(response) {
   }
 }
 
+function getErrorMessage(data, defaultMessage) {
+  return (
+    data?.message ||
+    data?.Message ||
+    data?.error ||
+    data?.Error ||
+    defaultMessage
+  );
+}
+
 export async function loginApi(email, password) {
   const response = await fetch(`${API_URL}/Auth/Login`, {
     method: "POST",
@@ -25,9 +35,7 @@ export async function loginApi(email, password) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.Message || "Đăng nhập thất bại!"
-    );
+    throw new Error(getErrorMessage(data, "Đăng nhập thất bại!"));
   }
 
   return data;
@@ -45,9 +53,7 @@ export async function registerApi(user) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.Message || "Đăng ký thất bại!"
-    );
+    throw new Error(getErrorMessage(data, "Đăng ký thất bại!"));
   }
 
   return data;
@@ -67,9 +73,28 @@ export async function forgotPasswordApi(email) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.Message || "Gửi mã xác nhận thất bại!"
-    );
+    throw new Error(getErrorMessage(data, "Gửi mã xác nhận thất bại!"));
+  }
+
+  return data;
+}
+
+export async function verifyResetCodeApi({ email, otpCode }) {
+  const response = await fetch(`${API_URL}/Auth/VerifyResetCode`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      otpCode,
+    }),
+  });
+
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Mã xác nhận không đúng!"));
   }
 
   return data;
@@ -87,34 +112,65 @@ export async function resetPasswordApi(payload) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.Message || "Đổi mật khẩu thất bại!"
-    );
+    throw new Error(getErrorMessage(data, "Đổi mật khẩu thất bại!"));
   }
 
   return data;
 }
 
 export function saveAuthData(data) {
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("tokenType", data.tokenType || "Bearer");
-  localStorage.setItem("expiresAt", data.expiresAt || "");
-  localStorage.setItem("user", JSON.stringify(data.user));
-  localStorage.setItem("userEmail", data.user?.email || "");
-  localStorage.setItem("role", data.user?.role || "");
+  const token = data?.token || data?.Token || "";
+  const tokenType = data?.tokenType || data?.TokenType || "Bearer";
+  const expiresAt = data?.expiresAt || data?.ExpiresAt || "";
+  const user = data?.user || data?.User || {};
+
+  localStorage.setItem("token", token);
+  localStorage.setItem("tokenType", tokenType);
+  localStorage.setItem("expiresAt", expiresAt);
+  localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("userEmail", user?.email || user?.Email || "");
+  localStorage.setItem("role", user?.role || user?.Role || "");
 }
 
 export function getToken() {
   return localStorage.getItem("token");
 }
 
+export function getTokenType() {
+  return localStorage.getItem("tokenType") || "Bearer";
+}
+
 export function getRole() {
   return localStorage.getItem("role");
 }
 
+export function getUserEmail() {
+  return localStorage.getItem("userEmail");
+}
+
 export function getUser() {
   const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
+
+  try {
+    return user ? JSON.parse(user) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isAuthenticated() {
+  return !!getToken();
+}
+
+export function getAuthHeader() {
+  const token = getToken();
+  const tokenType = getTokenType();
+
+  if (!token) return {};
+
+  return {
+    Authorization: `${tokenType} ${token}`,
+  };
 }
 
 export function logout() {
