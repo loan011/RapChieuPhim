@@ -20,8 +20,8 @@ import Ve from "./pages/Admin/Ticket/Ticket";
 import HoaDon from "./pages/Admin/Bill/Bill";
 import Ghe from "./pages/Admin/Seat/Seat";
 import ThongBao from "./pages/Admin/Notice/Notice";
-import CustomerProfile from "./pages/Customer/Profile/Profile";
-import CustomerLayout from "./layouts/CustomerLayout";
+import "../styles/Customer/CustomerProfile.css";
+import "../styles/Customer/CustomerProfileDropdown.css";
 
 function App() {
   return (

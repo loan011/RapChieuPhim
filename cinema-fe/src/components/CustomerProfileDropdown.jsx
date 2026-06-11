@@ -20,7 +20,6 @@ export default function CustomerProfileDropdown() {
     localStorage.getItem("email") ||
     localStorage.getItem("userEmail") ||
     "customer@gmail.com";
-
   const avatarUrl =
     savedUser.avatarUrl ||
     savedUser.AvatarUrl ||

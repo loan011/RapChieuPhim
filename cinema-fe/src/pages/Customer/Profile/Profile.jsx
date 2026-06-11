@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../../../styles/CustomerProfile.css";
+import "../../../styles/Customer/CustomerProfile.css";
 
 export default function CustomerProfile() {
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
