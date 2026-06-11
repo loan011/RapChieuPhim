@@ -1,0 +1,16 @@
+/* SuatChieu */
+.admin-table thead th {
+  background: #f9fafb;
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 0.5rem 0.75rem;
+}
+
+.admin-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.admin-table td {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}

@@ -1,0 +1,90 @@
+.profile-page {
+  min-height: calc(100vh - 70px);
+  background: #f3f4f6;
+  padding: 30px;
+}
+
+.profile-form-card {
+  max-width: 650px;
+  margin: 0 auto;
+  background: white;
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.profile-form-card h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+.avatar-section {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.profile-avatar-preview {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 12px;
+  border: 3px solid #e5e7eb;
+  background: #f3f4f6;
+}
+
+.avatar-upload-btn {
+  display: inline-block;
+  background: #111827;
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-form label {
+  font-weight: 700;
+  color: #333;
+}
+
+.profile-form input,
+.profile-form select {
+  padding: 11px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+}
+
+.profile-form input:focus,
+.profile-form select:focus {
+  border-color: #dc2626;
+}
+
+.profile-form input:disabled {
+  background: #f3f4f6;
+  color: #777;
+}
+
+.profile-save-btn {
+  margin-top: 14px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-save-btn:hover {
+  background: #b91c1c;
+}

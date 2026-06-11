@@ -1,0 +1,13 @@
+/* AdminLayout */
+.admin-sidebar {
+  transition: width 0.2s ease;
+}
+
+.admin-sidebar .nav-link.active {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.admin-topbar {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}

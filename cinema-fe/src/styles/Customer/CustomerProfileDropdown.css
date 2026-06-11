@@ -1,0 +1,89 @@
+.customer-profile-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.customer-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.customer-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  object-fit: cover;
+}
+
+.profile-arrow {
+  font-size: 13px;
+}
+
+.customer-profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  width: 310px;
+  background: #242424;
+  color: white;
+  border-radius: 16px;
+  padding: 14px;
+  z-index: 9999;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.profile-card-top {
+  background: #111827;
+  border-radius: 10px;
+  text-align: center;
+  padding: 22px 12px;
+  margin-bottom: 12px;
+}
+
+.profile-big-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: white;
+  object-fit: cover;
+}
+
+.profile-card-top h3 {
+  margin: 8px 0 4px;
+  font-size: 20px;
+  color: white;
+}
+
+.profile-card-top p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.profile-menu-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: white;
+  text-align: left;
+  padding: 12px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.profile-menu-item:hover {
+  background: #3a3a3a;
+}
+
+.profile-menu-item.logout:hover {
+  background: #b91c1c;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import Logout from "./Auth/Logout";
+import CustomerProfileDropdown from "../components/CustomerProfileDropdown";
 import "../styles/Home.css";
 
 const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -308,7 +308,13 @@ function Home() {
   const [selectedTrailer, setSelectedTrailer] = useState(null);
 
   const dates = createDateRange(startDate);
-  const userEmail = localStorage.getItem("userEmail");
+  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+const userEmail =
+  localStorage.getItem("userEmail") ||
+  localStorage.getItem("email") ||
+  savedUser.email ||
+  savedUser.Email;
 
   const showingMovies = movies.filter((movie) => {
     return (showtimesByMovie[movie.id]?.[selectedDate] || []).length > 0;
@@ -355,7 +361,9 @@ function Home() {
   return (
     <div className="beta-page">
       {userEmail ? (
-        <Logout />
+        <div className="top-login">
+    <CustomerProfileDropdown />
+  </div>
       ) : (
         <div className="top-login">
           <Link to="/login">Đăng nhập</Link>
