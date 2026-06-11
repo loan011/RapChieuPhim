@@ -1,12 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "../../styles/Login.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { loginApi, saveAuthData } from "../../services/authService";
 
 function Login() {
   const navigate = useNavigate();
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -16,63 +19,34 @@ function Login() {
 
     setError("");
 
-    if (!email) {
-      setError("Vui lòng nhập email!");
-      return;
-    }
-
-    if (!password) {
-      setError("Vui lòng nhập mật khẩu!");
-      return;
-    }
+    if (!email) return setError("Vui lòng nhập email!");
+    if (!password) return setError("Vui lòng nhập mật khẩu!");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     if (!emailRegex.test(email)) {
-      setError("Email không đúng định dạng!");
-      return;
+      return setError("Email không đúng định dạng!");
     }
 
     try {
       setLoading(true);
 
-      const response = await fetch("https://localhost:7013/api/Auth/Login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || data.Message || "Đăng nhập thất bại!");
-        return;
-      }
-
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("tokenType", data.tokenType || "Bearer");
-      localStorage.setItem("expiresAt", data.expiresAt);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("userEmail", data.user.email);
-      localStorage.setItem("role", data.user.role);
+      const data = await loginApi(email, password);
+      saveAuthData(data);
 
       alert("Đăng nhập thành công!");
 
-      if (data.user.role === "Admin") {
+      const role = data.user?.role;
+
+      if (role === "Admin") {
         navigate("/admin");
-      } else if (data.user.role === "Staff") {
+      } else if (role === "Staff") {
         navigate("/staff");
       } else {
         navigate("/");
       }
     } catch (err) {
       console.error(err);
-      setError("Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
+      setError(err.message || "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
     } finally {
       setLoading(false);
     }
@@ -100,12 +74,24 @@ function Login() {
           />
 
           <label>Mật khẩu</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Mật khẩu"
-            autoComplete="current-password"
-          />
+
+          <div className="password-wrapper">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Mật khẩu"
+              autoComplete="current-password"
+            />
+
+            <button
+              type="button"
+              className="password-eye"
+              onClick={() => setShowPassword(!showPassword)}
+              title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
 
           {error && (
             <p
