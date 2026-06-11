@@ -20,6 +20,8 @@ import Ve from "./pages/Admin/Ticket/Ticket";
 import HoaDon from "./pages/Admin/Bill/Bill";
 import Ghe from "./pages/Admin/Seat/Seat";
 import ThongBao from "./pages/Admin/Notice/Notice";
+import CustomerProfile from "./pages/Customer/Profile/Profile";
+import CustomerLayout from "./layouts/CustomerLayout";
 
 function App() {
   return (
@@ -31,7 +33,17 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/movies" element={<Movies />} />
         <Route path="/ticket-price" element={<TicketPrice />} />
-
+        <Route
+  path="/customer"
+  element={
+    <ProtectedRoute allowedRoles={["Customer"]}>
+      <CustomerLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route index element={<Navigate to="profile" replace />} />
+  <Route path="profile" element={<CustomerProfile />} />
+</Route>
         <Route
           path="/admin"
           element={
