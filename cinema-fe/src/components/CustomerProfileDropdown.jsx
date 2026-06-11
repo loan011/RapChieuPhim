@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/CustomerProfileDropdown.css";
+import "../styles/Customer/CustomerProfileDropdown.css";
 
 export default function CustomerProfileDropdown() {
   const navigate = useNavigate();
