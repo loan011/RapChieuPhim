@@ -1,23 +1,16 @@
+// ProtectedRoute.jsx
 import { Navigate } from "react-router-dom";
 
-/**
- * Bảo vệ route dựa theo token và role.
- * allowedRoles: mảng role được phép, ví dụ ["Admin"] hoặc ["Admin","Staff"]
- * Nếu không truyền allowedRoles → chỉ cần đăng nhập là vào được.
- */
-function ProtectedRoute({ children, allowedRoles }) {
-  const token = localStorage.getItem("token");
-  const role  = localStorage.getItem("role");
+export default function ProtectedRoute({ children, allowedRoles }) {
+  const user = JSON.parse(localStorage.getItem("user"));
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (!allowedRoles.includes(user.role)) {
+    if (user.role === "Admin") return <Navigate to="/admin" replace />;
+    if (user.role === "Staff") return <Navigate to="/staff" replace />;
     return <Navigate to="/" replace />;
   }
 
   return children;
 }
-
-export default ProtectedRoute;

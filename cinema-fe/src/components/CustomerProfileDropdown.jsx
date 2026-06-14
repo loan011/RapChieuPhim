@@ -20,11 +20,17 @@ export default function CustomerProfileDropdown() {
     localStorage.getItem("email") ||
     localStorage.getItem("userEmail") ||
     "customer@gmail.com";
+
   const avatarUrl =
     savedUser.avatarUrl ||
     savedUser.AvatarUrl ||
     localStorage.getItem("avatarUrl") ||
     "/images/default-avatar.png";
+
+  function goTo(path) {
+    setOpen(false);
+    navigate(path);
+  }
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -61,7 +67,7 @@ export default function CustomerProfileDropdown() {
           <button
             type="button"
             className="profile-menu-item"
-            onClick={() => navigate("/customer/profile")}
+            onClick={() => goTo("/customer/profile")}
           >
             ⚙ Profile settings
           </button>
@@ -69,7 +75,31 @@ export default function CustomerProfileDropdown() {
           <button
             type="button"
             className="profile-menu-item"
-            onClick={() => navigate("/customer/profile")}
+            onClick={() => goTo("/customer/ve-cua-toi")}
+          >
+            🎫 Vé của tôi
+          </button>
+
+          <button
+            type="button"
+            className="profile-menu-item"
+            onClick={() => goTo("/customer/lich-su-dat-ve")}
+          >
+            🕘 Lịch sử đặt vé
+          </button>
+
+          <button
+            type="button"
+            className="profile-menu-item"
+            onClick={() => goTo("/customer/thong-bao")}
+          >
+            🔔 Thông báo
+          </button>
+
+          <button
+            type="button"
+            className="profile-menu-item"
+            onClick={() => goTo("/customer/profile")}
           >
             🖼 Đổi avatar
           </button>

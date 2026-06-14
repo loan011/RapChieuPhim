@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/Movies.css";
+import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
 import doraemonImg from "../../img/doraemon.jpg";
 import kumanImg from "../../img/KUMANTHONG.jpg";
@@ -97,7 +98,13 @@ const movieData = {
 function Movies() {
   const [activeTab, setActiveTab] = useState("now");
   const [selectedTrailer, setSelectedTrailer] = useState(null);
+  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
 
+const userEmail =
+  localStorage.getItem("userEmail") ||
+  localStorage.getItem("email") ||
+  savedUser.email ||
+  savedUser.Email;
   const movies = movieData[activeTab];
 
   function changeTab(tabName) {
@@ -107,9 +114,18 @@ function Movies() {
 
   return (
     <div className="movies-page">
-      <div className="movie-top-login">
-        <Link to="/">🏠</Link>
-      </div>
+      {userEmail ? (
+  <div className="movie-top-login">
+    <CustomerProfileDropdown />
+  </div>
+) : (
+  <div className="movie-top-login">
+    <Link to="/login">Đăng nhập</Link>
+    <span> | </span>
+    <Link to="/register">Đăng ký</Link>
+    <span> GB</span>
+  </div>
+)}
 
       <header className="movie-header">
         <div className="movie-logo">
@@ -132,7 +148,7 @@ function Movies() {
           </Link>
 
           <a>RẠP</a>
-          <a>GIÁ VÉ</a>
+          <Link to="/ticket-price">GIÁ VÉ</Link>
           <a>TIN MỚI VÀ ƯU ĐÃI</a>
           <a>NHƯỢNG QUYỀN</a>
           <a>THÀNH VIÊN</a>
