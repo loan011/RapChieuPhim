@@ -392,8 +392,8 @@ const userEmail =
         </select>
 
         <nav>
-          <a>LỊCH CHIẾU THEO RẠP</a>
           <Link to="/movies">PHIM</Link>
+          <a>LỊCH CHIẾU THEO RẠP</a>
           <a>RẠP</a>
           <Link to="/ticket-price">GIÁ VÉ</Link>
           <a>TIN MỚI VÀ ƯU ĐÃI</a>

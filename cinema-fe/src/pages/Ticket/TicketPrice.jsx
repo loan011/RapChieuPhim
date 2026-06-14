@@ -40,8 +40,8 @@ function TicketPrice() {
         </select>
 
         <nav>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
           <Link to="/movies">PHIM</Link>
+          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
           <a href="#rap">RẠP</a>
 
           <Link className="active" to="/ticket-price">

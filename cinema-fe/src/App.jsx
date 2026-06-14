@@ -3,7 +3,7 @@
 import Home from "./pages/Home";
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
-import Movies from "./pages/Movies/Movies";
+import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import TicketPrice from "./pages/Ticket/TicketPrice";
 
@@ -127,7 +127,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/customer/thong-bao"
           element={
