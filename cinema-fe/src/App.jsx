@@ -22,6 +22,9 @@ import Ghe from "./pages/Admin/Seat/Seat";
 import ThongBao from "./pages/Admin/Notice/Notice";
 import CustomerLayout from "./layouts/CustomerLayout";
 import CustomerProfile from "./pages/Customer/Profile/Profile";
+import MyTickets from "./pages/Customer/MyTickets";
+import BookingHistory from "./pages/Customer/BookingHistory";
+import Notifications from "./pages/Customer/Notifications";
 
 function App() {
   return (
@@ -43,6 +46,9 @@ function App() {
 >
   <Route index element={<Navigate to="profile" replace />} />
   <Route path="profile" element={<CustomerProfile />} />
+  <Route path="ve-cua-toi" element={<MyTickets />} />
+  <Route path="lich-su" element={<BookingHistory />} />
+  <Route path="thong-bao" element={<Notifications />} />
 </Route>
         <Route
           path="/admin"

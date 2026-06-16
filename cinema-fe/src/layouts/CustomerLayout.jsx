@@ -18,22 +18,22 @@ const navItems = [
   { to: "/movies", label: "Phim", icon: <MdMovie /> },
   {
     to: "/customer/ve-cua-toi",
-    label: "Ve Cua Toi",
+    label: "Vé của tôi",
     icon: <MdConfirmationNumber />,
   },
   {
     to: "/customer/lich-su",
-    label: "Lich Su Dat Ve",
+    label: "Lịch sử đặt vé",
     icon: <MdReceiptLong />,
   },
   {
     to: "/customer/thong-bao",
-    label: "Thong Bao",
+    label: "Thông báo",
     icon: <MdNotifications />,
   },
   {
     to: "/customer/profile",
-    label: "Tai Khoan",
+    label: "Tài khoản",
     icon: <MdAccountCircle />,
   },
 ];
