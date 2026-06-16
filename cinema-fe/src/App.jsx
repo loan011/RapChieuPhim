@@ -5,6 +5,7 @@ import Register from "./pages/Auth/Register";
 import Movies from "./pages/Movies/Movies";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import TicketPrice from "./pages/Ticket/TicketPrice";
+import RegisterWithGoogle from "./pages/Auth/RegisterWithGoogle";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./layouts/AdminLayout";
@@ -36,6 +37,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/movies" element={<Movies />} />
         <Route path="/ticket-price" element={<TicketPrice />} />
+        <Route path="/register-google" element={<RegisterWithGoogle />} />
         <Route
   path="/customer"
   element={

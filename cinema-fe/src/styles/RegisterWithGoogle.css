@@ -1,0 +1,67 @@
+.google-register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #111827, #1f2937);
+  padding: 20px;
+}
+
+.google-register-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+}
+
+.google-register-card h2 {
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+.google-register-card p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.google-register-btn {
+  width: 100%;
+  margin-top: 24px;
+  padding: 13px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.google-icon {
+  font-size: 24px;
+}
+
+.divider {
+  margin: 22px 0;
+  color: #9ca3af;
+}
+
+.normal-register-btn {
+  display: block;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f59e0b;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-text a {
+  color: #f59e0b;
+  font-weight: 600;
+}
