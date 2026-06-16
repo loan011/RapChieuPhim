@@ -3,7 +3,7 @@ import "../../../styles/Customer/CustomerProfile.css";
 import {
   fetchCustomerProfile,
   updateCustomerProfile,
-} from "../../customerService";
+} from "../customerService";
 import ProfileAvatar from "./ProfileAvatar";
 import ProfileForm from "./ProfileForm";
 import ProfileHeader from "./ProfileHeader";
