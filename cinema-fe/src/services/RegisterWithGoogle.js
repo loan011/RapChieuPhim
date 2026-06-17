@@ -1,5 +1,5 @@
 const REGISTER_WITH_GOOGLE_URL =
-  "https://localhost:7013/api/Auth/RegisterWithGoogle";
+  `${import.meta.env.VITE_API_URL}/Auth/RegisterWithGoogle`;
 
 export async function registerWithGoogle() {
   const response = await fetch(REGISTER_WITH_GOOGLE_URL, {
@@ -20,8 +20,8 @@ export async function registerWithGoogle() {
   if (!response.ok) {
     throw new Error(
       data?.message ||
-        data?.Message ||
-        "Đăng ký bằng Google thất bại"
+      data?.Message ||
+      "Đăng ký bằng Google thất bại"
     );
   }
 
