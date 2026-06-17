@@ -80,9 +80,13 @@ function Movies() {
   function getMovieTitle(movie) {
     return (
       movie.title ||
+      movie.Title ||
       movie.name ||
+      movie.Name ||
       movie.movieName ||
+      movie.MovieName ||
       movie.movieTitle ||
+      movie.MovieTitle ||
       "Chưa có tên phim"
     );
   }
@@ -90,11 +94,17 @@ function Movies() {
   function getMovieImage(movie) {
     const image =
       movie.posterUrl ||
+      movie.PosterUrl ||
       movie.posterURL ||
+      movie.PosterURL ||
       movie.img ||
+      movie.Img ||
       movie.image ||
+      movie.Image ||
       movie.imageUrl ||
+      movie.ImageUrl ||
       movie.poster ||
+      movie.Poster ||
       "";
 
     if (!image) return "/img/no-image.png";
@@ -111,13 +121,23 @@ function Movies() {
   }
 
   function getMovieAge(movie) {
-    return movie.ageRating || movie.age || movie.rated || movie.rating || "P";
+    return (
+      movie.ageRating ||
+      movie.AgeRating ||
+      movie.age ||
+      movie.Age ||
+      movie.rated ||
+      movie.Rated ||
+      movie.rating ||
+      movie.Rating ||
+      "P"
+    );
   }
 
   function getMovieTag(movie) {
     const currentTab = MOVIE_TABS.find((tab) => tab.key === activeTab);
 
-    return movie.tag || currentTab?.tag || "HOT";
+    return movie.tag || movie.Tag || currentTab?.tag || "HOT";
   }
 
   function getMovieStatus(movie) {
@@ -125,11 +145,40 @@ function Movies() {
 
     return (
       movie.status ||
+      movie.Status ||
       movie.movieStatus ||
+      movie.MovieStatus ||
       movie.showingStatus ||
+      movie.ShowingStatus ||
       movie.statusName ||
+      movie.StatusName ||
       currentTab?.status ||
       "Đang cập nhật"
+    );
+  }
+
+  function getCategoryName(category) {
+    return (
+      category?.categoryName ||
+      category?.CategoryName ||
+      category?.name ||
+      category?.Name ||
+      category?.title ||
+      category?.Title ||
+      category?.description ||
+      category?.Description ||
+      ""
+    );
+  }
+
+  function getCategoryId(category) {
+    return (
+      category?.categoryId ||
+      category?.CategoryId ||
+      category?.id ||
+      category?.Id ||
+      category?.movieCategoryId ||
+      category?.MovieCategoryId
     );
   }
 
@@ -137,9 +186,14 @@ function Movies() {
     const categoryArray =
       Array.isArray(movie.categories) && movie.categories.length > 0
         ? movie.categories
+        : Array.isArray(movie.Categories) && movie.Categories.length > 0
+        ? movie.Categories
         : Array.isArray(movie.movieCategories) &&
           movie.movieCategories.length > 0
         ? movie.movieCategories
+        : Array.isArray(movie.MovieCategories) &&
+          movie.MovieCategories.length > 0
+        ? movie.MovieCategories
         : Array.isArray(movie.categoryList) && movie.categoryList.length > 0
         ? movie.categoryList
         : [];
@@ -148,89 +202,103 @@ function Movies() {
       const categoryText = categoryArray
         .map((item) => {
           return (
-            item.categoryName ||
-            item.name ||
-            item.title ||
-            item.description ||
-            item.category?.categoryName ||
-            item.category?.name ||
-            item.category?.description ||
-            item.movieCategory?.categoryName ||
-            item.movieCategory?.name ||
-            item.movieCategory?.description
+            getCategoryName(item) ||
+            getCategoryName(item.category) ||
+            getCategoryName(item.Category) ||
+            getCategoryName(item.movieCategory) ||
+            getCategoryName(item.MovieCategory)
           );
         })
         .filter(Boolean)
         .join(", ");
 
-      return categoryText || "Đang cập nhật";
+      if (categoryText) return categoryText;
     }
 
     if (movie.movieCategory && typeof movie.movieCategory === "object") {
-      return (
-        movie.movieCategory.categoryName ||
-        movie.movieCategory.name ||
-        movie.movieCategory.description ||
-        "Đang cập nhật"
-      );
+      const categoryName = getCategoryName(movie.movieCategory);
+      if (categoryName) return categoryName;
+    }
+
+    if (movie.MovieCategory && typeof movie.MovieCategory === "object") {
+      const categoryName = getCategoryName(movie.MovieCategory);
+      if (categoryName) return categoryName;
     }
 
     if (movie.category && typeof movie.category === "object") {
-      return (
-        movie.category.categoryName ||
-        movie.category.name ||
-        movie.category.description ||
-        "Đang cập nhật"
-      );
+      const categoryName = getCategoryName(movie.category);
+      if (categoryName) return categoryName;
+    }
+
+    if (movie.Category && typeof movie.Category === "object") {
+      const categoryName = getCategoryName(movie.Category);
+      if (categoryName) return categoryName;
     }
 
     const categoryId =
       movie.categoryId ||
-      movie.movieCategoryId ||
       movie.CategoryId ||
+      movie.movieCategoryId ||
       movie.MovieCategoryId;
 
     if (categoryId) {
-      const foundCategory = categories.find(
-        (category) =>
-          String(category.categoryId || category.id) === String(categoryId)
-      );
+      const foundCategory = categories.find((category) => {
+        return String(getCategoryId(category)) === String(categoryId);
+      });
 
-      if (foundCategory) {
-        return (
-          foundCategory.categoryName ||
-          foundCategory.name ||
-          foundCategory.description ||
-          "Đang cập nhật"
-        );
-      }
+      const categoryName = getCategoryName(foundCategory);
+
+      if (categoryName) return categoryName;
     }
 
-    return (
-      movie.genre ||
+    const directCategory =
       movie.categoryName ||
-      movie.description ||
-      movie.category ||
-      movie.movieCategory ||
-      "Đang cập nhật"
-    );
+      movie.CategoryName ||
+      movie.genre ||
+      movie.Genre;
+
+    if (directCategory) {
+      return directCategory;
+    }
+
+    const description = movie.description || movie.Description || "";
+
+    if (description && Array.isArray(categories)) {
+      const lowerDescription = description.toLowerCase();
+
+      const foundByDescription = categories.find((category) => {
+        const categoryName = getCategoryName(category).toLowerCase();
+
+        return categoryName && lowerDescription.includes(categoryName);
+      });
+
+      const categoryName = getCategoryName(foundByDescription);
+
+      if (categoryName) return categoryName;
+    }
+
+    return "Đang cập nhật";
   }
 
   function getMovieDuration(movie) {
-    if (movie.duration && typeof movie.duration === "string") {
-      return movie.duration;
+    const duration =
+      movie.duration ||
+      movie.Duration ||
+      movie.durationMinutes ||
+      movie.DurationMinutes ||
+      movie.runningTime ||
+      movie.RunningTime;
+
+    if (duration && typeof duration === "string") {
+      if (duration.toLowerCase().includes("phút")) {
+        return duration;
+      }
+
+      return `${duration} phút`;
     }
 
-    if (movie.duration && typeof movie.duration === "number") {
-      return `${movie.duration} phút`;
-    }
-
-    if (movie.durationMinutes) {
-      return `${movie.durationMinutes} phút`;
-    }
-
-    if (movie.runningTime) {
-      return `${movie.runningTime} phút`;
+    if (duration && typeof duration === "number") {
+      return `${duration} phút`;
     }
 
     return "Đang cập nhật";
@@ -255,10 +323,14 @@ function Movies() {
   function getMovieReleaseDate(movie) {
     return formatDate(
       movie.releaseDate ||
+        movie.ReleaseDate ||
         movie.release_date ||
         movie.startDate ||
+        movie.StartDate ||
         movie.openingDate ||
-        movie.premiereDate
+        movie.OpeningDate ||
+        movie.premiereDate ||
+        movie.PremiereDate
     );
   }
 
@@ -283,7 +355,17 @@ function Movies() {
   }
 
   function getMovieTrailer(movie) {
-    const trailer = movie.trailerUrl || movie.trailer || movie.videoUrl || "";
+    const trailer =
+      movie.trailerUrl ||
+      movie.TrailerUrl ||
+      movie.trailerURL ||
+      movie.TrailerURL ||
+      movie.trailer ||
+      movie.Trailer ||
+      movie.videoUrl ||
+      movie.VideoUrl ||
+      "";
+
     return convertYoutubeToEmbed(trailer);
   }
 
@@ -353,7 +435,7 @@ function Movies() {
             movies.map((movie, index) => (
               <div
                 className="movie-card-style"
-                key={movie.movieId || movie.id || index}
+                key={movie.movieId || movie.MovieId || movie.id || index}
               >
                 <div
                   className="movie-poster-style"
