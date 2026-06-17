@@ -1,22 +1,31 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
+export const MOVIE_STATUS = {
+  now: "suất đang chiếu",
+  coming: "suất sắp chiếu",
+  special: "suất đặc biệt",
+};
+
 export const MOVIE_TABS = [
-  {
-    key: "coming",
-    label: "PHIM SẮP CHIẾU",
-    endpoint: `${API_URL}/Movie/coming`,
-    tag: "SOON",
-  },
   {
     key: "now",
     label: "PHIM ĐANG CHIẾU",
-    endpoint: `${API_URL}/Movie/now-showing`,
+    status: MOVIE_STATUS.now,
+    endpoint: `${API_URL}/Movies/NowShowing`,
     tag: "HOT",
+  },
+  {
+    key: "coming",
+    label: "PHIM SẮP CHIẾU",
+    status: MOVIE_STATUS.coming,
+    endpoint: `${API_URL}/Movies/ComingSoon`,
+    tag: "SOON",
   },
   {
     key: "special",
     label: "SUẤT CHIẾU ĐẶC BIỆT",
-    endpoint: `${API_URL}/Movie/special`,
+    status: MOVIE_STATUS.special,
+    endpoint: `${API_URL}/Movies/Special`,
     tag: "SPECIAL",
   },
 ];
@@ -24,30 +33,75 @@ export const MOVIE_TABS = [
 async function readResponse(response) {
   const text = await response.text();
 
+  let data = null;
+
   try {
-    return text ? JSON.parse(text) : null;
+    data = text ? JSON.parse(text) : null;
   } catch {
-    return { message: text };
+    data = text;
   }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        data?.title ||
+        text ||
+        `Lỗi API: ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+
+  return [];
+}
+
+function normalizeCategory(category) {
+  return {
+    categoryId:
+      category.categoryId ||
+      category.CategoryId ||
+      category.id ||
+      category.Id ||
+      category.movieCategoryId ||
+      category.MovieCategoryId,
+
+    categoryName:
+      category.categoryName ||
+      category.CategoryName ||
+      category.name ||
+      category.Name ||
+      category.title ||
+      category.Title ||
+      category.description ||
+      category.Description ||
+      "Đang cập nhật",
+  };
 }
 
 export async function getMoviesByTab(tabKey) {
-  const currentTab = MOVIE_TABS.find((tab) => tab.key === tabKey);
+  const tab = MOVIE_TABS.find((item) => item.key === tabKey);
 
-  if (!currentTab) return [];
-
-  const response = await fetch(currentTab.endpoint, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(data?.message || "Không gọi được API phim");
+  if (!tab) {
+    return [];
   }
 
-  return Array.isArray(data) ? data : data?.data || data?.result || [];
+  const response = await fetch(tab.endpoint);
+  const data = await readResponse(response);
+
+  return normalizeArray(data);
+}
+
+export async function getMovieCategories() {
+  const response = await fetch(`${API_URL}/MovieCategories`);
+  const data = await readResponse(response);
+
+  return normalizeArray(data).map(normalizeCategory);
 }

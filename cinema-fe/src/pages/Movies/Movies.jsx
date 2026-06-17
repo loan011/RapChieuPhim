@@ -4,115 +4,28 @@ import { Link } from "react-router-dom";
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
-import { MOVIE_TABS, getMoviesByTab } from "./Movies.js";
-
-import doraemonImg from "../../img/doraemon.jpg";
-import kumanImg from "../../img/KUMANTHONG.jpg";
-import templeImg from "../../img/ngoidenkiquai5.jpg";
-import ocImg from "../../img/ocmuonhon.jpg";
-import maxoiImg from "../../img/maxoi.jpg";
-import cushinImg from "../../img/cushin.jpg";
-
-const fallbackMovieData = {
-  now: [
-    {
-      id: 1,
-      title:
-        "Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển - Phiên Bản Mới",
-      img: doraemonImg,
-      age: "P",
-      tag: "HOT",
-      genre: "Hoạt hình",
-      duration: "101 phút",
-      trailer: "https://www.youtube.com/embed/OFNUhDb-FDo?autoplay=1",
-    },
-    {
-      id: 2,
-      title: "Ngôi Đền Kỳ Quái 5",
-      img: templeImg,
-      age: "16+",
-      tag: "HOT",
-      genre: "Kinh dị, Hài hước",
-      duration: "118 phút",
-      trailer: "https://www.youtube.com/embed/lEJcARUiApo?autoplay=1",
-    },
-    {
-      id: 3,
-      title: "Kumanthong: Ác Quỷ Dẫn Đường",
-      img: kumanImg,
-      age: "18+",
-      tag: "HOT",
-      genre: "Kinh dị",
-      duration: "110 phút",
-      trailer: "https://www.youtube.com/embed/wQA8c-v5daM?autoplay=1",
-    },
-    {
-      id: 4,
-      title: "Ốc Mượn Hồn",
-      img: ocImg,
-      age: "16+",
-      tag: "HOT",
-      genre: "Bí ẩn, Tâm lý",
-      duration: "109 phút",
-      trailer: "https://www.youtube.com/embed/89AseidRuPc?autoplay=1",
-    },
-  ],
-
-  coming: [
-    {
-      id: 5,
-      title: "Ma Xó",
-      img: maxoiImg,
-      age: "18+",
-      tag: "SOON",
-      genre: "Kinh dị",
-      duration: "102 phút",
-      trailer: "https://www.youtube.com/embed/UE6Qo-uPCjQ?autoplay=1",
-    },
-    {
-      id: 6,
-      title:
-        "Phim Shin - Cậu Bé Bút Chì: Quậy Tung! Vương Quốc Nghuệch Ngoạc Và 4 Dũng Sĩ Bất Ổn",
-      img: cushinImg,
-      age: "P",
-      tag: "SOON",
-      genre: "Hoạt hình, Gia đình",
-      duration: "104 phút",
-      trailer: "https://www.youtube.com/embed/KyyoTlt5VJo?autoplay=1",
-    },
-  ],
-
-  special: [
-    {
-      id: 7,
-      title: "Doraemon - Suất chiếu đặc biệt",
-      img: doraemonImg,
-      age: "P",
-      tag: "SPECIAL",
-      genre: "Hoạt hình",
-      duration: "101 phút",
-      trailer: "https://www.youtube.com/embed/OFNUhDb-FDo?autoplay=1",
-    },
-    {
-      id: 8,
-      title: "Ốc Mượn Hồn - Suất chiếu đặc biệt",
-      img: ocImg,
-      age: "16+",
-      tag: "SPECIAL",
-      genre: "Bí ẩn, Tâm lý",
-      duration: "109 phút",
-      trailer: "https://www.youtube.com/embed/89AseidRuPc?autoplay=1",
-    },
-  ],
-};
+import {
+  MOVIE_TABS,
+  getMoviesByTab,
+  getMovieCategories,
+} from "./Movies.js";
 
 function Movies() {
   const [activeTab, setActiveTab] = useState("now");
-  const [movies, setMovies] = useState(fallbackMovieData.now);
+  const [movies, setMovies] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedTrailer, setSelectedTrailer] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  function getSavedUser() {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  const savedUser = getSavedUser();
 
   const userEmail =
     localStorage.getItem("userEmail") ||
@@ -121,8 +34,25 @@ function Movies() {
     savedUser.Email;
 
   useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
     fetchMoviesByTab(activeTab);
   }, [activeTab]);
+
+  async function fetchCategories() {
+    try {
+      const apiCategories = await getMovieCategories();
+
+      console.log("Danh sách thể loại từ API:", apiCategories);
+
+      setCategories(Array.isArray(apiCategories) ? apiCategories : []);
+    } catch (error) {
+      console.error("Lỗi tải thể loại:", error);
+      setCategories([]);
+    }
+  }
 
   async function fetchMoviesByTab(tabKey) {
     try {
@@ -130,10 +60,13 @@ function Movies() {
 
       const apiMovies = await getMoviesByTab(tabKey);
 
-      setMovies(apiMovies);
+      console.log("Danh sách phim từ API:", apiMovies);
+      console.log("Phim đầu tiên:", apiMovies?.[0]);
+
+      setMovies(Array.isArray(apiMovies) ? apiMovies : []);
     } catch (error) {
       console.error("Lỗi tải phim:", error);
-      setMovies(fallbackMovieData[tabKey] || []);
+      setMovies([]);
     } finally {
       setLoading(false);
     }
@@ -145,33 +78,138 @@ function Movies() {
   }
 
   function getMovieTitle(movie) {
-    return movie.title || movie.name || movie.movieName || "Chưa có tên phim";
+    return (
+      movie.title ||
+      movie.name ||
+      movie.movieName ||
+      movie.movieTitle ||
+      "Chưa có tên phim"
+    );
   }
 
   function getMovieImage(movie) {
-    return (
+    const image =
+      movie.posterUrl ||
+      movie.posterURL ||
       movie.img ||
       movie.image ||
       movie.imageUrl ||
       movie.poster ||
-      movie.posterUrl ||
-      "/images/no-image.png"
-    );
+      "";
+
+    if (!image) return "/img/no-image.png";
+
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+      return image;
+    }
+
+    if (image.startsWith("/")) {
+      return image;
+    }
+
+    return `/img/${image}`;
   }
 
   function getMovieAge(movie) {
-    return movie.age || movie.ageRating || movie.rated || "P";
+    return movie.ageRating || movie.age || movie.rated || movie.rating || "P";
   }
 
   function getMovieTag(movie) {
     const currentTab = MOVIE_TABS.find((tab) => tab.key === activeTab);
+
     return movie.tag || currentTab?.tag || "HOT";
   }
 
+  function getMovieStatus(movie) {
+    const currentTab = MOVIE_TABS.find((tab) => tab.key === activeTab);
+
+    return (
+      movie.status ||
+      movie.movieStatus ||
+      movie.showingStatus ||
+      movie.statusName ||
+      currentTab?.status ||
+      "Đang cập nhật"
+    );
+  }
+
   function getMovieGenre(movie) {
+    const categoryArray =
+      Array.isArray(movie.categories) && movie.categories.length > 0
+        ? movie.categories
+        : Array.isArray(movie.movieCategories) &&
+          movie.movieCategories.length > 0
+        ? movie.movieCategories
+        : Array.isArray(movie.categoryList) && movie.categoryList.length > 0
+        ? movie.categoryList
+        : [];
+
+    if (categoryArray.length > 0) {
+      const categoryText = categoryArray
+        .map((item) => {
+          return (
+            item.categoryName ||
+            item.name ||
+            item.title ||
+            item.description ||
+            item.category?.categoryName ||
+            item.category?.name ||
+            item.category?.description ||
+            item.movieCategory?.categoryName ||
+            item.movieCategory?.name ||
+            item.movieCategory?.description
+          );
+        })
+        .filter(Boolean)
+        .join(", ");
+
+      return categoryText || "Đang cập nhật";
+    }
+
+    if (movie.movieCategory && typeof movie.movieCategory === "object") {
+      return (
+        movie.movieCategory.categoryName ||
+        movie.movieCategory.name ||
+        movie.movieCategory.description ||
+        "Đang cập nhật"
+      );
+    }
+
+    if (movie.category && typeof movie.category === "object") {
+      return (
+        movie.category.categoryName ||
+        movie.category.name ||
+        movie.category.description ||
+        "Đang cập nhật"
+      );
+    }
+
+    const categoryId =
+      movie.categoryId ||
+      movie.movieCategoryId ||
+      movie.CategoryId ||
+      movie.MovieCategoryId;
+
+    if (categoryId) {
+      const foundCategory = categories.find(
+        (category) =>
+          String(category.categoryId || category.id) === String(categoryId)
+      );
+
+      if (foundCategory) {
+        return (
+          foundCategory.categoryName ||
+          foundCategory.name ||
+          foundCategory.description ||
+          "Đang cập nhật"
+        );
+      }
+    }
+
     return (
       movie.genre ||
       movie.categoryName ||
+      movie.description ||
       movie.category ||
       movie.movieCategory ||
       "Đang cập nhật"
@@ -179,15 +217,74 @@ function Movies() {
   }
 
   function getMovieDuration(movie) {
-    if (movie.duration) return movie.duration;
-    if (movie.durationMinutes) return `${movie.durationMinutes} phút`;
-    if (movie.runningTime) return `${movie.runningTime} phút`;
+    if (movie.duration && typeof movie.duration === "string") {
+      return movie.duration;
+    }
+
+    if (movie.duration && typeof movie.duration === "number") {
+      return `${movie.duration} phút`;
+    }
+
+    if (movie.durationMinutes) {
+      return `${movie.durationMinutes} phút`;
+    }
+
+    if (movie.runningTime) {
+      return `${movie.runningTime} phút`;
+    }
 
     return "Đang cập nhật";
   }
 
+  function formatDate(dateValue) {
+    if (!dateValue) return "Đang cập nhật";
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Đang cập nhật";
+    }
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+  }
+
+  function getMovieReleaseDate(movie) {
+    return formatDate(
+      movie.releaseDate ||
+        movie.release_date ||
+        movie.startDate ||
+        movie.openingDate ||
+        movie.premiereDate
+    );
+  }
+
+  function convertYoutubeToEmbed(url) {
+    if (!url) return "";
+
+    if (url.includes("youtube.com/embed/")) {
+      return url;
+    }
+
+    if (url.includes("youtube.com/watch?v=")) {
+      const videoId = url.split("watch?v=")[1]?.split("&")[0];
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+    }
+
+    if (url.includes("youtu.be/")) {
+      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+    }
+
+    return url;
+  }
+
   function getMovieTrailer(movie) {
-    return movie.trailer || movie.trailerUrl || movie.videoUrl || "";
+    const trailer = movie.trailerUrl || movie.trailer || movie.videoUrl || "";
+    return convertYoutubeToEmbed(trailer);
   }
 
   return (
@@ -236,6 +333,7 @@ function Movies() {
           {MOVIE_TABS.map((tab) => (
             <button
               key={tab.key}
+              type="button"
               className={activeTab === tab.key ? "active" : ""}
               onClick={() => changeTab(tab.key)}
             >
@@ -253,17 +351,29 @@ function Movies() {
         <section className="movie-grid">
           {!loading &&
             movies.map((movie, index) => (
-              <div className="movie-card-page" key={movie.id || index}>
+              <div
+                className="movie-card-style"
+                key={movie.movieId || movie.id || index}
+              >
                 <div
-                  className="movie-poster"
+                  className="movie-poster-style"
                   onClick={() => setSelectedTrailer(movie)}
                 >
-                  <img src={getMovieImage(movie)} alt={getMovieTitle(movie)} />
+                  <img
+                    src={getMovieImage(movie)}
+                    alt={getMovieTitle(movie)}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/img/no-image.png";
+                    }}
+                  />
 
-                  <span className="movie-age">{getMovieAge(movie)}</span>
-                  <span className="hot-ribbon">{getMovieTag(movie)}</span>
+                  <span className="movie-age-style">{getMovieAge(movie)}</span>
+
+                  <span className="movie-tag-style">{getMovieTag(movie)}</span>
 
                   <button
+                    type="button"
                     className="play-btn"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -284,6 +394,14 @@ function Movies() {
                   <b>Thời lượng:</b> {getMovieDuration(movie)}
                 </p>
 
+                <p>
+                  <b>Khởi chiếu:</b> {getMovieReleaseDate(movie)}
+                </p>
+
+                <p>
+                  <b>Trạng thái:</b> {getMovieStatus(movie)}
+                </p>
+
                 <Link to="/" className="buy-ticket-btn">
                   🎟️ MUA VÉ
                 </Link>
@@ -296,6 +414,7 @@ function Movies() {
         <div className="trailer-overlay">
           <div className="trailer-modal">
             <button
+              type="button"
               className="trailer-close"
               onClick={() => setSelectedTrailer(null)}
             >
