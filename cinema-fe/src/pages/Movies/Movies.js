@@ -63,35 +63,14 @@ function normalizeArray(data) {
   return [];
 }
 
-function normalizeCategory(category) {
-  return {
-    categoryId:
-      category.categoryId ||
-      category.CategoryId ||
-      category.id ||
-      category.Id ||
-      category.movieCategoryId ||
-      category.MovieCategoryId,
-
-    categoryName:
-      category.categoryName ||
-      category.CategoryName ||
-      category.name ||
-      category.Name ||
-      category.title ||
-      category.Title ||
-      category.description ||
-      category.Description ||
-      "Đang cập nhật",
-  };
-}
-
 export async function getMoviesByTab(tabKey) {
   const tab = MOVIE_TABS.find((item) => item.key === tabKey);
 
   if (!tab) {
     return [];
   }
+
+  console.log("API phim đang gọi:", tab.endpoint);
 
   const response = await fetch(tab.endpoint);
   const data = await readResponse(response);
@@ -103,5 +82,5 @@ export async function getMovieCategories() {
   const response = await fetch(`${API_URL}/MovieCategories`);
   const data = await readResponse(response);
 
-  return normalizeArray(data).map(normalizeCategory);
+  return normalizeArray(data);
 }

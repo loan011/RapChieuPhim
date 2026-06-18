@@ -42,7 +42,7 @@ function TicketPrice() {
         <nav>
           <Link to="/movies">PHIM</Link>
           <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <a href="#rap">RẠP</a>
+          <Link to="/cinema">RẠP</Link>
 
           <Link className="active" to="/ticket-price">
             GIÁ VÉ

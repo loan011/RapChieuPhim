@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Login from "./pages/Auth/Login";
@@ -6,10 +6,15 @@ import Register from "./pages/Auth/Register";
 import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import TicketPrice from "./pages/Ticket/TicketPrice";
+import Cinema from "./pages/Cinema/Cinema";
+import Booking from "./pages/Booking/Booking";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import CustomerProfile from "./pages/Customer/Profile/Profile";
+import VeCuaToi from "./pages/Customer/Ticket/Ticket";
+import LichSuDatVe from "./pages/Customer/History/History";
+import CustomerThongBao from "./pages/Customer/Notice/Notice";
 
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard/Dashboard";
@@ -30,36 +35,6 @@ function StaffPage() {
     <div style={{ padding: "40px" }}>
       <h1>Staff Page</h1>
       <p>Đây là trang dành riêng cho Staff.</p>
-    </div>
-  );
-}
-
-function VeCuaToi() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <Link to="/">← Quay lại Home</Link>
-      <h1>🎫 Vé của tôi</h1>
-      <p>Danh sách vé đã đặt sẽ hiển thị ở đây.</p>
-    </div>
-  );
-}
-
-function LichSuDatVe() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <Link to="/">← Quay lại Home</Link>
-      <h1>🕘 Lịch sử đặt vé</h1>
-      <p>Lịch sử đặt vé sẽ hiển thị ở đây.</p>
-    </div>
-  );
-}
-
-function CustomerThongBao() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <Link to="/">← Quay lại Home</Link>
-      <h1>🔔 Thông báo</h1>
-      <p>Thông báo của khách hàng sẽ hiển thị ở đây.</p>
     </div>
   );
 }
@@ -102,6 +77,24 @@ function App() {
         />
 
         <Route
+          path="/cinema"
+          element={
+            <ProtectedRoute allowedRoles={["Customer"]}>
+              <Cinema />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/booking"
+          element={
+            <ProtectedRoute allowedRoles={["Customer"]}>
+              <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/customer/profile"
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
@@ -120,7 +113,7 @@ function App() {
         />
 
         <Route
-          path="/customer/lich-su-dat-ve"
+          path="/customer/lich-su"
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
               <LichSuDatVe />

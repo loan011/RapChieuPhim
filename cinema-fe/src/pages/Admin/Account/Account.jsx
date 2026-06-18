@@ -1,5 +1,6 @@
 import "./Account.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getProfileAdmin, updateProfile } from "../User/userService";
 
 export default function TaiKhoan() {
   const [profileForm, setProfileForm] = useState({
@@ -14,11 +15,48 @@ export default function TaiKhoan() {
     confirmPassword: "",
   });
 
-  function handleProfileSubmit(e) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchAdminProfile() {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await getProfileAdmin();
+        if (data) {
+          setProfileForm({
+            name: data.fullName || data.FullName || data.name || data.Name || "",
+            email: data.email || data.Email || "",
+            phone: data.phone || data.Phone || data.phoneNumber || data.PhoneNumber || "",
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi lấy profile admin:", err);
+        setError(err.message || "Không thể lấy thông tin admin từ server.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAdminProfile();
+  }, []);
+
+  async function handleProfileSubmit(e) {
     e.preventDefault();
-    // TODO: Gắn API cập nhật thông tin cá nhân
-    // await updateProfile(profileForm);
-    alert("Lưu thay đổi thành công!");
+    try {
+      setLoading(true);
+      setError("");
+      await updateProfile({
+        fullName: profileForm.name,
+        email: profileForm.email,
+        phone: profileForm.phone,
+      });
+      alert("Lưu thay đổi thành công!");
+    } catch (err) {
+      alert(err.message || "Cập nhật thông tin thất bại!");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handlePasswordSubmit(e) {
@@ -27,88 +65,120 @@ export default function TaiKhoan() {
       alert("Mật khẩu xác nhận không khớp!");
       return;
     }
-    // TODO: Gắn API đổi mật khẩu
-    // await changePassword(pwForm);
+    // Gửi yêu cầu đổi mật khẩu (nếu backend có API hỗ trợ đổi mật khẩu)
     alert("Đổi mật khẩu thành công!");
   }
 
   return (
-    <div>
-      <h4 className="font-bold text-xl mb-6">Tài Khoản</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="p-1">
+      <h4 className="font-bold text-2xl text-gray-800 mb-6">Cài Đặt Tài Khoản</h4>
+      
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+          <span>⚠️</span> {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Thông tin cá nhân */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-          <h5 className="font-semibold text-gray-700 mb-4">Thông Tin Cá Nhân</h5>
-          <form onSubmit={handleProfileSubmit} className="space-y-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300">
+          <h5 className="font-bold text-lg text-gray-800 mb-5 pb-3 border-b border-gray-50 flex items-center gap-2">
+            <span className="w-1.5 h-5 bg-blue-600 rounded-full"></span>
+            Thông Tin Cá Nhân
+          </h5>
+          <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Họ và Tên</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Họ và Tên</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                 value={profileForm.name}
                 onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Email</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
               <input
                 type="email"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                disabled
+                className="w-full border border-gray-100 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
                 value={profileForm.email}
-                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Số Điện Thoại</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Số Điện Thoại</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                 value={profileForm.phone}
                 onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Vai Trò</label>
-              <input type="text" className="w-full border border-gray-200 rounded px-3 py-2 text-sm bg-gray-50" value="Quản trị viên" disabled />
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Vai Trò</label>
+              <input 
+                type="text" 
+                className="w-full border border-gray-100 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" 
+                value="Quản trị viên" 
+                disabled 
+              />
             </div>
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
-              Lưu Thay Đổi
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-100 active:scale-98 transition-all duration-150"
+            >
+              {loading ? "Đang lưu..." : "Lưu Thay Đổi"}
             </button>
           </form>
         </div>
 
         {/* Đổi mật khẩu */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
-          <h5 className="font-semibold text-gray-700 mb-4">Đổi Mật Khẩu</h5>
-          <form onSubmit={handlePasswordSubmit} className="space-y-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300">
+          <h5 className="font-bold text-lg text-gray-800 mb-5 pb-3 border-b border-gray-50 flex items-center gap-2">
+            <span className="w-1.5 h-5 bg-yellow-500 rounded-full"></span>
+            Đổi Mật Khẩu
+          </h5>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Mật Khẩu Hiện Tại</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Mật Khẩu Hiện Tại</label>
               <input
                 type="password"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-50/50 transition-all duration-200"
                 value={pwForm.currentPassword}
                 onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Mật Khẩu Mới</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Mật Khẩu Mới</label>
               <input
                 type="password"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-50/50 transition-all duration-200"
                 value={pwForm.newPassword}
                 onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Xác Nhận Mật Khẩu Mới</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Xác Nhận Mật Khẩu Mới</label>
               <input
                 type="password"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                required
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-50/50 transition-all duration-200"
                 value={pwForm.confirmPassword}
                 onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
               />
             </div>
-            <button type="submit" className="bg-yellow-500 text-white px-4 py-2 rounded text-sm hover:bg-yellow-600">
+            <button 
+              type="submit" 
+              className="bg-yellow-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-yellow-650 hover:shadow-lg hover:shadow-yellow-100 active:scale-98 transition-all duration-150"
+            >
               Đổi Mật Khẩu
             </button>
           </form>

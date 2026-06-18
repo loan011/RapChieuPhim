@@ -1,52 +1,67 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap");
+
 .ticket-price-page {
   min-height: 100vh;
-  background: #080808;
+  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
   color: white;
-  font-family: Arial, Helvetica, sans-serif;
-  overflow-x: auto;
-  padding: 0;
+  font-family: "Montserrat", Arial, sans-serif;
+  box-sizing: border-box;
 }
 
-/* ===== HEADER GIỐNG ẢNH 2 ===== */
-
+/* TOP LOGIN */
 .movie-top-login {
-  height: 22px;
-  background: #d90000;
+  min-height: 32px;
+  background: rgba(18, 18, 18, 0.5);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 0 160px;
+  padding: 0 90px;
   box-sizing: border-box;
+  z-index: 100;
+  position: relative;
 }
 
 .movie-top-login a,
 .movie-top-login span {
-  color: white;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
+  transition: color 0.2s;
 }
 
+.movie-top-login a:hover {
+  color: #e50914;
+}
+
+/* HEADER */
 .movie-header {
   width: 100%;
-  height: 84px;
-  background: #0b0b0b;
-  border-bottom: 1px solid #e00000;
+  height: 90px;
+  background: rgba(18, 18, 18, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(229, 9, 20, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 34px;
   padding: 0 90px;
   box-sizing: border-box;
-  box-shadow: 0 0 18px rgba(255, 0, 0, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .movie-logo {
-  color: #ff1f1f;
-  font-size: 28px;
+  color: #ff2020;
+  font-size: 30px;
   font-weight: 900;
   white-space: nowrap;
-  min-width: 220px;
+  min-width: 190px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -55,270 +70,292 @@
 .movie-logo span,
 .movie-logo b {
   display: inline;
+  text-shadow: 0 0 12px rgba(255, 32, 32, 0.4);
 }
 
 .movie-select {
-  width: 230px;
-  height: 42px;
-  border: 1px solid #ff1f1f;
-  border-radius: 25px;
-  background: #111;
+  width: 220px;
+  height: 44px;
+  border: 1.5px solid rgba(255, 30, 30, 0.4);
+  border-radius: 22px;
+  background: rgba(18, 18, 18, 0.85);
   color: white;
-  padding: 0 18px;
-  font-weight: 800;
+  padding: 0 20px;
+  font-weight: 700;
   outline: none;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.movie-select:hover {
+  background: rgba(229, 9, 20, 0.08);
+  border-color: #ff1e1e;
+  box-shadow: 0 0 12px rgba(255, 30, 30, 0.2);
 }
 
 .movie-header nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 34px;
+  gap: 24px;
   flex: 1;
 }
 
 .movie-header nav a {
-  color: white;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
   white-space: nowrap;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
 }
 
 .movie-header nav a:hover {
-  color: #ff1f1f;
+  color: #ff2b2b;
 }
 
-/* Nếu muốn GIÁ VÉ đang active vẫn màu trắng giống ảnh 2 */
 .movie-header nav a.active {
-  color: white;
+  color: #ff2b2b;
+  border-bottom: 2px solid #ff2b2b;
+  padding-bottom: 4px;
 }
 
 /* ===== PRICE CONTENT ===== */
-
 .ticket-price-card {
   max-width: 1350px;
-  width: 100%;
-  min-width: 1180px;
-  margin: 36px auto;
-  background: #00599d;
-  border-radius: 16px;
-  padding: 35px 32px;
-  box-shadow: 0 0 30px rgba(255, 0, 0, 0.35);
-  overflow: visible;
+  width: 95%;
+  margin: 40px auto;
+  background: rgba(18, 18, 18, 0.55);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 40px rgba(229, 9, 20, 0.1);
   box-sizing: border-box;
 }
 
 .price-block {
   display: grid;
   grid-template-columns: 230px 1fr;
-  gap: 35px;
-  margin-bottom: 60px;
+  gap: 40px;
+  margin-bottom: 48px;
 }
 
 .price-logo {
-  width: 185px;
-  height: 145px;
+  width: 150px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 76px;
+  font-size: 64px;
   font-weight: 900;
-  margin: 20px auto 30px;
+  margin: 10px auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
 .price-logo-2d {
-  background: #f58ea5;
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
   border-radius: 24px;
-  transform: rotate(45deg);
 }
 
 .price-logo-3d {
-  background: #a6df08;
-  border-radius: 45px 45px 45px 12px;
+  background: linear-gradient(135deg, #a3e635 0%, #84cc16 100%);
+  border-radius: 24px;
 }
 
 .price-title {
-  font-size: 42px;
-  font-weight: 900;
-  margin: 0 0 18px;
-  letter-spacing: 1px;
-  white-space: nowrap;
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 20px;
+  letter-spacing: 0.5px;
 }
 
 .title-2d {
-  color: #ff91a9;
+  color: #f87171;
 }
 
 .title-3d {
-  color: #a8df14;
+  color: #a3e635;
 }
 
 .price-table-box {
   display: grid;
   grid-template-columns: 320px 330px 390px;
-  border: 3px solid white;
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
   width: fit-content;
 }
 
 .price-left-list {
-  border-right: 3px solid white;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
   text-align: center;
-  padding-top: 78px;
+  padding-top: 60px;
 }
 
 .sale-title {
-  color: #ff9c17;
-  font-size: 24px;
-  font-weight: 900;
-  text-shadow: 1px 1px 0 white;
+  color: #f59e0b;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 .beta-title {
-  color: #ff8fa6;
-  font-size: 24px;
-  font-weight: 900;
-  text-shadow: 1px 1px 0 white;
-  margin-top: 8px;
+  color: #f87171;
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 10px;
 }
 
 .beta-title span {
   color: white;
-  font-size: 16px;
-  text-shadow: none;
+  font-size: 14px;
 }
 
 .happy-title {
-  color: #b8e812;
-  font-size: 22px;
-  font-weight: 900;
-  text-shadow: 1px 1px 0 white;
-  margin: 10px 0;
+  color: #a3e635;
+  font-size: 18px;
+  font-weight: 800;
+  margin: 12px 0;
 }
 
 .price-left-list p {
-  font-size: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
   margin: 2px 0 8px;
 }
 
 .row-name {
-  border-top: 3px solid white;
-  padding: 9px 5px;
-  font-size: 21px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 14px 10px;
+  font-size: 16px;
   font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .table-header {
-  min-height: 74px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 30px;
-  font-weight: 900;
+  font-size: 20px;
+  font-weight: 800;
   box-sizing: border-box;
+  color: white;
+  letter-spacing: 0.5px;
 }
 
 .adult-header {
-  background: #ff9814;
+  background: rgba(245, 158, 11, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .student-header {
-  background: #f28ba1;
-  min-height: 125px;
-  font-size: 28px;
-  line-height: 1.45;
-  padding: 10px 14px;
+  background: rgba(244, 63, 94, 0.2);
+  min-height: 106px;
+  font-size: 18px;
+  line-height: 1.4;
+  padding: 10px 20px;
   white-space: normal;
 }
 
 .time-header {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #ff9814;
-  border-top: 3px solid white;
-  border-bottom: 3px solid white;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .time-header span {
-  padding: 13px 5px;
+  padding: 10px 5px;
   text-align: center;
-  font-size: 24px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .time-header span:first-child {
-  border-right: 3px solid white;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .big-price {
-  height: 145px;
+  height: 110px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56px;
-  font-weight: 900;
-  white-space: nowrap;
+  font-size: 38px;
+  font-weight: 800;
+  color: white;
 }
 
 .price-student-table {
-  border-left: 3px solid white;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .student-price {
-  height: 220px;
+  height: 170px;
 }
 
 .normal-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  border-top: 3px solid white;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .normal-row span {
-  padding: 8px 5px;
+  padding: 12px 5px;
   text-align: center;
-  font-size: 19px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .normal-row span:not(:last-child) {
-  border-right: 3px solid white;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .holiday-row {
-  border-top: 3px solid white;
-  padding: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 12px;
   text-align: center;
-  font-size: 21px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ff2b2b;
 }
 
 .ticket-note {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 30px;
-  border-top: 3px solid white;
-  padding-top: 18px;
-  font-size: 14px;
-  line-height: 1.5;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .ticket-note p {
-  margin: 3px 0;
+  margin: 4px 0;
 }
 
 /* ===== RESPONSIVE ===== */
-
-@media (max-width: 1000px) {
+@media (max-width: 1200px) {
   .movie-top-login {
-    padding: 0 20px;
+    padding: 0 40px;
   }
 
+  .movie-header {
+    padding: 0 40px;
+  }
+}
+
+@media (max-width: 1000px) {
   .movie-header {
     justify-content: flex-start;
     overflow-x: auto;
@@ -326,18 +363,15 @@
     padding: 0 20px;
   }
 
-  .movie-logo {
-    min-width: 180px;
-    font-size: 24px;
-  }
-
   .ticket-price-card {
+    margin: 30px auto;
+    padding: 24px;
     min-width: unset;
-    margin: 30px 16px;
   }
 
   .price-block {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .price-table-box {
@@ -349,19 +383,20 @@
   .price-student-table {
     border-right: none;
     border-left: none;
+    padding-top: 24px;
   }
 
   .price-student-table {
-    border-top: 3px solid white;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .price-title {
     text-align: center;
-    font-size: 32px;
-    white-space: normal;
+    font-size: 26px;
   }
 
   .ticket-note {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
