@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+
 import "../../styles/Login.css";
+
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { loginApi, saveAuthData } from "../../services/authService";
 
@@ -10,6 +12,17 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  function getRole(data) {
+    return (
+      data?.user?.role ||
+      data?.user?.Role ||
+      data?.User?.role ||
+      data?.User?.Role ||
+      localStorage.getItem("role") ||
+      ""
+    );
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -23,6 +36,7 @@ function Login() {
     if (!password) return setError("Vui lòng nhập mật khẩu!");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(email)) {
       return setError("Email không đúng định dạng!");
     }
@@ -31,22 +45,26 @@ function Login() {
       setLoading(true);
 
       const data = await loginApi(email, password);
+
       saveAuthData(data);
 
       alert("Đăng nhập thành công!");
 
-      const role = data.user?.role;
+      const role = getRole(data);
 
       if (role === "Admin") {
-        navigate("/admin");
+        navigate("/admin", { replace: true });
       } else if (role === "Staff") {
-        navigate("/staff");
+        navigate("/staff", { replace: true });
       } else {
-        navigate("/");
+        navigate("/movies", { replace: true });
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
+      setError(
+        err.message ||
+          "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa."
+      );
     } finally {
       setLoading(false);
     }
@@ -60,7 +78,10 @@ function Login() {
 
       <div className="auth-box-page">
         <div className="auth-tabs">
-          <button className="active">ĐĂNG NHẬP</button>
+          <button type="button" className="active">
+            ĐĂNG NHẬP
+          </button>
+
           <Link to="/register">ĐĂNG KÝ</Link>
         </div>
 

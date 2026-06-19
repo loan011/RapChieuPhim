@@ -1,13 +1,29 @@
 import { Link } from "react-router-dom";
+
 import "../../styles/TicketPrice.css";
+import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
 function TicketPrice() {
+  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const userEmail =
+    localStorage.getItem("userEmail") ||
+    localStorage.getItem("email") ||
+    savedUser.email ||
+    savedUser.Email;
+
   return (
     <div className="ticket-price-page">
       <div className="movie-top-login">
-        <Link to="/login">Đăng nhập</Link>
-        <span style={{ margin: "0 6px" }}>|</span>
-        <Link to="/register">Đăng ký GB</Link>
+        {userEmail ? (
+          <CustomerProfileDropdown />
+        ) : (
+          <>
+            <Link to="/login">Đăng nhập</Link>
+            <span style={{ margin: "0 6px" }}>|</span>
+            <Link to="/register">Đăng ký GB</Link>
+          </>
+        )}
       </div>
 
       <header className="movie-header">
@@ -24,9 +40,9 @@ function TicketPrice() {
         </select>
 
         <nav>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
           <Link to="/movies">PHIM</Link>
-          <a href="#rap">RẠP</a>
+          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
+          <Link to="/cinema">RẠP</Link>
 
           <Link className="active" to="/ticket-price">
             GIÁ VÉ

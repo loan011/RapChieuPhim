@@ -56,3 +56,36 @@ export async function deleteUser(id) {
   if (!response.ok) throw new Error(getErrorMessage(data, "Xóa người dùng thất bại!"));
   return data;
 }
+
+// GET /api/Users/GetProfile (for admin)
+export async function getProfileAdmin() {
+  const response = await fetch(`${API_URL}/Users/GetProfile`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy thông tin cá nhân admin thất bại!"));
+  return data;
+}
+
+// GET /api/Users (for customer profile)
+export async function getProfileCustomer() {
+  const response = await fetch(`${API_URL}/Users`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy thông tin cá nhân thất bại!"));
+  return data;
+}
+
+// PUT /api/Users (update profile)
+export async function updateProfile(user) {
+  const response = await fetch(`${API_URL}/Users`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(user),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật thông tin cá nhân thất bại!"));
+  return data;
+}
+

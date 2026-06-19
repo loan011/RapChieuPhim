@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CustomerProfileDropdown from "../components/CustomerProfileDropdown";
 import "../styles/Home.css";
 
@@ -301,6 +301,7 @@ const movies = [
 ];
 
 function Home() {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState(new Date(2026, 5, 2));
   const [selectedDate, setSelectedDate] = useState("02/06 - T3");
   const [selectedTime, setSelectedTime] = useState({});
@@ -348,7 +349,7 @@ const userEmail =
   }
 
   function handleSelectTime(movieId, time) {
-    setSelectedTime({ [movieId]: time });
+    navigate(`/booking?movie=${movieId}&time=${time}`);
   }
 
   function toggleDetail(movieId) {
@@ -392,13 +393,13 @@ const userEmail =
         </select>
 
         <nav>
-          <a>LỊCH CHIẾU THEO RẠP</a>
           <Link to="/movies">PHIM</Link>
-          <a>RẠP</a>
+          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
+          <Link to="/cinema">RẠP</Link>
           <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a>TIN MỚI VÀ ƯU ĐÃI</a>
-          <a>NHƯỢNG QUYỀN</a>
-          <a>THÀNH VIÊN</a>
+          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
+          <a href="#franchise">NHƯỢNG QUYỀN</a>
+          <a href="#member">THÀNH VIÊN</a>
         </nav>
       </header>
 
@@ -470,6 +471,26 @@ const userEmail =
                       <button onClick={() => setSelectedTrailer(movie)}>
                         Trailer
                       </button>
+
+                      <span></span>
+
+                      <Link to={`/booking?movie=${movie.id}`} style={{
+                        flex: 1,
+                        height: "100%",
+                        background: "none",
+                        border: "none",
+                        color: "white",
+                        fontSize: "16px",
+                        font: "inherit",
+                        fontWeight: "800",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none"
+                      }}>
+                        Mua vé
+                      </Link>
                     </div>
 
                     {showDetail[movie.id] && (

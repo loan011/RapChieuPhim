@@ -18,22 +18,22 @@ const navItems = [
   { to: "/movies", label: "Phim", icon: <MdMovie /> },
   {
     to: "/customer/ve-cua-toi",
-    label: "Ve Cua Toi",
+    label: "Vé Của Tôi",
     icon: <MdConfirmationNumber />,
   },
   {
     to: "/customer/lich-su",
-    label: "Lich Su Dat Ve",
+    label: "Lịch Sử Đặt Vé",
     icon: <MdReceiptLong />,
   },
   {
     to: "/customer/thong-bao",
-    label: "Thong Bao",
+    label: "Thông Báo",
     icon: <MdNotifications />,
   },
   {
     to: "/customer/profile",
-    label: "Tai Khoan",
+    label: "Tài Khoản",
     icon: <MdAccountCircle />,
   },
 ];
@@ -96,7 +96,7 @@ export default function CustomerLayout() {
           className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors"
         >
           <MdLogout className="text-lg shrink-0" />
-          {sidebarOpen && <span>Dang Xuat</span>}
+          {sidebarOpen && <span>Đăng Xuất</span>}
         </button>
       </aside>
 
@@ -110,7 +110,7 @@ export default function CustomerLayout() {
           </button>
 
           <span className="text-gray-700 font-semibold text-sm">
-            Dat Ve Rap Chieu Phim T&M
+            Đặt Vé Rạp Chiếu Phim T&M
           </span>
         </header>
 
