@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 import "../../styles/TicketPrice.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
+import { getCinemaList } from "../Cinema/cinemaPageService";
 
 function TicketPrice() {
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -11,6 +13,28 @@ function TicketPrice() {
     localStorage.getItem("email") ||
     savedUser.email ||
     savedUser.Email;
+
+  const [cinemas, setCinemas] = useState([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState("");
+
+  useEffect(() => {
+    getCinemaList()
+      .then((raw) => {
+        const arr = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.$values)
+          ? raw.$values
+          : [];
+        setCinemas(arr);
+        if (arr.length > 0) {
+          const firstId = arr[0].id ?? arr[0].Id ?? arr[0].cinemaId ?? arr[0].CinemaId ?? "";
+          setSelectedCinemaId(String(firstId));
+        }
+      })
+      .catch(() => setCinemas([]));
+  }, []);
 
   return (
     <div className="ticket-price-page">
@@ -32,11 +56,21 @@ function TicketPrice() {
           <b>HCM</b>
         </div>
 
-        <select className="movie-select">
-          <option>Chọn rạp HCM</option>
-          <option>CGV Vincom Đồng Khởi</option>
-          <option>Galaxy Nguyễn Du</option>
-          <option>Beta Cinemas TP.HCM</option>
+        <select
+          className="movie-select"
+          value={selectedCinemaId}
+          onChange={(e) => setSelectedCinemaId(e.target.value)}
+        >
+          <option value="">Chọn rạp HCM</option>
+          {cinemas.map((c) => {
+            const id   = c.id ?? c.Id ?? c.cinemaId ?? c.CinemaId ?? "";
+            const name = c.name ?? c.Name ?? c.cinemaName ?? c.CinemaName ?? "Rạp không tên";
+            return (
+              <option key={id} value={String(id)}>
+                {name}
+              </option>
+            );
+          })}
         </select>
 
         <nav>

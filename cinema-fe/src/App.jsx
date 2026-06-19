@@ -24,6 +24,7 @@ import NhanVien from "./pages/Admin/Personnel/Personnel";
 import KhachHang from "./pages/Admin/Customer/Customer";
 import Phim from "./pages/Admin/Film/Film";
 import PhongChieu from "./pages/Admin/Room/Room";
+import RapChieu from "./pages/Admin/Cinema/Cinema";
 import SuatChieu from "./pages/Admin/Rate/Rate";
 import AdminVe from "./pages/Admin/Ticket/Ticket";
 import HoaDon from "./pages/Admin/Bill/Bill";
@@ -157,6 +158,7 @@ function App() {
           <Route path="khach-hang" element={<KhachHang />} />
           <Route path="phim" element={<Phim />} />
           <Route path="phong-chieu" element={<PhongChieu />} />
+          <Route path="rap-chieu" element={<RapChieu />} />
           <Route path="suat-chieu" element={<SuatChieu />} />
           <Route path="ve" element={<AdminVe />} />
           <Route path="hoa-don" element={<HoaDon />} />

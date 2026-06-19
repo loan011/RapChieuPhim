@@ -1,4 +1,4 @@
-﻿import "../styles/Admin/AdminLayout.css";
+import "../styles/Admin/AdminLayout.css";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   MdDashboard,
@@ -15,6 +15,7 @@ import {
   MdNotifications,
   MdMenu,
   MdLogout,
+  MdTheaters,
 } from "react-icons/md";
 import { useState } from "react";
 
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/admin/nhan-vien",    label: "Nhan Vien",      icon: <MdBadge /> },
   { to: "/admin/khach-hang",   label: "Khach Hang",     icon: <MdPersonOutline /> },
   { to: "/admin/phim",         label: "Phim",           icon: <MdMovie /> },
+  { to: "/admin/rap-chieu",    label: "Rap Chieu",      icon: <MdTheaters /> },
   { to: "/admin/phong-chieu",  label: "Phong Chieu",    icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",   label: "Suat Chieu",     icon: <MdCalendarMonth /> },
   { to: "/admin/ve",           label: "Ve",             icon: <MdConfirmationNumber /> },

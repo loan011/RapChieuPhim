@@ -1,22 +1,25 @@
-import "./Room.css";
+import "./Cinema.css";
 import { useEffect, useState } from "react";
-import { getRoomList, createRoom, updateRoom, deleteRoom } from "./roomService";
+import { getCinemaList, createCinema, updateCinema, deleteCinema } from "./cinemaService";
 
 const EMPTY_FORM = {
   name: "",
-  capacity: "",
-  type: "",
+  address: "",
+  city: "",
+  phone: "",
+  email: "",
   status: "",
 };
 
-export default function PhongChieu() {
+export default function RapChieu() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null); // null = thêm mới, có giá trị = sửa
+  const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -29,7 +32,7 @@ export default function PhongChieu() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getRoomList();
+      const data = await getCinemaList();
       setList(data ?? []);
     } catch (err) {
       setError(err.message);
@@ -45,13 +48,15 @@ export default function PhongChieu() {
     setShowModal(true);
   }
 
-  function openEditModal(room) {
-    setEditId(room.id);
+  function openEditModal(cinema) {
+    setEditId(cinema.id);
     setForm({
-      name: room.name ?? "",
-      capacity: room.capacity ?? "",
-      type: room.type ?? "",
-      status: room.status ?? "",
+      name: cinema.name ?? "",
+      address: cinema.address ?? "",
+      city: cinema.city ?? "",
+      phone: cinema.phone ?? "",
+      email: cinema.email ?? "",
+      status: cinema.status ?? "",
     });
     setFormError(null);
     setShowModal(true);
@@ -73,32 +78,24 @@ export default function PhongChieu() {
     e.preventDefault();
     setFormError(null);
 
-    // Validate
     if (!form.name.trim()) {
-      setFormError("Vui lòng nhập tên phòng chiếu.");
+      setFormError("Vui lòng nhập tên rạp chiếu.");
       return;
     }
-    if (!form.capacity || isNaN(Number(form.capacity)) || Number(form.capacity) <= 0) {
-      setFormError("Vui lòng nhập sức chứa hợp lệ.");
+    if (!form.address.trim()) {
+      setFormError("Vui lòng nhập địa chỉ rạp.");
       return;
     }
-
-    const payload = {
-      ...form,
-      capacity: Number(form.capacity),
-    };
 
     try {
       setSubmitting(true);
       if (editId !== null) {
-        // Cập nhật
-        await updateRoom(editId, payload);
+        await updateCinema(editId, form);
         setList((prev) =>
-          prev.map((r) => (r.id === editId ? { ...r, ...payload } : r))
+          prev.map((c) => (c.id === editId ? { ...c, ...form } : c))
         );
       } else {
-        // Thêm mới
-        const created = await createRoom(payload);
+        const created = await createCinema(form);
         setList((prev) => [...prev, created]);
       }
       closeModal();
@@ -110,20 +107,26 @@ export default function PhongChieu() {
   }
 
   async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa phòng chiếu này?")) return;
+    if (!confirm("Bạn có chắc muốn xóa rạp chiếu này?")) return;
     try {
-      await deleteRoom(id);
-      setList((prev) => prev.filter((r) => r.id !== id));
+      await deleteCinema(id);
+      setList((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       alert(err.message);
     }
   }
 
+  const filtered = list.filter((c) =>
+    c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.city?.toLowerCase().includes(search.toLowerCase()) ||
+    c.address?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Phòng Chiếu</h4>
+        <h4 className="font-bold text-xl">Quản Lý Rạp Chiếu</h4>
         <button
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
           onClick={openAddModal}
@@ -134,6 +137,17 @@ export default function PhongChieu() {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        {/* Search */}
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên, thành phố, địa chỉ..."
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm w-full max-w-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -143,38 +157,58 @@ export default function PhongChieu() {
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Tên Phòng</th>
-                  <th className="px-3 py-2 text-left">Sức Chứa</th>
-                  <th className="px-3 py-2 text-left">Loại Phòng</th>
+                  <th className="px-3 py-2 text-left">Tên Rạp</th>
+                  <th className="px-3 py-2 text-left">Địa Chỉ</th>
+                  <th className="px-3 py-2 text-left">Thành Phố</th>
+                  <th className="px-3 py-2 text-left">Điện Thoại</th>
+                  <th className="px-3 py-2 text-left">Email</th>
                   <th className="px-3 py-2 text-left">Trạng Thái</th>
                   <th className="px-3 py-2 text-left">Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
-                {list.length === 0 ? (
+                {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-6 text-gray-400">
+                    <td colSpan={8} className="text-center py-6 text-gray-400">
                       Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
-                  list.map((r, i) => (
-                    <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  filtered.map((c, i) => (
+                    <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{r.name}</td>
-                      <td className="px-3 py-2">{r.capacity}</td>
-                      <td className="px-3 py-2">{r.type}</td>
-                      <td className="px-3 py-2">{r.status}</td>
+                      <td className="px-3 py-2 font-medium">{c.name}</td>
+                      <td className="px-3 py-2">{c.address}</td>
+                      <td className="px-3 py-2">{c.city}</td>
+                      <td className="px-3 py-2">{c.phone}</td>
+                      <td className="px-3 py-2">{c.email}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            c.status === "Active"
+                              ? "bg-green-100 text-green-700"
+                              : c.status === "Inactive"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {c.status === "Active"
+                            ? "Hoạt động"
+                            : c.status === "Inactive"
+                            ? "Ngừng HĐ"
+                            : c.status || "—"}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 flex gap-2">
                         <button
                           className="text-blue-600 hover:underline text-xs"
-                          onClick={() => openEditModal(r)}
+                          onClick={() => openEditModal(c)}
                         >
                           Sửa
                         </button>
                         <button
                           className="text-red-500 hover:underline text-xs"
-                          onClick={() => handleDelete(r.id)}
+                          onClick={() => handleDelete(c.id)}
                         >
                           Xóa
                         </button>
@@ -191,9 +225,9 @@ export default function PhongChieu() {
       {/* Modal Thêm / Sửa */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h5 className="font-bold text-lg mb-4">
-              {editId !== null ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
+              {editId !== null ? "Cập Nhật Rạp Chiếu" : "Thêm Rạp Chiếu"}
             </h5>
 
             {formError && (
@@ -201,54 +235,79 @@ export default function PhongChieu() {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Tên phòng */}
+              {/* Tên rạp */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên Phòng <span className="text-red-500">*</span>
+                  Tên Rạp <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  placeholder="Nhập tên phòng chiếu"
+                  placeholder="Nhập tên rạp chiếu"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
-              {/* Sức chứa */}
+              {/* Địa chỉ */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sức Chứa <span className="text-red-500">*</span>
+                  Địa Chỉ <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  name="capacity"
-                  value={form.capacity}
+                  type="text"
+                  name="address"
+                  value={form.address}
                   onChange={handleChange}
-                  placeholder="Nhập sức chứa (số ghế)"
-                  min={1}
+                  placeholder="Nhập địa chỉ rạp"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
-              {/* Loại phòng */}
+              {/* Thành phố */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Loại Phòng
+                  Thành Phố
                 </label>
-                <select
-                  name="type"
-                  value={form.type}
+                <input
+                  type="text"
+                  name="city"
+                  value={form.city}
                   onChange={handleChange}
+                  placeholder="Nhập tên thành phố"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="">-- Chọn loại phòng --</option>
-                  <option value="2D">2D</option>
-                  <option value="3D">3D</option>
-                  <option value="IMAX">IMAX</option>
-                  <option value="4DX">4DX</option>
-                </select>
+                />
+              </div>
+
+              {/* Phone + Email - 2 cột */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Điện Thoại
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    placeholder="Số điện thoại"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="Email liên hệ"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
               </div>
 
               {/* Trạng thái */}
@@ -265,7 +324,6 @@ export default function PhongChieu() {
                   <option value="">-- Chọn trạng thái --</option>
                   <option value="Active">Hoạt động</option>
                   <option value="Inactive">Ngừng hoạt động</option>
-                  <option value="Maintenance">Bảo trì</option>
                 </select>
               </div>
 
