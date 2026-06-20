@@ -84,3 +84,10 @@ export async function getMovieCategories() {
 
   return normalizeArray(data);
 }
+
+export async function getAreaList() {
+  const response = await fetch(`${API_URL}/Areas`);
+  const data = await readResponse(response);
+
+  return normalizeArray(data);
+}

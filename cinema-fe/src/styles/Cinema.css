@@ -17,7 +17,7 @@
   box-sizing: border-box;
 }
 
-/* Sidebar: Cinema List */
+/* Sidebar */
 .cinema-sidebar {
   background: rgba(18, 18, 18, 0.65);
   backdrop-filter: blur(20px);
@@ -27,16 +27,9 @@
   padding: 24px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
   max-height: 800px;
-  overflow-y: auto;
-}
 
-.cinema-sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.cinema-sidebar::-webkit-scrollbar-thumb {
-  background: rgba(229, 9, 20, 0.4);
-  border-radius: 4px;
+  /* Quan trọng: để dropdown không bị cắt form */
+  overflow: visible;
 }
 
 .section-title {
@@ -51,6 +44,67 @@
   padding-bottom: 12px;
 }
 
+/* Area Dropdown */
+.cinema-area-dropdown {
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 20;
+}
+
+.cinema-area-trigger {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(229, 9, 20, 0.45);
+  border-radius: 14px;
+  color: white;
+  padding: 11px 15px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.cinema-area-trigger:hover {
+  background: rgba(229, 9, 20, 0.1);
+  border-color: #e50914;
+}
+
+.cinema-area-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: #160707;
+  border: 1px solid rgba(229, 9, 20, 0.6);
+  border-radius: 14px;
+  z-index: 9999;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+}
+
+.cinema-area-option {
+  padding: 11px 15px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cinema-area-option:hover {
+  background: rgba(229, 9, 20, 0.16);
+  color: white;
+}
+
+.cinema-area-option.active {
+  background: rgba(229, 9, 20, 0.22);
+  color: #ff2b2b;
+  font-weight: 700;
+}
+
+/* List */
 .cinema-list-cards {
   display: flex;
   flex-direction: column;
@@ -76,7 +130,7 @@
 }
 
 .cinema-item-card.active {
-  background: linear-gradient(135deg, rgba(229, 9, 20, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.15), rgba(139, 92, 246, 0.15));
   border-color: #e50914;
   box-shadow: 0 0 20px rgba(229, 9, 20, 0.25);
 }
@@ -107,13 +161,9 @@
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
-/* Right Detail Column */
+/* Detail */
 .cinema-main-detail {
   background: rgba(18, 18, 18, 0.65);
   backdrop-filter: blur(20px);
@@ -132,7 +182,6 @@
   align-items: flex-end;
   padding: 32px 40px;
   box-sizing: border-box;
-  position: relative;
 }
 
 .cinema-detail-name {
@@ -141,7 +190,6 @@
   font-weight: 800;
   color: white;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
-  letter-spacing: -0.5px;
 }
 
 .cinema-detail-body {
@@ -162,7 +210,6 @@
   font-weight: 800;
   margin: 0;
   color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 0.5px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -171,52 +218,36 @@
 
 .detail-sub-title::before {
   content: "";
-  display: inline-block;
   width: 4px;
   height: 16px;
   background: #e50914;
   border-radius: 2px;
 }
 
-.detail-text-box {
+.detail-text-box,
+.room-card,
+.cinema-movie-showtime-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .detail-text-box p {
-  margin: 0;
+  margin: 0 0 10px;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.75);
-  line-height: 1.6;
 }
 
 .detail-text-box strong {
   color: white;
 }
 
-/* Rooms Grid */
+/* Rooms */
 .rooms-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
-}
-
-.room-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 20px;
-  transition: all 0.2s ease;
-}
-
-.room-card:hover {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .room-name {
@@ -236,21 +267,11 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Showtimes Section */
+/* Showtimes */
 .cinema-showtimes-list {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.cinema-movie-showtime-row {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
 }
 
 .showtime-movie-name {
@@ -274,14 +295,46 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .showtime-time-btn:hover {
   background: #e50914;
   border-color: #e50914;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.35);
+}
+
+/* Text states */
+.cinema-loading {
+  text-align: center;
+  padding: 80px 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+}
+
+.cinema-api-error {
+  color: #ff9999;
+  font-size: 12px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.cinema-api-error span {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.cinema-empty-text {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.cinema-no-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 15px;
+  min-height: 300px;
 }
 
 /* Responsive */
@@ -292,6 +345,6 @@
   }
 
   .cinema-sidebar {
-    max-height: 350px;
+    max-height: none;
   }
 }

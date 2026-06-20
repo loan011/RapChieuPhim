@@ -8,12 +8,15 @@ import {
   MOVIE_TABS,
   getMoviesByTab,
   getMovieCategories,
+  getAreaList,
 } from "./Movies.js";
 
 function Movies() {
   const [activeTab, setActiveTab] = useState("now");
   const [movies, setMovies] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [selectedAreaId, setSelectedAreaId] = useState("");
   const [selectedTrailer, setSelectedTrailer] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -35,6 +38,7 @@ function Movies() {
 
   useEffect(() => {
     fetchCategories();
+    fetchAreas();
   }, []);
 
   useEffect(() => {
@@ -44,13 +48,21 @@ function Movies() {
   async function fetchCategories() {
     try {
       const apiCategories = await getMovieCategories();
-
-      console.log("Danh sách thể loại từ API:", apiCategories);
-
       setCategories(Array.isArray(apiCategories) ? apiCategories : []);
     } catch (error) {
       console.error("Lỗi tải thể loại:", error);
       setCategories([]);
+    }
+  }
+
+  async function fetchAreas() {
+    try {
+      const apiAreas = await getAreaList();
+      console.log("Danh sách khu vực từ API:", apiAreas);
+      setAreas(Array.isArray(apiAreas) ? apiAreas : []);
+    } catch (error) {
+      console.error("Lỗi tải khu vực:", error);
+      setAreas([]);
     }
   }
 
@@ -59,21 +71,7 @@ function Movies() {
       setLoading(true);
 
       const apiMovies = await getMoviesByTab(tabKey);
-
       console.log("Danh sách phim từ API:", apiMovies);
-      const first = apiMovies?.[0];
-      console.log("Phim đầu tiên:", first);
-      if (first) {
-        console.log("[DEBUG] Keys của phim đầu tiên:", Object.keys(first));
-        console.log("[DEBUG] categories:", first.categories);
-        console.log("[DEBUG] Categories:", first.Categories);
-        console.log("[DEBUG] movieCategories:", first.movieCategories);
-        console.log("[DEBUG] MovieCategories:", first.MovieCategories);
-        console.log("[DEBUG] movieCategoryMappings:", first.movieCategoryMappings);
-        console.log("[DEBUG] MovieCategoryMappings:", first.MovieCategoryMappings);
-        console.log("[DEBUG] categoryId:", first.categoryId, first.CategoryId);
-        console.log("[DEBUG] categoryName:", first.categoryName, first.CategoryName);
-      }
 
       setMovies(Array.isArray(apiMovies) ? apiMovies : []);
     } catch (error) {
@@ -87,6 +85,20 @@ function Movies() {
   function changeTab(tabName) {
     setActiveTab(tabName);
     setSelectedTrailer(null);
+  }
+
+  function getAreaId(area) {
+    return area.areaId || area.AreaId || area.id || area.Id;
+  }
+
+  function getAreaName(area) {
+    return (
+      area.areaName ||
+      area.AreaName ||
+      area.name ||
+      area.Name ||
+      "Khu vực không tên"
+    );
   }
 
   function getMovieTitle(movie) {
@@ -194,7 +206,6 @@ function Movies() {
     );
   }
 
-  // Normalize nested array có thể dạng $values (JSON.NET circular ref)
   function normalizeNestedArray(val) {
     if (Array.isArray(val)) return val;
     if (Array.isArray(val?.$values)) return val.$values;
@@ -202,7 +213,6 @@ function Movies() {
   }
 
   function getMovieGenre(movie) {
-    // 1. Thử lấy từ các field array thể loại trực tiếp (cả dạng $values của JSON.NET)
     const rawCategoryArray =
       movie.categories ||
       movie.Categories ||
@@ -216,7 +226,6 @@ function Movies() {
     if (categoryArray.length > 0) {
       const categoryText = categoryArray
         .map((item) => {
-          // item có thể là object thể loại trực tiếp, hoặc là mapping object chứa category
           return (
             getCategoryName(item) ||
             getCategoryName(item.category) ||
@@ -231,7 +240,6 @@ function Movies() {
       if (categoryText) return categoryText;
     }
 
-    // 2. Thử lấy từ movieCategoryMappings (bảng trung gian nhiều-nhiều)
     const rawMappings =
       movie.movieCategoryMappings ||
       movie.MovieCategoryMappings ||
@@ -243,18 +251,17 @@ function Movies() {
     if (mappings.length > 0) {
       const categoryText = mappings
         .map((mapping) => {
-          // Lấy tên thể loại từ bên trong mapping object
           const cat =
             mapping.movieCategory ||
             mapping.MovieCategory ||
             mapping.category ||
             mapping.Category;
 
-          const nameFromMapping = getCategoryName(cat) || getCategoryName(mapping);
+          const nameFromMapping =
+            getCategoryName(cat) || getCategoryName(mapping);
 
           if (nameFromMapping) return nameFromMapping;
 
-          // Fallback: map theo categoryId trong mapping
           const catId =
             mapping.categoryId ||
             mapping.CategoryId ||
@@ -265,6 +272,7 @@ function Movies() {
             const found = categories.find(
               (c) => String(getCategoryId(c)) === String(catId)
             );
+
             return getCategoryName(found);
           }
 
@@ -276,7 +284,6 @@ function Movies() {
       if (categoryText) return categoryText;
     }
 
-    // 3. Thử map từ categoryIds array
     const rawCategoryIds =
       movie.categoryIds ||
       movie.CategoryIds ||
@@ -291,6 +298,7 @@ function Movies() {
           const foundCategory = categories.find(
             (category) => String(getCategoryId(category)) === String(id)
           );
+
           return getCategoryName(foundCategory);
         })
         .filter(Boolean)
@@ -299,7 +307,6 @@ function Movies() {
       if (categoryText) return categoryText;
     }
 
-    // 4. Thử lấy từ object category đơn lẻ
     const singleCategoryObj =
       movie.movieCategory ||
       movie.MovieCategory ||
@@ -308,10 +315,10 @@ function Movies() {
 
     if (singleCategoryObj && typeof singleCategoryObj === "object") {
       const categoryName = getCategoryName(singleCategoryObj);
+
       if (categoryName) return categoryName;
     }
 
-    // 5. Thử map từ categoryId đơn lẻ
     const singleCategoryId =
       movie.categoryId ||
       movie.CategoryId ||
@@ -322,11 +329,12 @@ function Movies() {
       const foundCategory = categories.find(
         (category) => String(getCategoryId(category)) === String(singleCategoryId)
       );
+
       const categoryName = getCategoryName(foundCategory);
+
       if (categoryName) return categoryName;
     }
 
-    // 6. Thử lấy trực tiếp từ field tên thể loại
     const directCategory =
       movie.categoryName ||
       movie.CategoryName ||
@@ -448,11 +456,22 @@ function Movies() {
           <b>HCM</b>
         </div>
 
-        <select className="movie-select">
-          <option>Chọn rạp HCM</option>
-          <option>CGV Vincom Đồng Khởi</option>
-          <option>Galaxy Nguyễn Du</option>
-          <option>Beta Cinemas TP.HCM</option>
+        <select
+          className="movie-select"
+          value={selectedAreaId}
+          onChange={(e) => setSelectedAreaId(e.target.value)}
+        >
+          <option value="">Chọn rạp HCM</option>
+
+          {areas.map((area, index) => {
+            const areaId = getAreaId(area);
+
+            return (
+              <option key={areaId || index} value={areaId}>
+                {getAreaName(area)}
+              </option>
+            );
+          })}
         </select>
 
         <nav>
@@ -494,10 +513,7 @@ function Movies() {
               const movieId = movie.movieId || movie.MovieId || movie.id;
 
               return (
-                <div
-                  className="movie-card-style"
-                  key={movieId || index}
-                >
+                <div className="movie-card-style" key={movieId || index}>
                   <div
                     className="movie-poster-style"
                     onClick={() => setSelectedTrailer(movie)}
@@ -512,7 +528,6 @@ function Movies() {
                     />
 
                     <span className="movie-age-style">{getMovieAge(movie)}</span>
-
                     <span className="movie-tag-style">{getMovieTag(movie)}</span>
 
                     <button
@@ -546,7 +561,9 @@ function Movies() {
                   </p>
 
                   <Link
-                    to={`/booking?movie=${movieId}`}
+                    to={`/booking?movie=${movieId}${
+                      selectedAreaId ? `&area=${selectedAreaId}` : ""
+                    }`}
                     className="buy-ticket-btn"
                   >
                     🎟️ MUA VÉ

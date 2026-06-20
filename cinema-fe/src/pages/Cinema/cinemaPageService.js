@@ -19,6 +19,13 @@ async function fetchWithFallback(url) {
 
   const data = await readResponse(response);
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("email");
+    }
     throw new Error(
       response.status === 401
         ? "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!"
