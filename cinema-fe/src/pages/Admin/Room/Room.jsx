@@ -1,18 +1,23 @@
 import "./Room.css";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { getRoomList, createRoom, updateRoom, deleteRoom } from "./roomService";
+import { getCinemaList } from "../Cinema/cinemaService";
+
 
 const EMPTY_FORM = {
-  name: "",
-  capacity: "",
-  type: "",
-  status: "",
+  roomName: "",
+  cinemaId: "",
+  totalSeats: "",
+  roomType: "",
+  isActive: true,
 };
 
 export default function PhongChieu() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cinemas, setCinemas] = useState([]);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -29,10 +34,13 @@ export default function PhongChieu() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getRoomList();
-      setList(data ?? []);
+      const [roomData, cinemaData] = await Promise.all([getRoomList(), getCinemaList()]);
+      setList(roomData ?? []);
+      setCinemas(cinemaData ?? []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message ?? "Lỗi tải dữ liệu.");
+      setList([]);
+      setCinemas([]);
     } finally {
       setLoading(false);
     }
@@ -46,12 +54,13 @@ export default function PhongChieu() {
   }
 
   function openEditModal(room) {
-    setEditId(room.id);
+    setEditId(room.roomId ?? room.id);
     setForm({
-      name: room.name ?? "",
-      capacity: room.capacity ?? "",
-      type: room.type ?? "",
-      status: room.status ?? "",
+      roomName: room.roomName ?? "",
+      cinemaId: room.cinemaId ?? "",
+      totalSeats: room.totalSeats ?? room.capacity ?? "",
+      roomType: room.roomType ?? room.type ?? "",
+      isActive: room.isActive ?? true,
     });
     setFormError(null);
     setShowModal(true);
@@ -74,34 +83,33 @@ export default function PhongChieu() {
     setFormError(null);
 
     // Validate
-    if (!form.name.trim()) {
-      setFormError("Vui lòng nhập tên phòng chiếu.");
-      return;
-    }
-    if (!form.capacity || isNaN(Number(form.capacity)) || Number(form.capacity) <= 0) {
+    if (!form.cinemaId) { setFormError("Vui lòng chọn rạp chiếu."); return; }
+    if (!form.roomName.trim()) { setFormError("Vui lòng nhập tên phòng chiếu."); return; }
+    if (!form.totalSeats || isNaN(Number(form.totalSeats)) || Number(form.totalSeats) <= 0) {
       setFormError("Vui lòng nhập sức chứa hợp lệ.");
       return;
     }
 
     const payload = {
-      ...form,
-      capacity: Number(form.capacity),
+      roomId: 0,
+      cinemaId: Number(form.cinemaId),
+      roomName: form.roomName,
+      roomType: form.roomType,
+      totalSeats: Number(form.totalSeats),
+      isActive: form.isActive === true || form.isActive === "true",
     };
 
     try {
       setSubmitting(true);
       if (editId !== null) {
         // Cập nhật
-        await updateRoom(editId, payload);
-        setList((prev) =>
-          prev.map((r) => (r.id === editId ? { ...r, ...payload } : r))
-        );
+        await updateRoom(editId, { ...payload, roomId: editId });
       } else {
         // Thêm mới
-        const created = await createRoom(payload);
-        setList((prev) => [...prev, created]);
+        await createRoom(payload);
       }
       closeModal();
+      fetchData();
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -113,7 +121,7 @@ export default function PhongChieu() {
     if (!confirm("Bạn có chắc muốn xóa phòng chiếu này?")) return;
     try {
       await deleteRoom(id);
-      setList((prev) => prev.filter((r) => r.id !== id));
+      fetchData();
     } catch (err) {
       alert(err.message);
     }
@@ -144,6 +152,7 @@ export default function PhongChieu() {
                 <tr>
                   <th className="px-3 py-2 text-left">#</th>
                   <th className="px-3 py-2 text-left">Tên Phòng</th>
+                  <th className="px-3 py-2 text-left">Rạp Chiếu</th>
                   <th className="px-3 py-2 text-left">Sức Chứa</th>
                   <th className="px-3 py-2 text-left">Loại Phòng</th>
                   <th className="px-3 py-2 text-left">Trạng Thái</th>
@@ -153,18 +162,19 @@ export default function PhongChieu() {
               <tbody>
                 {list.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-6 text-gray-400">
+                    <td colSpan={7} className="text-center py-6 text-gray-400">
                       Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
                   list.map((r, i) => (
-                    <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <tr key={r.roomId ?? r.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{r.name}</td>
-                      <td className="px-3 py-2">{r.capacity}</td>
-                      <td className="px-3 py-2">{r.type}</td>
-                      <td className="px-3 py-2">{r.status}</td>
+                      <td className="px-3 py-2">{r.roomName}</td>
+                      <td className="px-3 py-2">{r.cinemaName ?? cinemas.find(c => (c.cinemaId ?? c.id) === r.cinemaId)?.cinemaName ?? cinemas.find(c => (c.cinemaId ?? c.id) === r.cinemaId)?.name ?? ""}</td>
+                      <td className="px-3 py-2">{r.totalSeats ?? r.capacity}</td>
+                      <td className="px-3 py-2">{r.roomType ?? r.type}</td>
+                      <td className="px-3 py-2">{r.isActive === true ? "Hoạt động" : r.isActive === false ? "Ngừng" : r.status}</td>
                       <td className="px-3 py-2 flex gap-2">
                         <button
                           className="text-blue-600 hover:underline text-xs"
@@ -174,7 +184,7 @@ export default function PhongChieu() {
                         </button>
                         <button
                           className="text-red-500 hover:underline text-xs"
-                          onClick={() => handleDelete(r.id)}
+                          onClick={() => handleDelete(r.roomId ?? r.id)}
                         >
                           Xóa
                         </button>
@@ -189,7 +199,7 @@ export default function PhongChieu() {
       </div>
 
       {/* Modal Thêm / Sửa */}
-      {showModal && (
+      {showModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h5 className="font-bold text-lg mb-4">
@@ -201,6 +211,24 @@ export default function PhongChieu() {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Rạp chiếu */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rạp Chiếu <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="cinemaId"
+                  value={form.cinemaId}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="">-- Chọn rạp --</option>
+                  {cinemas.map((c) => (
+                    <option key={c.cinemaId ?? c.id} value={c.cinemaId ?? c.id}>{c.cinemaName ?? c.name}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Tên phòng */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -208,11 +236,11 @@ export default function PhongChieu() {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={form.name}
+                  name="roomName"
+                  value={form.roomName}
                   onChange={handleChange}
                   placeholder="Nhập tên phòng chiếu"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
@@ -223,12 +251,12 @@ export default function PhongChieu() {
                 </label>
                 <input
                   type="number"
-                  name="capacity"
-                  value={form.capacity}
+                  name="totalSeats"
+                  value={form.totalSeats}
                   onChange={handleChange}
                   placeholder="Nhập sức chứa (số ghế)"
                   min={1}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
@@ -238,10 +266,10 @@ export default function PhongChieu() {
                   Loại Phòng
                 </label>
                 <select
-                  name="type"
-                  value={form.type}
+                  name="roomType"
+                  value={form.roomType}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="">-- Chọn loại phòng --</option>
                   <option value="2D">2D</option>
@@ -257,15 +285,13 @@ export default function PhongChieu() {
                   Trạng Thái
                 </label>
                 <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  name="isActive"
+                  value={String(form.isActive)}
+                  onChange={(e) => setForm(p => ({...p, isActive: e.target.value === "true"}))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
-                  <option value="">-- Chọn trạng thái --</option>
-                  <option value="Active">Hoạt động</option>
-                  <option value="Inactive">Ngừng hoạt động</option>
-                  <option value="Maintenance">Bảo trì</option>
+                  <option value="true">Hoạt động</option>
+                  <option value="false">Ngừng hoạt động</option>
                 </select>
               </div>
 
@@ -294,7 +320,7 @@ export default function PhongChieu() {
             </form>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
