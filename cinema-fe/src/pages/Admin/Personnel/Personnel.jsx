@@ -2,6 +2,12 @@ import "./Personnel.css";
 import { useEffect, useState } from "react";
 import { getEmployeeList, deleteEmployee } from "./employeeService";
 
+const MOCK_EMPLOYEES = [
+  { id: 1, name: "Phạm Minh Tuấn", email: "tuan@cinema.vn", phone: "0901111111", position: "Thu ngân", salary: 8000000, status: "Active" },
+  { id: 2, name: "Hoàng Thị Mai", email: "mai@cinema.vn", phone: "0902222222", position: "Quản lý", salary: 15000000, status: "Active" },
+  { id: 3, name: "Võ Thanh Nam", email: "nam@cinema.vn", phone: "0903333333", position: "Nhân viên chiếu phim", salary: 7000000, status: "Active" },
+];
+
 export default function NhanVien() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,8 +24,8 @@ export default function NhanVien() {
       setLoading(true);
       const data = await getEmployeeList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }

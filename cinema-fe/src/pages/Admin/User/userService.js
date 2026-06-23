@@ -22,9 +22,9 @@ export async function getUserById(id) {
   return data;
 }
 
-// POST /api/Users
+// POST /api/Auth/Register (admin tạo user mới)
 export async function createUser(user) {
-  const response = await fetch(`${API_URL}/Users`, {
+  const response = await fetch(`${API_URL}/Auth/Register`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(user),

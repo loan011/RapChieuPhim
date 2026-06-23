@@ -2,6 +2,12 @@ import "./Customer.css";
 import { useEffect, useState } from "react";
 import { getCustomerList, deleteCustomer } from "./customerService";
 
+const MOCK_CUSTOMERS = [
+  { id: 1, name: "Nguyễn Văn A", email: "nva@gmail.com", phone: "0901234567", membershipLevel: "Silver", createdAt: "2024-01-10" },
+  { id: 2, name: "Trần Thị B", email: "ttb@gmail.com", phone: "0912345678", membershipLevel: "Gold", createdAt: "2024-02-20" },
+  { id: 3, name: "Lê Văn C", email: "lvc@gmail.com", phone: "0923456789", membershipLevel: "Bronze", createdAt: "2024-05-05" },
+];
+
 export default function KhachHang() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,8 +23,8 @@ export default function KhachHang() {
       setLoading(true);
       const data = await getCustomerList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }

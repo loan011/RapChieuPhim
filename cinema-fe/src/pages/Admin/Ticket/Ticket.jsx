@@ -4,6 +4,12 @@ import { getTicketList, deleteTicket } from "./ticketService";
 
 const STATUS_OPTIONS = ["Đã đặt", "Đã thanh toán", "Đã hủy"];
 
+const MOCK_TICKETS = [
+  { id: 1, code: "VE001", customerName: "Nguyễn Văn A", movieTitle: "Avengers: Endgame", seatCode: "A1", price: 75000, status: "Đã thanh toán", showtime: "2024-06-10 18:00" },
+  { id: 2, code: "VE002", customerName: "Trần Thị B", movieTitle: "Inside Out 2", seatCode: "B3", price: 85000, status: "Đã đặt", showtime: "2024-06-11 20:30" },
+  { id: 3, code: "VE003", customerName: "Lê Văn C", movieTitle: "Dune: Part Two", seatCode: "C5", price: 95000, status: "Đã hủy", showtime: "2024-06-12 15:00" },
+];
+
 export default function Ve() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +26,8 @@ export default function Ve() {
       setLoading(true);
       const data = await getTicketList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }

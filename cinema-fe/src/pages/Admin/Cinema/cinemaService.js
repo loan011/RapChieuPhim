@@ -56,3 +56,13 @@ export async function deleteCinema(id) {
   if (!response.ok) throw new Error(getErrorMessage(data, "Xóa rạp chiếu thất bại!"));
   return data;
 }
+
+// GET /api/Areas
+export async function getAreaList() {
+  const response = await fetch(`${API_URL}/Areas`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy danh sách khu vực thất bại!"));
+  return data;
+}

@@ -1,11 +1,84 @@
 import "./Cinema.css";
 import { useEffect, useState } from "react";
-import { getCinemaList, createCinema, updateCinema, deleteCinema } from "./cinemaService";
+import { createPortal } from "react-dom";
+import { getCinemaList, createCinema, updateCinema, deleteCinema, getAreaList } from "./cinemaService";
+
+const MOCK_AREAS = [
+  { id: 1, areaName: "An Giang" },
+  { id: 2, areaName: "Bà Rịa - Vũng Tàu" },
+  { id: 3, areaName: "Bắc Giang" },
+  { id: 4, areaName: "Bắc Kạn" },
+  { id: 5, areaName: "Bạc Liêu" },
+  { id: 6, areaName: "Bắc Ninh" },
+  { id: 7, areaName: "Bến Tre" },
+  { id: 8, areaName: "Bình Định" },
+  { id: 9, areaName: "Bình Dương" },
+  { id: 10, areaName: "Bình Phước" },
+  { id: 11, areaName: "Bình Thuận" },
+  { id: 12, areaName: "Cà Mau" },
+  { id: 13, areaName: "Cần Thơ" },
+  { id: 14, areaName: "Cao Bằng" },
+  { id: 15, areaName: "Đà Nẵng" },
+  { id: 16, areaName: "Đắk Lắk" },
+  { id: 17, areaName: "Đắk Nông" },
+  { id: 18, areaName: "Điện Biên" },
+  { id: 19, areaName: "Đồng Nai" },
+  { id: 20, areaName: "Đồng Tháp" },
+  { id: 21, areaName: "Gia Lai" },
+  { id: 22, areaName: "Hà Giang" },
+  { id: 23, areaName: "Hà Nam" },
+  { id: 24, areaName: "Hà Nội" },
+  { id: 25, areaName: "Hà Tĩnh" },
+  { id: 26, areaName: "Hải Dương" },
+  { id: 27, areaName: "Hải Phòng" },
+  { id: 28, areaName: "Hậu Giang" },
+  { id: 29, areaName: "Hòa Bình" },
+  { id: 30, areaName: "Hưng Yên" },
+  { id: 31, areaName: "Khánh Hòa" },
+  { id: 32, areaName: "Kiên Giang" },
+  { id: 33, areaName: "Kon Tum" },
+  { id: 34, areaName: "Lai Châu" },
+  { id: 35, areaName: "Lâm Đồng" },
+  { id: 36, areaName: "Lạng Sơn" },
+  { id: 37, areaName: "Lào Cai" },
+  { id: 38, areaName: "Long An" },
+  { id: 39, areaName: "Nam Định" },
+  { id: 40, areaName: "Nghệ An" },
+  { id: 41, areaName: "Ninh Bình" },
+  { id: 42, areaName: "Ninh Thuận" },
+  { id: 43, areaName: "Phú Thọ" },
+  { id: 44, areaName: "Phú Yên" },
+  { id: 45, areaName: "Quảng Bình" },
+  { id: 46, areaName: "Quảng Nam" },
+  { id: 47, areaName: "Quảng Ngãi" },
+  { id: 48, areaName: "Quảng Ninh" },
+  { id: 49, areaName: "Quảng Trị" },
+  { id: 50, areaName: "Sóc Trăng" },
+  { id: 51, areaName: "Sơn La" },
+  { id: 52, areaName: "Tây Ninh" },
+  { id: 53, areaName: "Thái Bình" },
+  { id: 54, areaName: "Thái Nguyên" },
+  { id: 55, areaName: "Thanh Hóa" },
+  { id: 56, areaName: "Thừa Thiên Huế" },
+  { id: 57, areaName: "Tiền Giang" },
+  { id: 58, areaName: "TP. Hồ Chí Minh" },
+  { id: 59, areaName: "Trà Vinh" },
+  { id: 60, areaName: "Tuyên Quang" },
+  { id: 61, areaName: "Vĩnh Long" },
+  { id: 62, areaName: "Vĩnh Phúc" },
+  { id: 63, areaName: "Yên Bái" },
+];
+
+const MOCK_CINEMAS = [
+  { id: 1, cinemaName: "CGV Vincom Quận 9", address: "Vincom Mega Mall Q9", area: "58", areaName: "TP. Hồ Chí Minh", phone: "02812345678", email: "cgv.q9@cgv.vn", status: "Active" },
+  { id: 2, cinemaName: "Lotte Cinema Gò Vấp", address: "Lotte Mart Gò Vấp", area: "58", areaName: "TP. Hồ Chí Minh", phone: "02887654321", email: "lotte.gv@lotte.vn", status: "Active" },
+  { id: 3, cinemaName: "Galaxy Nguyễn Du", address: "116 Nguyễn Du, Q1", area: "58", areaName: "TP. Hồ Chí Minh", phone: "02811112222", email: "galaxy.nd@galaxy.vn", status: "Inactive" },
+];
 
 const EMPTY_FORM = {
-  name: "",
+  cinemaName: "",
   address: "",
-  city: "",
+  area: "",
   phone: "",
   email: "",
   status: "",
@@ -13,7 +86,8 @@ const EMPTY_FORM = {
 
 export default function RapChieu() {
   const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [areas, setAreas] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
 
@@ -25,21 +99,16 @@ export default function RapChieu() {
   const [formError, setFormError] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    getCinemaList()
+      .then((data) => setList(data ?? []))
+      .catch(() => setList([]));
+    getAreaList()
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : Array.isArray(data?.$values) ? data.$values : [];
+        setAreas(arr);
+      })
+      .catch(() => setAreas([]));
   }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getCinemaList();
-      setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openAddModal() {
     setEditId(null);
@@ -51,9 +120,9 @@ export default function RapChieu() {
   function openEditModal(cinema) {
     setEditId(cinema.id);
     setForm({
-      name: cinema.name ?? "",
+      cinemaName: cinema.cinemaName ?? cinema.name ?? "",
       address: cinema.address ?? "",
-      city: cinema.city ?? "",
+      area: cinema.area ?? cinema.city ?? "",
       phone: cinema.phone ?? "",
       email: cinema.email ?? "",
       status: cinema.status ?? "",
@@ -78,25 +147,20 @@ export default function RapChieu() {
     e.preventDefault();
     setFormError(null);
 
-    if (!form.name.trim()) {
-      setFormError("Vui lòng nhập tên rạp chiếu.");
-      return;
-    }
-    if (!form.address.trim()) {
-      setFormError("Vui lòng nhập địa chỉ rạp.");
-      return;
-    }
+    if (!form.cinemaName.trim()) { setFormError("Vui lòng nhập tên rạp chiếu."); return; }
+    if (!form.address.trim()) { setFormError("Vui lòng nhập địa chỉ rạp."); return; }
+
+    const areaName = areas.find((a) => String(a.id ?? a.areaId) === String(form.area))?.areaName ?? "";
+    const payload = { ...form, areaName };
 
     try {
       setSubmitting(true);
       if (editId !== null) {
-        await updateCinema(editId, form);
-        setList((prev) =>
-          prev.map((c) => (c.id === editId ? { ...c, ...form } : c))
-        );
+        await updateCinema(editId, payload);
+        setList((prev) => prev.map((c) => (c.id === editId ? { ...c, ...payload } : c)));
       } else {
-        const created = await createCinema(form);
-        setList((prev) => [...prev, created]);
+        const created = await createCinema(payload);
+        setList((prev) => [...prev, { ...created, areaName }]);
       }
       closeModal();
     } catch (err) {
@@ -117,7 +181,9 @@ export default function RapChieu() {
   }
 
   const filtered = list.filter((c) =>
+    c.cinemaName?.toLowerCase().includes(search.toLowerCase()) ||
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.area?.toLowerCase().includes(search.toLowerCase()) ||
     c.city?.toLowerCase().includes(search.toLowerCase()) ||
     c.address?.toLowerCase().includes(search.toLowerCase())
   );
@@ -177,9 +243,9 @@ export default function RapChieu() {
                   filtered.map((c, i) => (
                     <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2 font-medium">{c.name}</td>
+                      <td className="px-3 py-2 font-medium">{c.cinemaName ?? c.name}</td>
                       <td className="px-3 py-2">{c.address}</td>
-                      <td className="px-3 py-2">{c.city}</td>
+                      <td className="px-3 py-2">{c.area ?? c.city}</td>
                       <td className="px-3 py-2">{c.phone}</td>
                       <td className="px-3 py-2">{c.email}</td>
                       <td className="px-3 py-2">
@@ -223,7 +289,7 @@ export default function RapChieu() {
       </div>
 
       {/* Modal Thêm / Sửa */}
-      {showModal && (
+      {showModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h5 className="font-bold text-lg mb-4">
@@ -242,8 +308,8 @@ export default function RapChieu() {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={form.name}
+                  name="cinemaName"
+                  value={form.cinemaName}
                   onChange={handleChange}
                   placeholder="Nhập tên rạp chiếu"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -265,19 +331,24 @@ export default function RapChieu() {
                 />
               </div>
 
-              {/* Thành phố */}
+              {/* Khu vực */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thành Phố
+                  Khu Vực / Thành Phố
                 </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={form.city}
+                <select
+                  name="area"
+                  value={form.area}
                   onChange={handleChange}
-                  placeholder="Nhập tên thành phố"
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                >
+                  <option value="">-- Chọn khu vực --</option>
+                  {areas.map((a) => (
+                    <option key={a.id ?? a.areaId} value={a.id ?? a.areaId}>
+                      {a.areaName ?? a.name ?? a.Name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Phone + Email - 2 cột */}
@@ -352,7 +423,7 @@ export default function RapChieu() {
             </form>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

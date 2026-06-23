@@ -4,6 +4,12 @@ import { getShowtimeList, deleteShowtime } from "./showtimeService";
 
 const STATUS_OPTIONS = ["Đang bán", "Sắp chiếu", "Đã chiếu", "Hủy"];
 
+const MOCK_SHOWTIMES = [
+  { id: 1, movieTitle: "Avengers: Endgame", roomName: "Phòng 1", cinemaName: "CGV Quận 9", date: "2024-06-15", startTime: "18:00", endTime: "21:01", price: 75000, status: "Đang bán" },
+  { id: 2, movieTitle: "Inside Out 2", roomName: "Phòng 2", cinemaName: "CGV Quận 9", date: "2024-06-15", startTime: "20:30", endTime: "22:10", price: 85000, status: "Đang bán" },
+  { id: 3, movieTitle: "Dune: Part Two", roomName: "Phòng IMAX", cinemaName: "Lotte Gò Vấp", date: "2024-06-16", startTime: "15:00", endTime: "17:46", price: 120000, status: "Sắp chiếu" },
+];
+
 export default function SuatChieu() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +27,8 @@ export default function SuatChieu() {
       setLoading(true);
       const data = await getShowtimeList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }

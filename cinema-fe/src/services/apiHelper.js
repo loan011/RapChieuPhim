@@ -14,9 +14,16 @@ export async function readResponse(response) {
 }
 
 export function getErrorMessage(data, defaultMessage) {
+  // ASP.NET Core validation errors (ProblemDetails)
+  if (data?.errors) {
+    const msgs = Object.values(data.errors).flat();
+    if (msgs.length > 0) return msgs.join(" ");
+  }
   return (
     data?.message ||
     data?.Message ||
+    data?.title ||
+    data?.Title ||
     data?.error ||
     data?.Error ||
     defaultMessage

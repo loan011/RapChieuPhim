@@ -115,8 +115,8 @@
   display: flex;
   gap: 16px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -140,7 +140,7 @@
   height: 80px;
   object-fit: cover;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .cinema-item-info {
@@ -153,13 +153,13 @@
   margin: 0 0 6px;
   font-size: 15px;
   font-weight: 700;
-  color: white;
+  color: #111111;
 }
 
 .cinema-item-addr {
   margin: 0;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #555555;
   line-height: 1.4;
 }
 

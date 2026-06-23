@@ -4,6 +4,12 @@ import { getInvoiceList } from "./invoiceService";
 
 const STATUS_OPTIONS = ["Đã thanh toán", "Chờ thanh toán", "Đã hủy"];
 
+const MOCK_BILLS = [
+  { id: 1, code: "HD001", customerName: "Nguyễn Văn A", totalAmount: 150000, status: "Đã thanh toán", createdAt: "2024-06-01" },
+  { id: 2, code: "HD002", customerName: "Trần Thị B", totalAmount: 220000, status: "Đã thanh toán", createdAt: "2024-06-05" },
+  { id: 3, code: "HD003", customerName: "Lê Văn C", totalAmount: 80000, status: "Chờ thanh toán", createdAt: "2024-06-10" },
+];
+
 export default function HoaDon() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +26,8 @@ export default function HoaDon() {
       setLoading(true);
       const data = await getInvoiceList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }

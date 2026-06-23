@@ -4,6 +4,12 @@ import { getMovieList, deleteMovie } from "./movieService";
 
 const STATUS_OPTIONS = ["Đang chiếu", "Sắp chiếu", "Ngừng chiếu"];
 
+const MOCK_MOVIES = [
+  { id: 1, title: "Avengers: Endgame", genre: "Hành động", duration: 181, releaseDate: "2024-01-15", status: "Đang chiếu", director: "Anthony Russo" },
+  { id: 2, title: "Inside Out 2", genre: "Hoạt hình", duration: 100, releaseDate: "2024-06-14", status: "Đang chiếu", director: "Kelsey Mann" },
+  { id: 3, title: "Dune: Part Two", genre: "Khoa học viễn tưởng", duration: 166, releaseDate: "2024-09-01", status: "Sắp chiếu", director: "Denis Villeneuve" },
+];
+
 export default function Phim() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +26,8 @@ export default function Phim() {
       setLoading(true);
       const data = await getMovieList();
       setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setList([]);
     } finally {
       setLoading(false);
     }
