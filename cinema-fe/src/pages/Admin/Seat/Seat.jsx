@@ -1,18 +1,108 @@
 import "./Seat.css";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getSeatList, createSeat, updateSeat, deleteSeat } from "./seatService";
 import { getRoomList } from "../Room/roomService";
+import { getCinemaList } from "../Cinema/cinemaService";
 
-const TYPE_OPTIONS = ["Thường", "VIP", "Couple"];
-const EMPTY_FORM = { roomId: "", seatRow: "", seatNumber: "", seatType: "Thường", isActive: true };
+const TYPE_OPTIONS = ["Standard", "VIP", "Couple"];
 
+const EMPTY_FORM = {
+  roomId: "",
+  seatRow: "",
+  seatNumber: "",
+  seatType: "Standard",
+  isActive: true,
+};
+
+function getSeatId(seat) {
+  return seat.seatId ?? seat.SeatId ?? seat.id ?? seat.Id;
+}
+
+function getSeatRoomId(seat) {
+  return seat.roomId ?? seat.RoomId ?? seat.room?.roomId ?? seat.Room?.RoomId;
+}
+
+function getRoomId(room) {
+  return room.roomId ?? room.RoomId ?? room.id ?? room.Id;
+}
+
+function getRoomName(room) {
+  return room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Chưa có phòng";
+}
+
+function getRoomCinemaId(room) {
+  return (
+    room.cinemaId ??
+    room.CinemaId ??
+    room.cinema?.cinemaId ??
+    room.cinema?.CinemaId ??
+    room.Cinema?.cinemaId ??
+    room.Cinema?.CinemaId
+  );
+}
+
+function getCinemaId(cinema) {
+  return cinema.cinemaId ?? cinema.CinemaId ?? cinema.id ?? cinema.Id;
+}
+
+function getCinemaName(cinema) {
+  return (
+    cinema.cinemaName ??
+    cinema.CinemaName ??
+    cinema.name ??
+    cinema.Name ??
+    "Chưa có tên rạp"
+  );
+}
+
+function getSeatRow(seat) {
+  return seat.seatRow ?? seat.SeatRow ?? seat.row ?? "";
+}
+
+function getSeatNumber(seat) {
+  return seat.seatNumber ?? seat.SeatNumber ?? seat.col ?? "";
+}
+
+function getSeatType(seat) {
+  return seat.seatType ?? seat.SeatType ?? seat.type ?? "Standard";
+}
+
+function getSeatCode(seat) {
+  const row = String(getSeatRow(seat)).trim();
+  const number = String(getSeatNumber(seat)).trim();
+
+  if (!row && !number) return "Chưa có";
+
+  if (/^[A-Za-z]+\d+$/.test(number)) {
+    return number.toUpperCase();
+  }
+
+  return `${row}${number}`.toUpperCase();
+}
+
+function getSeatStatus(seat) {
+  const isActive = seat.isActive ?? seat.IsActive;
+
+  if (isActive === true) return "Hoạt động";
+  if (isActive === false) return "Ngừng";
+
+  return seat.status ?? seat.Status ?? "Chưa có";
+}
+
+function getSeatSortNumber(seat) {
+  const code = getSeatCode(seat);
+  const match = code.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
 
 export default function Ghe() {
   const [list, setList] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
+
   const [filterRoom, setFilterRoom] = useState("");
   const [filterType, setFilterType] = useState("");
 
@@ -20,7 +110,7 @@ export default function Ghe() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState(null);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -29,35 +119,120 @@ export default function Ghe() {
   async function fetchData() {
     try {
       setLoading(true);
-      const [seatData, roomData] = await Promise.all([getSeatList(), getRoomList()]);
-      setList(seatData ?? []);
-      setRooms(roomData ?? []);
+      setError("");
+
+      const [seatData, roomData, cinemaData] = await Promise.all([
+        getSeatList(),
+        getRoomList(),
+        getCinemaList(),
+      ]);
+
+      console.log("SEAT API DATA:", seatData);
+      console.log("ROOM API DATA:", roomData);
+      console.log("CINEMA API DATA:", cinemaData);
+
+      setList(Array.isArray(seatData) ? seatData : []);
+      setRooms(Array.isArray(roomData) ? roomData : []);
+      setCinemas(Array.isArray(cinemaData) ? cinemaData : []);
     } catch (err) {
-      setError(err.message ?? "Lỗi tải dữ liệu.");
+      console.error("Lỗi tải dữ liệu ghế/phòng/rạp:", err);
+      setError(err?.message || "Lỗi tải dữ liệu.");
       setList([]);
       setRooms([]);
+      setCinemas([]);
     } finally {
       setLoading(false);
     }
   }
 
+  const roomMap = useMemo(() => {
+    const map = new Map();
+
+    rooms.forEach((room) => {
+      const roomId = getRoomId(room);
+
+      if (roomId !== undefined && roomId !== null) {
+        map.set(Number(roomId), room);
+      }
+    });
+
+    return map;
+  }, [rooms]);
+
+  const cinemaMap = useMemo(() => {
+    const map = new Map();
+
+    cinemas.forEach((cinema) => {
+      const cinemaId = getCinemaId(cinema);
+
+      if (cinemaId !== undefined && cinemaId !== null) {
+        map.set(Number(cinemaId), cinema);
+      }
+    });
+
+    return map;
+  }, [cinemas]);
+
+  function getRoomFullName(room) {
+    if (!room) return "Chưa có phòng";
+
+    const roomName = getRoomName(room);
+
+    const cinemaNameFromRoom =
+      room.cinema?.cinemaName ??
+      room.cinema?.CinemaName ??
+      room.Cinema?.cinemaName ??
+      room.Cinema?.CinemaName;
+
+    if (cinemaNameFromRoom) {
+      return `${roomName} - ${cinemaNameFromRoom}`;
+    }
+
+    const cinemaId = getRoomCinemaId(room);
+    const cinema = cinemaMap.get(Number(cinemaId));
+
+    if (cinema) {
+      return `${roomName} - ${getCinemaName(cinema)}`;
+    }
+
+    if (cinemaId) {
+      return `${roomName} - Cinema ID ${cinemaId}`;
+    }
+
+    return roomName;
+  }
+
+  function getRoomNameBySeat(seat) {
+    const roomId = getSeatRoomId(seat);
+
+    if (!roomId) return "Chưa có phòng";
+
+    const room = roomMap.get(Number(roomId));
+
+    if (!room) return `Phòng ID ${roomId}`;
+
+    return getRoomFullName(room);
+  }
+
   function openAddModal() {
     setEditId(null);
     setForm(EMPTY_FORM);
-    setFormError(null);
+    setFormError("");
     setShowModal(true);
   }
 
   function openEditModal(seat) {
-    setEditId(seat.seatId ?? seat.id);
+    setEditId(getSeatId(seat));
+
     setForm({
-      roomId: seat.roomId ?? "",
-      seatRow: seat.seatRow ?? seat.row ?? "",
-      seatNumber: seat.seatNumber ?? String(seat.col) ?? "",
-      seatType: seat.seatType ?? seat.type ?? "Thường",
-      isActive: seat.isActive ?? true,
+      roomId: getSeatRoomId(seat) ?? "",
+      seatRow: getSeatRow(seat),
+      seatNumber: getSeatNumber(seat),
+      seatType: getSeatType(seat),
+      isActive: seat.isActive ?? seat.IsActive ?? true,
     });
-    setFormError(null);
+
+    setFormError("");
     setShowModal(true);
   }
 
@@ -65,50 +240,61 @@ export default function Ghe() {
     setShowModal(false);
     setEditId(null);
     setForm(EMPTY_FORM);
-    setFormError(null);
+    setFormError("");
   }
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setFormError(null);
-    if (!form.roomId) { setFormError("Vui lòng chọn phòng chiếu."); return; }
-    if (!form.seatRow.trim()) { setFormError("Vui lòng nhập hàng ghế."); return; }
-    if (!form.seatNumber) { setFormError("Vui lòng nhập số ghế."); return; }
-    const selectedRoom = rooms.find((r) => (r.roomId ?? r.id) === Number(form.roomId));
-    const roomObj = selectedRoom ? {
-      roomId: selectedRoom.roomId ?? selectedRoom.id,
-      cinemaId: selectedRoom.cinemaId ?? 0,
-      roomName: selectedRoom.roomName ?? "",
-      roomType: selectedRoom.roomType ?? "",
-      totalSeats: selectedRoom.totalSeats ?? 0,
-      isActive: selectedRoom.isActive ?? true,
-      cinema: selectedRoom.cinema ?? null,
-      seats: [],
-    } : null;
+    setFormError("");
+
+    if (!form.roomId) {
+      setFormError("Vui lòng chọn phòng chiếu.");
+      return;
+    }
+
+    if (!form.seatRow.trim()) {
+      setFormError("Vui lòng nhập hàng ghế.");
+      return;
+    }
+
+    if (!form.seatNumber.trim()) {
+      setFormError("Vui lòng nhập số ghế.");
+      return;
+    }
+
     const payload = {
-      seatId: 0,
       roomId: Number(form.roomId),
-      seatRow: form.seatRow,
-      seatNumber: String(form.seatNumber),
+      seatRow: form.seatRow.trim().toUpperCase(),
+      seatNumber: String(form.seatNumber).trim(),
       seatType: form.seatType,
       isActive: form.isActive === true || form.isActive === "true",
     };
+
     try {
       setSubmitting(true);
+
       if (editId !== null) {
-        await updateSeat(editId, { ...payload, seatId: editId });
+        await updateSeat(editId, {
+          seatId: editId,
+          ...payload,
+        });
       } else {
         await createSeat(payload);
       }
+
       closeModal();
       fetchData();
     } catch (err) {
-      setFormError(err.message);
+      setFormError(err?.message || "Lưu ghế thất bại.");
     } finally {
       setSubmitting(false);
     }
@@ -116,26 +302,47 @@ export default function Ghe() {
 
   async function handleDelete(id) {
     if (!confirm("Bạn có chắc muốn xóa ghế này?")) return;
+
     try {
       await deleteSeat(id);
       fetchData();
     } catch (err) {
-      alert(err.message);
+      alert(err?.message || "Xóa ghế thất bại.");
     }
   }
 
-  const roomNames = [...new Set(list.map((s) => s.roomName ?? s.room?.roomName).filter(Boolean))];
+  const filtered = list
+    .filter((seat) => {
+      const seatRoomId = getSeatRoomId(seat);
+      const seatType = getSeatType(seat);
 
-  const filtered = list.filter((s) => {
-    const matchRoom = filterRoom ? (s.roomName ?? s.room?.roomName) === filterRoom : true;
-    const matchType = filterType ? (s.seatType ?? s.type) === filterType : true;
-    return matchRoom && matchType;
-  });
+      const matchRoom = filterRoom
+        ? Number(seatRoomId) === Number(filterRoom)
+        : true;
+
+      const matchType = filterType ? seatType === filterType : true;
+
+      return matchRoom && matchType;
+    })
+    .sort((a, b) => {
+      const roomA = Number(getSeatRoomId(a) ?? 0);
+      const roomB = Number(getSeatRoomId(b) ?? 0);
+
+      if (roomA !== roomB) return roomA - roomB;
+
+      const rowA = getSeatRow(a);
+      const rowB = getSeatRow(b);
+
+      if (rowA !== rowB) return rowA.localeCompare(rowB);
+
+      return getSeatSortNumber(a) - getSeatSortNumber(b);
+    });
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h4 className="font-bold text-xl">Quản Lý Ghế</h4>
+
         <button
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
           onClick={openAddModal}
@@ -147,24 +354,40 @@ export default function Ghe() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
         <div className="flex flex-wrap gap-2 mb-4">
           <select
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-900 bg-white"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-900 bg-white min-w-[260px]"
             value={filterRoom}
             onChange={(e) => setFilterRoom(e.target.value)}
           >
             <option value="">Tất cả phòng</option>
-            {roomNames.map((r) => <option key={r}>{r}</option>)}
+
+            {rooms.map((room) => {
+              const roomId = getRoomId(room);
+
+              return (
+                <option key={roomId} value={roomId}>
+                  {getRoomFullName(room)}
+                </option>
+              );
+            })}
           </select>
+
           <select
             className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-900 bg-white"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
             <option value="">Tất cả loại</option>
-            {TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+
+            {TYPE_OPTIONS.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
           </select>
         </div>
 
         {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
+
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {!loading && !error && (
@@ -175,32 +398,67 @@ export default function Ghe() {
                   <th className="px-3 py-2 text-left">#</th>
                   <th className="px-3 py-2 text-left">Mã Ghế</th>
                   <th className="px-3 py-2 text-left">Phòng Chiếu</th>
-                  <th className="px-3 py-2 text-left">Hàng</th>
-                  <th className="px-3 py-2 text-left">Số</th>
                   <th className="px-3 py-2 text-left">Loại Ghế</th>
                   <th className="px-3 py-2 text-left">Trạng Thái</th>
                   <th className="px-3 py-2 text-left">Thao Tác</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-6 text-gray-400">Không có dữ liệu</td></tr>
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="text-center py-6 text-gray-400"
+                    >
+                      Không có dữ liệu
+                    </td>
+                  </tr>
                 ) : (
-                  filtered.map((s, i) => (
-                    <tr key={s.seatId ?? s.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{s.seatId ?? s.id}</td>
-                      <td className="px-3 py-2">{s.roomName ?? s.room?.roomName}</td>
-                      <td className="px-3 py-2">{s.seatRow ?? s.row}</td>
-                      <td className="px-3 py-2">{s.seatNumber ?? s.col}</td>
-                      <td className="px-3 py-2">{s.seatType ?? s.type}</td>
-                      <td className="px-3 py-2">{s.isActive === true ? "Hoạt động" : s.isActive === false ? "Ngừng" : s.status}</td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button className="text-blue-600 hover:underline text-xs" onClick={() => openEditModal(s)}>Sửa</button>
-                        <button className="text-red-500 hover:underline text-xs" onClick={() => handleDelete(s.seatId ?? s.id)}>Xóa</button>
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((seat, index) => {
+                    const seatId = getSeatId(seat);
+
+                    return (
+                      <tr
+                        key={seatId}
+                        className="border-t border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="px-3 py-2">{index + 1}</td>
+
+                        <td className="px-3 py-2 font-medium">
+                          {getSeatCode(seat)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getRoomNameBySeat(seat)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getSeatType(seat)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getSeatStatus(seat)}
+                        </td>
+
+                        <td className="px-3 py-2 flex gap-2">
+                          <button
+                            className="text-blue-600 hover:underline text-xs"
+                            onClick={() => openEditModal(seat)}
+                          >
+                            Sửa
+                          </button>
+
+                          <button
+                            className="text-red-500 hover:underline text-xs"
+                            onClick={() => handleDelete(seatId)}
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -208,104 +466,144 @@ export default function Ghe() {
         )}
       </div>
 
-      {/* Modal Thêm / Sửa */}
-      {showModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h5 className="font-bold text-lg mb-4 text-gray-800">
-              {editId !== null ? "Cập Nhật Ghế" : "Thêm Ghế Mới"}
-            </h5>
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h5 className="font-bold text-lg mb-4 text-gray-800">
+                {editId !== null ? "Cập Nhật Ghế" : "Thêm Ghế Mới"}
+              </h5>
 
-            {formError && <p className="text-red-500 text-sm mb-3">{formError}</p>}
+              {formError && (
+                <p className="text-red-500 text-sm mb-3">{formError}</p>
+              )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng Chiếu <span className="text-red-500">*</span></label>
-                <select
-                  name="roomId"
-                  value={form.roomId}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="">-- Chọn phòng --</option>
-                  {rooms.map((r) => (
-                    <option key={r.roomId ?? r.id} value={r.roomId ?? r.id}>{r.roomName ?? r.name}</option>
-                  ))}
-                </select>
-              </div>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phòng Chiếu <span className="text-red-500">*</span>
+                  </label>
 
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hàng <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    name="seatRow"
-                    value={form.seatRow}
+                  <select
+                    name="roomId"
+                    value={form.roomId}
                     onChange={handleChange}
-                    placeholder="VD: A, B, C..."
-                    maxLength={2}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">-- Chọn phòng --</option>
+
+                    {rooms.map((room) => {
+                      const roomId = getRoomId(room);
+
+                      return (
+                        <option key={roomId} value={roomId}>
+                          {getRoomFullName(room)}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số Ghế <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    name="seatNumber"
-                    value={form.seatNumber}
+
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hàng <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="text"
+                      name="seatRow"
+                      value={form.seatRow}
+                      onChange={handleChange}
+                      placeholder="VD: A"
+                      maxLength={2}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Số Ghế <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="text"
+                      name="seatNumber"
+                      value={form.seatNumber}
+                      onChange={handleChange}
+                      placeholder="VD: 1 hoặc A1"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại Ghế
+                  </label>
+
+                  <select
+                    name="seatType"
+                    value={form.seatType}
                     onChange={handleChange}
-                    placeholder="VD: 1, 2, 3..."
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {TYPE_OPTIONS.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loại Ghế</label>
-                <select
-                  name="seatType"
-                  value={form.seatType}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Trạng Thái
+                  </label>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng Thái</label>
-                <select
-                  name="isActive"
-                  value={String(form.isActive)}
-                  onChange={(e) => setForm(p => ({...p, isActive: e.target.value === "true"}))}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="true">Hoạt động</option>
-                  <option value="false">Ngừng hoạt động</option>
-                </select>
-              </div>
+                  <select
+                    name="isActive"
+                    value={String(form.isActive)}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        isActive: e.target.value === "true",
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="true">Hoạt động</option>
+                    <option value="false">Ngừng hoạt động</option>
+                  </select>
+                </div>
 
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                  disabled={submitting}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
-                  disabled={submitting}
-                >
-                  {submitting ? "Đang xử lý..." : editId !== null ? "Cập Nhật" : "Thêm Mới"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      , document.body)}
+                <div className="flex justify-end gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                    disabled={submitting}
+                  >
+                    Hủy
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? "Đang xử lý..."
+                      : editId !== null
+                      ? "Cập Nhật"
+                      : "Thêm Mới"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

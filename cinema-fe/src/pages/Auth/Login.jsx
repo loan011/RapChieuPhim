@@ -14,14 +14,17 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   function getRole(data) {
-    return (
+    const role =
+      data?.role ||
+      data?.Role ||
       data?.user?.role ||
       data?.user?.Role ||
       data?.User?.role ||
       data?.User?.Role ||
       localStorage.getItem("role") ||
-      ""
-    );
+      "";
+
+    return String(role).trim().toLowerCase();
   }
 
   async function handleLogin(e) {
@@ -32,13 +35,21 @@ function Login() {
 
     setError("");
 
-    if (!email) return setError("Vui lòng nhập email!");
-    if (!password) return setError("Vui lòng nhập mật khẩu!");
+    if (!email) {
+      setError("Vui lòng nhập email!");
+      return;
+    }
+
+    if (!password) {
+      setError("Vui lòng nhập mật khẩu!");
+      return;
+    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      return setError("Email không đúng định dạng!");
+      setError("Email không đúng định dạng!");
+      return;
     }
 
     try {
@@ -48,21 +59,33 @@ function Login() {
 
       saveAuthData(data);
 
-      alert("Đăng nhập thành công!");
-
       const role = getRole(data);
 
-      if (role === "Admin") {
+      console.log("LOGIN DATA:", data);
+      console.log("LOGIN ROLE:", role);
+
+      if (role === "admin") {
         navigate("/admin", { replace: true });
-      } else if (role === "Staff") {
-        navigate("/staff", { replace: true });
-      } else {
-        navigate("/movies", { replace: true });
+        return;
       }
+
+      if (role === "staff") {
+        navigate("/staff", { replace: true });
+        return;
+      }
+
+      if (role === "customer") {
+        navigate("/movies", { replace: true });
+        return;
+      }
+
+      // Trường hợp backend không trả role rõ ràng thì cho về trang phim
+      navigate("/movies", { replace: true });
     } catch (err) {
       console.error(err);
+
       setError(
-        err.message ||
+        err?.message ||
           "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa."
       );
     } finally {
