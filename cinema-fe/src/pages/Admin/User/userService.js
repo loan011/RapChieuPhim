@@ -77,12 +77,29 @@ export async function getProfileCustomer() {
   return data;
 }
 
-// PUT /api/Users (update profile)
+// PUT /api/Users/UpdateProfile (update profile)
 export async function updateProfile(user) {
-  const response = await fetch(`${API_URL}/Users`, {
+  // Only send allowed fields to avoid 400 Bad Request due to backend's strict "additionalProperties: false" validation
+  const allowedPayload = {
+    fullName: user.fullName ?? user.FullName ?? "",
+    email: user.email ?? user.Email ?? "",
+    phone: user.phone ?? user.Phone ?? "",
+  };
+
+  const dob = user.dateOfBirth ?? user.DateOfBirth;
+  if (dob !== undefined) {
+    allowedPayload.dateOfBirth = dob ? dob.split("T")[0] : null;
+  }
+
+  const gender = user.gender ?? user.Gender;
+  if (gender !== undefined) {
+    allowedPayload.gender = gender;
+  }
+
+  const response = await fetch(`${API_URL}/Users/UpdateProfile`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(user),
+    body: JSON.stringify(allowedPayload),
   });
   const data = await readResponse(response);
   if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật thông tin cá nhân thất bại!"));

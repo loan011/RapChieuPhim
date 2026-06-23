@@ -1,16 +1,79 @@
 /* RapChieu Admin */
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
 .admin-table thead th {
   background: #f9fafb;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: #374151 !important;
   padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  opacity: 1 !important;
+}
+
+.admin-table tbody tr {
+  background: #ffffff !important;
 }
 
 .admin-table tbody tr:hover {
-  background: #f9fafb;
+  background: #f9fafb !important;
 }
 
 .admin-table td {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+/* Fix modal rạp chiếu bị mờ chữ */
+.fixed.inset-0 {
+  z-index: 99999 !important;
+}
+
+.fixed.inset-0 .bg-white {
+  background: #ffffff !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.fixed.inset-0 label,
+.fixed.inset-0 h5 {
+  color: #374151 !important;
+  opacity: 1 !important;
+}
+
+.fixed.inset-0 input,
+.fixed.inset-0 select,
+.fixed.inset-0 textarea {
+  background: #ffffff !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.fixed.inset-0 input::placeholder,
+.fixed.inset-0 textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+/* Fix Chrome Autofill */
+.fixed.inset-0 input:-webkit-autofill,
+.fixed.inset-0 input:-webkit-autofill:hover,
+.fixed.inset-0 input:-webkit-autofill:focus,
+.fixed.inset-0 textarea:-webkit-autofill,
+.fixed.inset-0 select:-webkit-autofill {
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 9999s ease-in-out 0s;
 }

@@ -1,16 +1,278 @@
 /* PhongChieu */
+
+.room-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.room-header h4 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.room-add-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.room-add-btn:hover {
+  background: #1d4ed8;
+}
+
+.room-card {
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.room-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-table,
+.room-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
 .admin-table thead th {
   background: #f9fafb;
   font-size: 0.8rem;
-  color: #6b7280;
-  padding: 0.5rem 0.75rem;
+  color: #374151 !important;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  opacity: 1 !important;
+}
+
+.admin-table tbody tr {
+  background: #ffffff !important;
 }
 
 .admin-table tbody tr:hover {
-  background: #f9fafb;
+  background: #f9fafb !important;
 }
 
 .admin-table td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   font-size: 0.875rem;
+  color: #111827 !important;
+  border-top: 1px solid #f3f4f6;
+  opacity: 1 !important;
+}
+
+.room-name {
+  font-weight: 600;
+}
+
+.room-muted {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.room-error,
+.room-form-error {
+  color: #ef4444;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.room-empty {
+  text-align: center;
+  padding: 24px;
+  color: #9ca3af !important;
+}
+
+.room-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-maintenance {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.room-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.room-actions button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.room-actions button:hover {
+  text-decoration: underline;
+}
+
+.room-actions .delete {
+  color: #ef4444;
+}
+
+/* Modal */
+.room-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px;
+}
+
+.room-modal {
+  position: relative !important;
+  z-index: 100000 !important;
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+}
+
+.room-modal h5 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.room-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151 !important;
+  opacity: 1 !important;
+}
+
+.room-form label span {
+  color: #ef4444;
+}
+
+.room-form input,
+.room-form select,
+.room-form textarea {
+  width: 100%;
+  background: #ffffff !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.room-form input::placeholder,
+.room-form textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.room-form input:focus,
+.room-form select:focus,
+.room-form textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
+}
+
+.room-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.room-modal-actions button {
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.room-modal-actions .cancel {
+  background: #ffffff;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.room-modal-actions .cancel:hover {
+  background: #f9fafb;
+}
+
+.room-modal-actions .save {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+}
+
+.room-modal-actions .save:hover {
+  background: #1d4ed8;
+}
+
+.room-modal-actions .save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Fix Chrome Autofill làm chữ bị mờ/trắng */
+.room-form input:-webkit-autofill,
+.room-form input:-webkit-autofill:hover,
+.room-form input:-webkit-autofill:focus,
+.room-form textarea:-webkit-autofill,
+.room-form select:-webkit-autofill {
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 9999s ease-in-out 0s;
 }

@@ -21,3 +21,24 @@
   border-radius: 9999px;
   font-size: 0.75rem;
 }
+/* Fix chữ bảng bị trắng/mờ */
+table,
+table th,
+table td {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+tbody tr,
+tbody td {
+  background-color: #ffffff !important;
+}
+
+tbody tr:hover {
+  background-color: #f9fafb !important;
+}
+
+/* Status vẫn giữ màu riêng */
+tbody td span {
+  opacity: 1 !important;
+}
