@@ -140,9 +140,7 @@ function getShowtimeMovieTitle(s, movies) {
       (movie) => String(getMovieId(movie)) === String(movieId)
     );
 
-    if (foundMovie) {
-      return getMovieTitle(foundMovie);
-    }
+    if (foundMovie) return getMovieTitle(foundMovie);
   }
 
   return "Chưa có phim";
@@ -166,9 +164,7 @@ function getShowtimeRoomName(s, rooms) {
       (room) => String(getRoomId(room)) === String(roomId)
     );
 
-    if (foundRoom) {
-      return getRoomFullName(foundRoom);
-    }
+    if (foundRoom) return getRoomFullName(foundRoom);
   }
 
   return "Chưa có phòng";
@@ -183,11 +179,21 @@ function getEndDateTime(s) {
 }
 
 function getShowDate(s) {
-  const value = getStartDateTime(s);
+  const showDate = s.showDate ?? s.ShowDate;
 
-  if (!value) return "";
+  if (showDate) {
+    return String(showDate).split("T")[0];
+  }
 
-  return String(value).split("T")[0];
+  const startTime = getStartDateTime(s);
+
+  if (!startTime) return "";
+
+  if (String(startTime).includes("T")) {
+    return String(startTime).split("T")[0];
+  }
+
+  return "";
 }
 
 function getStartHour(s) {
@@ -233,12 +239,6 @@ function formatMoney(value) {
   if (Number.isNaN(number)) return "0 đ";
 
   return `${number.toLocaleString("vi-VN")} đ`;
-}
-
-function buildDateTime(date, time) {
-  if (!date || !time) return "";
-
-  return `${date}T${time}:00`;
 }
 
 export default function SuatChieu() {
@@ -369,20 +369,21 @@ export default function SuatChieu() {
     const payload = {
       movieId: Number(form.movieId),
       roomId: Number(form.roomId),
-      startTime: buildDateTime(form.showDate, form.startHour),
-      endTime: buildDateTime(form.showDate, form.endHour),
+      showDate: form.showDate,
+      startTime: form.startHour,
+      endTime: form.endHour,
       basePrice: Number(form.basePrice),
       status: form.status,
     };
+
+    console.log("SHOWTIME PAYLOAD:", payload);
+    console.log("EDIT ID:", editId);
 
     try {
       setSubmitting(true);
 
       if (editId !== null) {
-        await updateShowtime(editId, {
-          showTimeId: editId,
-          ...payload,
-        });
+        await updateShowtime(editId, payload);
       } else {
         await createShowtime(payload);
       }
@@ -408,23 +409,30 @@ export default function SuatChieu() {
     }
   }
 
-  const filtered = list.filter((item) => {
-    const keyword = search.toLowerCase().trim();
+  const filtered = list
+    .filter((item) => {
+      const keyword = search.toLowerCase().trim();
 
-    const movieTitle = getShowtimeMovieTitle(item, movies).toLowerCase();
-    const roomName = getShowtimeRoomName(item, rooms).toLowerCase();
-    const showDate = getShowDate(item);
-    const status = getStatus(item);
+      const movieTitle = getShowtimeMovieTitle(item, movies).toLowerCase();
+      const roomName = getShowtimeRoomName(item, rooms).toLowerCase();
+      const showDate = getShowDate(item);
+      const status = getStatus(item);
 
-    const matchSearch =
-      movieTitle.includes(keyword) || roomName.includes(keyword);
+      const matchSearch =
+        movieTitle.includes(keyword) || roomName.includes(keyword);
 
-    const matchDate = filterDate ? showDate === filterDate : true;
+      const matchDate = filterDate ? showDate === filterDate : true;
 
-    const matchStatus = filterStatus ? status === filterStatus : true;
+      const matchStatus = filterStatus ? status === filterStatus : true;
 
-    return matchSearch && matchDate && matchStatus;
-  });
+      return matchSearch && matchDate && matchStatus;
+    })
+    .sort((a, b) => {
+      const dateA = `${getShowDate(a)} ${getStartHour(a)}`;
+      const dateB = `${getShowDate(b)} ${getStartHour(b)}`;
+
+      return dateA.localeCompare(dateB);
+    });
 
   return (
     <div>
@@ -520,9 +528,7 @@ export default function SuatChieu() {
                           {getShowtimeRoomName(item, rooms)}
                         </td>
 
-                        <td className="px-3 py-2">
-                          {getShowDate(item)}
-                        </td>
+                        <td className="px-3 py-2">{getShowDate(item)}</td>
 
                         <td className="px-3 py-2">
                           {getStartHour(item)}
@@ -533,9 +539,7 @@ export default function SuatChieu() {
                           {formatMoney(getBasePrice(item))}
                         </td>
 
-                        <td className="px-3 py-2">
-                          {getStatus(item)}
-                        </td>
+                        <td className="px-3 py-2">{getStatus(item)}</td>
 
                         <td className="px-3 py-2 flex gap-2">
                           <button

@@ -1,4 +1,9 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../../services/apiHelper";
+import {
+  getApiUrl,
+  readResponse,
+  getErrorMessage,
+  getAuthHeaders,
+} from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
@@ -7,8 +12,28 @@ export async function getMovieList() {
   const response = await fetch(`${API_URL}/Movies`, {
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy danh sách phim thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Lấy danh sách phim thất bại!"));
+  }
+
+  return data;
+}
+
+// GET /api/MovieCategories
+export async function getMovieCategoryList() {
+  const response = await fetch(`${API_URL}/MovieCategories`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Lấy danh sách thể loại thất bại!"));
+  }
+
   return data;
 }
 
@@ -17,8 +42,13 @@ export async function getMovieById(id) {
   const response = await fetch(`${API_URL}/Movies/${id}`, {
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy thông tin phim thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Lấy thông tin phim thất bại!"));
+  }
+
   return data;
 }
 
@@ -29,8 +59,13 @@ export async function createMovie(movie) {
     headers: getAuthHeaders(),
     body: JSON.stringify(movie),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Thêm phim thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Thêm phim thất bại!"));
+  }
+
   return data;
 }
 
@@ -41,8 +76,13 @@ export async function updateMovie(id, movie) {
     headers: getAuthHeaders(),
     body: JSON.stringify(movie),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật phim thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Cập nhật phim thất bại!"));
+  }
+
   return data;
 }
 
@@ -52,7 +92,12 @@ export async function deleteMovie(id) {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Xóa phim thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Xóa phim thất bại!"));
+  }
+
   return data;
 }

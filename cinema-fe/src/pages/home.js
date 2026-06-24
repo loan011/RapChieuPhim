@@ -17,6 +17,19 @@ export function normalizeArray(data) {
 }
 
 async function readResponse(response) {
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userEmail");
+
+    if (!window.location.pathname.includes("/login")) {
+      window.location.href = "/login";
+    }
+
+    throw new Error("Phiên đăng nhập đã hết hạn.");
+  }
+
   const text = await response.text();
 
   let data = null;
@@ -78,6 +91,10 @@ export async function getHomeCinemas() {
   return fetchApi("/Cinemas");
 }
 
+export async function getHomeAreas() {
+  return fetchApi("/Areas");
+}
+
 /* =========================
    DATE HELPERS
 ========================= */
@@ -113,6 +130,24 @@ export function createDateRange(startDate, total = 8) {
 }
 
 /* =========================
+   AREA HELPERS
+========================= */
+
+export function getAreaId(area) {
+  return area?.areaId ?? area?.AreaId ?? area?.id ?? area?.Id;
+}
+
+export function getAreaName(area) {
+  return (
+    area?.areaName ??
+    area?.AreaName ??
+    area?.name ??
+    area?.Name ??
+    "Khu vực không tên"
+  );
+}
+
+/* =========================
    CINEMA HELPERS
 ========================= */
 
@@ -127,6 +162,17 @@ export function getCinemaName(cinema) {
     cinema?.name ??
     cinema?.Name ??
     "Rạp không tên"
+  );
+}
+
+export function getCinemaAreaId(cinema) {
+  return (
+    cinema?.areaId ??
+    cinema?.AreaId ??
+    cinema?.area?.areaId ??
+    cinema?.area?.AreaId ??
+    cinema?.Area?.areaId ??
+    cinema?.Area?.AreaId
   );
 }
 
@@ -372,12 +418,10 @@ export function getStartHour(showtime) {
 
   if (!startTime) return "";
 
-  // Nếu API trả StartTime dạng 2026-06-25T14:00:00
   if (String(startTime).includes("T")) {
     return String(startTime).split("T")[1]?.slice(0, 5) || "";
   }
 
-  // Nếu API trả startTime dạng 14:00
   if (showDate) {
     return String(startTime).slice(0, 5);
   }
@@ -424,42 +468,75 @@ export function isBookable(status) {
    MAP DATA
 ========================= */
 
-export function findRoomByShowtime(showtime, rooms) {
+export function findRoomByShowtime(showtime, rooms = []) {
   const roomId = getShowtimeRoomId(showtime);
 
   return rooms.find((room) => String(getRoomId(room)) === String(roomId));
 }
 
-export function findMovieByShowtime(showtime, movies) {
+export function findMovieByShowtime(showtime, movies = []) {
   const movieId = getShowtimeMovieId(showtime);
 
   return movies.find((movie) => String(getMovieId(movie)) === String(movieId));
 }
 
+export function findCinemaByRoom(room, cinemas = []) {
+  const cinemaId = getRoomCinemaId(room);
+
+  return cinemas.find(
+    (cinema) => String(getCinemaId(cinema)) === String(cinemaId)
+  );
+}
+
 export function filterShowtimesByCinemaAndDate({
-  showtimes,
-  rooms,
-  selectedDate,
-  selectedCinemaId,
+  showtimes = [],
+  rooms = [],
+  selectedDate = "",
+  selectedCinemaId = "",
+  selectedAreaId = "",
+  cinemas = [],
 }) {
+  const now = new Date();
+
   return showtimes.filter((showtime) => {
     const showDate = getShowDate(showtime);
     const status = getShowtimeStatus(showtime);
+
+    const matchDate = selectedDate ? showDate === selectedDate : true;
+
     const room = findRoomByShowtime(showtime, rooms);
 
-    const matchDate = showDate === selectedDate;
+    if (!room) return false;
+
+    const cinema = findCinemaByRoom(room, cinemas);
+
+    if (!cinema) return false;
+
+    const roomCinemaId = getRoomCinemaId(room);
+    const cinemaAreaId = getCinemaAreaId(cinema);
 
     const matchCinema = selectedCinemaId
-      ? String(getRoomCinemaId(room)) === String(selectedCinemaId)
+      ? String(roomCinemaId) === String(selectedCinemaId)
+      : true;
+
+    const matchArea = selectedAreaId
+      ? String(cinemaAreaId) === String(selectedAreaId)
       : true;
 
     const notCanceled = status !== "Hủy";
 
-    return matchDate && matchCinema && notCanceled;
+    const startTimeStr = getStartDateTime(showtime);
+    const notPast = startTimeStr ? new Date(startTimeStr) >= now : true;
+
+    return matchDate && matchCinema && matchArea && notCanceled && notPast;
   });
 }
 
-export function groupShowtimesByMovie({ movies, showtimes }) {
+/* =========================
+   GROUP SHOWTIMES BY MOVIE
+========================= */
+
+export function groupShowtimesByMovie({ movies = [], showtimes = [] }) {
   return movies
     .map((movie) => {
       const movieId = getMovieId(movie);

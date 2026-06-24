@@ -275,26 +275,37 @@ hr {
   gap: 32px;
   padding: 24px;
   margin-bottom: 32px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  transition: border-color 0.3s;
+  background: #0d0909;
+  border: 1px solid #2d1212;
+  border-radius: 14px;
+  transition: all 0.3s;
 }
 
 .movie-section:hover {
-  border-color: rgba(229, 9, 20, 0.25);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  border-color: rgba(229, 9, 20, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
 .poster-wrap {
-  width: 170px;
-  height: 250px;
-  border-radius: 14px;
+  width: 380px;
+  height: 240px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
   transition: all 0.3s ease;
+}
+
+.poster-wrap.video-wrap {
+  position: relative;
+  background: #000;
+}
+
+.poster-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 
 .poster-wrap img {
@@ -304,7 +315,7 @@ hr {
   transition: transform 0.3s ease;
 }
 
-.movie-section:hover .poster-wrap img {
+.movie-section:hover .poster-wrap:not(.video-wrap) img {
   transform: scale(1.06);
 }
 
@@ -342,12 +353,17 @@ hr {
 .movie-action-ribbon {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
   margin: 12px 0 20px;
 }
 
-.movie-action-ribbon button,
-.movie-action-btn {
+.action-buttons-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.movie-action-ribbon button {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
@@ -363,26 +379,34 @@ hr {
   text-decoration: none;
 }
 
-.movie-action-ribbon button:hover,
-.movie-action-btn:hover {
-  background: rgba(229, 9, 20, 0.1);
-  border-color: rgba(229, 9, 20, 0.4);
-  color: #ff2b2b;
+.movie-action-ribbon button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
 
-.movie-action-btn.buy-ticket {
+.buy-ticket-btn {
   background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
   border: none;
-  font-weight: 800;
+  color: white;
   padding: 10px 24px;
+  font-size: 13.5px;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(229, 9, 20, 0.35);
+  margin-right: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.movie-action-btn.buy-ticket:hover {
-  color: white !important;
+.buy-ticket-btn:hover {
   background: linear-gradient(135deg, #ff1e27 0%, #dc2626 100%);
   box-shadow: 0 6px 18px rgba(229, 9, 20, 0.5);
+  transform: translateY(-2px);
+  color: white;
 }
 
 /* DETAIL PANEL */
@@ -430,127 +454,67 @@ hr {
 .time-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px 20px;
+  margin-top: 12px;
 }
 
-.showtime-card {
+.time-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 14px 18px;
-  width: 250px; /* wider card! */
-  min-height: 105px;
-  transition: all 0.25s ease;
-  position: relative;
+  gap: 8px;
+}
+
+.time-btn {
+  background: #1b1212;
+  border: 1px solid #3a2222;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  width: 96px;
+  height: 42px;
+  border-radius: 8px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
-.showtime-card:hover:not(.disabled) {
-  transform: translateY(-4px);
-  border-color: rgba(229, 9, 20, 0.6);
-  background: rgba(229, 9, 20, 0.06);
-  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.25);
+.time-btn:hover:not(:disabled) {
+  border-color: #ff2b2b;
+  background: rgba(229, 9, 20, 0.15);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.25);
+  transform: translateY(-2px);
 }
 
-.showtime-card.disabled {
-  opacity: 0.45;
+.time-btn:disabled {
+  opacity: 0.35;
   cursor: not-allowed;
-  border-color: rgba(255, 255, 255, 0.03);
 }
 
-.showtime-card.late:not(.disabled) {
-  border-color: rgba(139, 92, 246, 0.4);
+.time-btn.late {
+  border-color: #5b21b6;
 }
 
-.showtime-card.late:hover:not(.disabled) {
-  border-color: rgba(139, 92, 246, 0.7);
-  background: rgba(139, 92, 246, 0.06);
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+.time-btn.late:hover:not(:disabled) {
+  border-color: #a78bfa;
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
 }
 
-.showtime-left {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+.time-seats-left {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.showtime-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.time-start {
-  font-size: 22px; /* bigger, clear time */
-  font-weight: 900;
-  color: white;
-  letter-spacing: 0.5px;
-  transition: color 0.2s;
-  line-height: 1;
-}
-
-.showtime-card:hover:not(.disabled) .time-start {
-  color: #ff2b2b;
-}
-
-.showtime-card.late:hover:not(.disabled) .time-start {
-  color: #a78bfa;
-}
-
-.time-range {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: 600;
-  margin-top: 2px;
-}
-
-.time-room {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2.5px 8px;
-  border-radius: 6px;
-  margin-top: 4px;
-}
-
-.time-price {
-  font-size: 14.5px; /* clear, readable price */
-  font-weight: 800;
-  color: #fca5a5;
-  line-height: 1;
-}
-
-.time-seats {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #10b981; /* Green */
-}
-
-.time-seats.low-seats {
-  color: #f59e0b; /* Orange */
-}
-
-.time-status {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  padding: 2px 7px;
-  border-radius: 5px;
-  letter-spacing: 0.5px;
-}
-
-.showtime-card.disabled .time-status {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.4);
+.time-seats-left.low-seats {
+  color: #f59e0b;
 }
 
 .selected-text {
@@ -682,4 +646,4 @@ hr {
   .trailer-modal iframe {
     height: 240px;
   }
-}
+}

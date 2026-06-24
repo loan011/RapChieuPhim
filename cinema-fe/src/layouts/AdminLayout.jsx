@@ -92,6 +92,7 @@ export default function AdminLayout() {
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="text-gray-500 hover:text-gray-800"
+            aria-label="Toggle sidebar"
           >
             <MdMenu className="text-2xl" />
           </button>

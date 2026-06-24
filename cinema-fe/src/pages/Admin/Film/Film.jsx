@@ -1,6 +1,10 @@
 import "./Film.css";
 import { useEffect, useState } from "react";
-import { getMovieList, deleteMovie } from "./movieService";
+import {
+  getMovieList,
+  deleteMovie,
+  getMovieCategoryList,
+} from "./movieService";
 
 const STATUS_OPTIONS = [
   "suất đang chiếu",
@@ -10,23 +14,35 @@ const STATUS_OPTIONS = [
 ];
 
 function getMovieId(m) {
-  return m.id ?? m.movieId ?? m.MovieId;
+  return m?.id ?? m?.movieId ?? m?.MovieId;
 }
 
 function getMovieTitle(m) {
-  return m.title ?? m.movieTitle ?? m.name ?? m.Title ?? "Chưa có tên";
+  return (
+    m?.title ??
+    m?.movieTitle ??
+    m?.name ??
+    m?.Title ??
+    "Chưa có tên"
+  );
 }
 
 function getMovieDuration(m) {
-  return m.duration ?? m.durationMinutes ?? m.runningTime ?? m.Duration ?? "";
+  return (
+    m?.duration ??
+    m?.durationMinutes ??
+    m?.runningTime ??
+    m?.Duration ??
+    ""
+  );
 }
 
 function getMovieDirector(m) {
-  return m.director ?? m.Director ?? "Chưa có";
+  return m?.director ?? m?.Director ?? "Chưa có";
 }
 
 function getMovieStatus(m) {
-  return m.status ?? m.Status ?? "Chưa có";
+  return m?.status ?? m?.Status ?? "Chưa có";
 }
 
 function formatDate(dateValue) {
@@ -41,46 +57,67 @@ function formatDate(dateValue) {
   return date.toISOString().split("T")[0];
 }
 
-function getCategoryName(item) {
-  if (!item) return "";
+function getCategoryId(c) {
+  return c?.categoryId ?? c?.CategoryId ?? c?.id ?? c?.Id;
+}
 
-  if (typeof item === "string") return item;
+function getCategoryName(c) {
+  if (!c) return "";
+  if (typeof c === "string") return c;
 
   return (
-    item.categoryName ??
-    item.CategoryName ??
-    item.name ??
-    item.Name ??
-    item.category?.categoryName ??
-    item.category?.CategoryName ??
-    item.Category?.categoryName ??
-    item.Category?.CategoryName ??
+    c.categoryName ??
+    c.CategoryName ??
+    c.name ??
+    c.Name ??
+    c.category?.categoryName ??
+    c.category?.CategoryName ??
+    c.Category?.categoryName ??
+    c.Category?.CategoryName ??
     ""
   );
 }
 
-function getMovieGenre(m) {
-  // Trường hợp API trả thẳng string
+function getMovieGenre(m, categoryMap = {}, movieCategoryMap = {}) {
+  if (!m) return "Chưa có";
+
+  // 1. API Movies trả thẳng genre
   if (m.genre) return m.genre;
   if (m.Genre) return m.Genre;
+
+  // 2. API Movies trả thẳng categoryName
   if (m.categoryName) return m.categoryName;
   if (m.CategoryName) return m.CategoryName;
 
-  // Trường hợp API trả categoryNames: ["Hài", "Tình Cảm"]
+  // 3. API Movies trả categoryNames: ["Hài", "Kinh dị"]
   const categoryNames = m.categoryNames ?? m.CategoryNames;
   if (Array.isArray(categoryNames) && categoryNames.length > 0) {
     return categoryNames.join(", ");
   }
 
-  // Trường hợp API trả categories: [{ categoryName: "Hài" }]
+  // 4. API Movies trả categories: [{ categoryName: "Hài" }]
   const categories = m.categories ?? m.Categories;
   if (Array.isArray(categories) && categories.length > 0) {
     const names = categories.map(getCategoryName).filter(Boolean);
-    if (names.length > 0) return names.join(", ");
+
+    if (names.length > 0) {
+      return names.join(", ");
+    }
   }
 
-  // Trường hợp API trả movieCategoryMappings:
-  // [{ category: { categoryName: "Hài" } }]
+  // 5. API Movies trả categoryIds: [1, 2]
+  const categoryIds = m.categoryIds ?? m.CategoryIds;
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    const names = categoryIds
+      .map((id) => categoryMap[id])
+      .filter(Boolean);
+
+    if (names.length > 0) {
+      return names.join(", ");
+    }
+  }
+
+  // 6. API Movies trả movieCategoryMappings hoặc movieCategories
   const mappings =
     m.movieCategoryMappings ??
     m.MovieCategoryMappings ??
@@ -90,6 +127,16 @@ function getMovieGenre(m) {
   if (Array.isArray(mappings) && mappings.length > 0) {
     const names = mappings
       .map((item) => {
+        const id =
+          item.categoryId ??
+          item.CategoryId ??
+          item.movieCategoryId ??
+          item.MovieCategoryId ??
+          item.category?.categoryId ??
+          item.category?.CategoryId ??
+          item.Category?.categoryId ??
+          item.Category?.CategoryId;
+
         return (
           item.category?.categoryName ??
           item.category?.CategoryName ??
@@ -97,12 +144,27 @@ function getMovieGenre(m) {
           item.Category?.CategoryName ??
           item.categoryName ??
           item.CategoryName ??
-          ""
+          categoryMap[id]
         );
       })
       .filter(Boolean);
 
-    if (names.length > 0) return names.join(", ");
+    if (names.length > 0) {
+      return names.join(", ");
+    }
+  }
+
+  // 7. API MovieCategories trả dạng:
+  // [
+  //   {
+  //     categoryId: 1,
+  //     categoryName: "Hài",
+  //     movies: [{ movieId: 1 }]
+  //   }
+  // ]
+  const movieId = getMovieId(m);
+  if (movieId != null && movieCategoryMap[movieId]?.length > 0) {
+    return movieCategoryMap[movieId].join(", ");
   }
 
   return "Chưa có";
@@ -110,6 +172,8 @@ function getMovieGenre(m) {
 
 export default function Phim() {
   const [list, setList] = useState([]);
+  const [categoryMap, setCategoryMap] = useState({});
+  const [movieCategoryMap, setMovieCategoryMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -124,11 +188,52 @@ export default function Phim() {
       setLoading(true);
       setError("");
 
-      const data = await getMovieList();
+      const [movies, categories] = await Promise.all([
+        getMovieList(),
+        getMovieCategoryList(),
+      ]);
 
-      console.log("MOVIE API DATA:", data);
+      console.log("MOVIE API DATA:", movies);
+      console.log("CATEGORY API DATA:", categories);
+      console.log("MOVIE FIRST ITEM:", movies?.[0]);
 
-      setList(Array.isArray(data) ? data : []);
+      const newCategoryMap = {};
+      const newMovieCategoryMap = {};
+
+      if (Array.isArray(categories)) {
+        categories.forEach((category) => {
+          const categoryId = getCategoryId(category);
+          const categoryName = getCategoryName(category);
+
+          if (categoryId != null && categoryName) {
+            newCategoryMap[categoryId] = categoryName;
+          }
+
+          const categoryMovies =
+            category.movies ??
+            category.Movies ??
+            category.movieList ??
+            category.MovieList;
+
+          if (Array.isArray(categoryMovies) && categoryMovies.length > 0) {
+            categoryMovies.forEach((movie) => {
+              const movieId = getMovieId(movie);
+
+              if (movieId != null && categoryName) {
+                if (!newMovieCategoryMap[movieId]) {
+                  newMovieCategoryMap[movieId] = [];
+                }
+
+                newMovieCategoryMap[movieId].push(categoryName);
+              }
+            });
+          }
+        });
+      }
+
+      setCategoryMap(newCategoryMap);
+      setMovieCategoryMap(newMovieCategoryMap);
+      setList(Array.isArray(movies) ? movies : []);
     } catch (err) {
       console.error("Lỗi tải danh sách phim:", err);
       setError("Không tải được danh sách phim");
@@ -139,6 +244,11 @@ export default function Phim() {
   }
 
   async function handleDelete(id) {
+    if (!id) {
+      alert("Không tìm thấy ID phim");
+      return;
+    }
+
     if (!confirm("Bạn có chắc muốn xóa phim này?")) return;
 
     try {
@@ -154,7 +264,11 @@ export default function Phim() {
     const keyword = search.toLowerCase().trim();
 
     const title = getMovieTitle(m).toLowerCase();
-    const genre = getMovieGenre(m).toLowerCase();
+    const genre = getMovieGenre(
+      m,
+      categoryMap,
+      movieCategoryMap
+    ).toLowerCase();
     const status = getMovieStatus(m).toLowerCase();
 
     const matchSearch =
@@ -205,9 +319,13 @@ export default function Phim() {
           </select>
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
+        {loading && (
+          <p className="text-gray-500 text-sm">Đang tải...</p>
+        )}
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm">{error}</p>
+        )}
 
         {!loading && !error && (
           <div className="overflow-x-auto">
@@ -251,7 +369,11 @@ export default function Phim() {
                         </td>
 
                         <td className="px-3 py-2">
-                          {getMovieGenre(m)}
+                          {getMovieGenre(
+                            m,
+                            categoryMap,
+                            movieCategoryMap
+                          )}
                         </td>
 
                         <td className="px-3 py-2">

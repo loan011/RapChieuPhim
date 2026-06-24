@@ -84,6 +84,10 @@ const EMPTY_FORM = {
   status: "",
 };
 
+function getCinemaIdField(c) {
+  return c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
+}
+
 export default function RapChieu() {
   const [list, setList] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -100,7 +104,10 @@ export default function RapChieu() {
 
   useEffect(() => {
     getCinemaList()
-      .then((data) => setList(data ?? []))
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : Array.isArray(data?.$values) ? data.$values : [];
+        setList(arr);
+      })
       .catch(() => setList([]));
     getAreaList()
       .then((data) => {
@@ -118,7 +125,7 @@ export default function RapChieu() {
   }
 
   function openEditModal(cinema) {
-    setEditId(cinema.id);
+    setEditId(getCinemaIdField(cinema));
     setForm({
       cinemaName: cinema.cinemaName ?? cinema.name ?? "",
       address: cinema.address ?? "",
@@ -157,7 +164,7 @@ export default function RapChieu() {
       setSubmitting(true);
       if (editId !== null) {
         await updateCinema(editId, payload);
-        setList((prev) => prev.map((c) => (c.id === editId ? { ...c, ...payload } : c)));
+        setList((prev) => prev.map((c) => (getCinemaIdField(c) === editId ? { ...c, ...payload } : c)));
       } else {
         const created = await createCinema(payload);
         setList((prev) => [...prev, { ...created, areaName }]);
@@ -174,7 +181,7 @@ export default function RapChieu() {
     if (!confirm("Bạn có chắc muốn xóa rạp chiếu này?")) return;
     try {
       await deleteCinema(id);
-      setList((prev) => prev.filter((c) => c.id !== id));
+      setList((prev) => prev.filter((c) => getCinemaIdField(c) !== id));
     } catch (err) {
       alert(err.message);
     }
@@ -241,7 +248,7 @@ export default function RapChieu() {
                   </tr>
                 ) : (
                   filtered.map((c, i) => (
-                    <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <tr key={getCinemaIdField(c) ?? i} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-3 py-2">{i + 1}</td>
                       <td className="px-3 py-2 font-medium">{c.cinemaName ?? c.name}</td>
                       <td className="px-3 py-2">{c.address}</td>
@@ -274,7 +281,7 @@ export default function RapChieu() {
                         </button>
                         <button
                           className="text-red-500 hover:underline text-xs"
-                          onClick={() => handleDelete(c.id)}
+                          onClick={() => handleDelete(getCinemaIdField(c))}
                         >
                           Xóa
                         </button>
