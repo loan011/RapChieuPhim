@@ -1,5 +1,13 @@
+import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerProfile.css";
-import { MdCameraAlt, MdLock, MdSave, MdRefresh, MdCheckCircle } from "react-icons/md";
+import {
+  MdCameraAlt,
+  MdLock,
+  MdSave,
+  MdRefresh,
+  MdCheckCircle,
+  MdArrowBack,
+} from "react-icons/md";
 
 import {
   PROFILE_FIELDS,
@@ -24,9 +32,14 @@ export default function Profile() {
   return (
     <div className="profile-page">
       <div className="profile-wrapper">
-        <div className="profile-header">
-          <h1>Thông tin cá nhân</h1>
-          <p>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+        <div className="profile-header-wrap">
+          <Link to="/" className="back-arrow-btn" title="Quay lại trang chủ">
+            <MdArrowBack />
+          </Link>
+          <div className="profile-header">
+            <h1>Thông tin cá nhân</h1>
+            <p>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+          </div>
         </div>
 
         <div className="profile-card">

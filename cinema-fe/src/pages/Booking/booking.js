@@ -1,103 +1,15 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
-/* =========================
-   API HELPER
-========================= */
-
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-function getAuthHeaders() {
-  const token = getToken();
-
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-async function readResponse(response) {
-  const text = await response.text();
-
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (!response.ok) {
-    const message =
-      data?.message ||
-      data?.Message ||
-      data?.title ||
-      data?.errors ||
-      `Lỗi API ${response.status}`;
-
-    throw new Error(
-      typeof message === "string" ? message : JSON.stringify(message)
-    );
-  }
-
-  return data;
-}
-
-async function apiGet(url) {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  return readResponse(response);
-}
-
-async function apiPost(url, body) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
-
-  return readResponse(response);
-}
-
-/* =========================
-   TRY MANY API URLS
-   Nếu backend khác tên endpoint,
-   chỉ cần sửa danh sách dưới đây.
-========================= */
-
-async function tryGet(urls) {
-  let lastError = null;
-
-  for (const url of urls) {
-    try {
-      return await apiGet(url);
-    } catch (err) {
-      lastError = err;
-      console.warn("API GET lỗi:", url, err.message);
-    }
-  }
-
-  throw lastError || new Error("Không gọi được API");
-}
-
-async function tryPost(urls, body) {
-  let lastError = null;
-
-  for (const url of urls) {
-    try {
-      return await apiPost(url, body);
-    } catch (err) {
-      lastError = err;
-      console.warn("API POST lỗi:", url, err.message);
-    }
-  }
-
-  throw lastError || new Error("Không gọi được API");
-}
+import {
+  getCinemas,
+  getRooms,
+  getMovieById,
+  getShowtimesByMovie,
+  getSeatsByRoomId,
+  getAvailableSeats,
+  createBooking,
+} from "./bookingService.js";
 
 /* =========================
    LOCAL USER
@@ -156,110 +68,6 @@ export function createBookingDates(totalDays = 7) {
   }
 
   return days;
-}
-
-/* =========================
-   API: CINEMA / ROOM / MOVIE / SHOWTIME / SEAT / BOOKING
-========================= */
-
-export async function getCinemas() {
-  const data = await tryGet([
-    `${API_URL}/Cinemas`,
-    `${API_URL}/Cinema`,
-    `${API_URL}/api/Cinemas`,
-    `${API_URL}/api/Cinema`,
-  ]);
-
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
-}
-
-export async function getRooms() {
-  const data = await tryGet([
-    `${API_URL}/Rooms`,
-    `${API_URL}/Room`,
-    `${API_URL}/api/Rooms`,
-    `${API_URL}/api/Room`,
-  ]);
-
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
-}
-
-export async function getMovieById(movieId) {
-  if (!movieId) return null;
-
-  const data = await tryGet([
-    `${API_URL}/Movies/${movieId}`,
-    `${API_URL}/Movies/GetById/${movieId}`,
-    `${API_URL}/api/Movies/${movieId}`,
-    `${API_URL}/api/Movies/GetById/${movieId}`,
-  ]);
-
-  return data?.data || data;
-}
-
-export async function getShowtimesByMovie(movieId) {
-  if (!movieId) return [];
-
-  const data = await tryGet([
-    `${API_URL}/Showtimes/ByMovie/${movieId}`,
-    `${API_URL}/Showtime/ByMovie/${movieId}`,
-    `${API_URL}/Showtimes/Movie/${movieId}`,
-    `${API_URL}/Showtime/Movie/${movieId}`,
-    `${API_URL}/api/Showtimes/ByMovie/${movieId}`,
-    `${API_URL}/api/Showtime/ByMovie/${movieId}`,
-    `${API_URL}/Showtimes?movieId=${movieId}`,
-    `${API_URL}/Showtime?movieId=${movieId}`,
-  ]);
-
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
-}
-
-export async function getSeatsByRoomId(roomId) {
-  if (!roomId) return [];
-
-  const data = await tryGet([
-    `${API_URL}/Seats/ByRoom/${roomId}`,
-    `${API_URL}/Seat/ByRoom/${roomId}`,
-    `${API_URL}/Seats/Room/${roomId}`,
-    `${API_URL}/Seat/Room/${roomId}`,
-    `${API_URL}/api/Seats/ByRoom/${roomId}`,
-    `${API_URL}/api/Seat/ByRoom/${roomId}`,
-    `${API_URL}/Seats?roomId=${roomId}`,
-    `${API_URL}/Seat?roomId=${roomId}`,
-  ]);
-
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
-}
-
-export async function getAvailableSeats(showtimeId) {
-  if (!showtimeId) return [];
-
-  const data = await tryGet([
-    `${API_URL}/Bookings/AvailableSeats/${showtimeId}`,
-    `${API_URL}/Booking/AvailableSeats/${showtimeId}`,
-    `${API_URL}/Seats/Available/${showtimeId}`,
-    `${API_URL}/Seat/Available/${showtimeId}`,
-    `${API_URL}/api/Bookings/AvailableSeats/${showtimeId}`,
-    `${API_URL}/api/Seats/Available/${showtimeId}`,
-    `${API_URL}/Bookings/GetAvailableSeats?showtimeId=${showtimeId}`,
-    `${API_URL}/Booking/GetAvailableSeats?showtimeId=${showtimeId}`,
-  ]);
-
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
-}
-
-export async function createBooking(payload) {
-  const data = await tryPost(
-    [
-      `${API_URL}/Bookings`,
-      `${API_URL}/Booking`,
-      `${API_URL}/api/Bookings`,
-      `${API_URL}/api/Booking`,
-    ],
-    payload
-  );
-
-  return data?.data || data;
 }
 
 /* =========================
@@ -679,5 +487,302 @@ export function buildBookingPayload({ userId, showtimeId, seat, selectedShowtime
     totalPrice: Number(getSeatPrice(seat, selectedShowtime)),
     status: "Paid",
     paymentStatus: "Paid",
+  };
+}
+
+export function useBooking() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const movieParam = searchParams.get("movie");
+  const showtimeParam = searchParams.get("showtimeId");
+
+  const [movie, setMovie] = useState(null);
+  const [showtimes, setShowtimes] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
+  const [selectedCinemaId, setSelectedCinemaId] = useState("");
+  const [selectedDateIso, setSelectedDateIso] = useState("");
+  const [selectedShowtime, setSelectedShowtime] = useState(null);
+
+  const [allSeats, setAllSeats] = useState([]);
+  const [availableSeats, setAvailableSeats] = useState([]);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [loadingSeats, setLoadingSeats] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [newTicketIds, setNewTicketIds] = useState([]);
+
+  const savedUser = getSavedUser();
+  const userEmail = getUserEmail();
+
+  const dates = useMemo(() => createBookingDates(7), []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Vui lòng đăng nhập tài khoản của bạn để tiến hành đặt vé!");
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!movieParam) return;
+
+    async function init() {
+      setLoading(true);
+      setBookingError("");
+
+      try {
+        const data = await loadBookingInitialData({
+          movieParam,
+          showtimeParam,
+          dates,
+        });
+
+        setCinemas(data.cinemas);
+        setRooms(data.rooms);
+        setMovie(data.movie);
+        setShowtimes(data.showtimes);
+
+        setSelectedShowtime(data.selectedShowtime);
+        setSelectedCinemaId(data.selectedCinemaId);
+        setSelectedDateIso(data.selectedDateIso);
+      } catch (err) {
+        console.error("Lỗi khi tải thông tin đặt vé:", err);
+
+        setMovie(null);
+        setShowtimes([]);
+        setCinemas([]);
+        setRooms([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    init();
+  }, [movieParam, showtimeParam, dates]);
+
+  useEffect(() => {
+    if (!selectedShowtime) {
+      setAllSeats([]);
+      setAvailableSeats([]);
+      setSelectedSeats([]);
+      return;
+    }
+
+    async function fetchSeatsForShowtime() {
+      setLoadingSeats(true);
+      setSelectedSeats([]);
+      setBookingError("");
+
+      try {
+        const data = await loadBookingSeatsData(selectedShowtime);
+
+        setAllSeats(data.seats);
+        setAvailableSeats(data.availableSeats);
+      } catch (err) {
+        console.error("Lỗi tải thông tin ghế ngồi:", err);
+
+        setAllSeats([]);
+        setAvailableSeats([]);
+      } finally {
+        setLoadingSeats(false);
+      }
+    }
+
+    fetchSeatsForShowtime();
+  }, [selectedShowtime]);
+
+  const filteredShowtimes = filterShowtimesForBooking({
+    showtimes,
+    rooms,
+    selectedDateIso,
+    selectedCinemaId,
+  });
+
+  function handleCinemaChange(cinemaId) {
+    setSelectedCinemaId(cinemaId);
+    setSelectedSeats([]);
+
+    const found = findFirstShowtime({
+      showtimes,
+      rooms,
+      selectedDateIso,
+      selectedCinemaId: cinemaId,
+    });
+
+    setSelectedShowtime(found);
+  }
+
+  function handleDateChange(dateIso) {
+    setSelectedDateIso(dateIso);
+    setSelectedSeats([]);
+
+    const found = findFirstShowtime({
+      showtimes,
+      rooms,
+      selectedDateIso: dateIso,
+      selectedCinemaId,
+    });
+
+    if (found) {
+      setSelectedShowtime(found);
+
+      const room = findRoomByShowtime(found, rooms);
+
+      if (room) {
+        setSelectedCinemaId(String(getRoomCinemaId(room)));
+      }
+    } else {
+      setSelectedShowtime(null);
+    }
+  }
+
+  function handleShowtimeClick(showtime) {
+    setSelectedShowtime(showtime);
+    setSelectedSeats([]);
+
+    const room = findRoomByShowtime(showtime, rooms);
+
+    if (room) {
+      setSelectedCinemaId(String(getRoomCinemaId(room)));
+    }
+  }
+
+  function handleSeatClick(seat) {
+    const available = isSeatAvailable(seat, availableSeats);
+
+    if (!available) return;
+
+    setSelectedSeats((prev) => {
+      const exists = prev.some(
+        (s) => String(getSeatId(s)) === String(getSeatId(seat))
+      );
+
+      if (exists) {
+        return prev.filter(
+          (s) => String(getSeatId(s)) !== String(getSeatId(seat))
+        );
+      }
+
+      return [...prev, seat];
+    });
+  }
+
+  const totalAmount = selectedSeats.reduce(
+    (sum, seat) => sum + getSeatPrice(seat, selectedShowtime),
+    0
+  );
+
+  const groupedSeats = groupSeatsByRow(allSeats);
+  const rowsKeys = Object.keys(groupedSeats).sort();
+
+  async function handleCheckout() {
+    if (!userEmail) {
+      alert("Vui lòng đăng nhập trước khi tiến hành thanh toán!");
+      navigate("/login");
+      return;
+    }
+
+    if (!selectedShowtime) {
+      alert("Vui lòng chọn suất chiếu hợp lệ!");
+      return;
+    }
+
+    if (selectedSeats.length === 0) {
+      alert("Vui lòng chọn ít nhất một ghế!");
+      return;
+    }
+
+    const showtimeId = getShowtimeId(selectedShowtime);
+
+    const userId =
+      savedUser.userId ??
+      savedUser.id ??
+      savedUser.UserId ??
+      savedUser.Id;
+
+    if (!userId) {
+      alert("Không tìm thấy thông tin tài khoản của bạn. Vui lòng đăng nhập lại!");
+      navigate("/login");
+      return;
+    }
+
+    setLoadingSeats(true);
+    setBookingError("");
+
+    try {
+      const bookingPromises = selectedSeats.map(async (seat) => {
+        const payload = buildBookingPayload({
+          userId,
+          showtimeId,
+          seat,
+          selectedShowtime,
+        });
+
+        const data = await createBooking(payload);
+
+        return (
+          data?.bookingId ??
+          data?.BookingId ??
+          data?.id ??
+          data?.Id ??
+          `BK${Math.floor(Math.random() * 90000)}`
+        );
+      });
+
+      const bookedIds = await Promise.all(bookingPromises);
+
+      setNewTicketIds(bookedIds);
+      setShowPaymentSuccess(true);
+    } catch (err) {
+      console.error("Đặt vé thất bại:", err);
+
+      setBookingError(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
+      alert(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
+    } finally {
+      setLoadingSeats(false);
+    }
+  }
+
+  function handleFinishBooking() {
+    setShowPaymentSuccess(false);
+    navigate("/customer/ve-cua-toi");
+  }
+
+  return {
+    movie,
+    showtimes,
+    cinemas,
+    rooms,
+    selectedCinemaId,
+    selectedDateIso,
+    selectedShowtime,
+    allSeats,
+    availableSeats,
+    selectedSeats,
+    loading,
+    loadingSeats,
+    bookingError,
+    showPaymentSuccess,
+    newTicketIds,
+    savedUser,
+    userEmail,
+    dates,
+    filteredShowtimes,
+    handleCinemaChange,
+    handleDateChange,
+    handleShowtimeClick,
+    handleSeatClick,
+    totalAmount,
+    rowsKeys,
+    groupedSeats,
+    handleCheckout,
+    handleFinishBooking,
   };
 }

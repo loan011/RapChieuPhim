@@ -1,6 +1,6 @@
 .booking-page-layout {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
+  background: radial-gradient(circle at top, #36021e 0%, #13030b 60%, #0e020a 100%);
   color: white;
   font-family: "Montserrat", Arial, sans-serif;
   box-sizing: border-box;
@@ -99,7 +99,7 @@
 .step-num-icon {
   width: 28px;
   height: 28px;
-  background: #e50914;
+  background: #df0a5d;
   border-radius: 50%;
   font-size: 14px;
   font-weight: 800;
@@ -149,8 +149,8 @@
 }
 
 .param-group select:hover {
-  background: rgba(229, 9, 20, 0.08);
-  border-color: rgba(229, 9, 20, 0.3);
+  background: rgba(223, 10, 93, 0.08);
+  border-color: rgba(223, 10, 93, 0.3);
 }
 
 .showtimes-selector-block {
@@ -180,15 +180,15 @@
 }
 
 .booking-time-btn:hover {
-  background: rgba(229, 9, 20, 0.08);
-  border-color: rgba(229, 9, 20, 0.4);
+  background: rgba(223, 10, 93, 0.08);
+  border-color: rgba(223, 10, 93, 0.4);
   transform: translateY(-2px);
 }
 
 .booking-time-btn.active {
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%) !important;
-  border-color: #e50914 !important;
-  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.35);
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%) !important;
+  border-color: #df0a5d !important;
+  box-shadow: 0 4px 12px rgba(223, 10, 93, 0.35);
   transform: scale(1.05);
 }
 
@@ -206,7 +206,7 @@
   width: 80%;
   height: 12px;
   background: transparent;
-  border-top: 3px solid #ff2b2b;
+  border-top: 3px solid #df0a5d;
   border-radius: 50%;
   box-shadow: 0 -8px 24px rgba(255, 43, 43, 0.45), 0 -2px 10px rgba(255, 43, 43, 0.3);
   filter: blur(0.5px);
@@ -282,13 +282,13 @@
 }
 
 .seat-node.vip {
-  background: rgba(229, 9, 20, 0.1);
-  border: 1.5px solid rgba(229, 9, 20, 0.4);
+  background: rgba(223, 10, 93, 0.1);
+  border: 1.5px solid rgba(223, 10, 93, 0.4);
   color: #f87171;
 }
 
 .seat-node.vip:hover {
-  background: rgba(229, 9, 20, 0.2);
+  background: rgba(223, 10, 93, 0.2);
   border-color: #ef4444;
   color: white;
 }
@@ -432,14 +432,14 @@
   margin: 0;
   font-size: 26px;
   font-weight: 900;
-  color: #ff2b2b;
+  color: #df0a5d;
   text-shadow: 0 0 12px rgba(255, 43, 43, 0.2);
 }
 
 .booking-checkout-submit-btn {
   width: 100%;
   height: 52px;
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -451,13 +451,13 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.3);
+  box-shadow: 0 6px 20px rgba(223, 10, 93, 0.3);
   transition: all 0.25s ease;
 }
 
 .booking-checkout-submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(229, 9, 20, 0.4);
+  box-shadow: 0 10px 25px rgba(223, 10, 93, 0.4);
   background: linear-gradient(135deg, #f01e2c 0%, #d3202c 100%);
 }
 

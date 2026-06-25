@@ -67,9 +67,9 @@ export async function getProfileAdmin() {
   return data;
 }
 
-// GET /api/Users (for customer profile)
+// GET /api/Users/GetProfile (for customer profile)
 export async function getProfileCustomer() {
-  const response = await fetch(`${API_URL}/Users`, {
+  const response = await fetch(`${API_URL}/Users/GetProfile`, {
     headers: getAuthHeaders(),
   });
   const data = await readResponse(response);
@@ -77,9 +77,9 @@ export async function getProfileCustomer() {
   return data;
 }
 
-// PUT /api/Users (update profile)
+// PUT /api/Users/UpdateProfile (update profile)
 export async function updateProfile(user) {
-  const response = await fetch(`${API_URL}/Users`, {
+  const response = await fetch(`${API_URL}/Users/UpdateProfile`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(user),

@@ -2,7 +2,7 @@
 
 .ticket-price-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
+  background: radial-gradient(circle at top, #36021e 0%, #13030b 60%, #0e020a 100%);
   color: white;
   font-family: "Montserrat", Arial, sans-serif;
   box-sizing: border-box;
@@ -10,17 +10,17 @@
 
 /* TOP LOGIN */
 .movie-top-login {
-  min-height: 32px;
-  background: rgba(18, 18, 18, 0.5);
-  backdrop-filter: blur(10px);
+  min-height: 36px;
+  background: #36021e;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: flex-end;
   align-items: center;
   padding: 0 90px;
   box-sizing: border-box;
-  z-index: 100;
+  z-index: 1100;
   position: relative;
+  line-height: 36px;
 }
 
 .movie-top-login a,
@@ -33,7 +33,7 @@
 }
 
 .movie-top-login a:hover {
-  color: #e50914;
+  color: #df0a5d;
 }
 
 /* HEADER */
@@ -43,7 +43,7 @@
   background: rgba(18, 18, 18, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(229, 9, 20, 0.25);
+  border-bottom: 1px solid rgba(223, 10, 93, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,7 +57,7 @@
 }
 
 .movie-logo {
-  color: #ff2020;
+  color: #ffffff;
   font-size: 30px;
   font-weight: 900;
   white-space: nowrap;
@@ -70,13 +70,13 @@
 .movie-logo span,
 .movie-logo b {
   display: inline;
-  text-shadow: 0 0 12px rgba(255, 32, 32, 0.4);
+  text-shadow: 0 0 12px rgba(223, 10, 93, 0.4);
 }
 
 .movie-select {
   width: 220px;
   height: 44px;
-  border: 1.5px solid rgba(255, 30, 30, 0.4);
+  border: 1.5px solid rgba(223, 10, 93, 0.4);
   border-radius: 22px;
   background: rgba(18, 18, 18, 0.85);
   color: white;
@@ -89,9 +89,9 @@
 }
 
 .movie-select:hover {
-  background: rgba(229, 9, 20, 0.08);
-  border-color: #ff1e1e;
-  box-shadow: 0 0 12px rgba(255, 30, 30, 0.2);
+  background: rgba(223, 10, 93, 0.08);
+  border-color: #df0a5d;
+  box-shadow: 0 0 12px rgba(223, 10, 93, 0.2);
 }
 
 .movie-header nav {
@@ -113,12 +113,12 @@
 }
 
 .movie-header nav a:hover {
-  color: #ff2b2b;
+  color: #df0a5d;
 }
 
 .movie-header nav a.active {
-  color: #ff2b2b;
-  border-bottom: 2px solid #ff2b2b;
+  color: #df0a5d;
+  border-bottom: 2px solid #df0a5d;
   padding-bottom: 4px;
 }
 
@@ -133,7 +133,7 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 40px rgba(229, 9, 20, 0.1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 40px rgba(223, 10, 93, 0.1);
   box-sizing: border-box;
 }
 
@@ -326,7 +326,7 @@
   text-align: center;
   font-size: 16px;
   font-weight: 800;
-  color: #ff2b2b;
+  color: #df0a5d;
 }
 
 .ticket-note {

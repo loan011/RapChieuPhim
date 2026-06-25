@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   MdLocationOn,
   MdCalendarToday,
@@ -13,14 +12,7 @@ import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 import "../../styles/Booking.css";
 
 import {
-  createBookingDates,
-  getSavedUser,
-  getUserEmail,
-
-  loadBookingInitialData,
-  loadBookingSeatsData,
-
-  createBooking,
+  useBooking,
 
   getMovieTitle,
   getMoviePoster,
@@ -33,14 +25,11 @@ import {
   getCinemaNameById,
 
   getRoomName,
-  getRoomCinemaId,
   findRoomByShowtime,
 
   getShowtimeId,
   getShowtimeHour,
   getShowtimeBasePrice,
-  filterShowtimesForBooking,
-  findFirstShowtime,
 
   getSeatId,
   getSeatType,
@@ -48,274 +37,37 @@ import {
   getSeatDisplayNumber,
   isSeatAvailable,
   getSeatPrice,
-  groupSeatsByRow,
-  buildBookingPayload,
 } from "./booking.js";
 
 export default function Booking() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  const movieParam = searchParams.get("movie");
-  const showtimeParam = searchParams.get("showtimeId");
-
-  const [movie, setMovie] = useState(null);
-  const [showtimes, setShowtimes] = useState([]);
-  const [cinemas, setCinemas] = useState([]);
-  const [rooms, setRooms] = useState([]);
-
-  const [selectedCinemaId, setSelectedCinemaId] = useState("");
-  const [selectedDateIso, setSelectedDateIso] = useState("");
-  const [selectedShowtime, setSelectedShowtime] = useState(null);
-
-  const [allSeats, setAllSeats] = useState([]);
-  const [availableSeats, setAvailableSeats] = useState([]);
-  const [selectedSeats, setSelectedSeats] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [loadingSeats, setLoadingSeats] = useState(false);
-  const [bookingError, setBookingError] = useState("");
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
-  const [newTicketIds, setNewTicketIds] = useState([]);
-
-  const savedUser = getSavedUser();
-  const userEmail = getUserEmail();
-
-  const dates = useMemo(() => createBookingDates(7), []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      alert("Vui lòng đăng nhập tài khoản của bạn để tiến hành đặt vé!");
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!movieParam) return;
-
-    async function init() {
-      setLoading(true);
-      setBookingError("");
-
-      try {
-        const data = await loadBookingInitialData({
-          movieParam,
-          showtimeParam,
-          dates,
-        });
-
-        setCinemas(data.cinemas);
-        setRooms(data.rooms);
-        setMovie(data.movie);
-        setShowtimes(data.showtimes);
-
-        setSelectedShowtime(data.selectedShowtime);
-        setSelectedCinemaId(data.selectedCinemaId);
-        setSelectedDateIso(data.selectedDateIso);
-      } catch (err) {
-        console.error("Lỗi khi tải thông tin đặt vé:", err);
-
-        setMovie(null);
-        setShowtimes([]);
-        setCinemas([]);
-        setRooms([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    init();
-  }, [movieParam, showtimeParam, dates]);
-
-  useEffect(() => {
-    if (!selectedShowtime) {
-      setAllSeats([]);
-      setAvailableSeats([]);
-      setSelectedSeats([]);
-      return;
-    }
-
-    async function fetchSeatsForShowtime() {
-      setLoadingSeats(true);
-      setSelectedSeats([]);
-      setBookingError("");
-
-      try {
-        const data = await loadBookingSeatsData(selectedShowtime);
-
-        setAllSeats(data.seats);
-        setAvailableSeats(data.availableSeats);
-      } catch (err) {
-        console.error("Lỗi tải thông tin ghế ngồi:", err);
-
-        setAllSeats([]);
-        setAvailableSeats([]);
-      } finally {
-        setLoadingSeats(false);
-      }
-    }
-
-    fetchSeatsForShowtime();
-  }, [selectedShowtime]);
-
-  const filteredShowtimes = filterShowtimesForBooking({
-    showtimes,
+  const {
+    movie,
+    cinemas,
     rooms,
-    selectedDateIso,
     selectedCinemaId,
-  });
-
-  function handleCinemaChange(cinemaId) {
-    setSelectedCinemaId(cinemaId);
-    setSelectedSeats([]);
-
-    const found = findFirstShowtime({
-      showtimes,
-      rooms,
-      selectedDateIso,
-      selectedCinemaId: cinemaId,
-    });
-
-    setSelectedShowtime(found);
-  }
-
-  function handleDateChange(dateIso) {
-    setSelectedDateIso(dateIso);
-    setSelectedSeats([]);
-
-    const found = findFirstShowtime({
-      showtimes,
-      rooms,
-      selectedDateIso: dateIso,
-      selectedCinemaId,
-    });
-
-    if (found) {
-      setSelectedShowtime(found);
-
-      const room = findRoomByShowtime(found, rooms);
-
-      if (room) {
-        setSelectedCinemaId(String(getRoomCinemaId(room)));
-      }
-    } else {
-      setSelectedShowtime(null);
-    }
-  }
-
-  function handleShowtimeClick(showtime) {
-    setSelectedShowtime(showtime);
-    setSelectedSeats([]);
-
-    const room = findRoomByShowtime(showtime, rooms);
-
-    if (room) {
-      setSelectedCinemaId(String(getRoomCinemaId(room)));
-    }
-  }
-
-  function handleSeatClick(seat) {
-    const available = isSeatAvailable(seat, availableSeats);
-
-    if (!available) return;
-
-    setSelectedSeats((prev) => {
-      const exists = prev.some(
-        (s) => String(getSeatId(s)) === String(getSeatId(seat))
-      );
-
-      if (exists) {
-        return prev.filter(
-          (s) => String(getSeatId(s)) !== String(getSeatId(seat))
-        );
-      }
-
-      return [...prev, seat];
-    });
-  }
-
-  const totalAmount = selectedSeats.reduce(
-    (sum, seat) => sum + getSeatPrice(seat, selectedShowtime),
-    0
-  );
-
-  const groupedSeats = groupSeatsByRow(allSeats);
-  const rowsKeys = Object.keys(groupedSeats).sort();
-
-  async function handleCheckout() {
-    if (!userEmail) {
-      alert("Vui lòng đăng nhập trước khi tiến hành thanh toán!");
-      navigate("/login");
-      return;
-    }
-
-    if (!selectedShowtime) {
-      alert("Vui lòng chọn suất chiếu hợp lệ!");
-      return;
-    }
-
-    if (selectedSeats.length === 0) {
-      alert("Vui lòng chọn ít nhất một ghế!");
-      return;
-    }
-
-    const showtimeId = getShowtimeId(selectedShowtime);
-
-    const userId =
-      savedUser.userId ??
-      savedUser.id ??
-      savedUser.UserId ??
-      savedUser.Id;
-
-    if (!userId) {
-      alert("Không tìm thấy thông tin tài khoản của bạn. Vui lòng đăng nhập lại!");
-      navigate("/login");
-      return;
-    }
-
-    setLoadingSeats(true);
-    setBookingError("");
-
-    try {
-      const bookingPromises = selectedSeats.map(async (seat) => {
-        const payload = buildBookingPayload({
-          userId,
-          showtimeId,
-          seat,
-          selectedShowtime,
-        });
-
-        const data = await createBooking(payload);
-
-        return (
-          data?.bookingId ??
-          data?.BookingId ??
-          data?.id ??
-          data?.Id ??
-          `BK${Math.floor(Math.random() * 90000)}`
-        );
-      });
-
-      const bookedIds = await Promise.all(bookingPromises);
-
-      setNewTicketIds(bookedIds);
-      setShowPaymentSuccess(true);
-    } catch (err) {
-      console.error("Đặt vé thất bại:", err);
-
-      setBookingError(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
-      alert(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
-    } finally {
-      setLoadingSeats(false);
-    }
-  }
-
-  function handleFinishBooking() {
-    setShowPaymentSuccess(false);
-    navigate("/customer/ve-cua-toi");
-  }
+    selectedDateIso,
+    selectedShowtime,
+    allSeats,
+    availableSeats,
+    selectedSeats,
+    loading,
+    loadingSeats,
+    bookingError,
+    showPaymentSuccess,
+    newTicketIds,
+    userEmail,
+    dates,
+    filteredShowtimes,
+    handleCinemaChange,
+    handleDateChange,
+    handleShowtimeClick,
+    handleSeatClick,
+    totalAmount,
+    rowsKeys,
+    groupedSeats,
+    handleCheckout,
+    handleFinishBooking,
+  } = useBooking();
 
   if (loading) {
     return (

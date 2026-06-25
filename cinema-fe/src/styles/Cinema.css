@@ -1,6 +1,6 @@
 .cinema-view-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
+  background: radial-gradient(circle at top, #36021e 0%, #13030b 60%, #0e020a 100%);
   color: white;
   font-family: "Montserrat", Arial, sans-serif;
   box-sizing: border-box;
@@ -37,7 +37,7 @@
   font-weight: 800;
   margin-top: 0;
   margin-bottom: 20px;
-  color: #ff2b2b;
+  color: #df0a5d;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -54,7 +54,7 @@
 .cinema-area-trigger {
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(229, 9, 20, 0.45);
+  border: 1px solid rgba(223, 10, 93, 0.45);
   border-radius: 14px;
   color: white;
   padding: 11px 15px;
@@ -67,8 +67,8 @@
 }
 
 .cinema-area-trigger:hover {
-  background: rgba(229, 9, 20, 0.1);
-  border-color: #e50914;
+  background: rgba(223, 10, 93, 0.1);
+  border-color: #df0a5d;
 }
 
 .cinema-area-menu {
@@ -77,7 +77,7 @@
   left: 0;
   width: 100%;
   background: #160707;
-  border: 1px solid rgba(229, 9, 20, 0.6);
+  border: 1px solid rgba(223, 10, 93, 0.6);
   border-radius: 14px;
   z-index: 9999;
   max-height: 240px;
@@ -94,13 +94,13 @@
 }
 
 .cinema-area-option:hover {
-  background: rgba(229, 9, 20, 0.16);
+  background: rgba(223, 10, 93, 0.16);
   color: white;
 }
 
 .cinema-area-option.active {
-  background: rgba(229, 9, 20, 0.22);
-  color: #ff2b2b;
+  background: rgba(223, 10, 93, 0.22);
+  color: #df0a5d;
   font-weight: 700;
 }
 
@@ -123,16 +123,16 @@
 }
 
 .cinema-item-card:hover {
-  background: rgba(229, 9, 20, 0.08);
-  border-color: rgba(229, 9, 20, 0.3);
+  background: rgba(223, 10, 93, 0.08);
+  border-color: rgba(223, 10, 93, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(229, 9, 20, 0.15);
+  box-shadow: 0 8px 20px rgba(223, 10, 93, 0.15);
 }
 
 .cinema-item-card.active {
-  background: linear-gradient(135deg, rgba(229, 9, 20, 0.15), rgba(139, 92, 246, 0.15));
-  border-color: #e50914;
-  box-shadow: 0 0 20px rgba(229, 9, 20, 0.25);
+  background: linear-gradient(135deg, rgba(223, 10, 93, 0.15), rgba(139, 92, 246, 0.15));
+  border-color: #df0a5d;
+  box-shadow: 0 0 20px rgba(223, 10, 93, 0.25);
 }
 
 .cinema-item-img {
@@ -220,7 +220,7 @@
   content: "";
   width: 4px;
   height: 16px;
-  background: #e50914;
+  background: #df0a5d;
   border-radius: 2px;
 }
 
@@ -298,8 +298,8 @@
 }
 
 .showtime-time-btn:hover {
-  background: #e50914;
-  border-color: #e50914;
+  background: #df0a5d;
+  border-color: #df0a5d;
 }
 
 /* Text states */

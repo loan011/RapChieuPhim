@@ -122,10 +122,32 @@ export async function getMoviesByTab(tabKey) {
   const data = await getMovieList();
   const list = normalizeArray(data);
 
-  // Lọc phim theo trạng thái tab nếu backend trả về tất cả
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Lọc phim theo trạng thái tab và ngày phát hành thực tế
   return list.filter((m) => {
     const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
-    return status.includes(tab.status.toLowerCase()) || status === tab.key;
+    
+    const rawRelease = m.releaseDate || m.ReleaseDate || m.release_date || m.startDate || m.StartDate || m.openingDate || m.OpeningDate || m.premiereDate || m.PremiereDate;
+    const releaseDate = rawRelease ? new Date(rawRelease) : null;
+    const isReleased = releaseDate && !isNaN(releaseDate.getTime()) && releaseDate <= today;
+
+    // Phim đang chiếu (now): có status đang chiếu HOẶC (sắp chiếu NHƯNG đã đến/qua ngày chiếu)
+    if (tabKey === "now") {
+      const matchesStatus = status.includes("đang chiếu") || status === "now";
+      const autoPromoted = (status.includes("sắp chiếu") || status === "coming") && isReleased;
+      return matchesStatus || autoPromoted;
+    }
+
+    // Phim sắp chiếu (coming): có status sắp chiếu VÀ chưa đến ngày chiếu
+    if (tabKey === "coming") {
+      const matchesStatus = status.includes("sắp chiếu") || status === "coming";
+      const notYetReleased = !releaseDate || isNaN(releaseDate.getTime()) || releaseDate > today;
+      return matchesStatus && notYetReleased;
+    }
+
+    return status.includes(tab.status.toLowerCase()) || status === tabKey;
   });
 }
 

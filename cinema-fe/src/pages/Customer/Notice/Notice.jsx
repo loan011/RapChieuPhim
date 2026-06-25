@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
-import { MdNotifications } from "react-icons/md";
+import { MdNotifications, MdArrowBack } from "react-icons/md";
 import { useNotice, getNoticeTypeConfig } from "./Notice.js";
 
 const TABS = [
@@ -26,12 +27,17 @@ export default function Notice() {
   return (
     <div className="cust-page">
       <div className="cust-wrapper">
-        <div className="cust-header">
-          <h1>
-            <span className="page-icon">🔔</span>
-            Thông báo
-          </h1>
-          <p>Cập nhật ưu đãi, vé đặt và hoạt động tài khoản</p>
+        <div className="cust-header-wrap">
+          <Link to="/" className="back-arrow-btn" title="Quay lại trang chủ">
+            <MdArrowBack />
+          </Link>
+          <div className="cust-header">
+            <h1>
+              <span className="page-icon">🔔</span>
+              Thông báo
+            </h1>
+            <p>Cập nhật ưu đãi, vé đặt và hoạt động tài khoản</p>
+          </div>
         </div>
 
         {loading ? (

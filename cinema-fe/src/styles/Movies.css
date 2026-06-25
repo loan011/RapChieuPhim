@@ -2,7 +2,7 @@
 
 .movies-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
+  background: radial-gradient(circle at top, #36021e 0%, #13030b 60%, #0e020a 100%);
   color: #fff;
   font-family: "Montserrat", Arial, sans-serif;
   box-sizing: border-box;
@@ -10,16 +10,16 @@
 
 /* TOP LOGIN */
 .movie-top-login {
-  min-height: 32px;
-  background: rgba(18, 18, 18, 0.5);
-  backdrop-filter: blur(10px);
+  min-height: 36px;
+  background: #36021e;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: flex-start;
   align-items: center;
   padding-left: 42px;
-  z-index: 100;
+  z-index: 1100;
   position: relative;
+  line-height: 36px;
 }
 
 .movie-top-login a,
@@ -32,7 +32,7 @@
 }
 
 .movie-top-login a:hover {
-  color: #e50914;
+  color: #df0a5d;
 }
 
 /* HEADER */
@@ -42,10 +42,10 @@
   align-items: center;
   gap: 28px;
   padding: 0 42px;
-  background: rgba(18, 18, 18, 0.75);
+  background: linear-gradient(90deg, #4f052e 0%, #30021b 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(229, 9, 20, 0.25);
+  border-bottom: 2px solid #df0a5d;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   position: sticky;
   top: 0;
@@ -54,7 +54,7 @@
 
 .movie-logo {
   min-width: 190px;
-  color: #ff2020;
+  color: #ffffff;
   font-size: 30px;
   font-weight: 900;
   line-height: 1;
@@ -64,10 +64,10 @@
 .movie-logo span,
 .movie-logo b {
   display: inline;
-  color: #ff2020;
+  color: #ffffff;
   font-size: 30px;
   font-weight: 900;
-  text-shadow: 0 0 12px rgba(255, 32, 32, 0.4);
+  text-shadow: 0 0 12px rgba(223, 10, 93, 0.4);
 }
 
 .movie-logo span::after {
@@ -78,8 +78,8 @@
   min-width: 220px;
   height: 44px;
   border-radius: 22px;
-  border: 1.5px solid rgba(255, 30, 30, 0.4);
-  background: rgba(18, 18, 18, 0.85);
+  border: 1.5px solid rgba(223, 10, 93, 0.4);
+  background: rgba(79, 5, 46, 0.85);
   color: white;
   padding: 0 20px;
   font-weight: 700;
@@ -89,9 +89,9 @@
 }
 
 .movie-select:hover {
-  background: rgba(229, 9, 20, 0.08);
-  border-color: #ff1e1e;
-  box-shadow: 0 0 12px rgba(255, 30, 30, 0.2);
+  background: rgba(223, 10, 93, 0.08);
+  border-color: #df0a5d;
+  box-shadow: 0 0 12px rgba(223, 10, 93, 0.2);
 }
 
 .movie-header nav {
@@ -113,13 +113,13 @@
 }
 
 .movie-header nav a:hover {
-  color: #ff2b2b;
+  color: #df0a5d;
   transform: translateY(-2px);
 }
 
 .movie-header nav .active {
-  color: #ff2b2b;
-  border-bottom: 2px solid #ff2b2b;
+  color: #df0a5d;
+  border-bottom: 2px solid #df0a5d;
   padding-bottom: 4px;
 }
 
@@ -158,8 +158,8 @@
 }
 
 .movie-tabs button.active {
-  color: #ff2b2b;
-  border-bottom: 3px solid #ff2b2b;
+  color: #df0a5d;
+  border-bottom: 3px solid #df0a5d;
   font-weight: 900;
   text-shadow: 0 0 10px rgba(255, 43, 43, 0.2);
 }
@@ -191,8 +191,8 @@
 
 .movie-card-style:hover {
   transform: translateY(-8px);
-  border-color: rgba(229, 9, 20, 0.3);
-  box-shadow: 0 24px 48px rgba(229, 9, 20, 0.2), 0 0 20px rgba(229, 9, 20, 0.1);
+  border-color: rgba(223, 10, 93, 0.3);
+  box-shadow: 0 24px 48px rgba(223, 10, 93, 0.2), 0 0 20px rgba(223, 10, 93, 0.1);
 }
 
 .movie-poster-style {
@@ -301,7 +301,7 @@
 }
 
 .movie-card-style:hover h2 {
-  color: #ff2b2b;
+  color: #df0a5d;
 }
 
 .movie-card-style p {
@@ -324,7 +324,7 @@
   justify-content: center;
   margin: 16px 16px 20px;
   height: 44px;
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%);
   color: #fff;
   border-radius: 10px;
   text-align: center;
@@ -332,13 +332,13 @@
   font-weight: 800;
   text-decoration: none;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+  box-shadow: 0 4px 15px rgba(223, 10, 93, 0.3);
   letter-spacing: 0.5px;
 }
 
 .movie-card-style .buy-ticket-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(229, 9, 20, 0.4);
+  box-shadow: 0 8px 20px rgba(223, 10, 93, 0.4);
   background: linear-gradient(135deg, #f01e2c 0%, #d3202c 100%);
 }
 
@@ -406,7 +406,7 @@
 }
 
 .trailer-close:hover {
-  color: #e50914;
+  color: #df0a5d;
 }
 
 /* RESPONSIVE */

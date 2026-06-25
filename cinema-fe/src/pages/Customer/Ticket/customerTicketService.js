@@ -2,9 +2,10 @@ import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../
 
 const API_URL = getApiUrl();
 
-// GET /api/Tickets/MyTickets (Lấy danh sách vé đã mua của khách hàng)
-export async function getCustomerTickets() {
-  const response = await fetch(`${API_URL}/Tickets`, {
+// GET /api/Bookings/ByUser/{userId} (Lấy danh sách vé đã đặt của khách hàng)
+export async function getCustomerTickets(userId) {
+  if (!userId) return [];
+  const response = await fetch(`${API_URL}/Bookings/ByUser/${userId}`, {
     headers: getAuthHeaders(),
   });
   const data = await readResponse(response);

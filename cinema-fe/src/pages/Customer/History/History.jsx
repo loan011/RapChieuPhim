@@ -1,5 +1,12 @@
+import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
-import { MdReceiptLong, MdCreditCard, MdRefresh, MdCancel } from "react-icons/md";
+import {
+  MdReceiptLong,
+  MdCreditCard,
+  MdRefresh,
+  MdCancel,
+  MdArrowBack,
+} from "react-icons/md";
 
 import {
   useBookingHistory,
@@ -28,12 +35,17 @@ export default function History() {
   return (
     <div className="cust-page">
       <div className="cust-wrapper">
-        <div className="cust-header">
-          <h1>
-            <span className="page-icon">🕘</span>
-            Lịch sử đặt vé
-          </h1>
-          <p>Toàn bộ giao dịch đặt vé của bạn</p>
+        <div className="cust-header-wrap">
+          <Link to="/" className="back-arrow-btn" title="Quay lại trang chủ">
+            <MdArrowBack />
+          </Link>
+          <div className="cust-header">
+            <h1>
+              <span className="page-icon">🕘</span>
+              Lịch sử đặt vé
+            </h1>
+            <p>Toàn bộ giao dịch đặt vé của bạn</p>
+          </div>
         </div>
 
         {loading ? (
