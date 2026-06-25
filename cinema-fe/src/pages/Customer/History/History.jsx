@@ -5,7 +5,7 @@ import {
   useBookingHistory,
   getHistoryTypeConfig,
   formatMoney,
-} from "./History";
+} from "./History.js";
 
 export default function History() {
   const {

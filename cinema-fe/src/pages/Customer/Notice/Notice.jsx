@@ -4,7 +4,7 @@ import {
   NOTICE_TEXT as T,
   useNotice,
   getNoticeTypeConfig,
-} from "./Notice";
+} from "./Notice.js";
 
 export default function Notice() {
   const {

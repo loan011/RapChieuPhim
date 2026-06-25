@@ -5,7 +5,7 @@ import {
   useTicket,
   getTicketStatusLabel,
   handlePosterError,
-} from "./Ticket";
+} from "./Ticket.js";
 
 export default function Ticket() {
   const {

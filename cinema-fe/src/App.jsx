@@ -2,20 +2,20 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Home from "./pages/Home.jsx";
 
-import Login from "./pages/Auth/Login";
-import Register from "./pages/Auth/Register";
+import Login from "./pages/Auth/Login.jsx";
+import Register from "./pages/Auth/Register.jsx";
 import Movies from "./pages/Movies/Movies.jsx";
-import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
 import TicketPrice from "./pages/Ticket/TicketPrice";
 import Cinema from "./pages/Cinema/Cinema";
 import Booking from "./pages/Booking/Booking.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import CustomerProfile from "./pages/Customer/Profile/Profile";
-import VeCuaToi from "./pages/Customer/Ticket/Ticket";
-import LichSuDatVe from "./pages/Customer/History/History";
-import CustomerThongBao from "./pages/Customer/Notice/Notice";
+import CustomerProfile from "./pages/Customer/Profile/Profile.jsx";
+import VeCuaToi from "./pages/Customer/Ticket/Ticket.jsx";
+import LichSuDatVe from "./pages/Customer/History/History.jsx";
+import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard/Dashboard";
