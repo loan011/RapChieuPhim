@@ -1,114 +1,292 @@
 import "./Customer.css";
-import { useEffect, useState } from "react";
-import { getCustomerList, deleteCustomer } from "./customerService";
+import { createPortal } from "react-dom";
 
-const MOCK_CUSTOMERS = [
-  { id: 1, name: "Nguyễn Văn A", email: "nva@gmail.com", phone: "0901234567", membershipLevel: "Silver", createdAt: "2024-01-10" },
-  { id: 2, name: "Trần Thị B", email: "ttb@gmail.com", phone: "0912345678", membershipLevel: "Gold", createdAt: "2024-02-20" },
-  { id: 3, name: "Lê Văn C", email: "lvc@gmail.com", phone: "0923456789", membershipLevel: "Bronze", createdAt: "2024-05-05" },
-];
+import {
+  CUSTOMER_TEXT as T,
+  CUSTOMER_MEMBERSHIP_OPTIONS,
+  useCustomer,
 
-export default function KhachHang() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
+  getCustomerId,
+  getCustomerName,
+  getCustomerEmail,
+  getCustomerPhone,
+  getCustomerPoint,
+  getCustomerCreatedAt,
+  getCustomerMembershipLevel,
+  getMembershipClass,
+} from "./Customer";
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+export default function Customer() {
+  const {
+    loading,
+    error,
 
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const data = await getCustomerList();
-      setList(data ?? []);
-    } catch {
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+    search,
+    setSearch,
 
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa khách hàng này?")) return;
-    try {
-      await deleteCustomer(id);
-      setList((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
+    filtered,
 
-  const filtered = list.filter((c) =>
-    c.name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+    showModal,
+    editId,
+    form,
+    submitting,
+    formError,
+
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = useCustomer();
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Khách Hàng</h4>
+        <h4 className="font-bold text-xl">{T.header.title}</h4>
+
         <button
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={() => alert("TODO: Mở form thêm khách hàng")}
+          type="button"
+          className={T.classNames.addButton}
+          onClick={openAddModal}
         >
-          + Thêm
+          {T.buttons.add}
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+      <div className={T.classNames.card}>
         <div className="flex flex-wrap gap-2 mb-4">
           <input
             type="text"
-            placeholder="Tìm kiếm..."
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-40"
+            placeholder={T.search.placeholder}
+            className={T.classNames.searchInput}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {loading && (
+          <p className={T.classNames.loadingText}>{T.messages.loading}</p>
+        )}
+
+        {error && (
+          <p className={T.classNames.errorText}>{error}</p>
+        )}
 
         {!loading && !error && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Họ Tên</th>
-                  <th className="px-3 py-2 text-left">Email</th>
-                  <th className="px-3 py-2 text-left">Điện Thoại</th>
-                  <th className="px-3 py-2 text-left">Điểm Tích Lũy</th>
-                  <th className="px-3 py-2 text-left">Ngày Đăng Ký</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
+                  {T.table.headers.map((header) => (
+                    <th key={header} className={T.classNames.tableHead}>
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-6 text-gray-400">Không có dữ liệu</td></tr>
+                  <tr>
+                    <td
+                      colSpan={T.table.headers.length}
+                      className={T.classNames.emptyCell}
+                    >
+                      {T.messages.empty}
+                    </td>
+                  </tr>
                 ) : (
-                  filtered.map((c, i) => (
-                    <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{c.name}</td>
-                      <td className="px-3 py-2">{c.email}</td>
-                      <td className="px-3 py-2">{c.phone}</td>
-                      <td className="px-3 py-2">{c.points}</td>
-                      <td className="px-3 py-2">{c.registeredAt}</td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button className="text-blue-600 hover:underline text-xs" onClick={() => alert(`TODO: Sửa khách hàng id=${c.id}`)}>Sửa</button>
-                        <button className="text-red-500 hover:underline text-xs" onClick={() => handleDelete(c.id)}>Xóa</button>
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((customer, index) => {
+                    const customerId = getCustomerId(customer);
+
+                    return (
+                      <tr
+                        key={customerId ?? index}
+                        className={T.classNames.tableRow}
+                      >
+                        <td className={T.classNames.tableCell}>{index + 1}</td>
+
+                        <td className={`${T.classNames.tableCell} font-medium`}>
+                          {getCustomerName(customer)}
+                        </td>
+
+                        <td className={T.classNames.tableCell}>
+                          {getCustomerEmail(customer)}
+                        </td>
+
+                        <td className={T.classNames.tableCell}>
+                          {getCustomerPhone(customer)}
+                        </td>
+
+                        <td className={T.classNames.tableCell}>
+                          {getCustomerPoint(customer)}
+                        </td>
+
+                        <td className={T.classNames.tableCell}>
+                          <span
+                            className={getMembershipClass(
+                              getCustomerMembershipLevel(customer)
+                            )}
+                          >
+                            {getCustomerMembershipLevel(customer)}
+                          </span>
+                        </td>
+
+                        <td className={T.classNames.tableCell}>
+                          {getCustomerCreatedAt(customer)}
+                        </td>
+
+                        <td className={`${T.classNames.tableCell} flex gap-2`}>
+                          <button
+                            type="button"
+                            className={T.classNames.editButton}
+                            onClick={() => openEditModal(customer)}
+                          >
+                            {T.buttons.edit}
+                          </button>
+
+                          <button
+                            type="button"
+                            className={T.classNames.deleteButton}
+                            onClick={() => handleDelete(customerId)}
+                          >
+                            {T.buttons.delete}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {showModal &&
+        createPortal(
+          <div className={T.classNames.modalOverlay}>
+            <div className={T.classNames.modalBox}>
+              <h5 className="font-bold text-lg mb-4">
+                {editId !== null ? T.modal.editTitle : T.modal.addTitle}
+              </h5>
+
+              {formError && (
+                <p className="text-red-500 text-sm mb-3">{formError}</p>
+              )}
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className={T.classNames.label}>
+                    {T.fields.fullName.label}{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    placeholder={T.fields.fullName.placeholder}
+                    className={T.classNames.input}
+                  />
+                </div>
+
+                <div>
+                  <label className={T.classNames.label}>
+                    {T.fields.email.label}{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder={T.fields.email.placeholder}
+                    className={T.classNames.input}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={T.classNames.label}>
+                      {T.fields.phone.label}
+                    </label>
+
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder={T.fields.phone.placeholder}
+                      className={T.classNames.input}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={T.classNames.label}>
+                      {T.fields.rewardPoint.label}
+                    </label>
+
+                    <input
+                      type="number"
+                      name="rewardPoint"
+                      value={form.rewardPoint}
+                      onChange={handleChange}
+                      placeholder={T.fields.rewardPoint.placeholder}
+                      className={T.classNames.input}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={T.classNames.label}>
+                    {T.fields.membershipLevel.label}
+                  </label>
+
+                  <select
+                    name="membershipLevel"
+                    value={form.membershipLevel}
+                    onChange={handleChange}
+                    className={T.classNames.input}
+                  >
+                    {CUSTOMER_MEMBERSHIP_OPTIONS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className={T.classNames.cancelButton}
+                    disabled={submitting}
+                  >
+                    {T.buttons.cancel}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className={T.classNames.submitButton}
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? T.buttons.processing
+                      : editId !== null
+                      ? T.buttons.update
+                      : T.buttons.create}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
