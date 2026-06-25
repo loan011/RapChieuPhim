@@ -1,25 +1,17 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import CustomerProfileDropdown from "../components/CustomerProfileDropdown";
 import "../styles/Home.css";
 
 import {
-  createDateRange,
-  toISODate,
-
-  getHomeMovies,
-  getHomeShowtimes,
-  getHomeRooms,
-  getHomeCinemas,
-  getHomeAreas,
+  HOME_TEXT as T,
+  useHome,
 
   getAreaId,
   getAreaName,
 
   getCinemaId,
   getCinemaName,
-  getCinemaAreaId,
 
   getMovieId,
   getMovieTitle,
@@ -37,168 +29,37 @@ import {
   getStartHour,
   getShowtimeStatus,
   isBookable,
-
-  filterShowtimesByCinemaAndDate,
-  groupShowtimesByMovie,
 } from "./home";
 
 function Home() {
-  const navigate = useNavigate();
-
-  const [startDate, setStartDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(toISODate(new Date()));
-
-  const [movies, setMovies] = useState([]);
-  const [showtimes, setShowtimes] = useState([]);
-  const [rooms, setRooms] = useState([]);
-  const [cinemas, setCinemas] = useState([]);
-  const [areas, setAreas] = useState([]);
-
-  const [selectedCinemaId, setSelectedCinemaId] = useState("");
-  const [selectedAreaId, setSelectedAreaId] = useState("");
-
-  const [showDetail, setShowDetail] = useState({});
-  const [selectedTrailer, setSelectedTrailer] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const dates = createDateRange(startDate);
-
-  function getSavedUser() {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      return {};
-    }
-  }
-
-  const savedUser = getSavedUser();
-
-  const userEmail =
-    localStorage.getItem("userEmail") ||
-    localStorage.getItem("email") ||
-    savedUser.email ||
-    savedUser.Email;
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-
-      const [movieData, showtimeData, roomData, cinemaData, areaData] =
-        await Promise.all([
-          getHomeMovies(),
-          getHomeShowtimes(),
-          getHomeRooms(),
-          getHomeCinemas(),
-          getHomeAreas(),
-        ]);
-
-      console.log("HOME MOVIES:", movieData);
-      console.log("HOME SHOWTIMES:", showtimeData);
-      console.log("HOME ROOMS:", roomData);
-      console.log("HOME CINEMAS:", cinemaData);
-      console.log("HOME AREAS:", areaData);
-
-      setMovies(Array.isArray(movieData) ? movieData : []);
-      setShowtimes(Array.isArray(showtimeData) ? showtimeData : []);
-      setRooms(Array.isArray(roomData) ? roomData : []);
-      setCinemas(Array.isArray(cinemaData) ? cinemaData : []);
-      setAreas(Array.isArray(areaData) ? areaData : []);
-
-      // Để mặc định là tất cả rạp.
-      // Khi chọn khu vực thì lịch chiếu sẽ lọc theo AreaId.
-      setSelectedCinemaId("");
-      setSelectedAreaId("");
-    } catch (error) {
-      console.error("Lỗi tải lịch chiếu:", error);
-
-      setMovies([]);
-      setShowtimes([]);
-      setRooms([]);
-      setCinemas([]);
-      setAreas([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function resetSelection() {
-    setShowDetail({});
-    setSelectedTrailer(null);
-  }
-
-  function changeDateRange(days) {
-    const nextStart = new Date(startDate);
-    nextStart.setDate(nextStart.getDate() + days);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (nextStart < today) {
-      setStartDate(new Date());
-      setSelectedDate(toISODate(new Date()));
-    } else {
-      setStartDate(nextStart);
-      setSelectedDate(toISODate(nextStart));
-    }
-
-    resetSelection();
-  }
-
-  function toggleDetail(movieId) {
-    setShowDetail((prev) => ({
-      ...prev,
-      [movieId]: !prev[movieId],
-    }));
-  }
-
-  function handleSelectTime(movie, showtime) {
-    const movieId = getMovieId(movie);
-    const showtimeId = getShowtimeId(showtime);
-    const time = getStartHour(showtime);
-
-    navigate(`/booking?movie=${movieId}&showtimeId=${showtimeId}&time=${time}`);
-  }
-
-  const filteredCinemas = selectedAreaId
-    ? cinemas.filter((cinema) => {
-        const areaId = getCinemaAreaId(cinema);
-        return String(areaId) === String(selectedAreaId);
-      })
-    : cinemas;
-
-  const filteredShowtimes = filterShowtimesByCinemaAndDate({
-    showtimes,
-    rooms,
-    cinemas,
+  const {
+    dates,
+    startDate,
     selectedDate,
     selectedCinemaId,
     selectedAreaId,
-  });
 
-  const groupedMovies = groupShowtimesByMovie({
-    movies,
-    showtimes: filteredShowtimes,
-  });
+    areas,
+    filteredCinemas,
+    groupedMovies,
+    hasMovies,
+    showDetail,
+    selectedTrailer,
+    loading,
+    userEmail,
+    selectedMessage,
 
-  const hasMovies = groupedMovies.length > 0;
-
-  const selectedCinema = cinemas.find(
-    (cinema) => String(getCinemaId(cinema)) === String(selectedCinemaId)
-  );
-
-  const selectedArea = areas.find(
-    (area) => String(getAreaId(area)) === String(selectedAreaId)
-  );
-
-  const selectedMessage = selectedCinema
-    ? `Lịch chiếu tại ${getCinemaName(selectedCinema)}`
-    : selectedArea
-    ? `Lịch chiếu khu vực ${getAreaName(selectedArea)}`
-    : "Lịch chiếu theo rạp";
+    changeDateRange,
+    handleDateClick,
+    handleAreaChange,
+    handleCinemaChange,
+    toggleDetail,
+    handleOpenTrailer,
+    handleCloseTrailer,
+    handleSelectTime,
+    handleBuyTicket,
+    isPreviousDateDisabled,
+  } = useHome();
 
   return (
     <div className="beta-page">
@@ -208,29 +69,25 @@ function Home() {
         </div>
       ) : (
         <div className="top-login">
-          <Link to="/login">Đăng nhập</Link>
+          <Link to={T.routes.login}>{T.auth.login}</Link>
           <span> | </span>
-          <Link to="/register">Đăng ký</Link>
-          <span> GB</span>
+          <Link to={T.routes.register}>{T.auth.register}</Link>
+          <span> {T.auth.language}</span>
         </div>
       )}
 
       <header className="beta-header">
         <div className="logo">
-          <span>Cinemas HCM</span>
+          <span>{T.logo}</span>
         </div>
 
         <select
           className="cinema-select"
           style={{ marginRight: "10px" }}
           value={selectedAreaId}
-          onChange={(e) => {
-            setSelectedAreaId(e.target.value);
-            setSelectedCinemaId("");
-            resetSelection();
-          }}
+          onChange={(e) => handleAreaChange(e.target.value)}
         >
-          <option value="">Tất cả khu vực</option>
+          <option value="">{T.select.allAreas}</option>
 
           {areas.map((area) => {
             const id = getAreaId(area);
@@ -247,12 +104,9 @@ function Home() {
         <select
           className="cinema-select"
           value={selectedCinemaId}
-          onChange={(e) => {
-            setSelectedCinemaId(e.target.value);
-            resetSelection();
-          }}
+          onChange={(e) => handleCinemaChange(e.target.value)}
         >
-          <option value="">Tất cả rạp</option>
+          <option value="">{T.select.allCinemas}</option>
 
           {filteredCinemas.map((cinema) => {
             const id = getCinemaId(cinema);
@@ -266,13 +120,13 @@ function Home() {
         </select>
 
         <nav>
-          <Link to="/movies">PHIM</Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-          <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+          <Link to={T.routes.movies}>{T.nav.movies}</Link>
+          <Link to={T.routes.home}>{T.nav.showtimesByCinema}</Link>
+          <Link to={T.routes.cinema}>{T.nav.cinema}</Link>
+          <Link to={T.routes.ticketPrice}>{T.nav.ticketPrice}</Link>
+          <a href={T.anchors.news}>{T.nav.news}</a>
+          <a href={T.anchors.franchise}>{T.nav.franchise}</a>
+          <a href={T.anchors.member}>{T.nav.member}</a>
         </nav>
       </header>
 
@@ -282,9 +136,9 @@ function Home() {
             type="button"
             className="calendar-arrow"
             onClick={() => changeDateRange(-8)}
-            disabled={toISODate(startDate) <= toISODate(new Date())}
+            disabled={isPreviousDateDisabled(startDate)}
           >
-            ‹
+            {T.calendar.previous}
           </button>
 
           <div className="date-list">
@@ -296,10 +150,7 @@ function Home() {
                     ? "date active-date"
                     : "date"
                 }
-                onClick={() => {
-                  setSelectedDate(date.iso);
-                  resetSelection();
-                }}
+                onClick={() => handleDateClick(date.iso)}
               >
                 <strong>{date.day}</strong>
                 <span>
@@ -314,14 +165,14 @@ function Home() {
             className="calendar-arrow"
             onClick={() => changeDateRange(8)}
           >
-            ›
+            {T.calendar.next}
           </button>
         </section>
 
         <hr />
 
         {loading && (
-          <p className="selected-text">Đang tải lịch chiếu...</p>
+          <p className="selected-text">{T.loading.showtimes}</p>
         )}
 
         {!loading && hasMovies && (
@@ -346,7 +197,7 @@ function Home() {
                     {trailer ? (
                       <iframe
                         src={trailer}
-                        title={`Trailer ${getMovieTitle(movie)}`}
+                        title={`${T.trailer.titlePrefix} ${getMovieTitle(movie)}`}
                         allow="autoplay; encrypted-media; picture-in-picture"
                         allowFullScreen
                       ></iframe>
@@ -356,7 +207,7 @@ function Home() {
                         alt={getMovieTitle(movie)}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = "/img/no-image.png";
+                          e.currentTarget.src = T.fallback.poster;
                         }}
                       />
                     )}
@@ -379,30 +230,24 @@ function Home() {
                         >
                           🎟️{" "}
                           {showDetail[movieId]
-                            ? "Ẩn chi tiết"
-                            : "Chi tiết"}
+                            ? T.buttons.hideDetail
+                            : T.buttons.detail}
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => setSelectedTrailer(movie)}
+                          onClick={() => handleOpenTrailer(movie)}
                         >
-                          Trailer
+                          {T.buttons.trailer}
                         </button>
                       </div>
 
                       <button
                         type="button"
                         className="buy-ticket-btn"
-                        onClick={() => {
-                          if (movieShowtimes && movieShowtimes.length > 0) {
-                            handleSelectTime(movie, movieShowtimes[0]);
-                          } else {
-                            navigate(`/booking?movie=${movieId}`);
-                          }
-                        }}
+                        onClick={() => handleBuyTicket(movie, movieShowtimes)}
                       >
-                        Mua vé
+                        {T.buttons.buyTicket}
                       </button>
                     </div>
 
@@ -413,32 +258,32 @@ function Home() {
                         <p>{getMovieDescription(movie)}</p>
 
                         <div className="detail-row">
-                          <b>Đạo diễn:</b>
+                          <b>{T.detail.director}</b>
                           <span>{getMovieDirector(movie)}</span>
                         </div>
 
                         <div className="detail-row">
-                          <b>Diễn viên:</b>
+                          <b>{T.detail.actors}</b>
                           <span>{getMovieActors(movie)}</span>
                         </div>
 
                         <div className="detail-row">
-                          <b>Thời lượng:</b>
+                          <b>{T.detail.duration}</b>
                           <span>{getMovieDuration(movie)}</span>
                         </div>
 
                         <div className="detail-row">
-                          <b>Ngôn ngữ:</b>
+                          <b>{T.detail.language}</b>
                           <span>{getMovieLanguage(movie)}</span>
                         </div>
 
                         <div className="detail-row">
-                          <b>Phụ đề:</b>
+                          <b>{T.detail.subtitles}</b>
                           <span>{subtitles}</span>
                         </div>
 
                         <div className="detail-row">
-                          <b>Ngày khởi chiếu:</b>
+                          <b>{T.detail.releaseDate}</b>
                           <span>{getMovieReleaseDate(movie)}</span>
                         </div>
                       </div>
@@ -446,8 +291,8 @@ function Home() {
 
                     <h3>
                       {String(subtitles).toUpperCase().includes("LỒNG TIẾNG")
-                        ? "2D LỒNG TIẾNG"
-                        : "2D PHỤ ĐỀ"}
+                        ? T.movieFormat.dubbed
+                        : T.movieFormat.subtitled}
                     </h3>
 
                     <div className="time-list">
@@ -481,7 +326,7 @@ function Home() {
 
         {!loading && !hasMovies && (
           <p className="selected-text">
-            Ngày này chưa có lịch chiếu phim.
+            {T.empty.noShowtimes}
           </p>
         )}
       </main>
@@ -492,24 +337,26 @@ function Home() {
             <button
               type="button"
               className="trailer-close"
-              onClick={() => setSelectedTrailer(null)}
+              onClick={handleCloseTrailer}
             >
-              ×
+              {T.trailer.close}
             </button>
 
-            <h2>TRAILER - {getMovieTitle(selectedTrailer)}</h2>
+            <h2>
+              {T.trailer.heading} - {getMovieTitle(selectedTrailer)}
+            </h2>
 
             <hr />
 
             {getMovieTrailer(selectedTrailer) ? (
               <iframe
                 src={getMovieTrailer(selectedTrailer)}
-                title={`Trailer ${getMovieTitle(selectedTrailer)}`}
+                title={`${T.trailer.titlePrefix} ${getMovieTitle(selectedTrailer)}`}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
               ></iframe>
             ) : (
-              <p>Phim này chưa có trailer.</p>
+              <p>{T.trailer.noTrailer}</p>
             )}
           </div>
         </div>
