@@ -1,439 +1,44 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
 import {
+  MOVIES_TEXT as T,
   MOVIE_TABS,
-  getMoviesByTab,
-  getMovieCategories,
-  getAreaList,
+  useMovies,
+
+  getAreaId,
+  getAreaName,
+
+  getMovieId,
+  getMovieTitle,
+  getMovieImage,
+  getMovieAge,
+  getMovieTag,
+  getMovieStatus,
+  getMovieGenre,
+  getMovieDuration,
+  getMovieReleaseDate,
+  getMovieTrailer,
 } from "./Movies.js";
 
 function Movies() {
-  const [activeTab, setActiveTab] = useState("now");
-  const [movies, setMovies] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [areas, setAreas] = useState([]);
-  const [selectedAreaId, setSelectedAreaId] = useState("");
-  const [selectedTrailer, setSelectedTrailer] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  function getSavedUser() {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      return {};
-    }
-  }
-
-  const savedUser = getSavedUser();
-
-  const userEmail =
-    localStorage.getItem("userEmail") ||
-    localStorage.getItem("email") ||
-    savedUser.email ||
-    savedUser.Email;
-
-  useEffect(() => {
-    fetchCategories();
-    fetchAreas();
-  }, []);
-
-  useEffect(() => {
-    fetchMoviesByTab(activeTab);
-  }, [activeTab]);
-
-  async function fetchCategories() {
-    try {
-      const apiCategories = await getMovieCategories();
-      setCategories(Array.isArray(apiCategories) ? apiCategories : []);
-    } catch (error) {
-      console.error("Lỗi tải thể loại:", error);
-      setCategories([]);
-    }
-  }
-
-  async function fetchAreas() {
-    try {
-      const apiAreas = await getAreaList();
-      console.log("Danh sách khu vực từ API:", apiAreas);
-      setAreas(Array.isArray(apiAreas) ? apiAreas : []);
-    } catch (error) {
-      console.error("Lỗi tải khu vực:", error);
-      setAreas([]);
-    }
-  }
-
-  async function fetchMoviesByTab(tabKey) {
-    try {
-      setLoading(true);
-
-      const apiMovies = await getMoviesByTab(tabKey);
-      console.log("Danh sách phim từ API:", apiMovies);
-
-      setMovies(Array.isArray(apiMovies) ? apiMovies : []);
-    } catch (error) {
-      console.error("Lỗi tải phim:", error);
-      setMovies([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function changeTab(tabName) {
-    setActiveTab(tabName);
-    setSelectedTrailer(null);
-  }
-
-  function getAreaId(area) {
-    return area.areaId || area.AreaId || area.id || area.Id;
-  }
-
-  function getAreaName(area) {
-    return (
-      area.areaName ||
-      area.AreaName ||
-      area.name ||
-      area.Name ||
-      "Khu vực không tên"
-    );
-  }
-
-  function getMovieTitle(movie) {
-    return (
-      movie.title ||
-      movie.Title ||
-      movie.name ||
-      movie.Name ||
-      movie.movieName ||
-      movie.MovieName ||
-      movie.movieTitle ||
-      movie.MovieTitle ||
-      "Chưa có tên phim"
-    );
-  }
-
-  function getMovieImage(movie) {
-    const image =
-      movie.posterUrl ||
-      movie.PosterUrl ||
-      movie.posterURL ||
-      movie.PosterURL ||
-      movie.img ||
-      movie.Img ||
-      movie.image ||
-      movie.Image ||
-      movie.imageUrl ||
-      movie.ImageUrl ||
-      movie.poster ||
-      movie.Poster ||
-      "";
-
-    if (!image) return "/img/no-image.png";
-
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-      return image;
-    }
-
-    if (image.startsWith("/")) {
-      return image;
-    }
-
-    return `/img/${image}`;
-  }
-
-  function getMovieAge(movie) {
-    return (
-      movie.ageRating ||
-      movie.AgeRating ||
-      movie.age ||
-      movie.Age ||
-      movie.rated ||
-      movie.Rated ||
-      movie.rating ||
-      movie.Rating ||
-      "P"
-    );
-  }
-
-  function getMovieTag(movie) {
-    const currentTab = MOVIE_TABS.find((tab) => tab.key === activeTab);
-
-    return movie.tag || movie.Tag || currentTab?.tag || "HOT";
-  }
-
-  function getMovieStatus(movie) {
-    const currentTab = MOVIE_TABS.find((tab) => tab.key === activeTab);
-
-    return (
-      movie.status ||
-      movie.Status ||
-      movie.movieStatus ||
-      movie.MovieStatus ||
-      movie.showingStatus ||
-      movie.ShowingStatus ||
-      movie.statusName ||
-      movie.StatusName ||
-      currentTab?.status ||
-      "Đang cập nhật"
-    );
-  }
-
-  function getCategoryName(category) {
-    return (
-      category?.categoryName ||
-      category?.CategoryName ||
-      category?.name ||
-      category?.Name ||
-      category?.title ||
-      category?.Title ||
-      category?.description ||
-      category?.Description ||
-      ""
-    );
-  }
-
-  function getCategoryId(category) {
-    return (
-      category?.categoryId ||
-      category?.CategoryId ||
-      category?.id ||
-      category?.Id ||
-      category?.movieCategoryId ||
-      category?.MovieCategoryId
-    );
-  }
-
-  function normalizeNestedArray(val) {
-    if (Array.isArray(val)) return val;
-    if (Array.isArray(val?.$values)) return val.$values;
-    return [];
-  }
-
-  function getMovieGenre(movie) {
-    const rawCategoryArray =
-      movie.categories ||
-      movie.Categories ||
-      movie.movieCategories ||
-      movie.MovieCategories ||
-      movie.categoryList ||
-      movie.CategoryList;
-
-    const categoryArray = normalizeNestedArray(rawCategoryArray);
-
-    if (categoryArray.length > 0) {
-      const categoryText = categoryArray
-        .map((item) => {
-          return (
-            getCategoryName(item) ||
-            getCategoryName(item.category) ||
-            getCategoryName(item.Category) ||
-            getCategoryName(item.movieCategory) ||
-            getCategoryName(item.MovieCategory)
-          );
-        })
-        .filter(Boolean)
-        .join(", ");
-
-      if (categoryText) return categoryText;
-    }
-
-    const rawMappings =
-      movie.movieCategoryMappings ||
-      movie.MovieCategoryMappings ||
-      movie.categoryMappings ||
-      movie.CategoryMappings;
-
-    const mappings = normalizeNestedArray(rawMappings);
-
-    if (mappings.length > 0) {
-      const categoryText = mappings
-        .map((mapping) => {
-          const cat =
-            mapping.movieCategory ||
-            mapping.MovieCategory ||
-            mapping.category ||
-            mapping.Category;
-
-          const nameFromMapping =
-            getCategoryName(cat) || getCategoryName(mapping);
-
-          if (nameFromMapping) return nameFromMapping;
-
-          const catId =
-            mapping.categoryId ||
-            mapping.CategoryId ||
-            mapping.movieCategoryId ||
-            mapping.MovieCategoryId;
-
-          if (catId) {
-            const found = categories.find(
-              (c) => String(getCategoryId(c)) === String(catId)
-            );
-
-            return getCategoryName(found);
-          }
-
-          return null;
-        })
-        .filter(Boolean)
-        .join(", ");
-
-      if (categoryText) return categoryText;
-    }
-
-    const rawCategoryIds =
-      movie.categoryIds ||
-      movie.CategoryIds ||
-      movie.movieCategoryIds ||
-      movie.MovieCategoryIds;
-
-    const categoryIds = normalizeNestedArray(rawCategoryIds);
-
-    if (categoryIds.length > 0) {
-      const categoryText = categoryIds
-        .map((id) => {
-          const foundCategory = categories.find(
-            (category) => String(getCategoryId(category)) === String(id)
-          );
-
-          return getCategoryName(foundCategory);
-        })
-        .filter(Boolean)
-        .join(", ");
-
-      if (categoryText) return categoryText;
-    }
-
-    const singleCategoryObj =
-      movie.movieCategory ||
-      movie.MovieCategory ||
-      movie.category ||
-      movie.Category;
-
-    if (singleCategoryObj && typeof singleCategoryObj === "object") {
-      const categoryName = getCategoryName(singleCategoryObj);
-
-      if (categoryName) return categoryName;
-    }
-
-    const singleCategoryId =
-      movie.categoryId ||
-      movie.CategoryId ||
-      movie.movieCategoryId ||
-      movie.MovieCategoryId;
-
-    if (singleCategoryId) {
-      const foundCategory = categories.find(
-        (category) => String(getCategoryId(category)) === String(singleCategoryId)
-      );
-
-      const categoryName = getCategoryName(foundCategory);
-
-      if (categoryName) return categoryName;
-    }
-
-    const directCategory =
-      movie.categoryName ||
-      movie.CategoryName ||
-      movie.genre ||
-      movie.Genre;
-
-    if (directCategory) return directCategory;
-
-    return "Đang cập nhật";
-  }
-
-  function getMovieDuration(movie) {
-    const duration =
-      movie.duration ||
-      movie.Duration ||
-      movie.durationMinutes ||
-      movie.DurationMinutes ||
-      movie.runningTime ||
-      movie.RunningTime;
-
-    if (duration && typeof duration === "string") {
-      if (duration.toLowerCase().includes("phút")) {
-        return duration;
-      }
-
-      return `${duration} phút`;
-    }
-
-    if (duration && typeof duration === "number") {
-      return `${duration} phút`;
-    }
-
-    return "Đang cập nhật";
-  }
-
-  function formatDate(dateValue) {
-    if (!dateValue) return "Đang cập nhật";
-
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return "Đang cập nhật";
-    }
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-
-    return `${day}-${month}-${year}`;
-  }
-
-  function getMovieReleaseDate(movie) {
-    return formatDate(
-      movie.releaseDate ||
-        movie.ReleaseDate ||
-        movie.release_date ||
-        movie.startDate ||
-        movie.StartDate ||
-        movie.openingDate ||
-        movie.OpeningDate ||
-        movie.premiereDate ||
-        movie.PremiereDate
-    );
-  }
-
-  function convertYoutubeToEmbed(url) {
-    if (!url) return "";
-
-    if (url.includes("youtube.com/embed/")) {
-      return url;
-    }
-
-    if (url.includes("youtube.com/watch?v=")) {
-      const videoId = url.split("watch?v=")[1]?.split("&")[0];
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
-    }
-
-    if (url.includes("youtu.be/")) {
-      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
-    }
-
-    return url;
-  }
-
-  function getMovieTrailer(movie) {
-    const trailer =
-      movie.trailerUrl ||
-      movie.TrailerUrl ||
-      movie.trailerURL ||
-      movie.TrailerURL ||
-      movie.trailer ||
-      movie.Trailer ||
-      movie.videoUrl ||
-      movie.VideoUrl ||
-      "";
-
-    return convertYoutubeToEmbed(trailer);
-  }
+  const {
+    activeTab,
+    movies,
+    areas,
+    selectedAreaId,
+    selectedTrailer,
+    loading,
+    userEmail,
+
+    changeTab,
+    handleAreaChange,
+    openTrailer,
+    closeTrailer,
+    getBookingLink,
+  } = useMovies();
 
   return (
     <div className="movies-page">
@@ -443,25 +48,25 @@ function Movies() {
         </div>
       ) : (
         <div className="movie-top-login">
-          <Link to="/login">Đăng nhập</Link>
+          <Link to={T.routes.login}>{T.auth.login}</Link>
           <span> | </span>
-          <Link to="/register">Đăng ký</Link>
-          <span> GB</span>
+          <Link to={T.routes.register}>{T.auth.register}</Link>
+          <span> {T.auth.language}</span>
         </div>
       )}
 
       <header className="movie-header">
         <div className="movie-logo">
-          <span>Cinemas</span>
-          <b>HCM</b>
+          <span>{T.logo.main}</span>
+          <b>{T.logo.sub}</b>
         </div>
 
         <select
           className="movie-select"
           value={selectedAreaId}
-          onChange={(e) => setSelectedAreaId(e.target.value)}
+          onChange={(e) => handleAreaChange(e.target.value)}
         >
-          <option value="">Chọn rạp HCM</option>
+          <option value="">{T.select.areaPlaceholder}</option>
 
           {areas.map((area, index) => {
             const areaId = getAreaId(area);
@@ -475,15 +80,15 @@ function Movies() {
         </select>
 
         <nav>
-          <Link className="active" to="/movies">
-            PHIM
+          <Link className="active" to={T.routes.movies}>
+            {T.nav.movies}
           </Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-          <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+          <Link to={T.routes.home}>{T.nav.showtimesByCinema}</Link>
+          <Link to={T.routes.cinema}>{T.nav.cinema}</Link>
+          <Link to={T.routes.ticketPrice}>{T.nav.ticketPrice}</Link>
+          <a href={T.anchors.news}>{T.nav.news}</a>
+          <a href={T.anchors.franchise}>{T.nav.franchise}</a>
+          <a href={T.anchors.member}>{T.nav.member}</a>
         </nav>
       </header>
 
@@ -501,72 +106,77 @@ function Movies() {
           ))}
         </div>
 
-        {loading && <p className="movie-loading">Đang tải phim...</p>}
+        {loading && <p className="movie-loading">{T.loading.movies}</p>}
 
         {!loading && movies.length === 0 && (
-          <p className="movie-loading">Không có phim trong mục này.</p>
+          <p className="movie-loading">{T.empty.noMovies}</p>
         )}
 
         <section className="movie-grid">
           {!loading &&
             movies.map((movie, index) => {
-              const movieId = movie.movieId || movie.MovieId || movie.id;
+              const movieId = getMovieId(movie);
 
               return (
                 <div className="movie-card-style" key={movieId || index}>
                   <div
                     className="movie-poster-style"
-                    onClick={() => setSelectedTrailer(movie)}
+                    onClick={() => openTrailer(movie)}
                   >
                     <img
                       src={getMovieImage(movie)}
                       alt={getMovieTitle(movie)}
                       onError={(e) => {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = "/img/no-image.png";
+                        e.currentTarget.src = T.fallback.poster;
                       }}
                     />
 
-                    <span className="movie-age-style">{getMovieAge(movie)}</span>
-                    <span className="movie-tag-style">{getMovieTag(movie)}</span>
+                    <span className="movie-age-style">
+                      {getMovieAge(movie)}
+                    </span>
+
+                    <span className="movie-tag-style">
+                      {getMovieTag(movie, activeTab)}
+                    </span>
 
                     <button
                       type="button"
                       className="play-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedTrailer(movie);
+                        openTrailer(movie);
                       }}
                     >
-                      ▶
+                      {T.buttons.play}
                     </button>
                   </div>
 
                   <h2>{getMovieTitle(movie)}</h2>
 
                   <p>
-                    <b>Thể loại:</b> {getMovieGenre(movie)}
+                    <b>{T.movieInfo.genre}</b> {getMovieGenre(movie)}
                   </p>
 
                   <p>
-                    <b>Thời lượng:</b> {getMovieDuration(movie)}
+                    <b>{T.movieInfo.duration}</b> {getMovieDuration(movie)}
                   </p>
 
                   <p>
-                    <b>Khởi chiếu:</b> {getMovieReleaseDate(movie)}
+                    <b>{T.movieInfo.releaseDate}</b>{" "}
+                    {getMovieReleaseDate(movie)}
                   </p>
 
                   <p>
-                    <b>Trạng thái:</b> {getMovieStatus(movie)}
+                    <b>{T.movieInfo.status}</b>{" "}
+                    {getMovieStatus(movie, activeTab)}
                   </p>
 
                   <Link
-                    to={`/booking?movie=${movieId}${
-                      selectedAreaId ? `&area=${selectedAreaId}` : ""
-                    }`}
+                    to={getBookingLink(movie)}
                     className="buy-ticket-btn"
                   >
-                    🎟️ MUA VÉ
+                    {T.buttons.buyTicket}
                   </Link>
                 </div>
               );
@@ -580,24 +190,28 @@ function Movies() {
             <button
               type="button"
               className="trailer-close"
-              onClick={() => setSelectedTrailer(null)}
+              onClick={closeTrailer}
             >
-              ×
+              {T.trailer.close}
             </button>
 
-            <h2>TRAILER - {getMovieTitle(selectedTrailer)}</h2>
+            <h2>
+              {T.trailer.heading} - {getMovieTitle(selectedTrailer)}
+            </h2>
 
             <hr />
 
             {getMovieTrailer(selectedTrailer) ? (
               <iframe
                 src={getMovieTrailer(selectedTrailer)}
-                title={`Trailer ${getMovieTitle(selectedTrailer)}`}
+                title={`${T.trailer.titlePrefix} ${getMovieTitle(
+                  selectedTrailer
+                )}`}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
               ></iframe>
             ) : (
-              <p>Phim này chưa có trailer.</p>
+              <p>{T.trailer.noTrailer}</p>
             )}
           </div>
         </div>
