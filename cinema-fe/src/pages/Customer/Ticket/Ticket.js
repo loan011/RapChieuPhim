@@ -1,82 +1,5 @@
 import { useEffect, useState } from "react";
-
-import {
-  MdConfirmationNumber,
-  MdLocationOn,
-  MdCalendarToday,
-  MdAccessTime,
-  MdEventSeat,
-  MdQrCode2,
-} from "react-icons/md";
-
-export const TICKET_TEXT = {
-  header: {
-    icon: "🎫",
-    title: "Vé của tôi",
-    description: "Danh sách tất cả vé bạn đã đặt",
-  },
-
-  statusKeys: {
-    all: "all",
-    upcoming: "upcoming",
-    watched: "watched",
-    cancelled: "cancelled",
-  },
-
-  tabs: [
-    {
-      key: "all",
-      label: "Tất cả",
-    },
-    {
-      key: "upcoming",
-      label: "Sắp chiếu",
-    },
-    {
-      key: "watched",
-      label: "Đã xem",
-    },
-    {
-      key: "cancelled",
-      label: "Đã hủy",
-    },
-  ],
-
-  stats: {
-    total: "Tổng vé",
-    upcoming: "Sắp chiếu",
-    cancelled: "Đã hủy",
-  },
-
-  statusLabel: {
-    upcoming: "Sắp chiếu",
-    watched: "Đã xem",
-    cancelled: "Đã hủy",
-  },
-
-  empty: {
-    icon: "🎟️",
-    title: "Không có vé nào",
-    description: "Bạn chưa có vé trong mục này",
-  },
-
-  qr: {
-    title: "Mã QR vé",
-  },
-
-  storageKeys: {
-    bookedTickets: "bookedTickets",
-  },
-
-  icons: {
-    ticket: MdConfirmationNumber,
-    location: MdLocationOn,
-    calendar: MdCalendarToday,
-    time: MdAccessTime,
-    seat: MdEventSeat,
-    qr: MdQrCode2,
-  },
-};
+import { getCustomerTickets } from "./customerTicketService.js";
 
 export const MOCK_TICKETS = [
   {
@@ -120,9 +43,8 @@ export const MOCK_TICKETS = [
 export function getLocalBookedTickets() {
   try {
     const localTickets = JSON.parse(
-      localStorage.getItem(TICKET_TEXT.storageKeys.bookedTickets) || "[]"
+      localStorage.getItem("bookedTickets") || "[]"
     );
-
     return Array.isArray(localTickets) ? localTickets : [];
   } catch {
     return [];
@@ -131,38 +53,32 @@ export function getLocalBookedTickets() {
 
 export function loadTickets() {
   const localTickets = getLocalBookedTickets();
-
   return [...localTickets, ...MOCK_TICKETS];
 }
 
 export function filterTicketsByStatus(tickets, activeTab) {
-  if (activeTab === TICKET_TEXT.statusKeys.all) {
+  if (activeTab === "all") {
     return tickets;
   }
-
   return tickets.filter((ticket) => ticket.status === activeTab);
 }
 
 export function countTicketsByStatus(tickets) {
   return {
     all: tickets.length,
-
-    upcoming: tickets.filter(
-      (ticket) => ticket.status === TICKET_TEXT.statusKeys.upcoming
-    ).length,
-
-    watched: tickets.filter(
-      (ticket) => ticket.status === TICKET_TEXT.statusKeys.watched
-    ).length,
-
-    cancelled: tickets.filter(
-      (ticket) => ticket.status === TICKET_TEXT.statusKeys.cancelled
-    ).length,
+    upcoming: tickets.filter((ticket) => ticket.status === "upcoming").length,
+    watched: tickets.filter((ticket) => ticket.status === "watched").length,
+    cancelled: tickets.filter((ticket) => ticket.status === "cancelled").length,
   };
 }
 
 export function getTicketStatusLabel(status) {
-  return TICKET_TEXT.statusLabel[status] || "Không rõ";
+  const statusLabel = {
+    upcoming: "Sắp chiếu",
+    watched: "Đã xem",
+    cancelled: "Đã hủy",
+  };
+  return statusLabel[status] || "Không rõ";
 }
 
 export function handlePosterError(e) {
@@ -170,12 +86,44 @@ export function handlePosterError(e) {
 }
 
 export function useTicket() {
-  const [activeTab, setActiveTab] = useState(TICKET_TEXT.statusKeys.all);
+  const [activeTab, setActiveTab] = useState("all");
   const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = loadTickets();
-    setTickets(data);
+    async function fetchTickets() {
+      try {
+        setLoading(true);
+        const data = await getCustomerTickets();
+        let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+        if (list.length === 0) {
+          setTickets(loadTickets());
+        } else {
+          setTickets(list.map((t) => {
+            const isCancelled = t.status === "Đã hủy";
+            const isPaid = t.status === "Đã thanh toán" || t.status === "Đã đặt";
+            return {
+              id: t.code || `TK${t.id}`,
+              movie: t.movieTitle || "Phim chưa rõ",
+              poster: t.moviePoster || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=200&auto=format&fit=crop",
+              date: t.showDate || t.createdAt || "Chưa rõ",
+              time: t.showTime || "",
+              cinema: t.cinemaName || "Rạp chiếu phim",
+              hall: t.roomName || "Phòng chiếu",
+              seats: t.seatCode ? [t.seatCode] : (t.seats || []),
+              price: (t.price || 0).toLocaleString("vi-VN") + "đ",
+              status: isCancelled ? "cancelled" : isPaid ? "upcoming" : "watched",
+            };
+          }));
+        }
+      } catch (err) {
+        console.error("Lỗi lấy vé từ API, sử dụng mock:", err);
+        setTickets(loadTickets());
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTickets();
   }, []);
 
   const filteredTickets = filterTicketsByStatus(tickets, activeTab);
@@ -184,9 +132,9 @@ export function useTicket() {
   return {
     activeTab,
     setActiveTab,
-
     tickets,
     filteredTickets,
     counts,
+    loading,
   };
 }

@@ -7,6 +7,16 @@ import {
 
 const API_URL = getApiUrl();
 
+function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+
+  return [];
+}
+
 /* =========================
    STATUS HELPER
    Backend chỉ nhận:
@@ -57,7 +67,7 @@ export async function getShowtimeList() {
     );
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 /* =========================
@@ -99,9 +109,7 @@ export async function createShowtime(showtime) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Thêm suất chiếu thất bại!")
-    );
+    throw new Error(getErrorMessage(data, "Thêm suất chiếu thất bại!"));
   }
 
   return data;
@@ -126,9 +134,7 @@ export async function updateShowtime(id, showtime) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Cập nhật suất chiếu thất bại!")
-    );
+    throw new Error(getErrorMessage(data, "Cập nhật suất chiếu thất bại!"));
   }
 
   return data;
@@ -147,9 +153,7 @@ export async function deleteShowtime(id) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Xóa suất chiếu thất bại!")
-    );
+    throw new Error(getErrorMessage(data, "Xóa suất chiếu thất bại!"));
   }
 
   return data;
@@ -173,7 +177,7 @@ export async function getShowtimesByMovie(movieId) {
     );
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 /* =========================
@@ -194,7 +198,7 @@ export async function getShowtimesByRoom(roomId) {
     );
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 /* =========================
@@ -215,7 +219,7 @@ export async function getShowtimeDetailList() {
     );
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 /* =========================
@@ -231,9 +235,7 @@ export async function cancelShowtime(id) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Hủy suất chiếu thất bại!")
-    );
+    throw new Error(getErrorMessage(data, "Hủy suất chiếu thất bại!"));
   }
 
   return data;

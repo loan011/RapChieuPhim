@@ -1,63 +1,57 @@
 import "./Personnel.css";
-import { useEffect, useState } from "react";
-import { getEmployeeList, deleteEmployee } from "./employeeService";
+import { createPortal } from "react-dom";
 
-const MOCK_EMPLOYEES = [
-  { id: 1, name: "Phạm Minh Tuấn", email: "tuan@cinema.vn", phone: "0901111111", position: "Thu ngân", salary: 8000000, status: "Active" },
-  { id: 2, name: "Hoàng Thị Mai", email: "mai@cinema.vn", phone: "0902222222", position: "Quản lý", salary: 15000000, status: "Active" },
-  { id: 3, name: "Võ Thanh Nam", email: "nam@cinema.vn", phone: "0903333333", position: "Nhân viên chiếu phim", salary: 7000000, status: "Active" },
-];
+import {
+  EMPLOYEE_POSITION_OPTIONS,
+  EMPLOYEE_STATUS_OPTIONS,
+  usePersonnel,
 
-export default function NhanVien() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filterPos, setFilterPos] = useState("");
+  getEmployeeId,
+  getEmployeeName,
+  getEmployeeEmail,
+  getEmployeePhone,
+  getEmployeePosition,
+  getEmployeeStatus,
+  getStatusClass,
+  getStatusText,
+} from "./Personnel.js";
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+export default function Personnel() {
+  const {
+    loading,
+    error,
 
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const data = await getEmployeeList();
-      setList(data ?? []);
-    } catch {
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+    search,
+    setSearch,
 
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa nhân viên này?")) return;
-    try {
-      await deleteEmployee(id);
-      setList((prev) => prev.filter((e) => e.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
+    filterPos,
+    setFilterPos,
 
-  const positions = ["Thu ngân", "Bảo vệ", "Nhân viên chiếu phim", "Quản lý"];
+    filtered,
 
-  const filtered = list.filter((e) => {
-    const matchSearch =
-      e.name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.email?.toLowerCase().includes(search.toLowerCase());
-    const matchPos = filterPos ? e.position === filterPos : true;
-    return matchSearch && matchPos;
-  });
+    showModal,
+    editId,
+    form,
+    submitting,
+    formError,
+
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = usePersonnel();
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h4 className="font-bold text-xl">Quản Lý Nhân Viên</h4>
+
         <button
+          type="button"
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={() => alert("TODO: Mở form thêm nhân viên")}
+          onClick={openAddModal}
         >
           + Thêm
         </button>
@@ -67,22 +61,31 @@ export default function NhanVien() {
         <div className="flex flex-wrap gap-2 mb-4">
           <input
             type="text"
-            placeholder="Tìm kiếm..."
+            placeholder="Tìm kiếm theo họ tên, email, số điện thoại..."
             className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-40"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+
           <select
             className="border border-gray-300 rounded px-3 py-1.5 text-sm"
             value={filterPos}
             onChange={(e) => setFilterPos(e.target.value)}
           >
             <option value="">Tất cả vị trí</option>
-            {positions.map((p) => <option key={p}>{p}</option>)}
+
+            {EMPLOYEE_POSITION_OPTIONS.map((position) => (
+              <option key={position.value} value={position.value}>
+                {position.label}
+              </option>
+            ))}
           </select>
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
+        {loading && (
+          <p className="text-gray-500 text-sm">Đang tải...</p>
+        )}
+
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {!loading && !error && (
@@ -90,39 +93,233 @@ export default function NhanVien() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Họ Tên</th>
-                  <th className="px-3 py-2 text-left">Email</th>
-                  <th className="px-3 py-2 text-left">Điện Thoại</th>
-                  <th className="px-3 py-2 text-left">Vị Trí</th>
-                  <th className="px-3 py-2 text-left">Trạng Thái</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
+                  {[
+                    "#",
+                    "Họ Tên",
+                    "Email",
+                    "Điện Thoại",
+                    "Vị Trí",
+                    "Trạng Thái",
+                    "Thao Tác",
+                  ].map((header) => (
+                    <th key={header} className="px-3 py-2 text-left">
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-6 text-gray-400">Không có dữ liệu</td></tr>
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="text-center py-6 text-gray-400"
+                    >
+                      Không có dữ liệu
+                    </td>
+                  </tr>
                 ) : (
-                  filtered.map((e, i) => (
-                    <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{e.name}</td>
-                      <td className="px-3 py-2">{e.email}</td>
-                      <td className="px-3 py-2">{e.phone}</td>
-                      <td className="px-3 py-2">{e.position}</td>
-                      <td className="px-3 py-2">{e.status}</td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button className="text-blue-600 hover:underline text-xs" onClick={() => alert(`TODO: Sửa nhân viên id=${e.id}`)}>Sửa</button>
-                        <button className="text-red-500 hover:underline text-xs" onClick={() => handleDelete(e.id)}>Xóa</button>
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((employee, index) => {
+                    const employeeId = getEmployeeId(employee);
+                    const status = getEmployeeStatus(employee);
+
+                    return (
+                      <tr
+                        key={employeeId ?? index}
+                        className="border-t border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="px-3 py-2">{index + 1}</td>
+
+                        <td className="px-3 py-2 font-medium">
+                          {getEmployeeName(employee)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getEmployeeEmail(employee)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getEmployeePhone(employee)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          {getEmployeePosition(employee)}
+                        </td>
+
+                        <td className="px-3 py-2">
+                          <span className={getStatusClass(status)}>
+                            {getStatusText(status)}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-2 flex gap-2">
+                          <button
+                            type="button"
+                            className="text-blue-600 hover:underline text-xs"
+                            onClick={() => openEditModal(employee)}
+                          >
+                            Sửa
+                          </button>
+
+                          <button
+                            type="button"
+                            className="text-red-500 hover:underline text-xs"
+                            onClick={() => handleDelete(employeeId)}
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+              <h5 className="font-bold text-lg mb-4">
+                {editId !== null ? "Cập Nhật Nhân Viên" : "Thêm Nhân Viên"}
+              </h5>
+
+              {formError && (
+                <p className="text-red-500 text-sm mb-3">{formError}</p>
+              )}
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Họ Tên <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    placeholder="Nhập họ tên nhân viên"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="Nhập email"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Điện Thoại
+                    </label>
+
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="Nhập số điện thoại"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Lương
+                    </label>
+
+                    <input
+                      type="number"
+                      name="salary"
+                      value={form.salary}
+                      onChange={handleChange}
+                      placeholder="Nhập lương"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vị Trí
+                  </label>
+
+                  <select
+                    name="position"
+                    value={form.position}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {EMPLOYEE_POSITION_OPTIONS.map((position) => (
+                      <option key={position.value} value={position.value}>
+                        {position.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Trạng Thái
+                  </label>
+
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    {EMPLOYEE_STATUS_OPTIONS.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
+                    disabled={submitting}
+                  >
+                    Hủy
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? "Đang xử lý..."
+                      : editId !== null
+                      ? "Cập Nhật"
+                      : "Thêm Mới"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

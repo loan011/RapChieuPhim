@@ -1,11 +1,25 @@
 import "../../../styles/Customer/CustomerPages.css";
+import {
+  MdConfirmationNumber,
+  MdLocationOn,
+  MdCalendarToday,
+  MdAccessTime,
+  MdEventSeat,
+  MdQrCode2,
+} from "react-icons/md";
 
 import {
-  TICKET_TEXT as T,
   useTicket,
   getTicketStatusLabel,
   handlePosterError,
 } from "./Ticket.js";
+
+const TABS = [
+  { key: "all", label: "Tất cả" },
+  { key: "upcoming", label: "Sắp chiếu" },
+  { key: "watched", label: "Đã xem" },
+  { key: "cancelled", label: "Đã hủy" },
+];
 
 export default function Ticket() {
   const {
@@ -13,6 +27,7 @@ export default function Ticket() {
     setActiveTab,
     filteredTickets,
     counts,
+    loading,
   } = useTicket();
 
   return (
@@ -20,33 +35,38 @@ export default function Ticket() {
       <div className="cust-wrapper">
         <div className="cust-header">
           <h1>
-            <span className="page-icon">{T.header.icon}</span>
-            {T.header.title}
+            <span className="page-icon">🎫</span>
+            Vé của tôi
           </h1>
-
-          <p>{T.header.description}</p>
+          <p>Danh sách tất cả vé bạn đã đặt</p>
         </div>
 
-        <div className="cust-stats">
-          <div className="cust-stat-card yellow">
-            <span className="stat-num">{counts.all}</span>
-            <span className="stat-label">{T.stats.total}</span>
+        {loading ? (
+          <div className="cust-card p-6 flex justify-center items-center text-gray-500 text-sm">
+            Đang tải danh sách vé...
           </div>
+        ) : (
+          <>
+            <div className="cust-stats">
+              <div className="cust-stat-card yellow">
+                <span className="stat-num">{counts.all}</span>
+                <span className="stat-label">Tổng vé</span>
+              </div>
 
           <div className="cust-stat-card green">
             <span className="stat-num">{counts.upcoming}</span>
-            <span className="stat-label">{T.stats.upcoming}</span>
+            <span className="stat-label">Sắp chiếu</span>
           </div>
 
           <div className="cust-stat-card red">
             <span className="stat-num">{counts.cancelled}</span>
-            <span className="stat-label">{T.stats.cancelled}</span>
+            <span className="stat-label">Đã hủy</span>
           </div>
         </div>
 
         <div className="cust-card">
           <div className="cust-tabs">
-            {T.tabs.map((tab) => (
+            {TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
@@ -65,9 +85,9 @@ export default function Ticket() {
           <div className="cust-body">
             {filteredTickets.length === 0 ? (
               <div className="cust-empty">
-                <div className="cust-empty-icon">{T.empty.icon}</div>
-                <h3>{T.empty.title}</h3>
-                <p>{T.empty.description}</p>
+                <div className="cust-empty-icon">🎟️</div>
+                <h3>Không có vé nào</h3>
+                <p>Bạn chưa có vé trong mục này</p>
               </div>
             ) : (
               filteredTickets.map((ticket) => (
@@ -86,22 +106,22 @@ export default function Ticket() {
 
                     <div className="ticket-meta">
                       <span>
-                        <T.icons.calendar />
+                        <MdCalendarToday />
                         {ticket.date}
                       </span>
 
                       <span>
-                        <T.icons.time />
+                        <MdAccessTime />
                         {ticket.time}
                       </span>
 
                       <span>
-                        <T.icons.location />
+                        <MdLocationOn />
                         {ticket.cinema}
                       </span>
 
                       <span>
-                        <T.icons.ticket />
+                        <MdConfirmationNumber />
                         {ticket.hall}
                       </span>
                     </div>
@@ -109,7 +129,7 @@ export default function Ticket() {
                     <div className="ticket-seats">
                       {ticket.seats.map((seat) => (
                         <span className="seat-chip" key={seat}>
-                          <T.icons.seat className="ticket-seat-icon" />
+                          <MdEventSeat className="ticket-seat-icon" />
                           {seat}
                         </span>
                       ))}
@@ -123,9 +143,9 @@ export default function Ticket() {
                       {getTicketStatusLabel(ticket.status)}
                     </span>
 
-                    {ticket.status === T.statusKeys.upcoming && (
-                      <div className="ticket-qr" title={T.qr.title}>
-                        <T.icons.qr className="ticket-qr-icon" />
+                    {ticket.status === "upcoming" && (
+                      <div className="ticket-qr" title="Mã QR vé">
+                        <MdQrCode2 className="ticket-qr-icon" />
                       </div>
                     )}
                   </div>
@@ -134,6 +154,8 @@ export default function Ticket() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

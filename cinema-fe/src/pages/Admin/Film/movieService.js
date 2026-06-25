@@ -7,9 +7,20 @@ import {
 
 const API_URL = getApiUrl();
 
+function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+
+  return [];
+}
+
 // GET /api/Movies
 export async function getMovieList() {
   const response = await fetch(`${API_URL}/Movies`, {
+    method: "GET",
     headers: getAuthHeaders(),
   });
 
@@ -19,12 +30,13 @@ export async function getMovieList() {
     throw new Error(getErrorMessage(data, "Lấy danh sách phim thất bại!"));
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 // GET /api/MovieCategories
 export async function getMovieCategoryList() {
   const response = await fetch(`${API_URL}/MovieCategories`, {
+    method: "GET",
     headers: getAuthHeaders(),
   });
 
@@ -34,12 +46,13 @@ export async function getMovieCategoryList() {
     throw new Error(getErrorMessage(data, "Lấy danh sách thể loại thất bại!"));
   }
 
-  return data;
+  return normalizeArray(data);
 }
 
 // GET /api/Movies/:id
 export async function getMovieById(id) {
   const response = await fetch(`${API_URL}/Movies/${id}`, {
+    method: "GET",
     headers: getAuthHeaders(),
   });
 

@@ -16,52 +16,6 @@ import {
 
 import { getProfileCustomer, updateProfile } from "../../Admin/User/userService";
 
-export const PROFILE_TEXT = {
-  header: {
-    title: "Thông tin cá nhân",
-    description: "Quản lý thông tin hồ sơ để bảo mật tài khoản",
-  },
-
-  sections: {
-    basicInfo: "Thông tin cơ bản",
-  },
-
-  avatar: {
-    inputId: "avatarFileInput",
-    alt: "Avatar",
-    fallbackName: "Người dùng",
-    defaultUrl: "/images/default-avatar.png",
-  },
-
-  badges: {
-    cannotEdit: "Không thể sửa",
-  },
-
-  buttons: {
-    reset: "Đặt lại",
-    save: "Lưu thông tin",
-    saving: "Đang lưu...",
-  },
-
-  toast: {
-    success: "Cập nhật thông tin thành công!",
-  },
-
-  error: {
-    icon: "⚠️",
-    fetchProfileFailed: "Không thể lấy thông tin cá nhân từ server.",
-    updateProfileFailed: "Cập nhật thông tin cá nhân thất bại!",
-  },
-
-  icons: {
-    save: MdSave,
-    refresh: MdRefresh,
-    camera: MdCameraAlt,
-    check: MdCheckCircle,
-    lock: MdLock,
-  },
-};
-
 export const GENDER_OPTIONS = [
   {
     value: "",
@@ -180,7 +134,7 @@ export function getInitialProfileForm() {
       savedUser.avatarUrl ||
       savedUser.AvatarUrl ||
       localStorage.getItem("avatarUrl") ||
-      PROFILE_TEXT.avatar.defaultUrl,
+      "/images/default-avatar.png",
   };
 }
 
@@ -195,7 +149,7 @@ export function normalizeProfileData(data) {
     avatarUrl:
       data?.avatarUrl ||
       data?.AvatarUrl ||
-      PROFILE_TEXT.avatar.defaultUrl,
+      "/images/default-avatar.png",
   };
 }
 
@@ -266,8 +220,6 @@ export function readAvatarFile(file) {
 }
 
 export function useProfile() {
-  const T = PROFILE_TEXT;
-
   const [initialForm, setInitialForm] = useState(getInitialProfileForm());
   const [form, setForm] = useState(initialForm);
 
@@ -299,7 +251,7 @@ export function useProfile() {
     } catch (err) {
       console.error("Lỗi lấy thông tin profile:", err);
 
-      setError(err.message || T.error.fetchProfileFailed);
+      setError(err.message || "Không thể lấy thông tin cá nhân từ server.");
     } finally {
       setLoading(false);
     }
@@ -355,7 +307,7 @@ export function useProfile() {
         setShowToast(false);
       }, 2700);
     } catch (err) {
-      setError(err.message || T.error.updateProfileFailed);
+      setError(err.message || "Cập nhật thông tin cá nhân thất bại!");
     } finally {
       setLoading(false);
     }

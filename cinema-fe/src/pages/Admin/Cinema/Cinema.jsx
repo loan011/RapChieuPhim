@@ -1,22 +1,31 @@
 import "./Cinema.css";
 import { createPortal } from "react-dom";
-
 import {
-  RAP_CHIEU_TEXT as T,
   CINEMA_STATUS_OPTIONS,
-  useRapChieu,
-  getCinemaIdField,
+  useCinema,
+  getCinemaId,
   getCinemaName,
   getCinemaAddress,
-  getCinemaArea,
+  getCinemaAreaName,
   getCinemaPhone,
   getCinemaEmail,
   getCinemaStatus,
   getAreaId,
   getAreaName,
-  getStatusClassName,
-  getStatusLabel,
-} from "./RapChieu";
+  getStatusClass,
+  getStatusText,
+} from "./Cinema.js";
+
+const TABLE_HEADERS = [
+  "#",
+  "Tên Rạp",
+  "Địa Chỉ",
+  "Khu Vực",
+  "Điện Thoại",
+  "Email",
+  "Trạng Thái",
+  "Thao Tác",
+];
 
 export default function RapChieu() {
   const {
@@ -39,19 +48,19 @@ export default function RapChieu() {
     handleChange,
     handleSubmit,
     handleDelete,
-  } = useRapChieu();
+  } = useCinema();
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">{T.header.title}</h4>
+        <h4 className="font-bold text-xl">Quản Lý Rạp Chiếu</h4>
 
         <button
           type="button"
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
           onClick={openAddModal}
         >
-          {T.buttons.add}
+          + Thêm
         </button>
       </div>
 
@@ -59,14 +68,14 @@ export default function RapChieu() {
         <div className="mb-4">
           <input
             type="text"
-            placeholder={T.search.placeholder}
+            placeholder="Tìm kiếm theo tên, khu vực, địa chỉ, số điện thoại..."
             className="border border-gray-300 rounded px-3 py-1.5 text-sm w-full max-w-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">{T.loading}</p>}
+        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -75,7 +84,7 @@ export default function RapChieu() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  {T.tableHeaders.map((header) => (
+                  {TABLE_HEADERS.map((header) => (
                     <th key={header} className="px-3 py-2 text-left">
                       {header}
                     </th>
@@ -87,15 +96,15 @@ export default function RapChieu() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={T.tableHeaders.length}
+                      colSpan={TABLE_HEADERS.length}
                       className="text-center py-6 text-gray-400"
                     >
-                      {T.empty}
+                      Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
                   filtered.map((cinema, index) => {
-                    const cinemaId = getCinemaIdField(cinema);
+                    const cinemaId = getCinemaId(cinema);
                     const status = getCinemaStatus(cinema);
 
                     return (
@@ -114,7 +123,7 @@ export default function RapChieu() {
                         </td>
 
                         <td className="px-3 py-2">
-                          {getCinemaArea(cinema)}
+                          {getCinemaAreaName(cinema)}
                         </td>
 
                         <td className="px-3 py-2">
@@ -126,8 +135,8 @@ export default function RapChieu() {
                         </td>
 
                         <td className="px-3 py-2">
-                          <span className={getStatusClassName(status)}>
-                            {getStatusLabel(status)}
+                          <span className={getStatusClass(status)}>
+                            {getStatusText(status)}
                           </span>
                         </td>
 
@@ -137,7 +146,7 @@ export default function RapChieu() {
                             className="text-blue-600 hover:underline text-xs"
                             onClick={() => openEditModal(cinema)}
                           >
-                            {T.buttons.edit}
+                            Sửa
                           </button>
 
                           <button
@@ -145,7 +154,7 @@ export default function RapChieu() {
                             className="text-red-500 hover:underline text-xs"
                             onClick={() => handleDelete(cinemaId)}
                           >
-                            {T.buttons.delete}
+                            Xóa
                           </button>
                         </td>
                       </tr>
@@ -163,7 +172,7 @@ export default function RapChieu() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
               <h5 className="font-bold text-lg mb-4">
-                {editId !== null ? T.modal.editTitle : T.modal.addTitle}
+                {editId !== null ? "Cập Nhật Rạp Chiếu" : "Thêm Rạp Chiếu"}
               </h5>
 
               {formError && (
@@ -171,10 +180,10 @@ export default function RapChieu() {
               )}
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {/* Tên rạp */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {T.fields.cinemaName.label}{" "}
-                    <span className="text-red-500">*</span>
+                    Tên Rạp <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -182,15 +191,15 @@ export default function RapChieu() {
                     name="cinemaName"
                     value={form.cinemaName}
                     onChange={handleChange}
-                    placeholder={T.fields.cinemaName.placeholder}
+                    placeholder="Nhập tên rạp chiếu"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
+                {/* Địa chỉ */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {T.fields.address.label}{" "}
-                    <span className="text-red-500">*</span>
+                    Địa Chỉ <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -198,23 +207,24 @@ export default function RapChieu() {
                     name="address"
                     value={form.address}
                     onChange={handleChange}
-                    placeholder={T.fields.address.placeholder}
+                    placeholder="Nhập địa chỉ rạp"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
+                {/* Khu vực */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {T.fields.area.label}
+                    Khu Vực <span className="text-red-500">*</span>
                   </label>
 
                   <select
-                    name="area"
-                    value={form.area}
+                    name="areaId"
+                    value={form.areaId}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
-                    <option value="">{T.fields.area.placeholder}</option>
+                    <option value="">-- Chọn khu vực --</option>
 
                     {areas.map((area) => {
                       const areaId = getAreaId(area);
@@ -228,10 +238,11 @@ export default function RapChieu() {
                   </select>
                 </div>
 
+                {/* Điện thoại + Email */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {T.fields.phone.label}
+                      Điện Thoại
                     </label>
 
                     <input
@@ -239,14 +250,14 @@ export default function RapChieu() {
                       name="phone"
                       value={form.phone}
                       onChange={handleChange}
-                      placeholder={T.fields.phone.placeholder}
+                      placeholder="Số điện thoại"
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {T.fields.email.label}
+                      Email
                     </label>
 
                     <input
@@ -254,15 +265,16 @@ export default function RapChieu() {
                       name="email"
                       value={form.email}
                       onChange={handleChange}
-                      placeholder={T.fields.email.placeholder}
+                      placeholder="Email liên hệ"
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
                 </div>
 
+                {/* Trạng thái */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {T.fields.status.label}
+                    Trạng Thái
                   </label>
 
                   <select
@@ -279,6 +291,7 @@ export default function RapChieu() {
                   </select>
                 </div>
 
+                {/* Nút hành động */}
                 <div className="flex justify-end gap-2 mt-2">
                   <button
                     type="button"
@@ -286,7 +299,7 @@ export default function RapChieu() {
                     className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
                     disabled={submitting}
                   >
-                    {T.buttons.cancel}
+                    Hủy
                   </button>
 
                   <button
@@ -295,10 +308,10 @@ export default function RapChieu() {
                     disabled={submitting}
                   >
                     {submitting
-                      ? T.buttons.processing
+                      ? "Đang xử lý..."
                       : editId !== null
-                      ? T.buttons.update
-                      : T.buttons.create}
+                      ? "Cập Nhật"
+                      : "Thêm Mới"}
                   </button>
                 </div>
               </form>

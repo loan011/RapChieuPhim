@@ -1,10 +1,14 @@
 import "../../../styles/Customer/CustomerPages.css";
+import { MdNotifications } from "react-icons/md";
+import { useNotice, getNoticeTypeConfig } from "./Notice.js";
 
-import {
-  NOTICE_TEXT as T,
-  useNotice,
-  getNoticeTypeConfig,
-} from "./Notice.js";
+const TABS = [
+  { key: "all", label: "Tất cả" },
+  { key: "unread", label: "Chưa đọc" },
+  { key: "promo", label: "Ưu đãi" },
+  { key: "ticket", label: "Vé" },
+  { key: "system", label: "Hệ thống" },
+];
 
 export default function Notice() {
   const {
@@ -13,46 +17,49 @@ export default function Notice() {
     unreadCount,
     promoCount,
     filteredNotices,
-
+    loading,
     setActiveTab,
     markRead,
     markAllRead,
   } = useNotice();
-
-  const EmptyIcon = T.empty.Icon;
 
   return (
     <div className="cust-page">
       <div className="cust-wrapper">
         <div className="cust-header">
           <h1>
-            <span className="page-icon">{T.header.icon}</span>
-            {T.header.title}
+            <span className="page-icon">🔔</span>
+            Thông báo
           </h1>
-
-          <p>{T.header.description}</p>
+          <p>Cập nhật ưu đãi, vé đặt và hoạt động tài khoản</p>
         </div>
 
-        <div className="cust-stats">
-          <div className="cust-stat-card red">
-            <span className="stat-num">{unreadCount}</span>
-            <span className="stat-label">{T.stats.unread}</span>
+        {loading ? (
+          <div className="cust-card p-6 flex justify-center items-center text-gray-500 text-sm">
+            Đang tải thông báo...
           </div>
+        ) : (
+          <>
+            <div className="cust-stats">
+              <div className="cust-stat-card red">
+                <span className="stat-num">{unreadCount}</span>
+                <span className="stat-label">Chưa đọc</span>
+              </div>
 
-          <div className="cust-stat-card yellow">
-            <span className="stat-num">{notices.length}</span>
-            <span className="stat-label">{T.stats.total}</span>
-          </div>
+              <div className="cust-stat-card yellow">
+                <span className="stat-num">{notices.length}</span>
+                <span className="stat-label">Tổng thông báo</span>
+              </div>
 
-          <div className="cust-stat-card green">
-            <span className="stat-num">{promoCount}</span>
-            <span className="stat-label">{T.stats.promo}</span>
-          </div>
-        </div>
+              <div className="cust-stat-card green">
+                <span className="stat-num">{promoCount}</span>
+                <span className="stat-label">Ưu đãi</span>
+              </div>
+            </div>
 
-        <div className="cust-card">
+            <div className="cust-card">
           <div className="cust-tabs">
-            {T.tabs.map((tab) => (
+            {TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
@@ -60,8 +67,7 @@ export default function Notice() {
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
-
-                {tab.key === T.tabKeys.unread && unreadCount > 0 && (
+                {tab.key === "unread" && unreadCount > 0 && (
                   <span className="cust-tab-badge">{unreadCount}</span>
                 )}
               </button>
@@ -71,7 +77,7 @@ export default function Notice() {
           <div className="cust-body">
             <div className="notice-header-actions">
               <span className="notice-count-label">
-                {filteredNotices.length} {T.labels.notification}
+                {filteredNotices.length} thông báo
               </span>
 
               {unreadCount > 0 && (
@@ -80,7 +86,7 @@ export default function Notice() {
                   className="notice-mark-all"
                   onClick={markAllRead}
                 >
-                  {T.buttons.markAllRead}
+                  Đánh dấu tất cả đã đọc
                 </button>
               )}
             </div>
@@ -88,11 +94,10 @@ export default function Notice() {
             {filteredNotices.length === 0 ? (
               <div className="cust-empty">
                 <div className="cust-empty-icon">
-                  <EmptyIcon />
+                  <MdNotifications />
                 </div>
-
-                <h3>{T.empty.title}</h3>
-                <p>{T.empty.description}</p>
+                <h3>Không có thông báo</h3>
+                <p>Bạn đã đọc hết tất cả thông báo</p>
               </div>
             ) : (
               filteredNotices.map((notice) => {
@@ -121,6 +126,8 @@ export default function Notice() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

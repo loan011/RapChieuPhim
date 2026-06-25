@@ -50,7 +50,7 @@ import {
   getSeatPrice,
   groupSeatsByRow,
   buildBookingPayload,
-} from "./booking";
+} from "./booking.js";
 
 export default function Booking() {
   const [searchParams] = useSearchParams();

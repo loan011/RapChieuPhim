@@ -1,18 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-export const LOGOUT_TEXT = {
-  greeting: "Xin chào",
 
-  button: {
-    logout: "Logout",
-  },
-
-  routes: {
-    login: "/login",
-  },
-
-  fallbackUser: "Customer",
-};
 
 export const LOGOUT_STORAGE_KEYS = [
   "token",
@@ -30,7 +18,7 @@ export function getLogoutUserEmail() {
   return (
     localStorage.getItem("userEmail") ||
     localStorage.getItem("email") ||
-    LOGOUT_TEXT.fallbackUser
+    "Customer"
   );
 }
 
@@ -48,7 +36,7 @@ export function useLogout() {
   function handleLogout() {
     clearAuthStorage();
 
-    navigate(LOGOUT_TEXT.routes.login, {
+    navigate("/login", {
       replace: true,
     });
   }

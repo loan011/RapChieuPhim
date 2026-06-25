@@ -1,438 +1,59 @@
 import "./Rate.css";
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
-  getShowtimeList,
-  createShowtime,
-  updateShowtime,
-  deleteShowtime,
-} from "./showtimeService";
-
-import { getMovieList } from "../Film/movieService";
-import { getRoomList } from "../Room/roomService";
-
-const STATUS_OPTIONS = [
-  "Chưa mở bán",
-  "Đang bán",
-  "Hết vé",
-  "Đang chiếu",
-  "Đã chiếu",
-  "Hủy",
-];
-
-const EMPTY_FORM = {
-  movieId: "",
-  roomId: "",
-  showDate: "",
-  startHour: "",
-  endHour: "",
-  basePrice: "",
-  status: "Chưa mở bán",
-};
-
-function normalizeArray(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.$values)) return data.$values;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.result)) return data.result;
-
-  return [];
-}
-
-function getShowtimeId(s) {
-  return (
-    s.showTimeId ??
-    s.ShowTimeId ??
-    s.showtimeId ??
-    s.ShowtimeId ??
-    s.id ??
-    s.Id
-  );
-}
-
-function getMovieId(m) {
-  return m.movieId ?? m.MovieId ?? m.id ?? m.Id;
-}
-
-function getMovieTitle(m) {
-  return (
-    m.title ??
-    m.Title ??
-    m.movieTitle ??
-    m.MovieTitle ??
-    m.name ??
-    m.Name ??
-    "Chưa có tên phim"
-  );
-}
-
-function getRoomId(r) {
-  return r.roomId ?? r.RoomId ?? r.id ?? r.Id;
-}
-
-function getRoomName(r) {
-  return r.roomName ?? r.RoomName ?? r.name ?? r.Name ?? "Chưa có phòng";
-}
-
-function getRoomFullName(r) {
-  const roomName = getRoomName(r);
-
-  const cinemaName =
-    r.cinemaName ??
-    r.CinemaName ??
-    r.cinema?.cinemaName ??
-    r.cinema?.CinemaName ??
-    r.Cinema?.cinemaName ??
-    r.Cinema?.CinemaName;
-
-  if (cinemaName) {
-    return `${roomName} - ${cinemaName}`;
-  }
-
-  const cinemaId = r.cinemaId ?? r.CinemaId;
-
-  if (cinemaId) {
-    return `${roomName} - Cinema ${cinemaId}`;
-  }
-
-  return roomName;
-}
-
-function getShowtimeMovieId(s) {
-  return (
-    s.movieId ??
-    s.MovieId ??
-    s.movie?.movieId ??
-    s.movie?.MovieId ??
-    s.Movie?.movieId ??
-    s.Movie?.MovieId
-  );
-}
-
-function getShowtimeRoomId(s) {
-  return (
-    s.roomId ??
-    s.RoomId ??
-    s.room?.roomId ??
-    s.room?.RoomId ??
-    s.Room?.roomId ??
-    s.Room?.RoomId
-  );
-}
-
-function getShowtimeMovieTitle(s, movies) {
-  const directTitle =
-    s.movieTitle ??
-    s.MovieTitle ??
-    s.movie?.title ??
-    s.movie?.Title ??
-    s.Movie?.title ??
-    s.Movie?.Title;
-
-  if (directTitle) return directTitle;
-
-  const movieId = getShowtimeMovieId(s);
-
-  if (movieId) {
-    const foundMovie = movies.find(
-      (movie) => String(getMovieId(movie)) === String(movieId)
-    );
-
-    if (foundMovie) return getMovieTitle(foundMovie);
-  }
-
-  return "Chưa có phim";
-}
-
-function getShowtimeRoomName(s, rooms) {
-  const directRoom =
-    s.roomName ??
-    s.RoomName ??
-    s.room?.roomName ??
-    s.room?.RoomName ??
-    s.Room?.roomName ??
-    s.Room?.RoomName;
-
-  if (directRoom) return directRoom;
-
-  const roomId = getShowtimeRoomId(s);
-
-  if (roomId) {
-    const foundRoom = rooms.find(
-      (room) => String(getRoomId(room)) === String(roomId)
-    );
-
-    if (foundRoom) return getRoomFullName(foundRoom);
-  }
-
-  return "Chưa có phòng";
-}
-
-function getStartDateTime(s) {
-  return s.startTime ?? s.StartTime ?? "";
-}
-
-function getEndDateTime(s) {
-  return s.endTime ?? s.EndTime ?? "";
-}
-
-function getShowDate(s) {
-  const showDate = s.showDate ?? s.ShowDate;
-
-  if (showDate) {
-    return String(showDate).split("T")[0];
-  }
-
-  const startTime = getStartDateTime(s);
-
-  if (!startTime) return "";
-
-  if (String(startTime).includes("T")) {
-    return String(startTime).split("T")[0];
-  }
-
-  return "";
-}
-
-function getStartHour(s) {
-  const value = getStartDateTime(s);
-
-  if (!value) return "";
-
-  if (String(value).includes("T")) {
-    return String(value).split("T")[1]?.slice(0, 5) || "";
-  }
-
-  return String(value).slice(0, 5);
-}
-
-function getEndHour(s) {
-  const value = getEndDateTime(s);
-
-  if (!value) return "";
-
-  if (String(value).includes("T")) {
-    return String(value).split("T")[1]?.slice(0, 5) || "";
-  }
-
-  return String(value).slice(0, 5);
-}
-
-function getBasePrice(s) {
-  return s.basePrice ?? s.BasePrice ?? s.price ?? s.Price ?? 0;
-}
-
-function getStatus(s) {
-  const status = s.status ?? s.Status ?? "Chưa mở bán";
-
-  if (status === "Active") return "Đang bán";
-  if (status === "Inactive") return "Hủy";
-
-  return status;
-}
-
-function formatMoney(value) {
-  const number = Number(value);
-
-  if (Number.isNaN(number)) return "0 đ";
-
-  return `${number.toLocaleString("vi-VN")} đ`;
-}
-
-export default function SuatChieu() {
-  const [list, setList] = useState([]);
-  const [movies, setMovies] = useState([]);
-  const [rooms, setRooms] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [search, setSearch] = useState("");
-  const [filterDate, setFilterDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-
-  const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formError, setFormError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      setError("");
-
-      const [showtimeData, movieData, roomData] = await Promise.all([
-        getShowtimeList(),
-        getMovieList(),
-        getRoomList(),
-      ]);
-
-      console.log("SHOWTIME API DATA:", showtimeData);
-      console.log("MOVIE API DATA:", movieData);
-      console.log("ROOM API DATA:", roomData);
-
-      setList(normalizeArray(showtimeData));
-      setMovies(normalizeArray(movieData));
-      setRooms(normalizeArray(roomData));
-    } catch (err) {
-      console.error("Lỗi tải dữ liệu suất chiếu:", err);
-      setError(err?.message || "Không tải được dữ liệu suất chiếu.");
-      setList([]);
-      setMovies([]);
-      setRooms([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function openAddModal() {
-    setEditId(null);
-    setForm(EMPTY_FORM);
-    setFormError("");
-    setShowModal(true);
-  }
-
-  function openEditModal(item) {
-    setEditId(getShowtimeId(item));
-
-    setForm({
-      movieId: getShowtimeMovieId(item) ?? "",
-      roomId: getShowtimeRoomId(item) ?? "",
-      showDate: getShowDate(item),
-      startHour: getStartHour(item),
-      endHour: getEndHour(item),
-      basePrice: getBasePrice(item),
-      status: getStatus(item),
-    });
-
-    setFormError("");
-    setShowModal(true);
-  }
-
-  function closeModal() {
-    setShowModal(false);
-    setEditId(null);
-    setForm(EMPTY_FORM);
-    setFormError("");
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setFormError("");
-
-    if (!form.movieId) {
-      setFormError("Vui lòng chọn phim.");
-      return;
-    }
-
-    if (!form.roomId) {
-      setFormError("Vui lòng chọn phòng chiếu.");
-      return;
-    }
-
-    if (!form.showDate) {
-      setFormError("Vui lòng chọn ngày chiếu.");
-      return;
-    }
-
-    if (!form.startHour) {
-      setFormError("Vui lòng chọn giờ bắt đầu.");
-      return;
-    }
-
-    if (!form.endHour) {
-      setFormError("Vui lòng chọn giờ kết thúc.");
-      return;
-    }
-
-    if (!form.basePrice || Number(form.basePrice) <= 0) {
-      setFormError("Vui lòng nhập giá vé hợp lệ.");
-      return;
-    }
-
-    const payload = {
-      movieId: Number(form.movieId),
-      roomId: Number(form.roomId),
-      showDate: form.showDate,
-      startTime: form.startHour,
-      endTime: form.endHour,
-      basePrice: Number(form.basePrice),
-      status: form.status,
-    };
-
-    console.log("SHOWTIME PAYLOAD:", payload);
-    console.log("EDIT ID:", editId);
-
-    try {
-      setSubmitting(true);
-
-      if (editId !== null) {
-        await updateShowtime(editId, payload);
-      } else {
-        await createShowtime(payload);
-      }
-
-      closeModal();
-      fetchData();
-    } catch (err) {
-      console.error("Lỗi lưu suất chiếu:", err);
-      setFormError(err?.message || "Lưu suất chiếu thất bại.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa suất chiếu này?")) return;
-
-    try {
-      await deleteShowtime(id);
-      fetchData();
-    } catch (err) {
-      alert(err?.message || "Xóa suất chiếu thất bại.");
-    }
-  }
-
-  const filtered = list
-    .filter((item) => {
-      const keyword = search.toLowerCase().trim();
-
-      const movieTitle = getShowtimeMovieTitle(item, movies).toLowerCase();
-      const roomName = getShowtimeRoomName(item, rooms).toLowerCase();
-      const showDate = getShowDate(item);
-      const status = getStatus(item);
-
-      const matchSearch =
-        movieTitle.includes(keyword) || roomName.includes(keyword);
-
-      const matchDate = filterDate ? showDate === filterDate : true;
-
-      const matchStatus = filterStatus ? status === filterStatus : true;
-
-      return matchSearch && matchDate && matchStatus;
-    })
-    .sort((a, b) => {
-      const dateA = `${getShowDate(a)} ${getStartHour(a)}`;
-      const dateB = `${getShowDate(b)} ${getStartHour(b)}`;
-
-      return dateA.localeCompare(dateB);
-    });
+  STATUS_OPTIONS,
+  useRate,
+
+  getShowtimeId,
+  getShowtimeMovieTitle,
+  getShowtimeRoomName,
+  getShowDate,
+  getStartHour,
+  getEndHour,
+  getBasePrice,
+  getStatus,
+  formatMoney,
+
+  getMovieId,
+  getMovieTitle,
+  getRoomId,
+  getRoomFullName,
+} from "./Rate.js";
+
+export default function Rate() {
+  const {
+    list,
+    movies,
+    rooms,
+
+    loading,
+    error,
+
+    search,
+    setSearch,
+
+    filterDate,
+    setFilterDate,
+
+    filterStatus,
+    setFilterStatus,
+
+    showModal,
+    editId,
+    form,
+    formError,
+    submitting,
+
+    filtered,
+
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = useRate();
 
   return (
     <div>
@@ -440,6 +61,7 @@ export default function SuatChieu() {
         <h4 className="font-bold text-xl">Quản Lý Suất Chiếu</h4>
 
         <button
+          type="button"
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
           onClick={openAddModal}
         >
@@ -479,23 +101,33 @@ export default function SuatChieu() {
           </select>
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
+        {loading && (
+          <p className="text-gray-500 text-sm">Đang tải...</p>
+        )}
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm">{error}</p>
+        )}
 
         {!loading && !error && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Phim</th>
-                  <th className="px-3 py-2 text-left">Phòng Chiếu</th>
-                  <th className="px-3 py-2 text-left">Ngày Chiếu</th>
-                  <th className="px-3 py-2 text-left">Giờ Chiếu</th>
-                  <th className="px-3 py-2 text-left">Giá Vé</th>
-                  <th className="px-3 py-2 text-left">Trạng Thái</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
+                  {[
+                    "#",
+                    "Phim",
+                    "Phòng Chiếu",
+                    "Ngày Chiếu",
+                    "Giờ Chiếu",
+                    "Giá Vé",
+                    "Trạng Thái",
+                    "Thao Tác",
+                  ].map((header) => (
+                    <th key={header} className="px-3 py-2 text-left">
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
@@ -514,10 +146,7 @@ export default function SuatChieu() {
                     const id = getShowtimeId(item);
 
                     return (
-                      <tr
-                        key={id ?? index}
-                        className="border-t border-gray-100 hover:bg-gray-50"
-                      >
+                      <tr key={id ?? index} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-3 py-2">{index + 1}</td>
 
                         <td className="px-3 py-2 font-medium">
@@ -528,21 +157,28 @@ export default function SuatChieu() {
                           {getShowtimeRoomName(item, rooms)}
                         </td>
 
-                        <td className="px-3 py-2">{getShowDate(item)}</td>
+                        <td className="px-3 py-2">
+                          {getShowDate(item)}
+                        </td>
 
                         <td className="px-3 py-2">
                           {getStartHour(item)}
-                          {getEndHour(item) ? ` - ${getEndHour(item)}` : ""}
+                          {getEndHour(item)
+                            ? ` - ${getEndHour(item)}`
+                            : ""}
                         </td>
 
                         <td className="px-3 py-2">
                           {formatMoney(getBasePrice(item))}
                         </td>
 
-                        <td className="px-3 py-2">{getStatus(item)}</td>
+                        <td className="px-3 py-2">
+                          {getStatus(item)}
+                        </td>
 
                         <td className="px-3 py-2 flex gap-2">
                           <button
+                            type="button"
                             className="text-blue-600 hover:underline text-xs"
                             onClick={() => openEditModal(item)}
                           >
@@ -550,6 +186,7 @@ export default function SuatChieu() {
                           </button>
 
                           <button
+                            type="button"
                             className="text-red-500 hover:underline text-xs"
                             onClick={() => handleDelete(id)}
                           >
@@ -571,9 +208,7 @@ export default function SuatChieu() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6">
               <h5 className="font-bold text-lg mb-4 text-gray-800">
-                {editId !== null
-                  ? "Cập Nhật Suất Chiếu"
-                  : "Thêm Suất Chiếu Mới"}
+                {editId !== null ? "Cập Nhật Suất Chiếu" : "Thêm Suất Chiếu Mới"}
               </h5>
 
               {formError && (
@@ -644,7 +279,7 @@ export default function SuatChieu() {
                       name="showDate"
                       value={form.showDate}
                       onChange={handleChange}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
 
@@ -658,7 +293,7 @@ export default function SuatChieu() {
                       name="startHour"
                       value={form.startHour}
                       onChange={handleChange}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
 
@@ -672,7 +307,7 @@ export default function SuatChieu() {
                       name="endHour"
                       value={form.endHour}
                       onChange={handleChange}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
                 </div>
@@ -690,7 +325,7 @@ export default function SuatChieu() {
                       onChange={handleChange}
                       placeholder="VD: 75000"
                       min="0"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
 

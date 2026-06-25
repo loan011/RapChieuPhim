@@ -12,75 +12,6 @@ import {
   getRecentTickets,
 } from "./dashboardService";
 
-export const DASHBOARD_TEXT = {
-  welcome: {
-    title: "👋 Xin chào Admin!",
-    description:
-      "Chào mừng bạn đến với hệ thống quản lý rạp chiếu phim T&M.",
-  },
-
-  cards: {
-    totalMovies: "Tổng Phim",
-    totalUsers: "Người Dùng",
-    totalTickets: "Vé Đã Bán",
-    revenue: "Doanh Thu (VND)",
-  },
-
-  recentTickets: {
-    title: "Vé Đặt Gần Đây",
-    headers: [
-      "#",
-      "Tên Phim",
-      "Khách Hàng",
-      "Ghế",
-      "Giá Vé",
-      "Ngày Đặt",
-    ],
-  },
-
-  messages: {
-    loading: "Đang tải dữ liệu...",
-    loadFailed: "Lấy dữ liệu dashboard thất bại!",
-    emptyRecentTickets: "Chưa có dữ liệu.",
-  },
-
-  classNames: {
-    welcomeBox:
-      "mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-100",
-
-    welcomeTitle: "font-bold text-lg mb-1",
-
-    welcomeDesc: "text-gray-500 text-sm",
-
-    statsGrid: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-6",
-
-    statCard:
-      "text-white rounded-lg p-4 flex items-center justify-between shadow",
-
-    statValue: "text-2xl font-bold",
-
-    statLabel: "text-sm opacity-90",
-
-    statIcon: "text-4xl opacity-70",
-
-    recentBox:
-      "bg-white rounded-lg shadow-sm border border-gray-100 p-4",
-
-    recentTitle: "font-semibold text-gray-700 mb-3",
-
-    loadingText: "text-gray-500 text-sm",
-
-    errorText: "text-red-500 text-sm",
-
-    emptyText: "text-gray-400 text-sm",
-
-    tableHead: "px-3 py-2 text-left",
-
-    tableCell: "px-3 py-2",
-
-    tableRow: "border-t border-gray-100 hover:bg-gray-50",
-  },
-};
 
 export const DEFAULT_DASHBOARD_STATS = {
   totalMovies: 0,
@@ -214,28 +145,28 @@ export function buildDashboardCards(stats) {
   return [
     {
       key: "totalMovies",
-      label: DASHBOARD_TEXT.cards.totalMovies,
+      label: "Tổng Phim",
       value: stats.totalMovies,
       Icon: MdMovie,
       color: "bg-blue-500",
     },
     {
       key: "totalUsers",
-      label: DASHBOARD_TEXT.cards.totalUsers,
+      label: "Người Dùng",
       value: stats.totalUsers,
       Icon: MdPeople,
       color: "bg-green-500",
     },
     {
       key: "totalTickets",
-      label: DASHBOARD_TEXT.cards.totalTickets,
+      label: "Vé Đã Bán",
       value: stats.totalTickets,
       Icon: MdConfirmationNumber,
       color: "bg-orange-500",
     },
     {
       key: "revenue",
-      label: DASHBOARD_TEXT.cards.revenue,
+      label: "Doanh Thu (VND)",
       value: formatMoney(stats.revenue),
       Icon: MdTrendingUp,
       color: "bg-purple-500",
@@ -244,8 +175,6 @@ export function buildDashboardCards(stats) {
 }
 
 export function useDashboard() {
-  const T = DASHBOARD_TEXT;
-
   const [stats, setStats] = useState(DEFAULT_DASHBOARD_STATS);
   const [recentTickets, setRecentTickets] = useState([]);
 
@@ -273,7 +202,7 @@ export function useDashboard() {
 
       setStats(DEFAULT_DASHBOARD_STATS);
       setRecentTickets([]);
-      setError(err.message || T.messages.loadFailed);
+      setError(err.message || "Lấy dữ liệu dashboard thất bại!");
     } finally {
       setLoading(false);
     }

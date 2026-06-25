@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getMovieList, getAreaList as getServiceAreaList } from "./moviesService.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,116 +18,21 @@ export const MOVIE_TABS = [
     key: "now",
     label: "PHIM ĐANG CHIẾU",
     status: MOVIE_STATUS.now,
-    endpoint: `${API_URL}/Movies/ByStatus/${encodeURIComponent(
-      MOVIE_STATUS.now
-    )}`,
     tag: "HOT",
   },
   {
     key: "coming",
     label: "PHIM SẮP CHIẾU",
     status: MOVIE_STATUS.coming,
-    endpoint: `${API_URL}/Movies/ByStatus/${encodeURIComponent(
-      MOVIE_STATUS.coming
-    )}`,
     tag: "SOON",
   },
   {
     key: "special",
     label: "SUẤT CHIẾU ĐẶC BIỆT",
     status: MOVIE_STATUS.special,
-    endpoint: `${API_URL}/Movies/ByStatus/${encodeURIComponent(
-      MOVIE_STATUS.special
-    )}`,
     tag: "SPECIAL",
   },
 ];
-
-/* =========================
-   TEXT / ROUTES
-========================= */
-
-export const MOVIES_TEXT = {
-  logo: {
-    main: "Cinemas",
-    sub: "HCM",
-  },
-
-  routes: {
-    home: "/",
-    login: "/login",
-    register: "/register",
-    movies: "/movies",
-    cinema: "/cinema",
-    ticketPrice: "/ticket-price",
-    booking: "/booking",
-  },
-
-  anchors: {
-    news: "#news",
-    franchise: "#franchise",
-    member: "#member",
-  },
-
-  auth: {
-    login: "Đăng nhập",
-    register: "Đăng ký",
-    language: "GB",
-  },
-
-  nav: {
-    movies: "PHIM",
-    showtimesByCinema: "LỊCH CHIẾU THEO RẠP",
-    cinema: "RẠP",
-    ticketPrice: "GIÁ VÉ",
-    news: "TIN MỚI VÀ ƯU ĐÃI",
-    franchise: "NHƯỢNG QUYỀN",
-    member: "THÀNH VIÊN",
-  },
-
-  select: {
-    areaPlaceholder: "Chọn rạp HCM",
-  },
-
-  loading: {
-    movies: "Đang tải phim...",
-  },
-
-  empty: {
-    noMovies: "Không có phim trong mục này.",
-  },
-
-  buttons: {
-    play: "▶",
-    buyTicket: "🎟️ MUA VÉ",
-  },
-
-  movieInfo: {
-    genre: "Thể loại:",
-    duration: "Thời lượng:",
-    releaseDate: "Khởi chiếu:",
-    status: "Trạng thái:",
-  },
-
-  trailer: {
-    heading: "TRAILER",
-    titlePrefix: "Trailer",
-    close: "×",
-    noTrailer: "Phim này chưa có trailer.",
-  },
-
-  fallback: {
-    poster: "/img/no-image.png",
-  },
-
-  messages: {
-    loadCategoriesError: "Lỗi tải thể loại:",
-    loadAreasError: "Lỗi tải khu vực:",
-    loadMoviesError: "Lỗi tải phim:",
-    loadInitialError: "Lỗi tải dữ liệu ban đầu:",
-    sessionExpired: "Phiên đăng nhập đã hết hạn.",
-  },
-};
 
 /* =========================
    API HELPER
@@ -210,30 +116,26 @@ async function fetchGet(url) {
 
 export async function getMoviesByTab(tabKey) {
   const tab = MOVIE_TABS.find((item) => item.key === tabKey);
+  if (!tab) return [];
 
-  if (!tab) {
-    return [];
-  }
+  // Gọi service lấy danh sách phim
+  const data = await getMovieList();
+  const list = normalizeArray(data);
 
-  console.log("API phim đang gọi:", tab.endpoint);
-
-  const data = await fetchGet(tab.endpoint);
-
-  return normalizeArray(data);
+  // Lọc phim theo trạng thái tab nếu backend trả về tất cả
+  return list.filter((m) => {
+    const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
+    return status.includes(tab.status.toLowerCase()) || status === tab.key;
+  });
 }
 
 export async function getMovieCategories() {
-  const data = await fetchGet(`${API_URL}/MovieCategories`);
-  const categories = normalizeArray(data);
-
-  movieCategoryCache = categories;
-
-  return categories;
+  // Lấy danh sách phim để thu thập thể loại, hoặc trả về rỗng nếu không có API categories riêng biệt
+  return [];
 }
 
 export async function getAreaList() {
-  const data = await fetchGet(`${API_URL}/Areas`);
-
+  const data = await getServiceAreaList();
   return normalizeArray(data);
 }
 
@@ -329,7 +231,7 @@ export function getMovieImage(movie) {
     movie?.Poster ||
     "";
 
-  if (!image) return MOVIES_TEXT.fallback.poster;
+  if (!image) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
 
   if (image.startsWith("http://") || image.startsWith("https://")) {
     return image;
@@ -669,7 +571,7 @@ export function useMovies() {
 
       movieCategoryCache = data.categories;
     } catch (error) {
-      console.error(MOVIES_TEXT.messages.loadInitialError, error);
+      console.error("Lỗi tải thông tin danh mục hoặc khu vực ban đầu:", error);
 
       setCategories([]);
       setAreas([]);
@@ -687,7 +589,7 @@ export function useMovies() {
 
       setMovies(Array.isArray(apiMovies) ? apiMovies : []);
     } catch (error) {
-      console.error(MOVIES_TEXT.messages.loadMoviesError, error);
+      console.error("Lỗi tải danh sách phim theo tab:", error);
 
       setMovies([]);
     } finally {
@@ -715,7 +617,7 @@ export function useMovies() {
   function getBookingLink(movie) {
     const movieId = getMovieId(movie);
 
-    return `${MOVIES_TEXT.routes.booking}?movie=${movieId}${
+    return `/booking?movie=${movieId}${
       selectedAreaId ? `&area=${selectedAreaId}` : ""
     }`;
   }

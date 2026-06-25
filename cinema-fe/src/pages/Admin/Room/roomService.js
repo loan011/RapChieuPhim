@@ -1,24 +1,55 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../../services/apiHelper";
+import {
+  getApiUrl,
+  readResponse,
+  getErrorMessage,
+  getAuthHeaders,
+} from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
+
+function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+
+  return [];
+}
 
 // GET /api/Rooms
 export async function getRoomList() {
   const response = await fetch(`${API_URL}/Rooms`, {
+    method: "GET",
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy danh sách phòng chiếu thất bại!"));
-  return data;
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "Lấy danh sách phòng chiếu thất bại!")
+    );
+  }
+
+  return normalizeArray(data);
 }
 
 // GET /api/Rooms/:id
 export async function getRoomById(id) {
   const response = await fetch(`${API_URL}/Rooms/${id}`, {
+    method: "GET",
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy thông tin phòng chiếu thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "Lấy thông tin phòng chiếu thất bại!")
+    );
+  }
+
   return data;
 }
 
@@ -29,8 +60,15 @@ export async function createRoom(room) {
     headers: getAuthHeaders(),
     body: JSON.stringify(room),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Thêm phòng chiếu thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "Thêm phòng chiếu thất bại!")
+    );
+  }
+
   return data;
 }
 
@@ -41,8 +79,15 @@ export async function updateRoom(id, room) {
     headers: getAuthHeaders(),
     body: JSON.stringify(room),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật phòng chiếu thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "Cập nhật phòng chiếu thất bại!")
+    );
+  }
+
   return data;
 }
 
@@ -52,7 +97,14 @@ export async function deleteRoom(id) {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Xóa phòng chiếu thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage(data, "Xóa phòng chiếu thất bại!")
+    );
+  }
+
   return data;
 }

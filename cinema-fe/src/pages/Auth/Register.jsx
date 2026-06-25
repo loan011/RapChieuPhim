@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import "../../styles/Register.css";
 
-import { REGISTER_TEXT as T, useRegister } from "./register";
+import { useRegister } from "./Register.js";
 
 function Register() {
   const {
@@ -15,44 +15,51 @@ function Register() {
     handleGoogleRegister,
   } = useRegister();
 
+  const genderOptions = [
+    { value: "Giới tính", label: "Giới tính" },
+    { value: "Nam", label: "Nam" },
+    { value: "Nữ", label: "Nữ" },
+    { value: "Khác", label: "Khác" },
+  ];
+
   return (
     <div className="auth-page">
-      <Link to={T.routes.home} className="back-home-btn" title={T.titles.backHome}>
-        {T.icons.home}
+      <Link to="/" className="back-home-btn" title="Về trang chủ">
+        🏠
       </Link>
 
       <div className="auth-box-page">
         <div className="auth-tabs">
-          <Link to={T.routes.login}>{T.tabs.login}</Link>
+          <Link to="/login">ĐĂNG NHẬP</Link>
 
           <button type="button" className="active">
-            {T.tabs.register}
+            ĐĂNG KÝ
           </button>
         </div>
 
         <form className="register-form" onSubmit={handleRegister}>
           <div>
-            <label>{T.fields.name.label}</label>
+            <label>* Họ tên</label>
             <input
               name="name"
               type="text"
-              placeholder={T.fields.name.placeholder}
+              placeholder="Họ tên"
               value={form.name}
               onChange={handleChange}
               required
             />
 
-            <label>{T.fields.password.label}</label>
+            <label>* Mật khẩu</label>
             <input
               name="password"
               type="password"
-              placeholder={T.fields.password.placeholder}
+              placeholder="Mật khẩu"
               value={form.password}
               onChange={handleChange}
               required
             />
 
-            <label>{T.fields.birthday.label}</label>
+            <label>* Ngày sinh</label>
             <input
               name="birthday"
               type="date"
@@ -61,11 +68,11 @@ function Register() {
               required
             />
 
-            <label>{T.fields.phone.label}</label>
+            <label>* Số điện thoại</label>
             <input
               name="phone"
               type="text"
-              placeholder={T.fields.phone.placeholder}
+              placeholder="Số điện thoại"
               value={form.phone}
               onChange={handleChange}
               required
@@ -73,33 +80,33 @@ function Register() {
           </div>
 
           <div>
-            <label>{T.fields.email.label}</label>
+            <label>* Email</label>
             <input
               name="email"
               type="email"
-              placeholder={T.fields.email.placeholder}
+              placeholder="Email"
               value={form.email}
               onChange={handleChange}
               required
             />
 
-            <label>{T.fields.confirmPassword.label}</label>
+            <label>* Xác nhận lại mật khẩu</label>
             <input
               name="confirmPassword"
               type="password"
-              placeholder={T.fields.confirmPassword.placeholder}
+              placeholder="Xác nhận lại mật khẩu"
               value={form.confirmPassword}
               onChange={handleChange}
               required
             />
 
-            <label>{T.fields.gender.label}</label>
+            <label>Giới tính</label>
             <select
               name="gender"
               value={form.gender}
               onChange={handleChange}
             >
-              {T.genderOptions.map((item) => (
+              {genderOptions.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
@@ -114,13 +121,13 @@ function Register() {
               checked={form.policy}
               onChange={handleCheckboxChange}
             />{" "}
-            {T.policy}
+            Tôi cam kết tuân theo chính sách bảo mật và điều khoản sử dụng.
           </p>
 
           {error && <p className="register-error-text">{error}</p>}
 
           <button className="blue-btn" type="submit" disabled={loading}>
-            {loading ? T.buttons.registering : T.buttons.register}
+            {loading ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ"}
           </button>
 
           <button
@@ -128,7 +135,7 @@ function Register() {
             className="pink-btn"
             onClick={handleGoogleRegister}
           >
-            {T.buttons.googleRegister}
+            TIẾP TỤC VỚI GOOGLE
           </button>
         </form>
       </div>

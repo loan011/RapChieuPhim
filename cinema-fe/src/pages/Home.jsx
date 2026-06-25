@@ -29,7 +29,7 @@ import {
   getStartHour,
   getShowtimeStatus,
   isBookable,
-} from "./home";
+} from "./home.js";
 
 function Home() {
   const {

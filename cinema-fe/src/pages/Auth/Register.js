@@ -3,106 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { registerApi } from "../../services/authService";
 
-export const REGISTER_TEXT = {
-  routes: {
-    home: "/",
-    login: "/login",
-  },
 
-  icons: {
-    home: "🏠",
-  },
-
-  tabs: {
-    login: "ĐĂNG NHẬP",
-    register: "ĐĂNG KÝ",
-  },
-
-  titles: {
-    backHome: "Về trang chủ",
-  },
-
-  fields: {
-    name: {
-      label: "* Họ tên",
-      placeholder: "Họ tên",
-    },
-
-    email: {
-      label: "* Email",
-      placeholder: "Email",
-    },
-
-    password: {
-      label: "* Mật khẩu",
-      placeholder: "Mật khẩu",
-    },
-
-    confirmPassword: {
-      label: "* Xác nhận lại mật khẩu",
-      placeholder: "Xác nhận lại mật khẩu",
-    },
-
-    birthday: {
-      label: "* Ngày sinh",
-    },
-
-    phone: {
-      label: "* Số điện thoại",
-      placeholder: "Số điện thoại",
-    },
-
-    gender: {
-      label: "Giới tính",
-    },
-  },
-
-  genderOptions: [
-    {
-      value: "Giới tính",
-      label: "Giới tính",
-    },
-    {
-      value: "Nam",
-      label: "Nam",
-    },
-    {
-      value: "Nữ",
-      label: "Nữ",
-    },
-    {
-      value: "Khác",
-      label: "Khác",
-    },
-  ],
-
-  policy: "Tôi cam kết tuân theo chính sách bảo mật và điều khoản sử dụng.",
-
-  buttons: {
-    register: "ĐĂNG KÝ",
-    registering: "ĐANG ĐĂNG KÝ...",
-    googleRegister: "TIẾP TỤC VỚI GOOGLE",
-  },
-
-  roleName: "Customer",
-
-  messages: {
-    nameRequired: "Vui lòng nhập họ tên!",
-    emailRequired: "Vui lòng nhập email!",
-    emailInvalid: "Email không đúng định dạng!",
-    passwordRequired: "Vui lòng nhập mật khẩu!",
-    passwordMinLength: "Mật khẩu phải có ít nhất 6 ký tự!",
-    confirmPasswordNotMatch: "Mật khẩu xác nhận không khớp!",
-    birthdayRequired: "Vui lòng nhập ngày sinh!",
-    phoneInvalid: "Số điện thoại phải gồm đúng 10 chữ số!",
-    genderRequired: "Vui lòng chọn giới tính!",
-    policyRequired: "Bạn phải đồng ý với điều khoản sử dụng!",
-    registerSuccess: "Đăng ký thành công!",
-    serverError:
-      "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.",
-    googleNotReady: "Chức năng đăng ký Google chưa được cấu hình!",
-  },
-};
 
 const INITIAL_REGISTER_FORM = {
   name: "",
@@ -117,7 +18,6 @@ const INITIAL_REGISTER_FORM = {
 
 export function useRegister() {
   const navigate = useNavigate();
-  const T = REGISTER_TEXT;
 
   const [form, setForm] = useState(INITIAL_REGISTER_FORM);
   const [error, setError] = useState("");
@@ -156,56 +56,56 @@ export function useRegister() {
     const policy = form.policy;
 
     if (!name) {
-      setError(T.messages.nameRequired);
+      setError("Vui lòng nhập họ tên!");
       return false;
     }
 
     if (!email) {
-      setError(T.messages.emailRequired);
+      setError("Vui lòng nhập email!");
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      setError(T.messages.emailInvalid);
+      setError("Email không đúng định dạng!");
       return false;
     }
 
     if (!password) {
-      setError(T.messages.passwordRequired);
+      setError("Vui lòng nhập mật khẩu!");
       return false;
     }
 
     if (password.length < 6) {
-      setError(T.messages.passwordMinLength);
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
       return false;
     }
 
     if (password !== confirmPassword) {
-      setError(T.messages.confirmPasswordNotMatch);
+      setError("Mật khẩu xác nhận không khớp!");
       return false;
     }
 
     if (!birthday) {
-      setError(T.messages.birthdayRequired);
+      setError("Vui lòng nhập ngày sinh!");
       return false;
     }
 
     const phoneRegex = /^[0-9]{10}$/;
 
     if (!phoneRegex.test(phone)) {
-      setError(T.messages.phoneInvalid);
+      setError("Số điện thoại phải gồm đúng 10 chữ số!");
       return false;
     }
 
     if (gender === "Giới tính") {
-      setError(T.messages.genderRequired);
+      setError("Vui lòng chọn giới tính!");
       return false;
     }
 
     if (!policy) {
-      setError(T.messages.policyRequired);
+      setError("Bạn phải đồng ý với điều khoản sử dụng!");
       return false;
     }
 
@@ -221,7 +121,7 @@ export function useRegister() {
       dateOfBirth: form.birthday.trim(),
       gender: form.gender,
       phone: form.phone.trim(),
-      roleName: T.roleName,
+      roleName: "Customer",
     };
   }
 
@@ -237,20 +137,20 @@ export function useRegister() {
 
       const data = await registerApi(buildRegisterPayload());
 
-      alert(getApiMessage(data, T.messages.registerSuccess));
+      alert(getApiMessage(data, "Đăng ký thành công!"));
 
-      navigate(T.routes.login);
+      navigate("/login");
     } catch (err) {
       console.error("Register error:", err);
 
-      setError(err?.message || T.messages.serverError);
+      setError(err?.message || "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
     } finally {
       setLoading(false);
     }
   }
 
   function handleGoogleRegister() {
-    alert(T.messages.googleNotReady);
+    alert("Chức năng đăng ký Google chưa được cấu hình!");
   }
 
   return {

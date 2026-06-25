@@ -3,7 +3,7 @@ import "../../styles/Login.css";
 
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-import { LOGIN_TEXT as T, useLogin } from "./login";
+import { useLogin } from "./Login.js";
 
 function Login() {
   const {
@@ -23,37 +23,37 @@ function Login() {
 
   return (
     <div className="auth-page">
-      <Link to={T.routes.home} className="back-home-btn" title={T.titles.backHome}>
-        {T.icons.home}
+      <Link to="/" className="back-home-btn" title="Về trang chủ">
+        🏠
       </Link>
 
       <div className="auth-box-page">
         <div className="auth-tabs">
           <button type="button" className="active">
-            {T.tabs.login}
+            ĐĂNG NHẬP
           </button>
 
-          <Link to={T.routes.register}>{T.tabs.register}</Link>
+          <Link to="/register">ĐĂNG KÝ</Link>
         </div>
 
         <form className="login-form" onSubmit={handleLogin}>
-          <label>{T.fields.email.label}</label>
+          <label>Email</label>
           <input
             name="email"
             type="email"
-            placeholder={T.fields.email.placeholder}
+            placeholder="Email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <label>{T.fields.password.label}</label>
+          <label>Mật khẩu</label>
 
           <div className="password-wrapper">
             <input
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder={T.fields.password.placeholder}
+              placeholder="Mật khẩu"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -65,8 +65,8 @@ function Login() {
               onClick={toggleShowPassword}
               title={
                 showPassword
-                  ? T.titles.hidePassword
-                  : T.titles.showPassword
+                  ? "Ẩn mật khẩu"
+                  : "Hiện mật khẩu"
               }
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -75,12 +75,12 @@ function Login() {
 
           {error && <p className="login-error-text">{error}</p>}
 
-          <Link to={T.routes.forgotPassword} className="forgot">
-            {T.links.forgotPassword}
+          <Link to="/forgot-password" className="forgot">
+            Quên mật khẩu?
           </Link>
 
           <button className="blue-btn" type="submit" disabled={loading}>
-            {loading ? T.buttons.loggingIn : T.buttons.login}
+            {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN"}
           </button>
 
           <button
@@ -88,7 +88,7 @@ function Login() {
             className="pink-btn"
             onClick={handleGoogleLogin}
           >
-            {T.buttons.googleLogin}
+            ĐĂNG NHẬP BẰNG GOOGLE
           </button>
         </form>
       </div>

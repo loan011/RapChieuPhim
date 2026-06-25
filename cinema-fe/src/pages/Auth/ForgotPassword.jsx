@@ -1,10 +1,7 @@
 import { Link } from "react-router-dom";
 import "../../styles/ForgotPassword.css";
 
-import {
-  FORGOT_PASSWORD_TEXT as T,
-  useForgotPassword,
-} from "./forgotPassword";
+import { useForgotPassword } from "./ForgotPassword.js";
 
 function ForgotPassword() {
   const {
@@ -29,19 +26,19 @@ function ForgotPassword() {
 
   return (
     <div className="forgot-page">
-      <Link to={T.routes.login} className="forgot-back-home">
-        {T.links.backToLogin}
+      <Link to="/login" className="forgot-back-home">
+        {"← Quay lại đăng nhập"}
       </Link>
 
       <form className="forgot-box" onSubmit={handleSubmit}>
-        <h2>{T.title}</h2>
+        <h2>QUÊN MẬT KHẨU</h2>
 
         {step !== "password" && (
           <div className="forgot-field">
-            <label>{T.fields.email.label}</label>
+            <label>Email</label>
             <input
               type="email"
-              placeholder={T.fields.email.placeholder}
+              placeholder="Nhập email"
               value={email}
               disabled={step !== "email"}
               onChange={(e) => setEmail(e.target.value)}
@@ -52,19 +49,17 @@ function ForgotPassword() {
 
         {step === "email" && (
           <button className="forgot-btn" type="submit" disabled={sendingCode}>
-            {sendingCode
-              ? T.buttons.sendingCode
-              : T.buttons.sendCode}
+            {sendingCode ? "ĐANG GỬI..." : "GỬI MÃ XÁC NHẬN"}
           </button>
         )}
 
         {step === "code" && (
           <>
             <div className="forgot-field">
-              <label>{T.fields.code.label}</label>
+              <label>Mã xác nhận</label>
               <input
                 type="text"
-                placeholder={T.fields.code.placeholder}
+                placeholder="Nhập mã từ Gmail"
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value)}
                 required
@@ -76,9 +71,7 @@ function ForgotPassword() {
               type="submit"
               disabled={verifyingCode}
             >
-              {verifyingCode
-                ? T.buttons.verifyingCode
-                : T.buttons.verifyCode}
+              {verifyingCode ? "ĐANG XÁC NHẬN..." : "XÁC NHẬN MÃ"}
             </button>
 
             <button
@@ -87,9 +80,7 @@ function ForgotPassword() {
               onClick={sendCode}
               disabled={sendingCode}
             >
-              {sendingCode
-                ? T.buttons.sendingCode
-                : T.buttons.resendCode}
+              {sendingCode ? "ĐANG GỬI..." : "GỬI LẠI MÃ"}
             </button>
 
             <button
@@ -97,7 +88,7 @@ function ForgotPassword() {
               className="forgot-btn secondary"
               onClick={backToEmailStep}
             >
-              {T.buttons.changeEmail}
+              ĐỔI EMAIL
             </button>
           </>
         )}
@@ -105,10 +96,10 @@ function ForgotPassword() {
         {step === "password" && (
           <>
             <div className="forgot-field">
-              <label>{T.fields.newPassword.label}</label>
+              <label>Mật khẩu mới</label>
               <input
                 type="password"
-                placeholder={T.fields.newPassword.placeholder}
+                placeholder="Mật khẩu mới"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
@@ -116,10 +107,10 @@ function ForgotPassword() {
             </div>
 
             <div className="forgot-field">
-              <label>{T.fields.confirmPassword.label}</label>
+              <label>Xác nhận mật khẩu</label>
               <input
                 type="password"
-                placeholder={T.fields.confirmPassword.placeholder}
+                placeholder="Xác nhận mật khẩu"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -127,9 +118,7 @@ function ForgotPassword() {
             </div>
 
             <button className="forgot-btn" type="submit" disabled={resetting}>
-              {resetting
-                ? T.buttons.resetting
-                : T.buttons.resetPassword}
+              {resetting ? "ĐANG ĐỔI..." : "ĐỔI MẬT KHẨU"}
             </button>
           </>
         )}

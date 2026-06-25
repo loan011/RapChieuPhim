@@ -1,16 +1,12 @@
 import { Link } from "react-router-dom";
-
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
 import {
-  MOVIES_TEXT as T,
   MOVIE_TABS,
   useMovies,
-
   getAreaId,
   getAreaName,
-
   getMovieId,
   getMovieTitle,
   getMovieImage,
@@ -32,7 +28,6 @@ function Movies() {
     selectedTrailer,
     loading,
     userEmail,
-
     changeTab,
     handleAreaChange,
     openTrailer,
@@ -48,17 +43,17 @@ function Movies() {
         </div>
       ) : (
         <div className="movie-top-login">
-          <Link to={T.routes.login}>{T.auth.login}</Link>
+          <Link to="/login">Đăng nhập</Link>
           <span> | </span>
-          <Link to={T.routes.register}>{T.auth.register}</Link>
-          <span> {T.auth.language}</span>
+          <Link to="/register">Đăng ký</Link>
+          <span> GB</span>
         </div>
       )}
 
       <header className="movie-header">
         <div className="movie-logo">
-          <span>{T.logo.main}</span>
-          <b>{T.logo.sub}</b>
+          <span>Cinemas</span>
+          <b>HCM</b>
         </div>
 
         <select
@@ -66,7 +61,7 @@ function Movies() {
           value={selectedAreaId}
           onChange={(e) => handleAreaChange(e.target.value)}
         >
-          <option value="">{T.select.areaPlaceholder}</option>
+          <option value="">Chọn rạp HCM</option>
 
           {areas.map((area, index) => {
             const areaId = getAreaId(area);
@@ -80,15 +75,15 @@ function Movies() {
         </select>
 
         <nav>
-          <Link className="active" to={T.routes.movies}>
-            {T.nav.movies}
+          <Link className="active" to="/movies">
+            PHIM
           </Link>
-          <Link to={T.routes.home}>{T.nav.showtimesByCinema}</Link>
-          <Link to={T.routes.cinema}>{T.nav.cinema}</Link>
-          <Link to={T.routes.ticketPrice}>{T.nav.ticketPrice}</Link>
-          <a href={T.anchors.news}>{T.nav.news}</a>
-          <a href={T.anchors.franchise}>{T.nav.franchise}</a>
-          <a href={T.anchors.member}>{T.nav.member}</a>
+          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
+          <Link to="/cinema">RẠP</Link>
+          <Link to="/ticket-price">GIÁ VÉ</Link>
+          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
+          <a href="#franchise">NHƯỢNG QUYỀN</a>
+          <a href="#member">THÀNH VIÊN</a>
         </nav>
       </header>
 
@@ -106,10 +101,10 @@ function Movies() {
           ))}
         </div>
 
-        {loading && <p className="movie-loading">{T.loading.movies}</p>}
+        {loading && <p className="movie-loading">Đang tải phim...</p>}
 
         {!loading && movies.length === 0 && (
-          <p className="movie-loading">{T.empty.noMovies}</p>
+          <p className="movie-loading">Không có phim trong mục này.</p>
         )}
 
         <section className="movie-grid">
@@ -128,7 +123,7 @@ function Movies() {
                       alt={getMovieTitle(movie)}
                       onError={(e) => {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = T.fallback.poster;
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
                       }}
                     />
 
@@ -148,27 +143,27 @@ function Movies() {
                         openTrailer(movie);
                       }}
                     >
-                      {T.buttons.play}
+                      ▶
                     </button>
                   </div>
 
                   <h2>{getMovieTitle(movie)}</h2>
 
                   <p>
-                    <b>{T.movieInfo.genre}</b> {getMovieGenre(movie)}
+                    <b>Thể loại:</b> {getMovieGenre(movie)}
                   </p>
 
                   <p>
-                    <b>{T.movieInfo.duration}</b> {getMovieDuration(movie)}
+                    <b>Thời lượng:</b> {getMovieDuration(movie)}
                   </p>
 
                   <p>
-                    <b>{T.movieInfo.releaseDate}</b>{" "}
+                    <b>Khởi chiếu:</b>{" "}
                     {getMovieReleaseDate(movie)}
                   </p>
 
                   <p>
-                    <b>{T.movieInfo.status}</b>{" "}
+                    <b>Trạng thái:</b>{" "}
                     {getMovieStatus(movie, activeTab)}
                   </p>
 
@@ -176,7 +171,7 @@ function Movies() {
                     to={getBookingLink(movie)}
                     className="buy-ticket-btn"
                   >
-                    {T.buttons.buyTicket}
+                    🎟️ MUA VÉ
                   </Link>
                 </div>
               );
@@ -192,11 +187,11 @@ function Movies() {
               className="trailer-close"
               onClick={closeTrailer}
             >
-              {T.trailer.close}
+              ×
             </button>
 
             <h2>
-              {T.trailer.heading} - {getMovieTitle(selectedTrailer)}
+              TRAILER - {getMovieTitle(selectedTrailer)}
             </h2>
 
             <hr />
@@ -204,14 +199,14 @@ function Movies() {
             {getMovieTrailer(selectedTrailer) ? (
               <iframe
                 src={getMovieTrailer(selectedTrailer)}
-                title={`${T.trailer.titlePrefix} ${getMovieTitle(
+                title={`Trailer ${getMovieTitle(
                   selectedTrailer
                 )}`}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
               ></iframe>
             ) : (
-              <p>{T.trailer.noTrailer}</p>
+              <p>Phim này chưa có trailer.</p>
             )}
           </div>
         </div>

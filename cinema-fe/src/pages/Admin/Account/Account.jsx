@@ -1,78 +1,22 @@
 import "./Account.css";
-import { useState, useEffect } from "react";
-import { getProfileAdmin, updateProfile } from "../User/userService";
+import { useAccount } from "./Account.js";
 
 export default function TaiKhoan() {
-  const [profileForm, setProfileForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
-
-  const [pwForm, setPwForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function fetchAdminProfile() {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await getProfileAdmin();
-        if (data) {
-          setProfileForm({
-            name: data.fullName || data.FullName || data.name || data.Name || "",
-            email: data.email || data.Email || "",
-            phone: data.phone || data.Phone || data.phoneNumber || data.PhoneNumber || "",
-          });
-        }
-      } catch (err) {
-        console.error("Lỗi lấy profile admin:", err);
-        setError(err.message || "Không thể lấy thông tin admin từ server.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAdminProfile();
-  }, []);
-
-  async function handleProfileSubmit(e) {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      setError("");
-      await updateProfile({
-        fullName: profileForm.name,
-        email: profileForm.email,
-        phone: profileForm.phone,
-      });
-      alert("Lưu thay đổi thành công!");
-    } catch (err) {
-      alert(err.message || "Cập nhật thông tin thất bại!");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handlePasswordSubmit(e) {
-    e.preventDefault();
-    if (pwForm.newPassword !== pwForm.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
-      return;
-    }
-    // Gửi yêu cầu đổi mật khẩu (nếu backend có API hỗ trợ đổi mật khẩu)
-    alert("Đổi mật khẩu thành công!");
-  }
+  const {
+    profileForm,
+    setProfileForm,
+    pwForm,
+    setPwForm,
+    loading,
+    error,
+    handleProfileSubmit,
+    handlePasswordSubmit,
+  } = useAccount();
 
   return (
     <div className="p-1">
       <h4 className="font-bold text-2xl text-gray-800 mb-6">Cài Đặt Tài Khoản</h4>
-      
+
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
           <span>⚠️</span> {error}

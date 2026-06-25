@@ -1,72 +1,15 @@
-import { useState } from "react";
-
-import {
-  MdReceiptLong,
-  MdCreditCard,
-  MdRefresh,
-  MdCancel,
-} from "react-icons/md";
-
-export const HISTORY_TEXT = {
-  header: {
-    icon: "🕘",
-    title: "Lịch sử đặt vé",
-    description: "Toàn bộ giao dịch đặt vé của bạn",
-  },
-
-  tabKeys: {
-    all: "all",
-    pay: "pay",
-    refund: "refund",
-    cancel: "cancel",
-  },
-
-  tabs: [
-    {
-      key: "all",
-      label: "Tất cả",
-    },
-    {
-      key: "pay",
-      label: "Thanh toán",
-    },
-    {
-      key: "refund",
-      label: "Hoàn tiền",
-    },
-    {
-      key: "cancel",
-      label: "Hủy vé",
-    },
-  ],
-
-  stats: {
-    totalOrders: "Lần đặt vé",
-    totalSpent: "Đã chi tiêu",
-    totalRefund: "Đã hoàn tiền",
-  },
-
-  empty: {
-    Icon: MdReceiptLong,
-    title: "Không có giao dịch",
-    description: "Không tìm thấy giao dịch nào trong mục này",
-  },
-};
+import { useEffect, useState } from "react";
+import { getBookingHistory } from "./historyService.js";
 
 export const HISTORY_TYPE_CONFIG = {
   pay: {
     label: "Thanh toán",
-    Icon: MdCreditCard,
   },
-
   refund: {
     label: "Hoàn tiền",
-    Icon: MdRefresh,
   },
-
   cancel: {
     label: "Hủy vé",
-    Icon: MdCancel,
   },
 };
 
@@ -131,45 +74,75 @@ export function getHistoryTypeConfig(type) {
   return (
     HISTORY_TYPE_CONFIG[type] || {
       label: "Giao dịch",
-      Icon: MdReceiptLong,
     }
   );
 }
 
 export function formatMoney(amount) {
   if (amount === 0) return "—";
-
   const sign = amount > 0 ? "+" : "";
   return `${sign}${Math.abs(amount).toLocaleString("vi-VN")}đ`;
 }
 
 export function filterHistoryByType(history, filter) {
-  if (filter === HISTORY_TEXT.tabKeys.all) {
+  if (filter === "all") {
     return history;
   }
-
   return history.filter((item) => item.type === filter);
 }
 
 export function calculateTotalSpent(history) {
   return history
-    .filter((item) => item.type === HISTORY_TEXT.tabKeys.pay)
+    .filter((item) => item.type === "pay")
     .reduce((sum, item) => sum + Math.abs(item.amount), 0);
 }
 
 export function calculateTotalRefund(history) {
   return history
-    .filter((item) => item.type === HISTORY_TEXT.tabKeys.refund)
+    .filter((item) => item.type === "refund")
     .reduce((sum, item) => sum + item.amount, 0);
 }
 
 export function calculateTotalOrders(history) {
-  return history.filter((item) => item.type === HISTORY_TEXT.tabKeys.pay).length;
+  return history.filter((item) => item.type === "pay").length;
 }
 
 export function useBookingHistory() {
-  const [filter, setFilter] = useState(HISTORY_TEXT.tabKeys.all);
-  const [history] = useState(MOCK_HISTORY);
+  const [filter, setFilter] = useState("all");
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        setLoading(true);
+        const data = await getBookingHistory();
+        let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+        if (list.length === 0) {
+          setHistory(MOCK_HISTORY);
+        } else {
+          setHistory(list.map((h) => {
+            const isRefund = h.status === "Đã hủy";
+            return {
+              id: h.invoiceCode || h.code || `HD${h.id}`,
+              type: isRefund ? "refund" : "pay",
+              title: isRefund ? "Hoàn vé/Hủy giao dịch" : "Đặt vé xem phim",
+              detail: `Mã hóa đơn: ${h.code || `HD${h.id}`}`,
+              amount: isRefund ? (h.totalAmount || 0) : -(h.totalAmount || 0),
+              date: h.createdAt ? String(h.createdAt).split("T")[0] : "Chưa rõ",
+              time: "",
+            };
+          }));
+        }
+      } catch (err) {
+        console.error("Lỗi lấy lịch sử giao dịch, sử dụng mock:", err);
+        setHistory(MOCK_HISTORY);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHistory();
+  }, []);
 
   const filteredHistory = filterHistoryByType(history, filter);
   const totalSpent = calculateTotalSpent(history);
@@ -179,12 +152,11 @@ export function useBookingHistory() {
   return {
     filter,
     setFilter,
-
     history,
     filteredHistory,
-
     totalSpent,
     totalRefund,
     totalOrders,
+    loading,
   };
 }

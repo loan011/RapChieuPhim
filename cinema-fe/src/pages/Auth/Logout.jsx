@@ -1,4 +1,4 @@
-import { LOGOUT_TEXT as T, useLogout } from "./logout";
+import { useLogout } from "./Logout.js";
 
 function Logout() {
   const { userEmail, handleLogout } = useLogout();
@@ -6,11 +6,11 @@ function Logout() {
   return (
     <div className="top-login">
       <span>
-        {T.greeting}, {userEmail}
+        Xin chào, {userEmail}
       </span>
 
       <button className="logout-btn" onClick={handleLogout}>
-        {T.button.logout}
+        Logout
       </button>
     </div>
   );

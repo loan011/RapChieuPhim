@@ -1,11 +1,18 @@
 import "../../../styles/Customer/CustomerPages.css";
+import { MdReceiptLong, MdCreditCard, MdRefresh, MdCancel } from "react-icons/md";
 
 import {
-  HISTORY_TEXT as T,
   useBookingHistory,
   getHistoryTypeConfig,
   formatMoney,
 } from "./History.js";
+
+const TABS = [
+  { key: "all", label: "Tất cả" },
+  { key: "pay", label: "Thanh toán" },
+  { key: "refund", label: "Hoàn tiền" },
+  { key: "cancel", label: "Hủy vé" },
+];
 
 export default function History() {
   const {
@@ -15,46 +22,50 @@ export default function History() {
     totalSpent,
     totalRefund,
     totalOrders,
+    loading,
   } = useBookingHistory();
-
-  const EmptyIcon = T.empty.Icon;
 
   return (
     <div className="cust-page">
       <div className="cust-wrapper">
         <div className="cust-header">
           <h1>
-            <span className="page-icon">{T.header.icon}</span>
-            {T.header.title}
+            <span className="page-icon">🕘</span>
+            Lịch sử đặt vé
           </h1>
-
-          <p>{T.header.description}</p>
+          <p>Toàn bộ giao dịch đặt vé của bạn</p>
         </div>
 
-        <div className="cust-stats">
-          <div className="cust-stat-card yellow">
-            <span className="stat-num">{totalOrders}</span>
-            <span className="stat-label">{T.stats.totalOrders}</span>
+        {loading ? (
+          <div className="cust-card p-6 flex justify-center items-center text-gray-500 text-sm">
+            Đang tải lịch sử giao dịch...
           </div>
+        ) : (
+          <>
+            <div className="cust-stats">
+              <div className="cust-stat-card yellow">
+                <span className="stat-num">{totalOrders}</span>
+                <span className="stat-label">Lần đặt vé</span>
+              </div>
 
           <div className="cust-stat-card red">
             <span className="stat-num">
               {totalSpent.toLocaleString("vi-VN")}đ
             </span>
-            <span className="stat-label">{T.stats.totalSpent}</span>
+            <span className="stat-label">Đã chi tiêu</span>
           </div>
 
           <div className="cust-stat-card green">
             <span className="stat-num">
               {totalRefund.toLocaleString("vi-VN")}đ
             </span>
-            <span className="stat-label">{T.stats.totalRefund}</span>
+            <span className="stat-label">Đã hoàn tiền</span>
           </div>
         </div>
 
         <div className="cust-card">
           <div className="cust-tabs">
-            {T.tabs.map((tab) => (
+            {TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
@@ -70,20 +81,22 @@ export default function History() {
             {filteredHistory.length === 0 ? (
               <div className="cust-empty">
                 <div className="cust-empty-icon">
-                  <EmptyIcon />
+                  <MdReceiptLong />
                 </div>
 
-                <h3>{T.empty.title}</h3>
-                <p>{T.empty.description}</p>
+                <h3>Không có giao dịch</h3>
+                <p>Không tìm thấy giao dịch nào trong mục này</p>
               </div>
             ) : (
               filteredHistory.map((item) => {
-                const { Icon, label } = getHistoryTypeConfig(item.type);
+                const config = getHistoryTypeConfig(item.type);
+                const isPay = item.type === "pay";
+                const isRefund = item.type === "refund";
 
                 return (
                   <div className="history-item" key={item.id}>
                     <div className={`history-icon ${item.type}`}>
-                      <Icon />
+                      {isPay ? <MdCreditCard /> : isRefund ? <MdRefresh /> : <MdCancel />}
                     </div>
 
                     <div className="history-text">
@@ -91,7 +104,7 @@ export default function History() {
                       <p>{item.detail}</p>
 
                       <span className="history-type-badge">
-                        {label}
+                        {config.label}
                       </span>
                     </div>
 
@@ -118,6 +131,8 @@ export default function History() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

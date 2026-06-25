@@ -89,3 +89,15 @@ export async function updateProfile(user) {
   return data;
 }
 
+// POST /api/Users/ChangePassword
+export async function changePassword(payload) {
+  const response = await fetch(`${API_URL}/Users/ChangePassword`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Đổi mật khẩu thất bại!"));
+  return data;
+}
+

@@ -6,8 +6,8 @@ import Login from "./pages/Auth/Login.jsx";
 import Register from "./pages/Auth/Register.jsx";
 import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
-import TicketPrice from "./pages/Ticket/TicketPrice";
-import Cinema from "./pages/Cinema/Cinema";
+import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
+import Cinema from "./pages/Cinema/Cinema.jsx";
 import Booking from "./pages/Booking/Booking.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -18,19 +18,19 @@ import LichSuDatVe from "./pages/Customer/History/History.jsx";
 import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard/Dashboard";
-import TaiKhoan from "./pages/Admin/Account/Account";
-import NguoiDung from "./pages/Admin/User/User";
-import NhanVien from "./pages/Admin/Personnel/Personnel";
-import KhachHang from "./pages/Admin/Customer/Customer";
-import Phim from "./pages/Admin/Film/Film";
-import PhongChieu from "./pages/Admin/Room/Room";
-import RapChieu from "./pages/Admin/Cinema/Cinema";
-import SuatChieu from "./pages/Admin/Rate/Rate";
-import AdminVe from "./pages/Admin/Ticket/Ticket";
-import HoaDon from "./pages/Admin/Bill/Bill";
-import Ghe from "./pages/Admin/Seat/Seat";
-import ThongBao from "./pages/Admin/Notice/Notice";
+import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
+import TaiKhoan from "./pages/Admin/Account/Account.jsx";
+import NguoiDung from "./pages/Admin/User/User.jsx";
+import NhanVien from "./pages/Admin/Personnel/Personnel.jsx";
+import KhachHang from "./pages/Admin/Customer/Customer.jsx";
+import Phim from "./pages/Admin/Film/Film.jsx";
+import PhongChieu from "./pages/Admin/Room/Room.jsx";
+import RapChieu from "./pages/Admin/Cinema/Cinema.jsx";
+import SuatChieu from "./pages/Admin/Rate/Rate.jsx";
+import AdminVe from "./pages/Admin/Ticket/Ticket.jsx";
+import HoaDon from "./pages/Admin/Bill/Bill.jsx";
+import Ghe from "./pages/Admin/Seat/Seat.jsx";
+import ThongBao from "./pages/Admin/Notice/Notice.jsx";
 
 function StaffPage() {
   return (

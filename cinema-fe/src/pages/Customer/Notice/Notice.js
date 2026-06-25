@@ -1,49 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MdLocalOffer,
   MdConfirmationNumber,
   MdSettings,
   MdInfo,
-  MdNotifications,
 } from "react-icons/md";
-
-export const NOTICE_TEXT = {
-  header: {
-    icon: "🔔",
-    title: "Thông báo",
-    description: "Cập nhật ưu đãi, vé đặt và hoạt động tài khoản",
-  },
-  stats: {
-    unread: "Chưa đọc",
-    total: "Tổng thông báo",
-    promo: "Ưu đãi",
-  },
-  tabKeys: {
-    all: "all",
-    unread: "unread",
-    promo: "promo",
-    ticket: "ticket",
-    system: "system",
-  },
-  tabs: [
-    { key: "all", label: "Tất cả" },
-    { key: "unread", label: "Chưa đọc" },
-    { key: "promo", label: "Ưu đãi" },
-    { key: "ticket", label: "Vé" },
-    { key: "system", label: "Hệ thống" },
-  ],
-  labels: {
-    notification: "thông báo",
-  },
-  buttons: {
-    markAllRead: "Đánh dấu tất cả đã đọc",
-  },
-  empty: {
-    Icon: MdNotifications,
-    title: "Không có thông báo",
-    description: "Bạn đã đọc hết tất cả thông báo",
-  },
-};
+import { getNotificationsForCustomer } from "./noticeService.js";
 
 export const INITIAL_NOTICES = [
   {
@@ -122,15 +84,43 @@ export function filterNoticesByTab(notices, activeTab) {
 }
 
 export function useNotice() {
-  const T = NOTICE_TEXT;
+  const [notices, setNotices] = useState([]);
+  const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
 
-  const [notices, setNotices] = useState(INITIAL_NOTICES);
-  const [activeTab, setActiveTab] = useState(T.tabKeys.all);
+  useEffect(() => {
+    async function fetchNotices() {
+      try {
+        setLoading(true);
+        const data = await getNotificationsForCustomer();
+        // Chuẩn hóa và map dữ liệu trả về từ API
+        let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+        if (list.length === 0) {
+          setNotices(INITIAL_NOTICES);
+        } else {
+          setNotices(list.map((n) => ({
+            id: n.notificationId || n.id,
+            type: n.type || "info",
+            title: n.title || "Thông báo mới",
+            body: n.message || n.body || "",
+            time: n.createdAt ? String(n.createdAt).split("T")[0] : "Vừa xong",
+            unread: n.unread ?? true,
+          })));
+        }
+      } catch (err) {
+        console.error("Lỗi lấy thông báo, sử dụng dữ liệu mặc định:", err);
+        setNotices(INITIAL_NOTICES);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchNotices();
+  }, []);
 
   const unreadCount = notices.filter((notice) => notice.unread).length;
 
   const promoCount = notices.filter(
-    (notice) => notice.type === T.tabKeys.promo
+    (notice) => notice.type === "promo"
   ).length;
 
   const filteredNotices = filterNoticesByTab(notices, activeTab);
@@ -158,7 +148,7 @@ export function useNotice() {
     unreadCount,
     promoCount,
     filteredNotices,
-
+    loading,
     setActiveTab,
     markRead,
     markAllRead,

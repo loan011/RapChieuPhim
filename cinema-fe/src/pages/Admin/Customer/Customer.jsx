@@ -1,11 +1,8 @@
 import "./Customer.css";
 import { createPortal } from "react-dom";
-
 import {
-  CUSTOMER_TEXT as T,
   CUSTOMER_MEMBERSHIP_OPTIONS,
   useCustomer,
-
   getCustomerId,
   getCustomerName,
   getCustomerEmail,
@@ -14,16 +11,25 @@ import {
   getCustomerCreatedAt,
   getCustomerMembershipLevel,
   getMembershipClass,
-} from "./Customer";
+} from "./Customer.js";
+
+const TABLE_HEADERS = [
+  "#",
+  "Họ Tên",
+  "Email",
+  "Điện Thoại",
+  "Điểm Tích Lũy",
+  "Hạng Thành Viên",
+  "Ngày Đăng Ký",
+  "Thao Tác",
+];
 
 export default function Customer() {
   const {
     loading,
     error,
-
     search,
     setSearch,
-
     filtered,
 
     showModal,
@@ -43,34 +49,34 @@ export default function Customer() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">{T.header.title}</h4>
+        <h4 className="font-bold text-xl">Quản Lý Khách Hàng</h4>
 
         <button
           type="button"
-          className={T.classNames.addButton}
+          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
           onClick={openAddModal}
         >
-          {T.buttons.add}
+          + Thêm
         </button>
       </div>
 
-      <div className={T.classNames.card}>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
         <div className="flex flex-wrap gap-2 mb-4">
           <input
             type="text"
-            placeholder={T.search.placeholder}
-            className={T.classNames.searchInput}
+            placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-40"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         {loading && (
-          <p className={T.classNames.loadingText}>{T.messages.loading}</p>
+          <p className="text-gray-500 text-sm">Đang tải...</p>
         )}
 
         {error && (
-          <p className={T.classNames.errorText}>{error}</p>
+          <p className="text-red-500 text-sm">{error}</p>
         )}
 
         {!loading && !error && (
@@ -78,8 +84,8 @@ export default function Customer() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  {T.table.headers.map((header) => (
-                    <th key={header} className={T.classNames.tableHead}>
+                  {TABLE_HEADERS.map((header) => (
+                    <th key={header} className="px-3 py-2 text-left">
                       {header}
                     </th>
                   ))}
@@ -90,10 +96,10 @@ export default function Customer() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={T.table.headers.length}
-                      className={T.classNames.emptyCell}
+                      colSpan={TABLE_HEADERS.length}
+                      className="text-center py-6 text-gray-400"
                     >
-                      {T.messages.empty}
+                      Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
@@ -103,27 +109,27 @@ export default function Customer() {
                     return (
                       <tr
                         key={customerId ?? index}
-                        className={T.classNames.tableRow}
+                        className="border-t border-gray-100 hover:bg-gray-50"
                       >
-                        <td className={T.classNames.tableCell}>{index + 1}</td>
+                        <td className="px-3 py-2">{index + 1}</td>
 
-                        <td className={`${T.classNames.tableCell} font-medium`}>
+                        <td className="px-3 py-2 font-medium">
                           {getCustomerName(customer)}
                         </td>
 
-                        <td className={T.classNames.tableCell}>
+                        <td className="px-3 py-2">
                           {getCustomerEmail(customer)}
                         </td>
 
-                        <td className={T.classNames.tableCell}>
+                        <td className="px-3 py-2">
                           {getCustomerPhone(customer)}
                         </td>
 
-                        <td className={T.classNames.tableCell}>
+                        <td className="px-3 py-2">
                           {getCustomerPoint(customer)}
                         </td>
 
-                        <td className={T.classNames.tableCell}>
+                        <td className="px-3 py-2">
                           <span
                             className={getMembershipClass(
                               getCustomerMembershipLevel(customer)
@@ -133,25 +139,25 @@ export default function Customer() {
                           </span>
                         </td>
 
-                        <td className={T.classNames.tableCell}>
+                        <td className="px-3 py-2">
                           {getCustomerCreatedAt(customer)}
                         </td>
 
-                        <td className={`${T.classNames.tableCell} flex gap-2`}>
+                        <td className="px-3 py-2 flex gap-2">
                           <button
                             type="button"
-                            className={T.classNames.editButton}
+                            className="text-blue-600 hover:underline text-xs"
                             onClick={() => openEditModal(customer)}
                           >
-                            {T.buttons.edit}
+                            Sửa
                           </button>
 
                           <button
                             type="button"
-                            className={T.classNames.deleteButton}
+                            className="text-red-500 hover:underline text-xs"
                             onClick={() => handleDelete(customerId)}
                           >
-                            {T.buttons.delete}
+                            Xóa
                           </button>
                         </td>
                       </tr>
@@ -166,10 +172,10 @@ export default function Customer() {
 
       {showModal &&
         createPortal(
-          <div className={T.classNames.modalOverlay}>
-            <div className={T.classNames.modalBox}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
               <h5 className="font-bold text-lg mb-4">
-                {editId !== null ? T.modal.editTitle : T.modal.addTitle}
+                {editId !== null ? "Cập Nhật Khách Hàng" : "Thêm Khách Hàng"}
               </h5>
 
               {formError && (
@@ -177,10 +183,10 @@ export default function Customer() {
               )}
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {/* Họ tên */}
                 <div>
-                  <label className={T.classNames.label}>
-                    {T.fields.fullName.label}{" "}
-                    <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Họ Tên <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -188,15 +194,15 @@ export default function Customer() {
                     name="fullName"
                     value={form.fullName}
                     onChange={handleChange}
-                    placeholder={T.fields.fullName.placeholder}
-                    className={T.classNames.input}
+                    placeholder="Nhập họ tên khách hàng"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
+                {/* Email */}
                 <div>
-                  <label className={T.classNames.label}>
-                    {T.fields.email.label}{" "}
-                    <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
                   </label>
 
                   <input
@@ -204,15 +210,16 @@ export default function Customer() {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    placeholder={T.fields.email.placeholder}
-                    className={T.classNames.input}
+                    placeholder="Nhập email"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
 
+                {/* Điện thoại + Điểm tích lũy */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={T.classNames.label}>
-                      {T.fields.phone.label}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Điện Thoại
                     </label>
 
                     <input
@@ -220,14 +227,14 @@ export default function Customer() {
                       name="phone"
                       value={form.phone}
                       onChange={handleChange}
-                      placeholder={T.fields.phone.placeholder}
-                      className={T.classNames.input}
+                      placeholder="Nhập số điện thoại"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
 
                   <div>
-                    <label className={T.classNames.label}>
-                      {T.fields.rewardPoint.label}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Điểm Tích Lũy
                     </label>
 
                     <input
@@ -235,22 +242,23 @@ export default function Customer() {
                       name="rewardPoint"
                       value={form.rewardPoint}
                       onChange={handleChange}
-                      placeholder={T.fields.rewardPoint.placeholder}
-                      className={T.classNames.input}
+                      placeholder="Nhập điểm tích lũy"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
                 </div>
 
+                {/* Hạng thành viên */}
                 <div>
-                  <label className={T.classNames.label}>
-                    {T.fields.membershipLevel.label}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hạng Thành Viên
                   </label>
 
                   <select
                     name="membershipLevel"
                     value={form.membershipLevel}
                     onChange={handleChange}
-                    className={T.classNames.input}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   >
                     {CUSTOMER_MEMBERSHIP_OPTIONS.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -260,26 +268,27 @@ export default function Customer() {
                   </select>
                 </div>
 
+                {/* Nút hành động */}
                 <div className="flex justify-end gap-2 mt-2">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className={T.classNames.cancelButton}
+                    className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
                     disabled={submitting}
                   >
-                    {T.buttons.cancel}
+                    Hủy
                   </button>
 
                   <button
                     type="submit"
-                    className={T.classNames.submitButton}
+                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
                     disabled={submitting}
                   >
                     {submitting
-                      ? T.buttons.processing
+                      ? "Đang xử lý..."
                       : editId !== null
-                      ? T.buttons.update
-                      : T.buttons.create}
+                      ? "Cập Nhật"
+                      : "Thêm Mới"}
                   </button>
                 </div>
               </form>

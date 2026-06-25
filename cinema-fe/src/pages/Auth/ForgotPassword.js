@@ -7,70 +7,10 @@ import {
   resetPasswordApi,
 } from "../../services/authService";
 
-export const FORGOT_PASSWORD_TEXT = {
-  routes: {
-    login: "/login",
-  },
 
-  title: "QUÊN MẬT KHẨU",
-
-  links: {
-    backToLogin: "← Quay lại đăng nhập",
-  },
-
-  fields: {
-    email: {
-      label: "Email",
-      placeholder: "Nhập email",
-    },
-
-    code: {
-      label: "Mã xác nhận",
-      placeholder: "Nhập mã từ Gmail",
-    },
-
-    newPassword: {
-      label: "Mật khẩu mới",
-      placeholder: "Mật khẩu mới",
-    },
-
-    confirmPassword: {
-      label: "Xác nhận mật khẩu",
-      placeholder: "Xác nhận mật khẩu",
-    },
-  },
-
-  buttons: {
-    sendCode: "GỬI MÃ XÁC NHẬN",
-    sendingCode: "ĐANG GỬI...",
-    verifyCode: "XÁC NHẬN MÃ",
-    verifyingCode: "ĐANG XÁC NHẬN...",
-    resendCode: "GỬI LẠI MÃ",
-    changeEmail: "ĐỔI EMAIL",
-    resetPassword: "ĐỔI MẬT KHẨU",
-    resetting: "ĐANG ĐỔI...",
-  },
-
-  messages: {
-    emailRequired: "Vui lòng nhập email trước!",
-    codeRequired: "Vui lòng nhập mã xác nhận!",
-    newPasswordRequired: "Vui lòng nhập mật khẩu mới!",
-    passwordMinLength: "Mật khẩu phải từ 6 ký tự trở lên!",
-    passwordNotMatch: "Mật khẩu xác nhận không khớp!",
-
-    sendCodeSuccess: "Mã xác nhận đã được gửi về Gmail!",
-    verifyCodeSuccess: "Xác nhận mã thành công!",
-    resetPasswordSuccess: "Đổi mật khẩu thành công!",
-
-    serverError: "Không kết nối được tới server!",
-    codeInvalid: "Mã xác nhận không đúng!",
-    resetPasswordFailed: "Đổi mật khẩu thất bại!",
-  },
-};
 
 export function useForgotPassword() {
   const navigate = useNavigate();
-  const T = FORGOT_PASSWORD_TEXT;
 
   const [email, setEmail] = useState("");
   const [codeInput, setCodeInput] = useState("");
@@ -89,7 +29,7 @@ export function useForgotPassword() {
 
   function validateEmail() {
     if (!email.trim()) {
-      alert(T.messages.emailRequired);
+      alert("Vui lòng nhập email trước!");
       return false;
     }
 
@@ -98,7 +38,7 @@ export function useForgotPassword() {
 
   function validateCode() {
     if (!codeInput.trim()) {
-      alert(T.messages.codeRequired);
+      alert("Vui lòng nhập mã xác nhận!");
       return false;
     }
 
@@ -107,17 +47,17 @@ export function useForgotPassword() {
 
   function validatePassword() {
     if (!newPassword.trim()) {
-      alert(T.messages.newPasswordRequired);
+      alert("Vui lòng nhập mật khẩu mới!");
       return false;
     }
 
     if (newPassword.length < 6) {
-      alert(T.messages.passwordMinLength);
+      alert("Mật khẩu phải từ 6 ký tự trở lên!");
       return false;
     }
 
     if (newPassword !== confirmPassword) {
-      alert(T.messages.passwordNotMatch);
+      alert("Mật khẩu xác nhận không khớp!");
       return false;
     }
 
@@ -132,13 +72,13 @@ export function useForgotPassword() {
 
       const data = await forgotPasswordApi(email.trim());
 
-      alert(getApiMessage(data, T.messages.sendCodeSuccess));
+      alert(getApiMessage(data, "Mã xác nhận đã được gửi về Gmail!"));
 
       setCodeInput("");
       setStep("code");
     } catch (error) {
       console.error("ForgotPassword error:", error);
-      alert(error.message || T.messages.serverError);
+      alert(error.message || "Không kết nối được tới server!");
     } finally {
       setSendingCode(false);
     }
@@ -156,12 +96,12 @@ export function useForgotPassword() {
         otpCode: codeInput.trim(),
       });
 
-      alert(getApiMessage(data, T.messages.verifyCodeSuccess));
+      alert(getApiMessage(data, "Xác nhận mã thành công!"));
 
       setStep("password");
     } catch (error) {
       console.error("VerifyResetCode error:", error);
-      alert(error.message || T.messages.codeInvalid);
+      alert(error.message || "Mã xác nhận không đúng!");
     } finally {
       setVerifyingCode(false);
     }
@@ -182,12 +122,12 @@ export function useForgotPassword() {
         confirmPassword,
       });
 
-      alert(getApiMessage(data, T.messages.resetPasswordSuccess));
+      alert(getApiMessage(data, "Đổi mật khẩu thành công!"));
 
-      navigate(T.routes.login);
+      navigate("/login");
     } catch (error) {
       console.error("ResetPassword error:", error);
-      alert(error.message || T.messages.resetPasswordFailed);
+      alert(error.message || "Đổi mật khẩu thất bại!");
     } finally {
       setResetting(false);
     }

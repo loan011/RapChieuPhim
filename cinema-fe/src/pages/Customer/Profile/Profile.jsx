@@ -1,7 +1,7 @@
 import "../../../styles/Customer/CustomerProfile.css";
+import { MdCameraAlt, MdLock, MdSave, MdRefresh, MdCheckCircle } from "react-icons/md";
 
 import {
-  PROFILE_TEXT as T,
   PROFILE_FIELDS,
   GENDER_OPTIONS,
   useProfile,
@@ -15,7 +15,6 @@ export default function Profile() {
     loading,
     error,
     fileInputRef,
-
     handleChange,
     handleAvatarChange,
     handleReset,
@@ -26,8 +25,8 @@ export default function Profile() {
     <div className="profile-page">
       <div className="profile-wrapper">
         <div className="profile-header">
-          <h1>{T.header.title}</h1>
-          <p>{T.header.description}</p>
+          <h1>Thông tin cá nhân</h1>
+          <p>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
         </div>
 
         <div className="profile-card">
@@ -38,7 +37,7 @@ export default function Profile() {
               <div className="profile-avatar-wrapper">
                 <img
                   src={form.avatarUrl}
-                  alt={T.avatar.alt}
+                  alt="Avatar"
                   className="profile-avatar-img"
                   onError={(e) => {
                     e.target.src = getProfileFallbackAvatar(form.fullName);
@@ -47,13 +46,13 @@ export default function Profile() {
 
                 <label
                   className="profile-avatar-overlay"
-                  htmlFor={T.avatar.inputId}
+                  htmlFor="avatarFileInput"
                 >
-                  <T.icons.camera />
+                  <MdCameraAlt />
                 </label>
 
                 <input
-                  id={T.avatar.inputId}
+                  id="avatarFileInput"
                   type="file"
                   accept="image/*"
                   className="avatar-file-input"
@@ -64,9 +63,8 @@ export default function Profile() {
 
               <div className="profile-avatar-info">
                 <p className="profile-avatar-name">
-                  {form.fullName || T.avatar.fallbackName}
+                  {form.fullName || "Người dùng"}
                 </p>
-
                 <p className="profile-avatar-email">{form.email}</p>
               </div>
             </div>
@@ -74,13 +72,13 @@ export default function Profile() {
             <form onSubmit={handleSubmit} className="profile-form">
               {error && (
                 <div className="profile-error-box">
-                  <span>{T.error.icon}</span>
+                  <span>⚠️</span>
                   {error}
                 </div>
               )}
 
               <div className="profile-section-label">
-                {T.sections.basicInfo}
+                Thông tin cơ bản
               </div>
 
               <div className="profile-form-grid">
@@ -96,8 +94,8 @@ export default function Profile() {
 
                         {isEmailField && (
                           <span className="profile-disabled-badge">
-                            <T.icons.lock className="profile-lock-icon" />
-                            {T.badges.cannotEdit}
+                            <MdLock className="profile-lock-icon" />
+                            Không thể sửa
                           </span>
                         )}
                       </label>
@@ -142,8 +140,8 @@ export default function Profile() {
                   className="profile-reset-btn"
                   onClick={handleReset}
                 >
-                  <T.icons.refresh className="profile-btn-icon" />
-                  {T.buttons.reset}
+                  <MdRefresh className="profile-btn-icon" />
+                  Đặt lại
                 </button>
 
                 <button
@@ -151,8 +149,8 @@ export default function Profile() {
                   className="profile-save-btn"
                   disabled={loading}
                 >
-                  <T.icons.save />
-                  {loading ? T.buttons.saving : T.buttons.save}
+                  <MdSave />
+                  {loading ? "Đang lưu..." : "Lưu thông tin"}
                 </button>
               </div>
             </form>
@@ -162,8 +160,8 @@ export default function Profile() {
 
       {showToast && (
         <div className="profile-toast">
-          <T.icons.check className="profile-toast-icon" />
-          {T.toast.success}
+          <MdCheckCircle className="profile-toast-icon" />
+          Cập nhật thông tin thành công!
         </div>
       )}
     </div>

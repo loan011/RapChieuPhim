@@ -8,128 +8,7 @@ import {
   getAreaList,
 } from "./cinemaService";
 
-export const CINEMA_TEXT = {
-  header: {
-    title: "Quản Lý Rạp Chiếu",
-  },
-
-  search: {
-    placeholder: "Tìm kiếm theo tên, khu vực, địa chỉ, số điện thoại...",
-  },
-
-  table: {
-    headers: [
-      "#",
-      "Tên Rạp",
-      "Địa Chỉ",
-      "Khu Vực",
-      "Điện Thoại",
-      "Email",
-      "Trạng Thái",
-      "Thao Tác",
-    ],
-  },
-
-  modal: {
-    addTitle: "Thêm Rạp Chiếu",
-    editTitle: "Cập Nhật Rạp Chiếu",
-  },
-
-  fields: {
-    cinemaName: {
-      label: "Tên Rạp",
-      placeholder: "Nhập tên rạp chiếu",
-    },
-
-    address: {
-      label: "Địa Chỉ",
-      placeholder: "Nhập địa chỉ rạp",
-    },
-
-    area: {
-      label: "Khu Vực / Thành Phố",
-      placeholder: "-- Chọn khu vực --",
-    },
-
-    phone: {
-      label: "Điện Thoại",
-      placeholder: "Số điện thoại",
-    },
-
-    email: {
-      label: "Email",
-      placeholder: "Email liên hệ",
-    },
-
-    status: {
-      label: "Trạng Thái",
-    },
-  },
-
-  buttons: {
-    add: "+ Thêm",
-    edit: "Sửa",
-    delete: "Xóa",
-    cancel: "Hủy",
-    create: "Thêm Mới",
-    update: "Cập Nhật",
-    processing: "Đang xử lý...",
-  },
-
-  messages: {
-    loading: "Đang tải...",
-    empty: "Không có dữ liệu",
-    loadFailed: "Lấy dữ liệu rạp chiếu thất bại!",
-    saveFailed: "Lưu rạp chiếu thất bại!",
-    deleteFailed: "Xóa rạp chiếu thất bại!",
-    deleteConfirm: "Bạn có chắc muốn xóa rạp chiếu này?",
-    cinemaNameRequired: "Vui lòng nhập tên rạp chiếu.",
-    addressRequired: "Vui lòng nhập địa chỉ rạp.",
-    areaRequired: "Vui lòng chọn khu vực.",
-  },
-
-  statusText: {
-    Active: "Hoạt động",
-    Inactive: "Ngừng HĐ",
-  },
-
-  classNames: {
-    addButton:
-      "bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700",
-
-    card: "bg-white rounded-lg shadow-sm border border-gray-100 p-4",
-
-    searchInput:
-      "border border-gray-300 rounded px-3 py-1.5 text-sm w-full max-w-sm",
-
-    loadingText: "text-gray-500 text-sm",
-    errorText: "text-red-500 text-sm",
-
-    tableHead: "px-3 py-2 text-left",
-    tableCell: "px-3 py-2",
-    tableRow: "border-t border-gray-100 hover:bg-gray-50",
-    emptyCell: "text-center py-6 text-gray-400",
-
-    editButton: "text-blue-600 hover:underline text-xs",
-    deleteButton: "text-red-500 hover:underline text-xs",
-
-    modalOverlay:
-      "fixed inset-0 z-50 flex items-center justify-center bg-black/40",
-
-    modalBox: "bg-white rounded-xl shadow-xl w-full max-w-lg p-6",
-
-    label: "block text-sm font-medium text-gray-700 mb-1",
-
-    input:
-      "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400",
-
-    cancelButton:
-      "px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50",
-
-    submitButton:
-      "px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60",
-  },
-};
+// Text configurations are now handled directly inside Cinema.jsx.
 
 export const EMPTY_CINEMA_FORM = {
   cinemaName: "",
@@ -230,7 +109,9 @@ export function getAreaNameById(areas, areaId) {
 }
 
 export function getStatusText(status) {
-  return CINEMA_TEXT.statusText[status] || status || "—";
+  if (status === "Active") return "Hoạt động";
+  if (status === "Inactive") return "Ngừng hoạt động";
+  return status || "—";
 }
 
 export function getStatusClass(status) {
@@ -298,26 +179,22 @@ export function filterCinemaList(list, search) {
 }
 
 export function validateCinemaForm(form) {
-  const T = CINEMA_TEXT;
-
   if (!form.cinemaName.trim()) {
-    return T.messages.cinemaNameRequired;
+    return "Vui lòng nhập tên rạp chiếu.";
   }
 
   if (!form.address.trim()) {
-    return T.messages.addressRequired;
+    return "Vui lòng nhập địa chỉ rạp.";
   }
 
   if (!form.areaId) {
-    return T.messages.areaRequired;
+    return "Vui lòng chọn khu vực.";
   }
 
   return "";
 }
 
 export function useCinema() {
-  const T = CINEMA_TEXT;
-
   const [list, setList] = useState([]);
   const [areas, setAreas] = useState([]);
 
@@ -353,7 +230,7 @@ export function useCinema() {
 
       setList([]);
       setAreas([]);
-      setError(err.message || T.messages.loadFailed);
+      setError(err.message || "Lấy dữ liệu rạp chiếu thất bại!");
     } finally {
       setLoading(false);
     }
@@ -435,7 +312,7 @@ export function useCinema() {
     } catch (err) {
       console.error("Lỗi lưu rạp chiếu:", err);
 
-      setFormError(err.message || T.messages.saveFailed);
+      setFormError(err.message || "Lưu rạp chiếu thất bại!");
     } finally {
       setSubmitting(false);
     }
@@ -444,7 +321,7 @@ export function useCinema() {
   async function handleDelete(id) {
     if (!id) return;
 
-    if (!window.confirm(T.messages.deleteConfirm)) {
+    if (!window.confirm("Bạn có chắc muốn xóa rạp chiếu này?")) {
       return;
     }
 
@@ -456,7 +333,7 @@ export function useCinema() {
       );
     } catch (err) {
       console.error("Lỗi xóa rạp chiếu:", err);
-      alert(err.message || T.messages.deleteFailed);
+      alert(err.message || "Xóa rạp chiếu thất bại!");
     }
   }
 
