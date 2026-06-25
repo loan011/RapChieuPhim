@@ -121,4 +121,10 @@
   .register-form .pink-btn {
     grid-column: 1 / -1;
   }
-}
+  .register-error-text {
+  color: red;
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+}

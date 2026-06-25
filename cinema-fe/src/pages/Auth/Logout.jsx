@@ -1,33 +1,16 @@
-import { useNavigate } from "react-router-dom";
+import { LOGOUT_TEXT as T, useLogout } from "./logout";
 
 function Logout() {
-  const navigate = useNavigate();
-
-  const userEmail =
-    localStorage.getItem("userEmail") ||
-    localStorage.getItem("email") ||
-    "Customer";
-
-  function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("tokenType");
-    localStorage.removeItem("expiresAt");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("role");
-    localStorage.removeItem("email");
-    localStorage.removeItem("fullName");
-    localStorage.removeItem("avatarUrl");
-
-    navigate("/login", { replace: true });
-  }
+  const { userEmail, handleLogout } = useLogout();
 
   return (
     <div className="top-login">
-      <span>Xin chào, {userEmail}</span>
+      <span>
+        {T.greeting}, {userEmail}
+      </span>
 
       <button className="logout-btn" onClick={handleLogout}>
-        Logout
+        {T.button.logout}
       </button>
     </div>
   );

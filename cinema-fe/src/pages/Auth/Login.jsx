@@ -1,165 +1,94 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-
+import { Link } from "react-router-dom";
 import "../../styles/Login.css";
 
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { loginApi, saveAuthData } from "../../services/authService";
+
+import { LOGIN_TEXT as T, useLogin } from "./login";
 
 function Login() {
-  const navigate = useNavigate();
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+    error,
+    loading,
+    showPassword,
+    toggleShowPassword,
 
-  function getRole(data) {
-    const role =
-      data?.role ||
-      data?.Role ||
-      data?.user?.role ||
-      data?.user?.Role ||
-      data?.User?.role ||
-      data?.User?.Role ||
-      localStorage.getItem("role") ||
-      "";
-
-    return String(role).trim().toLowerCase();
-  }
-
-  async function handleLogin(e) {
-    e.preventDefault();
-
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value.trim();
-
-    setError("");
-
-    if (!email) {
-      setError("Vui lòng nhập email!");
-      return;
-    }
-
-    if (!password) {
-      setError("Vui lòng nhập mật khẩu!");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-      setError("Email không đúng định dạng!");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await loginApi(email, password);
-
-      saveAuthData(data);
-
-      const role = getRole(data);
-
-      console.log("LOGIN DATA:", data);
-      console.log("LOGIN ROLE:", role);
-
-      if (role === "admin") {
-        navigate("/admin", { replace: true });
-        return;
-      }
-
-      if (role === "staff") {
-        navigate("/staff", { replace: true });
-        return;
-      }
-
-      if (role === "customer") {
-        navigate("/movies", { replace: true });
-        return;
-      }
-
-      // Trường hợp backend không trả role rõ ràng thì cho về trang phim
-      navigate("/movies", { replace: true });
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err?.message ||
-          "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+    handleLogin,
+    handleGoogleLogin,
+  } = useLogin();
 
   return (
     <div className="auth-page">
-      <Link to="/" className="back-home-btn" title="Về trang chủ">
-        🏠
+      <Link to={T.routes.home} className="back-home-btn" title={T.titles.backHome}>
+        {T.icons.home}
       </Link>
 
       <div className="auth-box-page">
         <div className="auth-tabs">
           <button type="button" className="active">
-            ĐĂNG NHẬP
+            {T.tabs.login}
           </button>
 
-          <Link to="/register">ĐĂNG KÝ</Link>
+          <Link to={T.routes.register}>{T.tabs.register}</Link>
         </div>
 
         <form className="login-form" onSubmit={handleLogin}>
-          <label>Email</label>
+          <label>{T.fields.email.label}</label>
           <input
             name="email"
             type="email"
-            placeholder="Email"
+            placeholder={T.fields.email.placeholder}
             autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
-          <label>Mật khẩu</label>
+          <label>{T.fields.password.label}</label>
 
           <div className="password-wrapper">
             <input
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Mật khẩu"
+              placeholder={T.fields.password.placeholder}
               autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
 
             <button
               type="button"
               className="password-eye"
-              onClick={() => setShowPassword(!showPassword)}
-              title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              onClick={toggleShowPassword}
+              title={
+                showPassword
+                  ? T.titles.hidePassword
+                  : T.titles.showPassword
+              }
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
 
-          {error && (
-            <p
-              style={{
-                color: "red",
-                fontSize: "14px",
-                marginTop: "10px",
-                marginBottom: "10px",
-              }}
-            >
-              {error}
-            </p>
-          )}
+          {error && <p className="login-error-text">{error}</p>}
 
-          <Link to="/forgot-password" className="forgot">
-            Quên mật khẩu?
+          <Link to={T.routes.forgotPassword} className="forgot">
+            {T.links.forgotPassword}
           </Link>
 
           <button className="blue-btn" type="submit" disabled={loading}>
-            {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN"}
+            {loading ? T.buttons.loggingIn : T.buttons.login}
           </button>
 
-          <button type="button" className="pink-btn">
-            ĐĂNG NHẬP BẰNG GOOGLE
+          <button
+            type="button"
+            className="pink-btn"
+            onClick={handleGoogleLogin}
+          >
+            {T.buttons.googleLogin}
           </button>
         </form>
       </div>

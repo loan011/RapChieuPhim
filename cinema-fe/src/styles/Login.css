@@ -252,4 +252,10 @@
 
 .password-eye svg {
   font-size: 18px;
-}
+}
+.login-error-text {
+  color: red;
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}

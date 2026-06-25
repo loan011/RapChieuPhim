@@ -1,129 +1,134 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Link } from "react-router-dom";
 import "../../styles/Register.css";
-import { registerApi } from "../../services/authService";
+
+import { REGISTER_TEXT as T, useRegister } from "./register";
 
 function Register() {
-  const navigate = useNavigate();
+  const {
+    form,
+    error,
+    loading,
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleRegister(e) {
-    e.preventDefault();
-
-    const name = e.target.name.value.trim();
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value.trim();
-    const confirmPassword = e.target.confirmPassword.value.trim();
-    const birthday = e.target.birthday.value.trim();
-    const phone = e.target.phone.value.trim();
-    const gender = e.target.gender.value;
-    const policy = e.target.policy.checked;
-
-    setError("");
-
-    if (!name) return setError("Vui lòng nhập họ tên!");
-    if (!email) return setError("Vui lòng nhập email!");
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return setError("Email không đúng định dạng!");
-
-    if (!password) return setError("Vui lòng nhập mật khẩu!");
-    if (password.length < 6) return setError("Mật khẩu phải có ít nhất 6 ký tự!");
-    if (password !== confirmPassword) return setError("Mật khẩu xác nhận không khớp!");
-    if (!birthday) return setError("Vui lòng nhập ngày sinh!");
-
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(phone)) return setError("Số điện thoại phải gồm đúng 10 chữ số!");
-
-    if (gender === "Giới tính") return setError("Vui lòng chọn giới tính!");
-    if (!policy) return setError("Bạn phải đồng ý với điều khoản sử dụng!");
-
-    try {
-      setLoading(true);
-
-      const data = await registerApi({
-        fullName: name,
-        email,
-        password,
-        confirmPassword,
-        dateOfBirth: birthday,
-        gender,
-        phone,
-        roleName: "Customer",
-      });
-
-      alert(data?.message || data?.Message || "Đăng ký thành công!");
-      navigate("/login");
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    handleChange,
+    handleCheckboxChange,
+    handleRegister,
+    handleGoogleRegister,
+  } = useRegister();
 
   return (
     <div className="auth-page">
-      <Link to="/" className="back-home-btn" title="Về trang chủ">
-        🏠
+      <Link to={T.routes.home} className="back-home-btn" title={T.titles.backHome}>
+        {T.icons.home}
       </Link>
 
       <div className="auth-box-page">
         <div className="auth-tabs">
-          <Link to="/login">ĐĂNG NHẬP</Link>
-          <button className="active">ĐĂNG KÝ</button>
+          <Link to={T.routes.login}>{T.tabs.login}</Link>
+
+          <button type="button" className="active">
+            {T.tabs.register}
+          </button>
         </div>
 
         <form className="register-form" onSubmit={handleRegister}>
           <div>
-            <label>* Họ tên</label>
-            <input name="name" type="text" placeholder="Họ tên" required />
+            <label>{T.fields.name.label}</label>
+            <input
+              name="name"
+              type="text"
+              placeholder={T.fields.name.placeholder}
+              value={form.name}
+              onChange={handleChange}
+              required
+            />
 
-            <label>* Mật khẩu</label>
-            <input name="password" type="password" placeholder="Mật khẩu" required />
+            <label>{T.fields.password.label}</label>
+            <input
+              name="password"
+              type="password"
+              placeholder={T.fields.password.placeholder}
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
 
-            <label>* Ngày sinh</label>
-            <input name="birthday" type="date" required />
+            <label>{T.fields.birthday.label}</label>
+            <input
+              name="birthday"
+              type="date"
+              value={form.birthday}
+              onChange={handleChange}
+              required
+            />
 
-            <label>* Số điện thoại</label>
-            <input name="phone" type="text" placeholder="Số điện thoại" required />
+            <label>{T.fields.phone.label}</label>
+            <input
+              name="phone"
+              type="text"
+              placeholder={T.fields.phone.placeholder}
+              value={form.phone}
+              onChange={handleChange}
+              required
+            />
           </div>
 
           <div>
-            <label>* Email</label>
-            <input name="email" type="email" placeholder="Email" required />
+            <label>{T.fields.email.label}</label>
+            <input
+              name="email"
+              type="email"
+              placeholder={T.fields.email.placeholder}
+              value={form.email}
+              onChange={handleChange}
+              required
+            />
 
-            <label>* Xác nhận lại mật khẩu</label>
-            <input name="confirmPassword" type="password" placeholder="Xác nhận lại mật khẩu" required />
+            <label>{T.fields.confirmPassword.label}</label>
+            <input
+              name="confirmPassword"
+              type="password"
+              placeholder={T.fields.confirmPassword.placeholder}
+              value={form.confirmPassword}
+              onChange={handleChange}
+              required
+            />
 
-            <label>Giới tính</label>
-            <select name="gender" defaultValue="Giới tính">
-              <option value="Giới tính">Giới tính</option>
-              <option value="Nam">Nam</option>
-              <option value="Nữ">Nữ</option>
-              <option value="Khác">Khác</option>
+            <label>{T.fields.gender.label}</label>
+            <select
+              name="gender"
+              value={form.gender}
+              onChange={handleChange}
+            >
+              {T.genderOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <p className="policy">
-            <input type="checkbox" name="policy" />{" "}
-            Tôi cam kết tuân theo chính sách bảo mật và điều khoản sử dụng.
+            <input
+              type="checkbox"
+              name="policy"
+              checked={form.policy}
+              onChange={handleCheckboxChange}
+            />{" "}
+            {T.policy}
           </p>
 
-          {error && (
-            <p style={{ color: "red", fontSize: "14px", marginTop: "10px", marginBottom: "10px" }}>
-              {error}
-            </p>
-          )}
+          {error && <p className="register-error-text">{error}</p>}
 
           <button className="blue-btn" type="submit" disabled={loading}>
-            {loading ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ"}
+            {loading ? T.buttons.registering : T.buttons.register}
           </button>
 
-          <button type="button" className="pink-btn">
-            TIẾP TỤC VỚI GOOGLE
+          <button
+            type="button"
+            className="pink-btn"
+            onClick={handleGoogleRegister}
+          >
+            {T.buttons.googleRegister}
           </button>
         </form>
       </div>
