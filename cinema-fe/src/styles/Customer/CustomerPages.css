@@ -697,3 +697,16 @@
   .ticket-right { width: 100%; flex-direction: row; border-left: none; border-top: 1px dashed rgba(255,255,255,0.1); }
   .cust-tab { padding: 8px 12px; font-size: 0.8rem; }
 }
+.history-type-badge {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.25);
+  display: inline-block;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.history-right {
+  text-align: right;
+}
