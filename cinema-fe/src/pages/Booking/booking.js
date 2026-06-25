@@ -1,238 +1,406 @@
-import {
-  getApiUrl,
-  readResponse,
-  getErrorMessage,
-  getAuthHeaders,
-} from "../../services/apiHelper";
-
-const API_URL = getApiUrl();
-
-export const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+const API_URL = import.meta.env.VITE_API_URL;
 
 /* =========================
-   COMMON
+   API HELPER
 ========================= */
 
-export function normalizeArray(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.$values)) return data.$values;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.result)) return data.result;
-
-  return [];
+function getToken() {
+  return localStorage.getItem("token");
 }
+
+function getAuthHeaders() {
+  const token = getToken();
+
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function readResponse(response) {
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.message ||
+      data?.Message ||
+      data?.title ||
+      data?.errors ||
+      `Lỗi API ${response.status}`;
+
+    throw new Error(
+      typeof message === "string" ? message : JSON.stringify(message)
+    );
+  }
+
+  return data;
+}
+
+async function apiGet(url) {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return readResponse(response);
+}
+
+async function apiPost(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  return readResponse(response);
+}
+
+/* =========================
+   TRY MANY API URLS
+   Nếu backend khác tên endpoint,
+   chỉ cần sửa danh sách dưới đây.
+========================= */
+
+async function tryGet(urls) {
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      return await apiGet(url);
+    } catch (err) {
+      lastError = err;
+      console.warn("API GET lỗi:", url, err.message);
+    }
+  }
+
+  throw lastError || new Error("Không gọi được API");
+}
+
+async function tryPost(urls, body) {
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      return await apiPost(url, body);
+    } catch (err) {
+      lastError = err;
+      console.warn("API POST lỗi:", url, err.message);
+    }
+  }
+
+  throw lastError || new Error("Không gọi được API");
+}
+
+/* =========================
+   LOCAL USER
+========================= */
 
 export function getSavedUser() {
   try {
-    return JSON.parse(localStorage.getItem("user") || "{}");
+    return (
+      JSON.parse(localStorage.getItem("user")) ||
+      JSON.parse(localStorage.getItem("currentUser")) ||
+      {}
+    );
   } catch {
     return {};
   }
 }
 
 export function getUserEmail() {
-  const savedUser = getSavedUser();
+  const user = getSavedUser();
 
   return (
-    localStorage.getItem("userEmail") ||
+    user.email ||
+    user.Email ||
     localStorage.getItem("email") ||
-    savedUser.email ||
-    savedUser.Email
+    localStorage.getItem("userEmail") ||
+    ""
   );
 }
 
 /* =========================
-   DATE
+   BOOKING DATE
 ========================= */
 
-export function toISODate(date) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
+export function createBookingDates(totalDays = 7) {
+  const days = [];
 
-  return `${yyyy}-${mm}-${dd}`;
-}
+  for (let i = 0; i < totalDays; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
 
-export function formatDateLabel(date) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const iso = date.toISOString().split("T")[0];
 
-  return `${dd}/${mm} - ${dayNames[date.getDay()]}`;
-}
+    const label =
+      i === 0
+        ? `Hôm nay, ${date.toLocaleDateString("vi-VN")}`
+        : date.toLocaleDateString("vi-VN", {
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+          });
 
-export function createBookingDates(total = 7) {
-  return Array.from({ length: total }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
+    days.push({
+      iso,
+      label,
+    });
+  }
 
-    return {
-      iso: toISODate(d),
-      label: formatDateLabel(d),
-    };
-  });
+  return days;
 }
 
 /* =========================
-   API
+   API: CINEMA / ROOM / MOVIE / SHOWTIME / SEAT / BOOKING
 ========================= */
 
 export async function getCinemas() {
-  const response = await fetch(`${API_URL}/Cinemas`, {
-    headers: getAuthHeaders(),
-  });
+  const data = await tryGet([
+    `${API_URL}/Cinemas`,
+    `${API_URL}/Cinema`,
+    `${API_URL}/api/Cinemas`,
+    `${API_URL}/api/Cinema`,
+  ]);
 
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách rạp thất bại"));
-  }
-
-  return normalizeArray(data);
+  return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
 export async function getRooms() {
-  const response = await fetch(`${API_URL}/Rooms`, {
-    headers: getAuthHeaders(),
-  });
+  const data = await tryGet([
+    `${API_URL}/Rooms`,
+    `${API_URL}/Room`,
+    `${API_URL}/api/Rooms`,
+    `${API_URL}/api/Room`,
+  ]);
 
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách phòng thất bại"));
-  }
-
-  return normalizeArray(data);
+  return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
 export async function getMovieById(movieId) {
-  const response = await fetch(`${API_URL}/Movies/${movieId}`, {
-    headers: getAuthHeaders(),
-  });
+  if (!movieId) return null;
 
-  const data = await readResponse(response);
+  const data = await tryGet([
+    `${API_URL}/Movies/${movieId}`,
+    `${API_URL}/Movies/GetById/${movieId}`,
+    `${API_URL}/api/Movies/${movieId}`,
+    `${API_URL}/api/Movies/GetById/${movieId}`,
+  ]);
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy thông tin phim thất bại"));
-  }
-
-  return data;
+  return data?.data || data;
 }
 
 export async function getShowtimesByMovie(movieId) {
-  const response = await fetch(`${API_URL}/Showtimes/ByMovie/${movieId}`, {
-    headers: getAuthHeaders(),
-  });
+  if (!movieId) return [];
 
-  const data = await readResponse(response);
+  const data = await tryGet([
+    `${API_URL}/Showtimes/ByMovie/${movieId}`,
+    `${API_URL}/Showtime/ByMovie/${movieId}`,
+    `${API_URL}/Showtimes/Movie/${movieId}`,
+    `${API_URL}/Showtime/Movie/${movieId}`,
+    `${API_URL}/api/Showtimes/ByMovie/${movieId}`,
+    `${API_URL}/api/Showtime/ByMovie/${movieId}`,
+    `${API_URL}/Showtimes?movieId=${movieId}`,
+    `${API_URL}/Showtime?movieId=${movieId}`,
+  ]);
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy suất chiếu thất bại"));
-  }
-
-  return normalizeArray(data);
+  return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
 export async function getSeatsByRoomId(roomId) {
-  const response = await fetch(`${API_URL}/Seats/ByRoom/${roomId}`, {
-    headers: getAuthHeaders(),
-  });
+  if (!roomId) return [];
 
-  const data = await readResponse(response);
+  const data = await tryGet([
+    `${API_URL}/Seats/ByRoom/${roomId}`,
+    `${API_URL}/Seat/ByRoom/${roomId}`,
+    `${API_URL}/Seats/Room/${roomId}`,
+    `${API_URL}/Seat/Room/${roomId}`,
+    `${API_URL}/api/Seats/ByRoom/${roomId}`,
+    `${API_URL}/api/Seat/ByRoom/${roomId}`,
+    `${API_URL}/Seats?roomId=${roomId}`,
+    `${API_URL}/Seat?roomId=${roomId}`,
+  ]);
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách ghế thất bại"));
-  }
-
-  return normalizeArray(data);
+  return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
 export async function getAvailableSeats(showtimeId) {
-  const response = await fetch(`${API_URL}/Bookings/AvailableSeats/${showtimeId}`, {
-    headers: getAuthHeaders(),
-  });
+  if (!showtimeId) return [];
 
-  const data = await readResponse(response);
+  const data = await tryGet([
+    `${API_URL}/Bookings/AvailableSeats/${showtimeId}`,
+    `${API_URL}/Booking/AvailableSeats/${showtimeId}`,
+    `${API_URL}/Seats/Available/${showtimeId}`,
+    `${API_URL}/Seat/Available/${showtimeId}`,
+    `${API_URL}/api/Bookings/AvailableSeats/${showtimeId}`,
+    `${API_URL}/api/Seats/Available/${showtimeId}`,
+    `${API_URL}/Bookings/GetAvailableSeats?showtimeId=${showtimeId}`,
+    `${API_URL}/Booking/GetAvailableSeats?showtimeId=${showtimeId}`,
+  ]);
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy ghế trống thất bại"));
-  }
-
-  return normalizeArray(data);
+  return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
 export async function createBooking(payload) {
-  const response = await fetch(`${API_URL}/Bookings`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
-  });
+  const data = await tryPost(
+    [
+      `${API_URL}/Bookings`,
+      `${API_URL}/Booking`,
+      `${API_URL}/api/Bookings`,
+      `${API_URL}/api/Booking`,
+    ],
+    payload
+  );
 
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Đặt vé thất bại"));
-  }
-
-  return data;
+  return data?.data || data;
 }
 
 /* =========================
-   MOVIE HELPERS
+   API WRAPPER FOR BOOKING.JSX
+   Booking.jsx chỉ gọi 2 hàm này,
+   không cần tự Promise.all API nữa.
+========================= */
+
+export async function loadBookingInitialData({
+  movieParam,
+  showtimeParam,
+  dates,
+}) {
+  const [cinemas, rooms, movie, showtimes] = await Promise.all([
+    getCinemas(),
+    getRooms(),
+    getMovieById(movieParam),
+    getShowtimesByMovie(movieParam),
+  ]);
+
+  let initialShowtime = null;
+
+  if (showtimeParam) {
+    initialShowtime = showtimes.find(
+      (st) => String(getShowtimeId(st)) === String(showtimeParam)
+    );
+  }
+
+  if (!initialShowtime) {
+    initialShowtime = showtimes[0] || null;
+  }
+
+  let selectedCinemaId = "";
+  let selectedDateIso = dates?.[0]?.iso || "";
+
+  if (initialShowtime) {
+    const room = rooms.find(
+      (r) => String(getRoomId(r)) === String(getShowtimeRoomId(initialShowtime))
+    );
+
+    if (room) {
+      selectedCinemaId = String(getRoomCinemaId(room));
+    }
+
+    const date = getShowtimeDate(initialShowtime);
+
+    if (date) {
+      selectedDateIso = date;
+    }
+  }
+
+  return {
+    cinemas,
+    rooms,
+    movie,
+    showtimes,
+    selectedShowtime: initialShowtime,
+    selectedCinemaId,
+    selectedDateIso,
+  };
+}
+
+export async function loadBookingSeatsData(selectedShowtime) {
+  if (!selectedShowtime) {
+    return {
+      seats: [],
+      availableSeats: [],
+    };
+  }
+
+  const showtimeId = getShowtimeId(selectedShowtime);
+  const roomId = getShowtimeRoomId(selectedShowtime);
+
+  if (!roomId) {
+    return {
+      seats: [],
+      availableSeats: [],
+    };
+  }
+
+  const seats = await getSeatsByRoomId(roomId);
+
+  let availableSeats = [];
+
+  try {
+    availableSeats = await getAvailableSeats(showtimeId);
+  } catch (err) {
+    console.error("Lỗi tải ghế trống:", err);
+    availableSeats = [];
+  }
+
+  return {
+    seats,
+    availableSeats,
+  };
+}
+
+/* =========================
+   MOVIE HELPER
 ========================= */
 
 export function getMovieTitle(movie) {
-  return (
-    movie?.title ??
-    movie?.Title ??
-    movie?.movieTitle ??
-    movie?.MovieTitle ??
-    movie?.name ??
-    movie?.Name ??
-    "Không rõ tên phim"
-  );
+  return movie?.title || movie?.Title || movie?.movieTitle || movie?.MovieTitle || "";
 }
 
 export function getMoviePoster(movie) {
-  const poster =
-    movie?.posterUrl ??
-    movie?.PosterUrl ??
-    movie?.posterURL ??
-    movie?.PosterURL ??
-    movie?.imageUrl ??
-    movie?.ImageUrl ??
-    "";
-
-  if (!poster) return "/img/no-image.png";
-  if (poster.startsWith("http://") || poster.startsWith("https://")) return poster;
-  if (poster.startsWith("/")) return poster;
-
-  return `/img/${poster}`;
+  return (
+    movie?.posterUrl ||
+    movie?.PosterUrl ||
+    movie?.imageUrl ||
+    movie?.ImageUrl ||
+    movie?.poster ||
+    movie?.Poster ||
+    "https://via.placeholder.com/300x450?text=No+Poster"
+  );
 }
 
 export function getMovieAgeRating(movie) {
-  return movie?.ageRating ?? movie?.AgeRating ?? "P";
+  return movie?.ageRating || movie?.AgeRating || movie?.age || movie?.Age || "P";
 }
 
 export function getMovieDuration(movie) {
   const duration =
-    movie?.duration ??
-    movie?.Duration ??
-    movie?.durationMinutes ??
-    movie?.DurationMinutes ??
-    120;
+    movie?.duration ||
+    movie?.Duration ||
+    movie?.durationMinutes ||
+    movie?.DurationMinutes ||
+    movie?.runningTime ||
+    movie?.RunningTime;
 
-  if (String(duration).toLowerCase().includes("phút")) return duration;
+  if (!duration) return "Đang cập nhật";
 
-  return `${duration} phút`;
+  return String(duration).includes("phút") ? duration : `${duration} phút`;
 }
 
 export function getMovieDirector(movie) {
-  return movie?.director ?? movie?.Director ?? "Đang cập nhật";
+  return movie?.director || movie?.Director || "Đang cập nhật";
 }
 
 /* =========================
-   CINEMA HELPERS
+   CINEMA HELPER
 ========================= */
 
 export function getCinemaId(cinema) {
@@ -241,11 +409,11 @@ export function getCinemaId(cinema) {
 
 export function getCinemaName(cinema) {
   return (
-    cinema?.cinemaName ??
-    cinema?.CinemaName ??
-    cinema?.name ??
-    cinema?.Name ??
-    "Rạp chưa chọn"
+    cinema?.cinemaName ||
+    cinema?.CinemaName ||
+    cinema?.name ||
+    cinema?.Name ||
+    "Không rõ rạp"
   );
 }
 
@@ -254,11 +422,11 @@ export function getCinemaNameById(cinemas, cinemaId) {
     (cinema) => String(getCinemaId(cinema)) === String(cinemaId)
   );
 
-  return found ? getCinemaName(found) : "Rạp chưa chọn";
+  return found ? getCinemaName(found) : "Chưa chọn";
 }
 
 /* =========================
-   ROOM HELPERS
+   ROOM HELPER
 ========================= */
 
 export function getRoomId(room) {
@@ -267,11 +435,11 @@ export function getRoomId(room) {
 
 export function getRoomName(room) {
   return (
-    room?.roomName ??
-    room?.RoomName ??
-    room?.name ??
-    room?.Name ??
-    "N/A"
+    room?.roomName ||
+    room?.RoomName ||
+    room?.name ||
+    room?.Name ||
+    "Không rõ phòng"
   );
 }
 
@@ -279,29 +447,28 @@ export function getRoomCinemaId(room) {
   return (
     room?.cinemaId ??
     room?.CinemaId ??
-    room?.cinema?.cinemaId ??
-    room?.cinema?.CinemaId ??
-    room?.Cinema?.cinemaId ??
-    room?.Cinema?.CinemaId
+    room?.cinemaID ??
+    room?.CinemaID ??
+    ""
   );
 }
 
-export function findRoomByShowtime(showtime, rooms = []) {
+export function findRoomByShowtime(showtime, rooms) {
   const roomId = getShowtimeRoomId(showtime);
 
   return rooms.find((room) => String(getRoomId(room)) === String(roomId));
 }
 
 /* =========================
-   SHOWTIME HELPERS
+   SHOWTIME HELPER
 ========================= */
 
 export function getShowtimeId(showtime) {
   return (
-    showtime?.showTimeId ??
-    showtime?.ShowTimeId ??
     showtime?.showtimeId ??
     showtime?.ShowtimeId ??
+    showtime?.showTimeId ??
+    showtime?.ShowTimeId ??
     showtime?.id ??
     showtime?.Id
   );
@@ -311,95 +478,89 @@ export function getShowtimeRoomId(showtime) {
   return (
     showtime?.roomId ??
     showtime?.RoomId ??
+    showtime?.roomID ??
+    showtime?.RoomID ??
     showtime?.room?.roomId ??
-    showtime?.room?.RoomId ??
-    showtime?.Room?.roomId ??
-    showtime?.Room?.RoomId
+    showtime?.Room?.RoomId ??
+    ""
   );
 }
 
-export function getShowtimeStartTime(showtime) {
-  return showtime?.startTime ?? showtime?.StartTime ?? "";
-}
-
 export function getShowtimeDate(showtime) {
-  const startTime = getShowtimeStartTime(showtime);
+  const rawDate =
+    showtime?.showDate ||
+    showtime?.ShowDate ||
+    showtime?.date ||
+    showtime?.Date ||
+    showtime?.startTime ||
+    showtime?.StartTime ||
+    showtime?.showtimeDate ||
+    showtime?.ShowtimeDate;
 
-  if (!startTime) return "";
+  if (!rawDate) return "";
 
-  return String(startTime).split("T")[0];
+  return String(rawDate).split("T")[0];
 }
 
 export function getShowtimeHour(showtime) {
-  const startTime = getShowtimeStartTime(showtime);
+  const rawTime =
+    showtime?.showTime ||
+    showtime?.ShowTime ||
+    showtime?.time ||
+    showtime?.Time ||
+    showtime?.startTime ||
+    showtime?.StartTime ||
+    showtime?.startAt ||
+    showtime?.StartAt;
 
-  if (!startTime) return "";
+  if (!rawTime) return "N/A";
 
-  if (String(startTime).includes("T")) {
-    return String(startTime).split("T")[1]?.slice(0, 5) || "";
+  const value = String(rawTime);
+
+  if (value.includes("T")) {
+    return value.split("T")[1]?.slice(0, 5) || "N/A";
   }
 
-  return String(startTime).slice(0, 5);
-}
-
-export function getShowtimeStatus(showtime) {
-  const status = showtime?.status ?? showtime?.Status ?? "Chưa mở bán";
-
-  if (status === "Active") return "Đang bán";
-  if (status === "Inactive") return "Hủy";
-
-  return status;
+  return value.slice(0, 5);
 }
 
 export function getShowtimeBasePrice(showtime) {
   return (
     showtime?.basePrice ??
     showtime?.BasePrice ??
+    showtime?.ticketPrice ??
+    showtime?.TicketPrice ??
     showtime?.price ??
     showtime?.Price ??
-    75000
+    70000
   );
 }
 
-export function isShowtimeActive(showtime) {
-  const status = getShowtimeStatus(showtime);
-
-  return status !== "Hủy" && status !== "Inactive";
-}
-
 export function filterShowtimesForBooking({
-  showtimes = [],
-  rooms = [],
-  selectedDateIso = "",
-  selectedCinemaId = "",
+  showtimes,
+  rooms,
+  selectedDateIso,
+  selectedCinemaId,
 }) {
-  return showtimes
-    .filter((showtime) => {
-      const showDate = getShowtimeDate(showtime);
+  return showtimes.filter((showtime) => {
+    const showtimeDate = getShowtimeDate(showtime);
+    const room = findRoomByShowtime(showtime, rooms);
 
-      if (selectedDateIso && showDate !== selectedDateIso) return false;
+    const sameDate = !selectedDateIso || showtimeDate === selectedDateIso;
 
-      const room = findRoomByShowtime(showtime, rooms);
+    const sameCinema =
+      !selectedCinemaId ||
+      (room && String(getRoomCinemaId(room)) === String(selectedCinemaId));
 
-      if (!room) return false;
-
-      if (
-        selectedCinemaId &&
-        String(getRoomCinemaId(room)) !== String(selectedCinemaId)
-      ) {
-        return false;
-      }
-
-      return isShowtimeActive(showtime);
-    })
-    .sort((a, b) => getShowtimeHour(a).localeCompare(getShowtimeHour(b)));
+    return sameDate && sameCinema;
+  });
 }
 
 export function findFirstShowtime({
-  showtimes = [],
-  rooms = [],
-  selectedDateIso = "",
-  selectedCinemaId = "",
+  showtimes,
+  rooms,
+  selectedDateIso,
+  selectedCinemaId,
 }) {
   const list = filterShowtimesForBooking({
     showtimes,
@@ -412,155 +573,111 @@ export function findFirstShowtime({
 }
 
 /* =========================
-   SEAT HELPERS
+   SEAT HELPER
 ========================= */
 
 export function getSeatId(seat) {
-  return (
-    seat?.seatId ??
-    seat?.SeatId ??
-    seat?.id ??
-    seat?.Id ??
-    seat?.seat?.seatId ??
-    seat?.seat?.SeatId ??
-    seat?.Seat?.seatId ??
-    seat?.Seat?.SeatId
-  );
+  return seat?.seatId ?? seat?.SeatId ?? seat?.id ?? seat?.Id;
 }
 
 export function getSeatRow(seat) {
-  return seat?.seatRow ?? seat?.SeatRow ?? seat?.row ?? seat?.Row ?? "";
+  return seat?.seatRow || seat?.SeatRow || seat?.row || seat?.Row || "";
 }
 
 export function getSeatNumber(seat) {
   return (
-    seat?.seatNumber ??
-    seat?.SeatNumber ??
-    seat?.number ??
-    seat?.Number ??
+    seat?.seatNumber ||
+    seat?.SeatNumber ||
+    seat?.number ||
+    seat?.Number ||
     ""
   );
 }
 
 export function getSeatType(seat) {
-  return seat?.seatType ?? seat?.SeatType ?? seat?.type ?? seat?.Type ?? "Standard";
-}
-
-export function isSeatActive(seat) {
-  const value = seat?.isActive ?? seat?.IsActive;
-
-  return value !== false && value !== 0;
+  return (
+    seat?.seatType ||
+    seat?.SeatType ||
+    seat?.type ||
+    seat?.Type ||
+    "standard"
+  );
 }
 
 export function getSeatLabel(seat) {
-  const row = String(getSeatRow(seat));
-  const number = String(getSeatNumber(seat));
-
-  if (!number) return row;
-
-  if (row && number.toUpperCase().startsWith(row.toUpperCase())) {
-    return number;
-  }
-
-  return `${row}${number}`;
+  return `${getSeatRow(seat)}${getSeatNumber(seat)}`;
 }
 
 export function getSeatDisplayNumber(seat) {
-  const row = String(getSeatRow(seat));
-  const number = String(getSeatNumber(seat));
-
-  if (row && number.toUpperCase().startsWith(row.toUpperCase())) {
-    return number.slice(row.length);
-  }
-
-  return number;
+  return getSeatNumber(seat);
 }
 
-export function isSeatAvailable(seat, availableSeats = []) {
-  if (!isSeatActive(seat)) return false;
+export function isSeatAvailable(seat, availableSeats) {
+  const seatId = getSeatId(seat);
 
   if (!Array.isArray(availableSeats) || availableSeats.length === 0) {
-    return false;
+    return true;
   }
 
-  const targetId = String(getSeatId(seat));
-  const targetLabel = String(getSeatLabel(seat));
-  const targetNumber = String(getSeatNumber(seat));
+  return availableSeats.some((availableSeat) => {
+    const availableSeatId =
+      availableSeat?.seatId ??
+      availableSeat?.SeatId ??
+      availableSeat?.id ??
+      availableSeat?.Id;
 
-  return availableSeats.some((item) => {
-    if (item == null) return false;
-
-    if (typeof item !== "object") {
-      const value = String(item);
-      return (
-        value === targetId ||
-        value === targetLabel ||
-        value === targetNumber
-      );
-    }
-
-    const itemId = getSeatId(item);
-    const itemLabel = getSeatLabel(item);
-    const itemNumber = getSeatNumber(item);
-
-    return (
-      String(itemId) === targetId ||
-      String(itemLabel) === targetLabel ||
-      String(itemNumber) === targetNumber
-    );
+    return String(availableSeatId) === String(seatId);
   });
 }
 
 export function getSeatPrice(seat, selectedShowtime) {
-  const base = Number(getShowtimeBasePrice(selectedShowtime)) || 75000;
-  const seatType = String(getSeatType(seat)).toLowerCase();
+  const basePrice = Number(getShowtimeBasePrice(selectedShowtime));
 
-  if (seatType === "vip") return base + 20000;
-  if (seatType === "sweetbox") return base + 40000;
+  const type = String(getSeatType(seat)).toLowerCase();
 
-  return base;
+  if (type.includes("sweetbox") || type.includes("couple") || type.includes("đôi")) {
+    return basePrice + 40000;
+  }
+
+  if (type.includes("vip")) {
+    return basePrice + 20000;
+  }
+
+  return basePrice;
 }
 
-export function groupSeatsByRow(seats = []) {
-  const grouped = seats.reduce((acc, seat) => {
+export function groupSeatsByRow(seats) {
+  return seats.reduce((groups, seat) => {
     const row = getSeatRow(seat) || "A";
 
-    if (!acc[row]) acc[row] = [];
+    if (!groups[row]) {
+      groups[row] = [];
+    }
 
-    acc[row].push(seat);
+    groups[row].push(seat);
 
-    return acc;
-  }, {});
+    groups[row].sort((a, b) => {
+      const aNumber = Number(getSeatNumber(a));
+      const bNumber = Number(getSeatNumber(b));
 
-  Object.keys(grouped).forEach((row) => {
-    grouped[row].sort((a, b) => {
-      const numA = parseInt(String(getSeatNumber(a)).replace(/\D/g, ""), 10) || 0;
-      const numB = parseInt(String(getSeatNumber(b)).replace(/\D/g, ""), 10) || 0;
-
-      return numA - numB;
+      return aNumber - bNumber;
     });
-  });
 
-  return grouped;
+    return groups;
+  }, {});
 }
 
-export function buildBookingPayload({
-  userId,
-  showtimeId,
-  seat,
-  selectedShowtime,
-}) {
-  const ticketPrice = getSeatPrice(seat, selectedShowtime);
+/* =========================
+   BOOKING PAYLOAD
+========================= */
 
+export function buildBookingPayload({ userId, showtimeId, seat, selectedShowtime }) {
   return {
     userId: Number(userId),
-    showTimeId: Number(showtimeId),
+    showtimeId: Number(showtimeId),
     seatId: Number(getSeatId(seat)),
-    bookingDate: new Date().toISOString(),
-    ticketPrice,
-    discountAmt: 0,
-    totalAmount: ticketPrice,
-    bookingType: "Online",
-    status: "Confirmed",
+    totalPrice: Number(getSeatPrice(seat, selectedShowtime)),
+    status: "Paid",
+    paymentStatus: "Paid",
   };
 }

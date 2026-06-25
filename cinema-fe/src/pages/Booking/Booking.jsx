@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import {
   MdLocationOn,
@@ -17,12 +17,9 @@ import {
   getSavedUser,
   getUserEmail,
 
-  getCinemas,
-  getRooms,
-  getMovieById,
-  getShowtimesByMovie,
-  getSeatsByRoomId,
-  getAvailableSeats,
+  loadBookingInitialData,
+  loadBookingSeatsData,
+
   createBooking,
 
   getMovieTitle,
@@ -40,15 +37,12 @@ import {
   findRoomByShowtime,
 
   getShowtimeId,
-  getShowtimeRoomId,
-  getShowtimeDate,
   getShowtimeHour,
   getShowtimeBasePrice,
   filterShowtimesForBooking,
   findFirstShowtime,
 
   getSeatId,
-  getSeatRow,
   getSeatType,
   getSeatLabel,
   getSeatDisplayNumber,
@@ -86,7 +80,8 @@ export default function Booking() {
 
   const savedUser = getSavedUser();
   const userEmail = getUserEmail();
-  const dates = createBookingDates(7);
+
+  const dates = useMemo(() => createBookingDates(7), []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -105,56 +100,23 @@ export default function Booking() {
       setBookingError("");
 
       try {
-        const [cinemaData, roomData, movieData, showtimeData] =
-          await Promise.all([
-            getCinemas(),
-            getRooms(),
-            getMovieById(movieParam),
-            getShowtimesByMovie(movieParam),
-          ]);
+        const data = await loadBookingInitialData({
+          movieParam,
+          showtimeParam,
+          dates,
+        });
 
-        setCinemas(cinemaData);
-        setRooms(roomData);
-        setMovie(movieData);
-        setShowtimes(showtimeData);
+        setCinemas(data.cinemas);
+        setRooms(data.rooms);
+        setMovie(data.movie);
+        setShowtimes(data.showtimes);
 
-        let initialShowtime = null;
-
-        if (showtimeParam) {
-          initialShowtime = showtimeData.find(
-            (st) => String(getShowtimeId(st)) === String(showtimeParam)
-          );
-        }
-
-        if (!initialShowtime) {
-          initialShowtime = showtimeData[0] || null;
-        }
-
-        if (initialShowtime) {
-          const room = roomData.find(
-            (r) =>
-              String(r.roomId ?? r.RoomId ?? r.id ?? r.Id) ===
-              String(getShowtimeRoomId(initialShowtime))
-          );
-
-          setSelectedShowtime(initialShowtime);
-
-          if (room) {
-            setSelectedCinemaId(String(getRoomCinemaId(room)));
-          }
-
-          const date = getShowtimeDate(initialShowtime);
-
-          if (date) {
-            setSelectedDateIso(date);
-          }
-        } else {
-          setSelectedShowtime(null);
-          setSelectedCinemaId("");
-          setSelectedDateIso(dates[0]?.iso || "");
-        }
+        setSelectedShowtime(data.selectedShowtime);
+        setSelectedCinemaId(data.selectedCinemaId);
+        setSelectedDateIso(data.selectedDateIso);
       } catch (err) {
         console.error("Lỗi khi tải thông tin đặt vé:", err);
+
         setMovie(null);
         setShowtimes([]);
         setCinemas([]);
@@ -165,7 +127,7 @@ export default function Booking() {
     }
 
     init();
-  }, [movieParam, showtimeParam]);
+  }, [movieParam, showtimeParam, dates]);
 
   useEffect(() => {
     if (!selectedShowtime) {
@@ -181,38 +143,13 @@ export default function Booking() {
       setBookingError("");
 
       try {
-        const showtimeId = getShowtimeId(selectedShowtime);
-        const roomId = getShowtimeRoomId(selectedShowtime);
+        const data = await loadBookingSeatsData(selectedShowtime);
 
-        console.log("SELECTED SHOWTIME:", selectedShowtime);
-        console.log("SHOWTIME ID:", showtimeId);
-        console.log("ROOM ID:", roomId);
-
-        if (!roomId) {
-          console.error("Suất chiếu không có RoomId:", selectedShowtime);
-          setAllSeats([]);
-          setAvailableSeats([]);
-          return;
-        }
-
-        const seats = await getSeatsByRoomId(roomId);
-
-        let available = [];
-
-        try {
-          available = await getAvailableSeats(showtimeId);
-        } catch (availableErr) {
-          console.error("Lỗi tải ghế trống:", availableErr);
-          available = [];
-        }
-
-        console.log("ALL SEATS:", seats);
-        console.log("AVAILABLE SEATS:", available);
-
-        setAllSeats(seats);
-        setAvailableSeats(available);
+        setAllSeats(data.seats);
+        setAvailableSeats(data.availableSeats);
       } catch (err) {
         console.error("Lỗi tải thông tin ghế ngồi:", err);
+
         setAllSeats([]);
         setAvailableSeats([]);
       } finally {
@@ -325,6 +262,7 @@ export default function Booking() {
     }
 
     const showtimeId = getShowtimeId(selectedShowtime);
+
     const userId =
       savedUser.userId ??
       savedUser.id ??
@@ -366,6 +304,7 @@ export default function Booking() {
       setShowPaymentSuccess(true);
     } catch (err) {
       console.error("Đặt vé thất bại:", err);
+
       setBookingError(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
       alert(err.message || "Đặt vé thất bại. Vui lòng thử lại!");
     } finally {
@@ -506,6 +445,7 @@ export default function Booking() {
                     const time = getShowtimeHour(showtime);
                     const room = findRoomByShowtime(showtime, rooms);
                     const roomName = room ? getRoomName(room) : "N/A";
+
                     const isActive =
                       String(getShowtimeId(selectedShowtime)) ===
                       String(showtimeId);
@@ -514,7 +454,9 @@ export default function Booking() {
                       <button
                         key={showtimeId}
                         type="button"
-                        className={`booking-time-btn ${isActive ? "active" : ""}`}
+                        className={`booking-time-btn ${
+                          isActive ? "active" : ""
+                        }`}
                         onClick={() => handleShowtimeClick(showtime)}
                       >
                         {time} ({roomName})

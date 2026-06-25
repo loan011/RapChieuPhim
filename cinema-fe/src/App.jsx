@@ -8,7 +8,7 @@ import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword";
 import TicketPrice from "./pages/Ticket/TicketPrice";
 import Cinema from "./pages/Cinema/Cinema";
-import Booking from "./pages/Booking/Booking";
+import Booking from "./pages/Booking/Booking.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
