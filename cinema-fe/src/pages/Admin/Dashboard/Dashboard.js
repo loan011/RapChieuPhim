@@ -122,6 +122,8 @@ export function normalizeRecentTickets(data) {
         item?.date ??
         item?.Date
     ),
+    cinemaName: item?.cinemaName ?? item?.CinemaName ?? "—",
+    areaName: item?.areaName ?? item?.AreaName ?? "—",
   }));
 }
 

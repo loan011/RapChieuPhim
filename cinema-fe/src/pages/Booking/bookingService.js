@@ -33,6 +33,16 @@ async function apiPost(url, body) {
   return readResponse(response);
 }
 
+async function apiDelete(url, body) {
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  return readResponse(response);
+}
+
 async function tryGet(urls) {
   let lastError = null;
 
@@ -62,6 +72,25 @@ async function tryPost(urls, body) {
     } catch (err) {
       lastError = err;
       console.warn("API POST lỗi:", url, err.message);
+
+      if (err.message.includes("Phiên đăng nhập") || err.message.includes("hết hạn")) {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error("Không gọi được API");
+}
+
+async function tryDelete(urls, body) {
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      return await apiDelete(url, body);
+    } catch (err) {
+      lastError = err;
+      console.warn("API DELETE lỗi:", url, err.message);
 
       if (err.message.includes("Phiên đăng nhập") || err.message.includes("hết hạn")) {
         throw err;
@@ -167,6 +196,30 @@ export async function createBooking(payload) {
       `${API_URL}/api/Booking`,
     ],
     payload
+  );
+
+  return data?.data || data;
+}
+
+export async function holdSeat(showTimeId, seatId) {
+  const data = await tryPost(
+    [
+      `${API_URL}/Bookings/Hold`,
+      `${API_URL}/api/Bookings/Hold`,
+    ],
+    { showTimeId: Number(showTimeId), seatId: Number(seatId) }
+  );
+
+  return data?.data || data;
+}
+
+export async function releaseSeat(holdKey) {
+  const data = await tryDelete(
+    [
+      `${API_URL}/Bookings/Hold`,
+      `${API_URL}/api/Bookings/Hold`,
+    ],
+    { holdKey }
   );
 
   return data?.data || data;

@@ -17,9 +17,9 @@ function normalizeArray(data) {
   return [];
 }
 
-// GET /api/Employees
+// GET /api/Users/ByRole/Staff
 export async function getEmployeeList() {
-  const response = await fetch(`${API_URL}/Employees`, {
+  const response = await fetch(`${API_URL}/Users/ByRole/Staff`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
@@ -35,9 +35,9 @@ export async function getEmployeeList() {
   return normalizeArray(data);
 }
 
-// GET /api/Employees/:id
+// GET /api/Users/:id
 export async function getEmployeeById(id) {
-  const response = await fetch(`${API_URL}/Employees/${id}`, {
+  const response = await fetch(`${API_URL}/Users/${id}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
@@ -53,12 +53,23 @@ export async function getEmployeeById(id) {
   return data;
 }
 
-// POST /api/Employees
+// POST /api/Auth/CreateInternalAccount
 export async function createEmployee(employee) {
-  const response = await fetch(`${API_URL}/Employees`, {
+  const payload = {
+    fullName: employee.fullName,
+    email: employee.email,
+    password: "123456a@", // Mật khẩu mặc định
+    confirmPassword: "123456a@",
+    phone: employee.phone || "0900000000",
+    dateOfBirth: employee.dateOfBirth || "1995-01-01",
+    gender: employee.gender || "Nam",
+    roleName: "Staff",
+  };
+
+  const response = await fetch(`${API_URL}/Auth/CreateInternalAccount`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(employee),
+    body: JSON.stringify(payload),
   });
 
   const data = await readResponse(response);
@@ -72,12 +83,21 @@ export async function createEmployee(employee) {
   return data;
 }
 
-// PUT /api/Employees/:id
+// PUT /api/Users/AdminUpdate/:id
 export async function updateEmployee(id, employee) {
-  const response = await fetch(`${API_URL}/Employees/${id}`, {
+  const payload = {
+    fullName: employee.fullName,
+    email: employee.email,
+    phone: employee.phone || "0900000000",
+    dateOfBirth: employee.dateOfBirth || "1995-01-01",
+    gender: employee.gender || "Nam",
+    role: "Staff",
+  };
+
+  const response = await fetch(`${API_URL}/Users/AdminUpdate/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(employee),
+    body: JSON.stringify(payload),
   });
 
   const data = await readResponse(response);
@@ -91,9 +111,9 @@ export async function updateEmployee(id, employee) {
   return data;
 }
 
-// DELETE /api/Employees/:id
+// DELETE /api/Users/:id
 export async function deleteEmployee(id) {
-  const response = await fetch(`${API_URL}/Employees/${id}`, {
+  const response = await fetch(`${API_URL}/Users/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });

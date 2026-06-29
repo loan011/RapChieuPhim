@@ -76,7 +76,7 @@ export default function Dashboard() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  {["#", "Tên Phim", "Khách Hàng", "Ghế", "Giá Vé", "Ngày Đặt"].map((header) => (
+                  {["#", "Tên Phim", "Khách Hàng", "Ghế", "Tên Rạp", "Khu Vực", "Giá Vé", "Ngày Đặt"].map((header) => (
                     <th key={header} className="px-3 py-2 text-left">
                       {header}
                     </th>
@@ -104,6 +104,14 @@ export default function Dashboard() {
 
                     <td className="px-3 py-2">
                       {ticket.seat}
+                    </td>
+
+                    <td className="px-3 py-2">
+                      {ticket.cinemaName}
+                    </td>
+
+                    <td className="px-3 py-2">
+                      {ticket.areaName}
                     </td>
 
                     <td className="px-3 py-2">

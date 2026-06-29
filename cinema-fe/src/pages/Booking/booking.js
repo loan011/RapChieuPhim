@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 import {
@@ -9,6 +9,8 @@ import {
   getSeatsByRoomId,
   getAvailableSeats,
   createBooking,
+  holdSeat,
+  releaseSeat,
 } from "./bookingService.js";
 
 /* =========================
@@ -521,6 +523,51 @@ export function useBooking() {
 
   const dates = useMemo(() => createBookingDates(7), []);
 
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [isHoldActive, setIsHoldActive] = useState(false);
+  const holdKeysRef = useRef({});
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (selectedSeats.length === 0) {
+      setIsHoldActive(false);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          
+          // Giải phóng tất cả ghế đang giữ
+          const keys = Object.values(holdKeysRef.current);
+          Promise.all(keys.map(key => releaseSeat(key).catch(e => console.error(e))))
+            .finally(() => {
+              holdKeysRef.current = {};
+              setSelectedSeats([]);
+              setIsHoldActive(false);
+              alert("Thời gian giữ ghế đã hết hạn. Các ghế bạn chọn đã được giải phóng!");
+            });
+
+          return 300;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedSeats.length]);
+
+  // Giải phóng ghế khi rời khỏi trang (unmount)
+  useEffect(() => {
+    return () => {
+      const keys = Object.values(holdKeysRef.current);
+      if (keys.length > 0) {
+        keys.forEach(key => releaseSeat(key).catch(e => console.error(e)));
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -654,24 +701,51 @@ export function useBooking() {
     }
   }
 
-  function handleSeatClick(seat) {
+  async function handleSeatClick(seat) {
     const available = isSeatAvailable(seat, availableSeats);
 
     if (!available) return;
 
-    setSelectedSeats((prev) => {
-      const exists = prev.some(
-        (s) => String(getSeatId(s)) === String(getSeatId(seat))
-      );
+    const seatId = getSeatId(seat);
+    const showtimeId = getShowtimeId(selectedShowtime);
 
-      if (exists) {
-        return prev.filter(
-          (s) => String(getSeatId(s)) !== String(getSeatId(seat))
+    const isSelected = selectedSeats.some(
+      (s) => String(getSeatId(s)) === String(seatId)
+    );
+
+    if (isSelected) {
+      try {
+        const holdKey = holdKeysRef.current[seatId];
+        if (holdKey) {
+          await releaseSeat(holdKey);
+          delete holdKeysRef.current[seatId];
+        }
+        setSelectedSeats((prev) =>
+          prev.filter((s) => String(getSeatId(s)) !== String(seatId))
         );
+      } catch (err) {
+        console.error("Lỗi giải phóng ghế:", err);
       }
+    } else {
+      try {
+        setLoadingSeats(true);
+        const data = await holdSeat(showtimeId, seatId);
+        
+        const holdKey = data?.holdKey || data?.HoldKey || data;
+        if (holdKey) {
+          holdKeysRef.current[seatId] = holdKey;
+        }
 
-      return [...prev, seat];
-    });
+        setSelectedSeats((prev) => [...prev, seat]);
+        setTimeLeft(300); // Reset bộ đếm thời gian
+        setIsHoldActive(true);
+      } catch (err) {
+        console.error("Lỗi giữ ghế:", err);
+        alert("Ghế này đã được người khác giữ hoặc đặt mua!");
+      } finally {
+        setLoadingSeats(false);
+      }
+    }
   }
 
   const totalAmount = selectedSeats.reduce(
@@ -738,6 +812,10 @@ export function useBooking() {
 
       const bookedIds = await Promise.all(bookingPromises);
 
+      // Xóa thông tin giữ ghế cục bộ vì đã tạo booking thành công
+      holdKeysRef.current = {};
+      setIsHoldActive(false);
+
       setNewTicketIds(bookedIds);
       setShowPaymentSuccess(true);
     } catch (err) {
@@ -784,5 +862,7 @@ export function useBooking() {
     groupedSeats,
     handleCheckout,
     handleFinishBooking,
+    timeLeft,
+    isHoldActive,
   };
 }

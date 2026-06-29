@@ -84,6 +84,9 @@ export default function Ve() {
                   <th className="px-4 py-3 text-left">Mã Vé</th>
                   <th className="px-4 py-3 text-left">Khách Hàng</th>
                   <th className="px-4 py-3 text-left">Phim</th>
+                  <th className="px-4 py-3 text-left">Khu Vực</th>
+                  <th className="px-4 py-3 text-left">Rạp</th>
+                  <th className="px-4 py-3 text-left">Phòng</th>
                   <th className="px-4 py-3 text-left">Ghế</th>
                   <th className="px-4 py-3 text-left">Giá Vé</th>
                   <th className="px-4 py-3 text-left">Trạng Thái</th>
@@ -93,7 +96,7 @@ export default function Ve() {
               <tbody className="divide-y divide-gray-100">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-gray-400">
+                    <td colSpan={11} className="text-center py-10 text-gray-400">
                       Không tìm thấy vé nào
                     </td>
                   </tr>
@@ -104,6 +107,9 @@ export default function Ve() {
                       <td className="px-4 py-3.5 font-semibold text-gray-800">{t.code || t.ticketCode || `VE${t.id}`}</td>
                       <td className="px-4 py-3.5 text-gray-600">{t.customerName}</td>
                       <td className="px-4 py-3.5 text-gray-700 font-medium">{t.movieTitle}</td>
+                      <td className="px-4 py-3.5 text-gray-600">{t.areaName || t.area || "—"}</td>
+                      <td className="px-4 py-3.5 text-gray-600">{t.cinemaName || t.cinema || "—"}</td>
+                      <td className="px-4 py-3.5 text-gray-600">{t.roomName || t.room || "—"}</td>
                       <td className="px-4 py-3.5"><span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded font-mono text-xs font-semibold">{t.seatCode}</span></td>
                       <td className="px-4 py-3.5 font-bold text-gray-800">{(t.price || t.amount || 0).toLocaleString("vi-VN")} đ</td>
                       <td className="px-4 py-3.5">

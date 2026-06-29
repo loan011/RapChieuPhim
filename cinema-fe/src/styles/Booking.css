@@ -681,3 +681,28 @@
     font-size: 9px;
   }
 }
+
+.seat-hold-timer-alert {
+  background: rgba(223, 10, 93, 0.1);
+  border: 1px solid rgba(223, 10, 93, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #f472b6;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  animation: pulse-border 2s infinite ease-in-out;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: rgba(223, 10, 93, 0.3);
+    box-shadow: 0 0 4px rgba(223, 10, 93, 0.1);
+  }
+  50% {
+    border-color: rgba(223, 10, 93, 0.8);
+    box-shadow: 0 0 12px rgba(223, 10, 93, 0.3);
+  }
+}

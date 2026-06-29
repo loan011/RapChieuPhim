@@ -67,7 +67,15 @@ export default function Booking() {
     groupedSeats,
     handleCheckout,
     handleFinishBooking,
+    timeLeft,
+    isHoldActive,
   } = useBooking();
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
 
   if (loading) {
     return (
@@ -352,6 +360,12 @@ export default function Booking() {
         <div className="booking-right-sidebar">
           <div className="checkout-summary-card">
             <h2 className="summary-title">Tóm Tắt Đặt Vé</h2>
+
+            {isHoldActive && (
+              <div className="seat-hold-timer-alert">
+                ⏱ Giữ ghế tạm thời: <strong>{formatTime(timeLeft)}</strong>
+              </div>
+            )}
 
             <div className="summary-divider"></div>
 
