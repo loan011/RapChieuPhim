@@ -336,13 +336,13 @@ export function getShowtimeHour(showtime) {
 
 export function getShowtimeBasePrice(showtime) {
   return (
-    showtime?.basePrice ??
-    showtime?.BasePrice ??
-    showtime?.ticketPrice ??
-    showtime?.TicketPrice ??
-    showtime?.price ??
-    showtime?.Price ??
-    70000
+    showtime?.basePrice ||
+    showtime?.BasePrice ||
+    showtime?.ticketPrice ||
+    showtime?.TicketPrice ||
+    showtime?.price ||
+    showtime?.Price ||
+    75000
   );
 }
 
@@ -352,6 +352,15 @@ export function filterShowtimesForBooking({
   selectedDateIso,
   selectedCinemaId,
 }) {
+  const now = new Date();
+  // UTC to GMT+7 (Vietnam time)
+  const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const todayStr = vnTime.toISOString().split("T")[0];
+
+  const currentHour = String(now.getHours()).padStart(2, "0");
+  const currentMin = String(now.getMinutes()).padStart(2, "0");
+  const currentTimeStr = `${currentHour}:${currentMin}`;
+
   return showtimes.filter((showtime) => {
     const showtimeDate = getShowtimeDate(showtime);
     const room = findRoomByShowtime(showtime, rooms);
@@ -362,7 +371,15 @@ export function filterShowtimesForBooking({
       !selectedCinemaId ||
       (room && String(getRoomCinemaId(room)) === String(selectedCinemaId));
 
-    return sameDate && sameCinema;
+    if (!sameDate || !sameCinema) return false;
+
+    // If it is today, hide showtimes in the past
+    if (showtimeDate === todayStr) {
+      const showtimeHour = getShowtimeHour(showtime);
+      return showtimeHour >= currentTimeStr;
+    }
+
+    return true;
   });
 }
 
@@ -420,6 +437,53 @@ export function getSeatLabel(seat) {
 
 export function getSeatDisplayNumber(seat) {
   return getSeatNumber(seat);
+}
+
+export function generateMockSeats(roomId) {
+  const rows = ["A", "B", "C", "D", "E", "F", "G"];
+  const seats = [];
+  let seatIdCounter = 20000 + Number(roomId || 0) * 150;
+
+  rows.forEach((row) => {
+    let seatType = "Standard";
+    if (row === "E" || row === "F") {
+      seatType = "VIP";
+    } else if (row === "G") {
+      seatType = "Sweetbox";
+    }
+
+    let cols = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9];
+    if (row === "A") {
+      cols = [1, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9];
+    } else if (row === "G") {
+      cols = [1, 10, 11, 12, 2, 3, 4, 5, 7, 8, 9];
+    }
+
+    cols.forEach((col) => {
+      const sId = seatIdCounter++;
+      seats.push({
+        seatId: sId,
+        SeatId: sId,
+        id: sId,
+        seatRow: row,
+        SeatRow: row,
+        row: row,
+        Row: row,
+        seatNumber: col,
+        SeatNumber: col,
+        number: col,
+        Number: col,
+        seatType: seatType,
+        SeatType: seatType,
+        type: seatType,
+        Type: seatType,
+        roomId: Number(roomId),
+        status: "Available",
+      });
+    });
+  });
+
+  return seats;
 }
 
 export function isSeatAvailable(seat, availableSeats) {

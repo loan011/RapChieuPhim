@@ -1,23 +1,24 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   MdDashboard,
-  MdMovie,
-  MdCalendarMonth,
   MdConfirmationNumber,
   MdReceiptLong,
+  MdFastfood,
+  MdQrCodeScanner,
   MdPersonOutline,
   MdMenu,
   MdLogout,
+  MdLocalActivity,
 } from "react-icons/md";
 import { useState } from "react";
 
 const navItems = [
   { to: "/staff/dashboard", label: "Dashboard", icon: <MdDashboard /> },
-  { to: "/staff/phim", label: "Phim", icon: <MdMovie /> },
-  { to: "/staff/suat-chieu", label: "Suat Chieu", icon: <MdCalendarMonth /> },
-  { to: "/staff/ban-ve", label: "Ban Ve", icon: <MdConfirmationNumber /> },
-  { to: "/staff/hoa-don", label: "Hoa Don", icon: <MdReceiptLong /> },
-  { to: "/staff/khach-hang", label: "Khach Hang", icon: <MdPersonOutline /> },
+  { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
+  { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
+  { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },
+  { to: "/staff/quet-qr", label: "Quét QR", icon: <MdQrCodeScanner /> },
+  { to: "/staff/ho-so", label: "Hồ sơ", icon: <MdPersonOutline /> },
 ];
 
 export default function StaffLayout() {
@@ -68,7 +69,7 @@ export default function StaffLayout() {
           className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors"
         >
           <MdLogout className="text-lg shrink-0" />
-          {sidebarOpen && <span>Dang Xuat</span>}
+          {sidebarOpen && <span>Đăng xuất</span>}
         </button>
       </aside>
 
@@ -81,7 +82,7 @@ export default function StaffLayout() {
             <MdMenu className="text-2xl" />
           </button>
           <span className="text-gray-700 font-semibold text-sm">
-            He Thong Nhan Vien Rap Chieu Phim T&M
+            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M
           </span>
         </header>
 

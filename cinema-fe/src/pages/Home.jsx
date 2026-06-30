@@ -106,8 +106,6 @@ function Home() {
           value={selectedCinemaId}
           onChange={(e) => handleCinemaChange(e.target.value)}
         >
-          <option value="">{T.select.allCinemas}</option>
-
           {filteredCinemas.map((cinema) => {
             const id = getCinemaId(cinema);
 

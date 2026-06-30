@@ -36,13 +36,37 @@ export async function createUser(user) {
 
 // PUT /api/Users/:id
 export async function updateUser(id, user) {
-  const response = await fetch(`${API_URL}/Users/${id}`, {
+  const isStaff = String(user?.role || user?.roleName || "").trim().toLowerCase() === "staff";
+  
+  const url = isStaff 
+    ? `${API_URL}/Users/AdminUpdate/${id}`
+    : `${API_URL}/Users/${id}`;
+
+  const payload = isStaff 
+    ? {
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone || "0900000000",
+        dateOfBirth: user.dateOfBirth || "1995-01-01",
+        gender: user.gender || "Nam",
+        role: "Staff",
+        isActive: user.isActive === true || user.isActive === "true",
+        ...(user.password ? { password: user.password, confirmPassword: user.password } : {})
+      }
+    : user;
+
+  const response = await fetch(url, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(user),
+    body: JSON.stringify(payload),
   });
+
   const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật người dùng thất bại!"));
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Cập nhật người dùng thất bại!"));
+  }
+
   return data;
 }
 

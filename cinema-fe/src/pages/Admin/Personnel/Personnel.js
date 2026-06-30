@@ -9,6 +9,8 @@ import {
 
 
 
+import { getCinemaList } from "../Cinema/cinemaService";
+
 export const EMPLOYEE_POSITION_OPTIONS = [
   {
     value: "Thu ngân",
@@ -43,9 +45,11 @@ export const EMPTY_EMPLOYEE_FORM = {
   fullName: "",
   email: "",
   phone: "",
+  password: "",
   position: "Thu ngân",
   salary: 0,
   status: "Active",
+  cinemaId: "",
 };
 
 export function normalizeArray(data) {
@@ -143,14 +147,29 @@ export function getStatusClass(status) {
   return `${baseClass} bg-yellow-100 text-yellow-700`;
 }
 
+export function getStaffCinemaId(employee) {
+  const apiCinemaId = employee?.cinemaId ?? employee?.CinemaId;
+  if (apiCinemaId) return apiCinemaId;
+
+  try {
+    const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+    const email = employee?.email ?? employee?.Email ?? "";
+    return mappings[email] || "";
+  } catch {
+    return "";
+  }
+}
+
 export function buildFormFromEmployee(employee) {
   return {
     fullName: getEmployeeName(employee),
     email: getEmployeeEmail(employee),
     phone: getEmployeePhone(employee),
+    password: "",
     position: getEmployeePosition(employee),
     salary: getEmployeeSalary(employee),
     status: getEmployeeStatus(employee),
+    cinemaId: getStaffCinemaId(employee),
   };
 }
 
@@ -160,16 +179,18 @@ export function buildEmployeePayload(form) {
     name: form.fullName.trim(),
     email: form.email.trim(),
     phone: form.phone.trim(),
+    password: form.password ? form.password.trim() : "",
     position: form.position,
     salary: Number(form.salary || 0),
     status: form.status,
     role: "Staff",
     roleName: "Staff",
     isActive: form.status === "Active",
+    cinemaId: form.cinemaId ? Number(form.cinemaId) : null,
   };
 }
 
-export function validateEmployeeForm(form) {
+export function validateEmployeeForm(form, isNew) {
   if (!form.fullName.trim()) {
     return "Vui lòng nhập họ tên nhân viên.";
   }
@@ -182,6 +203,10 @@ export function validateEmployeeForm(form) {
 
   if (!emailRegex.test(form.email.trim())) {
     return "Email không đúng định dạng.";
+  }
+
+  if (isNew && !form.password) {
+    return "Vui lòng nhập mật khẩu.";
   }
 
   if (form.phone.trim()) {
@@ -220,6 +245,7 @@ export function filterEmployeeList(list, search, filterPos) {
 
 export function usePersonnel() {
   const [list, setList] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -242,9 +268,13 @@ export function usePersonnel() {
       setLoading(true);
       setError("");
 
-      const data = await getEmployeeList();
+      const [empData, cinemaData] = await Promise.all([
+        getEmployeeList(),
+        getCinemaList().catch(() => [])
+      ]);
 
-      setList(normalizeArray(data));
+      setList(normalizeArray(empData));
+      setCinemas(normalizeArray(cinemaData));
     } catch (err) {
       console.error("Lỗi tải nhân viên:", err);
 
@@ -290,7 +320,7 @@ export function usePersonnel() {
 
     setFormError("");
 
-    const validateMessage = validateEmployeeForm(form);
+    const validateMessage = validateEmployeeForm(form, editId === null);
 
     if (validateMessage) {
       setFormError(validateMessage);
@@ -301,6 +331,20 @@ export function usePersonnel() {
 
     try {
       setSubmitting(true);
+
+      // Save to local storage mapping fallback
+      try {
+        const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+        const email = form.email.trim();
+        if (form.cinemaId) {
+          mappings[email] = Number(form.cinemaId);
+        } else {
+          delete mappings[email];
+        }
+        localStorage.setItem("staff_cinema_mappings", JSON.stringify(mappings));
+      } catch (e) {
+        console.error("Local storage error:", e);
+      }
 
       if (editId !== null) {
         await updateEmployee(editId, payload);
@@ -365,6 +409,7 @@ export function usePersonnel() {
   return {
     list,
     setList,
+    cinemas,
 
     loading,
     setLoading,

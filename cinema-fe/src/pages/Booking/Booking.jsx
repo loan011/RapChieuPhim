@@ -77,6 +77,45 @@ export default function Booking() {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
+  // Lấy số ghế để sort đúng: A1, A2, A3
+  const getSeatSortNumber = (seat) => {
+    const raw =
+      seat?.seatNumber ??
+      seat?.SeatNumber ??
+      seat?.seatNo ??
+      seat?.SeatNo ??
+      getSeatDisplayNumber(seat) ??
+      getSeatLabel(seat);
+
+    const match = String(raw).match(/\d+/);
+    return match ? Number(match[0]) : 0;
+  };
+
+  // Sort ghế theo số ghế, không sort theo chuỗi
+  const sortSeatsByNumber = (seats = []) => {
+    return [...seats].sort(
+      (a, b) => getSeatSortNumber(a) - getSeatSortNumber(b)
+    );
+  };
+
+  // Sort hàng ghế A, B, C, D
+  const sortRows = (rows = []) => {
+    return [...rows].sort((a, b) =>
+      String(a).localeCompare(String(b), "vi", { numeric: true })
+    );
+  };
+
+  // Chuẩn hóa class loại ghế
+  const normalizeSeatClassType = (seatType) => {
+    const type = String(seatType || "").toLowerCase();
+
+    if (type === "normal") return "standard";
+    if (type === "thường") return "standard";
+    if (type === "sweetbox") return "couple";
+
+    return type;
+  };
+
   if (loading) {
     return (
       <div className="booking-loading">
@@ -250,49 +289,54 @@ export default function Booking() {
                 </div>
 
                 <div className="seats-map-matrix">
-                  {rowsKeys.map((row) => (
+                  {sortRows(rowsKeys).map((row) => (
                     <div key={row} className="seats-row">
                       <span className="row-letter">{row}</span>
 
                       <div className="seats-row-cols">
-                        {groupedSeats[row].map((seat) => {
-                          const available = isSeatAvailable(
-                            seat,
-                            availableSeats
-                          );
+                        {sortSeatsByNumber(groupedSeats[row] || []).map(
+                          (seat) => {
+                            const available = isSeatAvailable(
+                              seat,
+                              availableSeats
+                            );
 
-                          const selected = selectedSeats.some(
-                            (s) =>
-                              String(getSeatId(s)) === String(getSeatId(seat))
-                          );
+                            const selected = selectedSeats.some(
+                              (s) =>
+                                String(getSeatId(s)) === String(getSeatId(seat))
+                            );
 
-                          const seatType = getSeatType(seat);
-                          const seatClassType = String(seatType).toLowerCase();
+                            const seatType = getSeatType(seat);
+                            const seatClassType =
+                              normalizeSeatClassType(seatType);
 
-                          let seatClass = "seat-node";
+                            let seatClass = "seat-node";
 
-                          if (!available) {
-                            seatClass += " taken";
-                          } else if (selected) {
-                            seatClass += " selected";
-                          } else {
-                            seatClass += ` ${seatClassType}`;
+                            if (!available) {
+                              seatClass += " taken";
+                            } else if (selected) {
+                              seatClass += " selected";
+                            } else {
+                              seatClass += ` ${seatClassType}`;
+                            }
+
+                            return (
+                              <div
+                                key={getSeatId(seat)}
+                                className={seatClass}
+                                onClick={() => handleSeatClick(seat)}
+                                title={`${getSeatLabel(
+                                  seat
+                                )} (${seatType} - ${getSeatPrice(
+                                  seat,
+                                  selectedShowtime
+                                ).toLocaleString("vi-VN")}đ)`}
+                              >
+                                {getSeatDisplayNumber(seat)}
+                              </div>
+                            );
                           }
-
-                          return (
-                            <div
-                              key={getSeatId(seat)}
-                              className={seatClass}
-                              onClick={() => handleSeatClick(seat)}
-                              title={`${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(
-                                seat,
-                                selectedShowtime
-                              ).toLocaleString("vi-VN")}đ)`}
-                            >
-                              {getSeatDisplayNumber(seat)}
-                            </div>
-                          );
-                        })}
+                        )}
                       </div>
 
                       <span className="row-letter">{row}</span>
@@ -305,9 +349,9 @@ export default function Booking() {
                     <div className="seat-node legend-box standard"></div>
                     <span>
                       Thường (
-                      {Number(getShowtimeBasePrice(selectedShowtime)).toLocaleString(
-                        "vi-VN"
-                      )}
+                      {Number(
+                        getShowtimeBasePrice(selectedShowtime)
+                      ).toLocaleString("vi-VN")}
                       đ)
                     </span>
                   </div>
@@ -324,9 +368,9 @@ export default function Booking() {
                   </div>
 
                   <div className="legend-item">
-                    <div className="seat-node legend-box sweetbox"></div>
+                    <div className="seat-node legend-box couple"></div>
                     <span>
-                      Sweetbox (
+                      Couple (
                       {(
                         Number(getShowtimeBasePrice(selectedShowtime)) + 40000
                       ).toLocaleString("vi-VN")}
@@ -479,17 +523,13 @@ export default function Booking() {
                 <p>
                   ⏰ Suất chiếu:{" "}
                   <strong>
-                    {selectedShowtime
-                      ? getShowtimeHour(selectedShowtime)
-                      : ""}
+                    {selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}
                   </strong>
                 </p>
 
                 <p>
                   🎟 Ghế:{" "}
-                  <strong>
-                    {selectedSeats.map(getSeatLabel).join(", ")}
-                  </strong>
+                  <strong>{selectedSeats.map(getSeatLabel).join(", ")}</strong>
                 </p>
 
                 <p>

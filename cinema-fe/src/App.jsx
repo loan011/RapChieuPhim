@@ -32,14 +32,13 @@ import HoaDon from "./pages/Admin/Bill/Bill.jsx";
 import Ghe from "./pages/Admin/Seat/Seat.jsx";
 import ThongBao from "./pages/Admin/Notice/Notice.jsx";
 
-function StaffPage() {
-  return (
-    <div style={{ padding: "40px" }}>
-      <h1>Staff Page</h1>
-      <p>Đây là trang dành riêng cho Staff.</p>
-    </div>
-  );
-}
+import StaffLayout from "./layouts/StaffLayout";
+import StaffDashboard from "./pages/Staff/Dashbord/Dashboard.jsx";
+import StaffBanVe from "./pages/Staff/BanVe/BanVe.jsx";
+import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe.jsx";
+import StaffCombo from "./pages/Staff/Combo/Combo.jsx";
+import StaffQuetQR from "./pages/Staff/QR/QuetQR.jsx";
+import StaffHoSo from "./pages/Staff/HoSo/HoSo.jsx";
 
 function App() {
   return (
@@ -137,10 +136,18 @@ function App() {
           path="/staff"
           element={
             <ProtectedRoute allowedRoles={["Staff"]}>
-              <StaffPage />
+              <StaffLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<StaffDashboard />} />
+          <Route path="ban-ve" element={<StaffBanVe />} />
+          <Route path="quan-ly-ve" element={<StaffQuanLyVe />} />
+          <Route path="combo" element={<StaffCombo />} />
+          <Route path="quet-qr" element={<StaffQuetQR />} />
+          <Route path="ho-so" element={<StaffHoSo />} />
+        </Route>
 
         {/* Admin routes */}
         <Route

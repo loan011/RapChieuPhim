@@ -153,6 +153,8 @@ export async function getShowtimesByMovie(movieId) {
   return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
+import { generateMockSeats } from "./booking";
+
 export async function getSeatsByRoomId(roomId) {
   if (!roomId) return [];
 
@@ -167,7 +169,11 @@ export async function getSeatsByRoomId(roomId) {
     `${API_URL}/Seat?roomId=${roomId}`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  const seats = Array.isArray(data) ? data : data?.data || data?.items || [];
+  if (seats.length === 0) {
+    return generateMockSeats(roomId);
+  }
+  return seats;
 }
 
 export async function getAvailableSeats(showtimeId) {

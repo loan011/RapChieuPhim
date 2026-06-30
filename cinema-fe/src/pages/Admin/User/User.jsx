@@ -228,41 +228,43 @@ export default function NguoiDung() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mật Khẩu {editId === null && <span className="text-red-500">*</span>}
-                    </label>
+                {formData.roleName === "Staff" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mật Khẩu {editId === null && <span className="text-red-500">*</span>}
+                      </label>
 
-                    <input
-                      type="password"
-                      name="password"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder={
-                        editId !== null
-                          ? "Bỏ trống nếu không đổi mật khẩu"
-                          : "Nhập mật khẩu"
-                      }
-                    />
+                      <input
+                        type="password"
+                        name="password"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder={
+                          editId !== null
+                            ? "Bỏ trống nếu không đổi mật khẩu"
+                            : "Nhập mật khẩu"
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Xác Nhận Mật Khẩu {editId === null && <span className="text-red-500">*</span>}
+                      </label>
+
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Nhập lại mật khẩu"
+                      />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Xác Nhận Mật Khẩu {editId === null && <span className="text-red-500">*</span>}
-                    </label>
-
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="Nhập lại mật khẩu"
-                    />
-                  </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>

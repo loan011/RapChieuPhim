@@ -722,6 +722,7 @@ export function useHome() {
     fetchData();
   }, []);
 
+
   async function fetchData() {
     try {
       setLoading(true);
@@ -872,6 +873,17 @@ export function useHome() {
     : selectedArea
     ? `${T.messages.areaSchedulePrefix} ${getAreaName(selectedArea)}`
     : T.messages.allCinemaSchedule;
+
+  useEffect(() => {
+    if (filteredCinemas && filteredCinemas.length > 0) {
+      const activeIds = filteredCinemas.map(c => String(getCinemaId(c)));
+      if (!selectedCinemaId || !activeIds.includes(String(selectedCinemaId))) {
+        setSelectedCinemaId(String(getCinemaId(filteredCinemas[0])));
+      }
+    } else {
+      setSelectedCinemaId("");
+    }
+  }, [filteredCinemas, selectedCinemaId]);
 
   return {
     dates,

@@ -14,10 +14,13 @@ import {
   getEmployeeStatus,
   getStatusClass,
   getStatusText,
+  getStaffCinemaId,
 } from "./Personnel.js";
 
 export default function Personnel() {
   const {
+    list,
+    cinemas,
     loading,
     error,
 
@@ -97,6 +100,8 @@ export default function Personnel() {
                     "#",
                     "Họ Tên",
                     "Email",
+                    "Rạp Chi Nhánh",
+                    "Mật Khẩu",
                     "Điện Thoại",
                     "Vị Trí",
                     "Trạng Thái",
@@ -113,7 +118,7 @@ export default function Personnel() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={10}
                       className="text-center py-6 text-gray-400"
                     >
                       Không có dữ liệu
@@ -137,6 +142,18 @@ export default function Personnel() {
 
                         <td className="px-3 py-2">
                           {getEmployeeEmail(employee)}
+                        </td>
+
+                        <td className="px-3 py-2 text-gray-600 font-medium">
+                          {(() => {
+                            const cId = getStaffCinemaId(employee);
+                            const cinema = cinemas?.find(c => String(c.cinemaId || c.id) === String(cId));
+                            return cinema ? (cinema.cinemaName || cinema.CinemaName) : "Tất cả các rạp";
+                          })()}
+                        </td>
+
+                        <td className="px-3 py-2 font-mono text-gray-400">
+                          ••••••
                         </td>
 
                         <td className="px-3 py-2">
@@ -223,6 +240,21 @@ export default function Personnel() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {editId !== null ? "Mật Khẩu Mới (Để trống nếu giữ nguyên)" : "Mật Khẩu"} <span className="text-red-500">{editId === null && "*"}</span>
+                  </label>
+
+                  <input
+                    type="password"
+                    name="password"
+                    value={form.password || ""}
+                    onChange={handleChange}
+                    placeholder={editId !== null ? "Nhập mật khẩu mới để thay đổi" : "Nhập mật khẩu tài khoản"}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -255,23 +287,45 @@ export default function Personnel() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vị Trí
-                  </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Chi Nhánh Rạp
+                    </label>
 
-                  <select
-                    name="position"
-                    value={form.position}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  >
-                    {EMPLOYEE_POSITION_OPTIONS.map((position) => (
-                      <option key={position.value} value={position.value}>
-                        {position.label}
-                      </option>
-                    ))}
-                  </select>
+                    <select
+                      name="cinemaId"
+                      value={form.cinemaId || ""}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 animate-in fade-in"
+                    >
+                      <option value="">Tất cả các rạp (Hệ thống)</option>
+                      {cinemas?.map((c) => (
+                        <option key={c.cinemaId || c.id} value={c.cinemaId || c.id}>
+                          {c.cinemaName || c.CinemaName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vị Trí
+                    </label>
+
+                    <select
+                      name="position"
+                      value={form.position}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      {EMPLOYEE_POSITION_OPTIONS.map((position) => (
+                        <option key={position.value} value={position.value}>
+                          {position.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>

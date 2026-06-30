@@ -58,12 +58,13 @@ export async function createEmployee(employee) {
   const payload = {
     fullName: employee.fullName,
     email: employee.email,
-    password: "123456a@", // Mật khẩu mặc định
-    confirmPassword: "123456a@",
+    password: employee.password || "123456a@", // Mật khẩu từ form hoặc mặc định
+    confirmPassword: employee.password || "123456a@",
     phone: employee.phone || "0900000000",
     dateOfBirth: employee.dateOfBirth || "1995-01-01",
     gender: employee.gender || "Nam",
     roleName: "Staff",
+    cinemaId: employee.cinemaId ? Number(employee.cinemaId) : null,
   };
 
   const response = await fetch(`${API_URL}/Auth/CreateInternalAccount`, {
@@ -75,9 +76,7 @@ export async function createEmployee(employee) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Thêm nhân viên thất bại!")
-    );
+    throw new Error(getErrorMessage(data, "Tạo nhân viên thất bại!"));
   }
 
   return data;
@@ -92,6 +91,9 @@ export async function updateEmployee(id, employee) {
     dateOfBirth: employee.dateOfBirth || "1995-01-01",
     gender: employee.gender || "Nam",
     role: "Staff",
+    isActive: employee.isActive === true || employee.status === "Active",
+    cinemaId: employee.cinemaId ? Number(employee.cinemaId) : null,
+    ...(employee.password ? { password: employee.password, confirmPassword: employee.password } : {})
   };
 
   const response = await fetch(`${API_URL}/Users/AdminUpdate/${id}`, {

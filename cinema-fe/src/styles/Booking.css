@@ -706,3 +706,9 @@
     box-shadow: 0 0 12px rgba(223, 10, 93, 0.3);
   }
 }
+.seat-node.couple,
+.legend-box.couple {
+  border-color: #d63384;
+  color: #ff4fa3;
+  background: rgba(214, 51, 132, 0.15);
+}
