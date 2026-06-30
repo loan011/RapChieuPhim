@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMovieList, getAreaList as getServiceAreaList } from "./moviesService.js";
+import { getHomeShowtimes, getHomeCinemas, getHomeRooms } from "../home.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -569,6 +570,9 @@ export function useMovies() {
   const [movies, setMovies] = useState([]);
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
+  const [showtimes, setShowtimes] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const [selectedAreaId, setSelectedAreaId] = useState("");
   const [selectedTrailer, setSelectedTrailer] = useState(null);
@@ -586,17 +590,25 @@ export function useMovies() {
 
   async function fetchInitialData() {
     try {
-      const data = await loadMoviesInitialData();
+      const [initData, cinemaData, roomData] = await Promise.all([
+        loadMoviesInitialData(),
+        getHomeCinemas().catch(() => []),
+        getHomeRooms().catch(() => []),
+      ]);
 
-      setCategories(data.categories);
-      setAreas(data.areas);
+      setCategories(initData.categories);
+      setAreas(initData.areas);
+      setCinemas(cinemaData);
+      setRooms(roomData);
 
-      movieCategoryCache = data.categories;
+      movieCategoryCache = initData.categories;
     } catch (error) {
-      console.error("Lỗi tải thông tin danh mục hoặc khu vực ban đầu:", error);
+      console.error("Lỗi tải thông tin ban đầu:", error);
 
       setCategories([]);
       setAreas([]);
+      setCinemas([]);
+      setRooms([]);
       movieCategoryCache = [];
     }
   }
@@ -605,15 +617,23 @@ export function useMovies() {
     try {
       setLoading(true);
 
-      const apiMovies = await getMoviesByTab(tabKey);
+      const [apiMovies, showtimeData] = await Promise.all([
+        getMoviesByTab(tabKey),
+        getHomeShowtimes().catch((err) => {
+          console.error("Lỗi tải danh sách suất chiếu:", err);
+          return [];
+        }),
+      ]);
 
       console.log("Danh sách phim từ API:", apiMovies);
 
       setMovies(Array.isArray(apiMovies) ? apiMovies : []);
+      setShowtimes(showtimeData);
     } catch (error) {
       console.error("Lỗi tải danh sách phim theo tab:", error);
 
       setMovies([]);
+      setShowtimes([]);
     } finally {
       setLoading(false);
     }
@@ -648,6 +668,36 @@ export function useMovies() {
     return getMovieGenre(movie, categories);
   }
 
+  function hasValidShowtimes(movie) {
+    const movieId = getMovieId(movie);
+    if (!movieId) return false;
+    const now = new Date();
+
+    const movieShowtimes = showtimes.filter((showtime) => {
+      const showtimeMovieId =
+        showtime?.movieId ??
+        showtime?.MovieId ??
+        showtime?.movie?.movieId ??
+        showtime?.movie?.MovieId ??
+        showtime?.Movie?.movieId ??
+        showtime?.Movie?.MovieId;
+
+      if (String(showtimeMovieId) !== String(movieId)) return false;
+
+      const status = showtime?.status ?? showtime?.Status ?? "Chưa mở bán";
+      const isCanceled = status === "Inactive" || status === "Hủy";
+      if (isCanceled) return false;
+
+      const startTimeStr = showtime?.startTime ?? showtime?.StartTime ?? "";
+      const isPast = startTimeStr ? new Date(startTimeStr) < now : false;
+      if (isPast) return false;
+
+      return true;
+    });
+
+    return movieShowtimes.length > 0;
+  }
+
   return {
     activeTab,
     setActiveTab,
@@ -660,6 +710,15 @@ export function useMovies() {
 
     areas,
     setAreas,
+
+    showtimes,
+    setShowtimes,
+
+    cinemas,
+    setCinemas,
+
+    rooms,
+    setRooms,
 
     selectedAreaId,
     setSelectedAreaId,
@@ -679,6 +738,7 @@ export function useMovies() {
     getBookingLink,
     fetchInitialData,
     fetchMoviesByTab,
+    hasValidShowtimes,
 
     getMovieGenre: getMovieGenreWithCategories,
   };

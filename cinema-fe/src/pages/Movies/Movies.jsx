@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
@@ -19,6 +20,20 @@ import {
   getMovieTrailer,
 } from "./Movies.js";
 
+import {
+  getShowtimeMovieId,
+  getShowtimeId,
+  getStartHour,
+  getShowtimeStatus,
+  isBookable,
+  findRoomByShowtime,
+  findCinemaByRoom,
+  getRoomName,
+  getCinemaName,
+  getShowDate,
+  createDateRange,
+} from "../home.js";
+
 function Movies() {
   const {
     activeTab,
@@ -33,7 +48,77 @@ function Movies() {
     openTrailer,
     closeTrailer,
     getBookingLink,
+    hasValidShowtimes,
+    cinemas,
+    rooms,
+    showtimes,
   } = useMovies();
+
+  const [selectedMovieForShowtimes, setSelectedMovieForShowtimes] = useState(null);
+  const [modalAreaId, setModalAreaId] = useState("");
+  const [modalDate, setModalDate] = useState("");
+
+  const modalDates = useMemo(() => {
+    return createDateRange(new Date(), 7);
+  }, []);
+
+  const groupedModalShowtimes = useMemo(() => {
+    if (!selectedMovieForShowtimes) return [];
+    const movieId = getMovieId(selectedMovieForShowtimes);
+    const now = new Date();
+
+    const filtered = showtimes.filter((showtime) => {
+      const showtimeMovieId = getShowtimeMovieId(showtime);
+      if (String(showtimeMovieId) !== String(movieId)) return false;
+
+      const showDateStr = getShowDate(showtime);
+      if (showDateStr !== modalDate) return false;
+
+      const status = getShowtimeStatus(showtime);
+      if (status === "Hủy") return false;
+
+      const startTimeStr = showtime?.startTime ?? showtime?.StartTime ?? "";
+      if (startTimeStr && new Date(startTimeStr) < now) return false;
+
+      return true;
+    });
+
+    const grouped = {};
+    filtered.forEach((showtime) => {
+      const room = findRoomByShowtime(showtime, rooms);
+      if (!room) return;
+
+      const cinema = findCinemaByRoom(room, cinemas);
+      if (!cinema) return;
+
+      const cinemaAreaId = cinema?.areaId ?? cinema?.AreaId;
+      if (modalAreaId && String(cinemaAreaId) !== String(modalAreaId)) return;
+
+      const cinemaId = cinema?.cinemaId ?? cinema?.CinemaId ?? cinema?.id ?? cinema?.Id;
+      const cinemaName = getCinemaName(cinema);
+
+      if (!grouped[cinemaId]) {
+        grouped[cinemaId] = {
+          cinemaName,
+          showtimes: []
+        };
+      }
+
+      const startHour = getStartHour(showtime);
+
+      grouped[cinemaId].showtimes.push({
+        ...showtime,
+        startHour,
+        roomName: getRoomName(room)
+      });
+    });
+
+    Object.values(grouped).forEach(c => {
+      c.showtimes.sort((a, b) => a.startHour.localeCompare(b.startHour));
+    });
+
+    return Object.values(grouped);
+  }, [selectedMovieForShowtimes, showtimes, rooms, cinemas, modalDate, modalAreaId]);
 
   return (
     <div className="movies-page">
@@ -167,12 +252,27 @@ function Movies() {
                     {getMovieStatus(movie, activeTab)}
                   </p>
 
-                  <Link
-                    to={getBookingLink(movie)}
-                    className="buy-ticket-btn"
-                  >
-                    🎟️ MUA VÉ
-                  </Link>
+                  {activeTab !== "coming" && !hasValidShowtimes(movie) ? (
+                    <button
+                      type="button"
+                      className="buy-ticket-btn disabled-btn"
+                      disabled
+                    >
+                      🎟️ HẾT SUẤT CHIẾU
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="buy-ticket-btn"
+                      onClick={() => {
+                        setSelectedMovieForShowtimes(movie);
+                        setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+                        setModalDate(modalDates[0].iso);
+                      }}
+                    >
+                      🎟️ MUA VÉ
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -208,6 +308,81 @@ function Movies() {
             ) : (
               <p>Phim này chưa có trailer.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {selectedMovieForShowtimes && (
+        <div className="showtime-modal-overlay" onClick={() => setSelectedMovieForShowtimes(null)}>
+          <div className="showtime-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="showtime-modal-close"
+              onClick={() => setSelectedMovieForShowtimes(null)}
+            >
+              ×
+            </button>
+            
+            <h2>LỊCH CHIẾU - {getMovieTitle(selectedMovieForShowtimes)}</h2>
+            
+            <div className="modal-filter-row">
+              <div className="modal-filter-group">
+                <label>Khu vực:</label>
+                <select
+                  value={modalAreaId}
+                  onChange={(e) => setModalAreaId(e.target.value)}
+                >
+                  <option value="">Tất cả khu vực</option>
+                  {areas.map((area) => (
+                    <option key={getAreaId(area)} value={getAreaId(area)}>
+                      {getAreaName(area)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-date-tabs">
+              {modalDates.map((date) => (
+                <button
+                  key={date.iso}
+                  type="button"
+                  className={`modal-date-tab-btn ${modalDate === date.iso ? "active" : ""}`}
+                  onClick={() => setModalDate(date.iso)}
+                >
+                  <strong>{date.day}</strong>
+                  <span>/{date.month} - {date.weekDay}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="modal-showtimes-content">
+              {groupedModalShowtimes.length > 0 ? (
+                groupedModalShowtimes.map((group) => (
+                  <div key={group.cinemaName} className="modal-cinema-section">
+                    <h4 className="modal-cinema-title">📍 {group.cinemaName}</h4>
+                    <div className="modal-time-slots">
+                      {group.showtimes.map((showtime) => {
+                        const showtimeId = showtime?.showTimeId ?? showtime?.ShowTimeId ?? showtime?.showtimeId ?? showtime?.ShowtimeId ?? showtime?.id ?? showtime?.Id;
+                        const movieTempId = getMovieId(selectedMovieForShowtimes);
+                        return (
+                          <Link
+                            key={showtimeId}
+                            to={`/booking?movie=${movieTempId}&showtimeId=${showtimeId}`}
+                            className="modal-time-btn"
+                          >
+                            <strong>{showtime.startHour}</strong>
+                            <span>{showtime.roomName}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="modal-no-showtimes">Không có suất chiếu nào phù hợp trong ngày này.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

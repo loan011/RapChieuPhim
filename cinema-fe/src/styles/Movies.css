@@ -342,6 +342,17 @@
   background: linear-gradient(135deg, #f01e2c 0%, #d3202c 100%);
 }
 
+.movie-card-style .buy-ticket-btn.disabled-btn {
+  background: #333333;
+  color: #777777;
+  border: 1px solid #444444;
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+  transform: none;
+}
+
+
 /* LOADING */
 .movie-loading {
   text-align: center;
@@ -462,4 +473,230 @@
   .trailer-modal iframe {
     height: 240px;
   }
-}
+}
+
+/* SHOWTIME SELECTOR MODAL */
+.showtime-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.25s ease;
+}
+
+.showtime-modal-content {
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 650px;
+  max-height: 85vh;
+  padding: 24px;
+  position: relative;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  animation: scaleIn 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.showtime-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 28px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  line-height: 1;
+}
+
+.showtime-modal-close:hover {
+  color: #df0a5d;
+}
+
+.showtime-modal-content h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #df0a5d;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.modal-filter-row {
+  margin-bottom: 16px;
+}
+
+.modal-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-filter-group label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.modal-filter-group select {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-filter-group select:focus {
+  border-color: #df0a5d;
+  box-shadow: 0 0 8px rgba(223, 10, 93, 0.3);
+}
+
+.modal-date-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-date-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.modal-date-tabs::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.modal-date-tab-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  min-width: 60px;
+}
+
+.modal-date-tab-btn:hover {
+  background: rgba(223, 10, 93, 0.1);
+  border-color: rgba(223, 10, 93, 0.3);
+  color: #fff;
+}
+
+.modal-date-tab-btn.active {
+  background: #df0a5d;
+  border-color: #df0a5d;
+  color: #fff;
+}
+
+.modal-date-tab-btn strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.modal-date-tab-btn span {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.modal-showtimes-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-cinema-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.modal-cinema-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modal-time-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.modal-time-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.modal-time-btn:hover {
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%);
+  border-color: #df0a5d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(223, 10, 93, 0.3);
+}
+
+.modal-time-btn strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.modal-time-btn span {
+  font-size: 9px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.modal-no-showtimes {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  padding: 30px 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
