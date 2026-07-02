@@ -2,132 +2,108 @@ import "./Dashboard.css";
 import { useDashboard } from "./Dashboard.js";
 
 export default function Dashboard() {
-  const {
-    cards,
-    recentTickets,
-    loading,
-    error,
-  } = useDashboard();
+  const { cards, recentTickets, loading, error } = useDashboard();
+
+  const accentClasses = [
+    "dashboard-stat-card--gold",
+    "dashboard-stat-card--red",
+    "dashboard-stat-card--green",
+    "dashboard-stat-card--outline",
+  ];
 
   return (
-    <div>
-      <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
-        <h4 className="font-bold text-lg mb-1">
-          👋 Xin chào Admin!
-        </h4>
+    <div className="dashboard-page">
+      <section className="dashboard-welcome">
+        <h4>👋 Xin chào Admin!</h4>
+        <p>Chào mừng bạn đến với hệ thống quản lý rạp chiếu phim T&amp;M.</p>
+      </section>
 
-        <p className="text-gray-500 text-sm">
-          Chào mừng bạn đến với hệ thống quản lý rạp chiếu phim T&M.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {cards.map((card) => {
+      <section className="dashboard-stats-grid">
+        {cards.map((card, index) => {
           const Icon = card.Icon;
 
           return (
             <div
               key={card.key}
-              className={`${card.color} text-white rounded-lg p-4 flex items-center justify-between shadow`}
+              className={`dashboard-stat-card ${accentClasses[index % accentClasses.length]}`}
             >
-              <div>
-                <div className="text-2xl font-bold">
-                  {card.value}
-                </div>
-
-                <div className="text-sm opacity-90">
-                  {card.label}
-                </div>
+              <div className="dashboard-stat-content">
+                <span className="dashboard-stat-label">{card.label}</span>
+                <strong className="dashboard-stat-value">{card.value}</strong>
               </div>
 
-              <div className="text-4xl opacity-70">
+              <div className="dashboard-stat-icon">
                 <Icon />
               </div>
             </div>
           );
         })}
-      </div>
+      </section>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-        <h5 className="font-semibold text-gray-700 mb-3">
-          Vé Đặt Gần Đây
-        </h5>
+      <section className="dashboard-table-section">
+        <div className="dashboard-table-header">
+          <h5>Vé Đặt Gần Đây</h5>
+        </div>
 
         {loading && (
-          <p className="text-gray-500 text-sm">
-            Đang tải dữ liệu...
-          </p>
+          <p className="dashboard-message">Đang tải dữ liệu...</p>
         )}
 
         {error && (
-          <p className="text-red-500 text-sm">
+          <p className="dashboard-message dashboard-message--error">
             {error}
           </p>
         )}
 
         {!loading && !error && recentTickets.length === 0 && (
-          <p className="text-gray-400 text-sm">
+          <p className="dashboard-message dashboard-message--empty">
             Chưa có dữ liệu.
           </p>
         )}
 
         {!loading && !error && recentTickets.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+          <div className="dashboard-table-wrapper">
+            <table className="dashboard-table">
+              <thead>
                 <tr>
-                  {["#", "Tên Phim", "Khách Hàng", "Ghế", "Tên Rạp", "Khu Vực", "Giá Vé", "Ngày Đặt"].map((header) => (
-                    <th key={header} className="px-3 py-2 text-left">
-                      {header}
-                    </th>
+                  {[
+                    "#",
+                    "Tên Phim",
+                    "Khách Hàng",
+                    "Ghế",
+                    "Tên Rạp",
+                    "Khu Vực",
+                    "Giá Vé",
+                    "Ngày Đặt",
+                  ].map((header) => (
+                    <th key={header}>{header}</th>
                   ))}
                 </tr>
               </thead>
 
               <tbody>
                 {recentTickets.map((ticket, index) => (
-                  <tr
-                    key={ticket.id || index}
-                    className="border-t border-gray-100 hover:bg-gray-50"
-                  >
-                    <td className="px-3 py-2">
-                      {index + 1}
-                    </td>
-
-                    <td className="px-3 py-2">
+                  <tr key={ticket.id || index}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <span className="movie-dot"></span>
                       {ticket.movieName}
                     </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.customerName}
+                    <td>{ticket.customerName}</td>
+                    <td>
+                      <span className="seat-badge">{ticket.seat}</span>
                     </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.seat}
-                    </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.cinemaName}
-                    </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.areaName}
-                    </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.price}
-                    </td>
-
-                    <td className="px-3 py-2">
-                      {ticket.createdAt}
-                    </td>
+                    <td>{ticket.cinemaName}</td>
+                    <td>{ticket.areaName}</td>
+                    <td className="price-cell">{ticket.price}</td>
+                    <td>{ticket.createdAt}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
