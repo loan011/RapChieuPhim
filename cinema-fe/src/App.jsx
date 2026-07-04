@@ -31,6 +31,8 @@ import AdminVe from "./pages/Admin/Ticket/Ticket.jsx";
 import HoaDon from "./pages/Admin/Bill/Bill.jsx";
 import Ghe from "./pages/Admin/Seat/Seat.jsx";
 import ThongBao from "./pages/Admin/Notice/Notice.jsx";
+import Report from "./pages/Admin/Report/Report.jsx";
+import KhuVuc from "./pages/Admin/Area/Area.jsx";
 
 import StaffLayout from "./layouts/StaffLayout";
 import StaffDashboard from "./pages/Staff/Dashbord/Dashboard.jsx";
@@ -172,6 +174,8 @@ function App() {
           <Route path="hoa-don" element={<HoaDon />} />
           <Route path="ghe" element={<Ghe />} />
           <Route path="thong-bao" element={<ThongBao />} />
+          <Route path="bao-cao" element={<Report />} />
+          <Route path="khu-vuc" element={<KhuVuc />} />
         </Route>
 
         {/* Wrong path */}

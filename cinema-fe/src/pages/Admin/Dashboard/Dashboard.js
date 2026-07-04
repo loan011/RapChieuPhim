@@ -197,11 +197,12 @@ export function useDashboard() {
         getRecentTickets(),
       ]);
 
+      // getDashboardStats đã trả về đúng format { totalMovies, totalUsers, totalTickets, revenue }
       setStats(normalizeDashboardStats(statsData));
-      setRecentTickets(normalizeRecentTickets(recentTicketData));
+      // getRecentTickets đã trả về array chuẩn
+      setRecentTickets(Array.isArray(recentTicketData) ? recentTicketData : normalizeRecentTickets(recentTicketData));
     } catch (err) {
       console.error("Dashboard error:", err);
-
       setStats(DEFAULT_DASHBOARD_STATS);
       setRecentTickets([]);
       setError(err.message || "Lấy dữ liệu dashboard thất bại!");

@@ -3,6 +3,52 @@ import { getTicketList, deleteTicket, createTicket, updateTicket } from "./ticke
 
 export const STATUS_OPTIONS = ["Đã đặt", "Đã thanh toán", "Đã hủy"];
 
+// Helpers đọc nested data từ API thật
+export function getTicketCode(t) {
+  return t?.ticketCode || t?.code || `VE${t?.ticketId || t?.id || ""}`;
+}
+export function getTicketCustomer(t) {
+  return t?.customerName || t?.booking?.user?.fullName || t?.booking?.User?.FullName || "—";
+}
+export function getTicketMovie(t) {
+  return t?.movieTitle || t?.booking?.showTime?.movie?.title || t?.booking?.ShowTime?.Movie?.Title || "—";
+}
+export function getTicketCinema(t) {
+  return t?.cinemaName || t?.cinema ||
+    t?.booking?.showTime?.room?.cinema?.cinemaName ||
+    t?.booking?.ShowTime?.Room?.Cinema?.CinemaName || "—";
+}
+export function getTicketRoom(t) {
+  return t?.roomName || t?.room ||
+    t?.booking?.showTime?.room?.roomName ||
+    t?.booking?.ShowTime?.Room?.RoomName || "—";
+}
+export function getTicketArea(t) {
+  return t?.areaName || t?.area ||
+    t?.booking?.showTime?.room?.cinema?.area?.areaName ||
+    t?.booking?.ShowTime?.Room?.Cinema?.Area?.AreaName || "—";
+}
+export function getTicketSeat(t) {
+  if (t?.seatCode) return t.seatCode;
+  const s = t?.booking?.seat || t?.booking?.Seat;
+  if (s) return `${s.seatRow || s.SeatRow || ""}${s.seatNumber || s.SeatNumber || ""}`;
+  return "—";
+}
+export function getTicketPrice(t) {
+  return t?.price || t?.Price || t?.amount || t?.booking?.ticketPrice || 0;
+}
+export function getTicketStatus(t) {
+  const s = t?.status || t?.Status || "";
+  if (s === "Used") return "Đã sử dụng";
+  if (s === "Active") return "Đã đặt";
+  if (s === "Cancelled") return "Đã hủy";
+  return s || "Đã đặt";
+}
+export function getTicketDate(t) {
+  const d = t?.issuedAt || t?.IssuedAt || t?.booking?.bookingDate || t?.booking?.BookingDate;
+  return d ? String(d).split("T")[0] : "—";
+}
+
 export const EMPTY_FORM = {
   code: "",
   customerName: "",
@@ -68,14 +114,12 @@ export function useTicket() {
   }
 
   function openEditModal(ticket) {
-    setEditId(ticket.id || ticket.ticketId);
+    setEditId(ticket.ticketId || ticket.id);
     setFormData({
-      code: ticket.code || ticket.ticketCode || "",
-      customerName: ticket.customerName || "",
-      movieTitle: ticket.movieTitle || "",
-      seatCode: ticket.seatCode || "",
-      price: ticket.price || ticket.amount || 0,
-      status: ticket.status || "Đã đặt",
+      code: getTicketCode(ticket),
+      movieTitle: getTicketMovie(ticket),
+      price: getTicketPrice(ticket),
+      status: ticket.status || "Active",
     });
     setFormError("");
     setShowModal(true);

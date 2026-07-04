@@ -3,8 +3,27 @@ import { useEffect, useState } from "react";
 import {
   getMovieList,
   getMovieCategoryList,
+  createMovie,
+  updateMovie,
   deleteMovie,
 } from "./movieService";
+
+export const EMPTY_FORM = {
+  title: "",
+  description: "",
+  duration: "",
+  director: "",
+  actors: "",
+  language: "",
+  subtitles: "",
+  ageRating: "",
+  releaseDate: "",
+  endDate: "",
+  posterUrl: "",
+  trailerUrl: "",
+  status: "suất sắp chiếu",
+  categoryIds: [],
+};
 
 export const STATUS_OPTIONS = [
   "suất đang chiếu",
@@ -318,6 +337,12 @@ export function useFilm() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
+  const [showModal, setShowModal] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -370,11 +395,101 @@ export function useFilm() {
   }
 
   function handleAddClick() {
-    alert("TODO: Mở form thêm phim");
+    setEditId(null);
+    setFormData(EMPTY_FORM);
+    setFormError("");
+    setShowModal(true);
   }
 
   function handleEditClick(id) {
-    alert(`TODO: Sửa phim id=${id}`);
+    const movie = list.find((m) => String(getMovieId(m)) === String(id));
+    if (!movie) return;
+    setEditId(id);
+    setFormData({
+      title: movie.title || movie.Title || "",
+      duration: movie.duration || movie.Duration || movie.durationMinutes || "",
+      director: movie.director || movie.Director || "",
+      releaseDate: getMovieReleaseDateRaw(movie) ? String(getMovieReleaseDateRaw(movie)).split("T")[0] : "",
+      status: movie.status || movie.Status || "suất sắp chiếu",
+      description: movie.description || movie.Description || "",
+      posterUrl: movie.posterUrl || movie.PosterUrl || movie.thumbnail || movie.Thumbnail || "",
+      trailerUrl: movie.trailerUrl || movie.TrailerUrl || "",
+      categoryIds: [],
+    });
+    setFormError("");
+    setShowModal(true);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    setEditId(null);
+    setFormData(EMPTY_FORM);
+    setFormError("");
+  }
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleCategoryToggle(id) {
+    setFormData((prev) => {
+      const ids = prev.categoryIds.includes(id)
+        ? prev.categoryIds.filter((c) => c !== id)
+        : [...prev.categoryIds, id];
+      return { ...prev, categoryIds: ids };
+    });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!formData.title.trim()) {
+      setFormError("Tên phim không được để trống.");
+      return;
+    }
+    try {
+      setFormLoading(true);
+      setFormError("");
+      // Validate URL length
+      if (formData.posterUrl && formData.posterUrl.length > 500) {
+        setFormError("URL ảnh bìa quá dài (tối đa 500 ký tự). Hãy dùng link ảnh trực tiếp thay vì link tìm kiếm.");
+        setFormLoading(false);
+        return;
+      }
+      if (formData.trailerUrl && formData.trailerUrl.length > 500) {
+        setFormError("URL trailer quá dài (tối đa 500 ký tự).");
+        setFormLoading(false);
+        return;
+      }
+      // Lấy userId từ localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId =
+        currentUser?.userId ??
+        currentUser?.UserId ??
+        currentUser?.id ??
+        currentUser?.Id ??
+        null;
+      const payload = {
+        ...formData,
+        duration: formData.duration ? Number(formData.duration) : null,
+        releaseDate: formData.releaseDate || null,
+        endDate: formData.endDate || null,
+        categoryIds: formData.categoryIds.map(Number),
+        // Gửi cả createdBy để backend có thể nhận (nếu model bind trực tiếp)
+        ...(userId != null ? { createdBy: Number(userId) } : {}),
+      };
+      if (editId) {
+        await updateMovie(editId, payload);
+      } else {
+        await createMovie(payload);
+      }
+      closeModal();
+      fetchData();
+    } catch (err) {
+      setFormError(err?.message || "Lưu phim thất bại.");
+    } finally {
+      setFormLoading(false);
+    }
   }
 
   function getMovieGenreText(movie) {
@@ -417,6 +532,15 @@ export function useFilm() {
     handleDelete,
     handleAddClick,
     handleEditClick,
+    closeModal,
+    handleChange,
+    handleCategoryToggle,
+    handleSubmit,
+    showModal,
+    editId,
+    formData,
+    formLoading,
+    formError,
     getMovieGenreText,
   };
-}
+}
