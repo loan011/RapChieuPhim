@@ -16,7 +16,6 @@ import {
   MdMenu,
   MdLogout,
   MdTheaters,
-  MdBarChart,
   MdLocationOn,
 } from "react-icons/md";
 import { useState } from "react";
@@ -36,7 +35,6 @@ const navItems = [
   { to: "/admin/hoa-don",      label: "Hoa Don",        icon: <MdReceiptLong /> },
   { to: "/admin/ghe",          label: "Ghe",            icon: <MdChair /> },
   { to: "/admin/thong-bao",    label: "Thong Bao",      icon: <MdNotifications /> },
-  { to: "/admin/bao-cao",       label: "Bao Cao",         icon: <MdBarChart /> },
 ];
 
 export default function AdminLayout() {

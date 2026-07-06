@@ -1,8 +1,10 @@
 import "./Dashboard.css";
 import { useDashboard } from "./Dashboard.js";
 
+function fmt(n) { return Number(n || 0).toLocaleString("vi-VN"); }
+
 export default function Dashboard() {
-  const { cards, recentTickets, loading, error } = useDashboard();
+  const { cards, recentTickets, loading, error, todayRevenue, revenueByDayArr, revenueByShowtimeArr } = useDashboard();
 
   const accentClasses = [
     "dashboard-stat-card--gold",
@@ -39,6 +41,61 @@ export default function Dashboard() {
           );
         })}
       </section>
+
+      {/* Doanh thu hôm nay */}
+      {!loading && !error && (
+        <section className="dashboard-table-section" style={{marginBottom: '1.5rem'}}>
+          <div className="dashboard-table-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <h5>📅 Doanh Thu Hôm Nay</h5>
+            <strong style={{color:'#f59e0b', fontSize:'1.2rem'}}>{fmt(todayRevenue)} đ</strong>
+          </div>
+        </section>
+      )}
+
+      {/* Doanh thu 7 ngày */}
+      {!loading && !error && revenueByDayArr.length > 0 && (
+        <section className="dashboard-table-section" style={{marginBottom:'1.5rem'}}>
+          <div className="dashboard-table-header"><h5>📊 Doanh Thu Theo Ngày</h5></div>
+          <div className="dashboard-table-wrapper">
+            <table className="dashboard-table">
+              <thead><tr><th>#</th><th>Ngày</th><th>Doanh Thu</th></tr></thead>
+              <tbody>
+                {revenueByDayArr.map((r, i) => (
+                  <tr key={r.date}>
+                    <td>{i + 1}</td>
+                    <td>{r.date}</td>
+                    <td className="price-cell">{fmt(r.revenue)} đ</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Doanh thu theo suất chiếu từng phim */}
+      {!loading && !error && revenueByShowtimeArr.length > 0 && (
+        <section className="dashboard-table-section" style={{marginBottom:'1.5rem'}}>
+          <div className="dashboard-table-header"><h5>🎬 Doanh Thu Theo Suất Chiếu</h5></div>
+          <div className="dashboard-table-wrapper">
+            <table className="dashboard-table">
+              <thead><tr><th>#</th><th>Phim</th><th>Ngày</th><th>Giờ</th><th>Số Vé</th><th>Doanh Thu</th></tr></thead>
+              <tbody>
+                {revenueByShowtimeArr.map((r, i) => (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td><span className="movie-dot"></span>{r.movie}</td>
+                    <td>{r.date || "—"}</td>
+                    <td>{r.time || "—"}</td>
+                    <td>{r.count}</td>
+                    <td className="price-cell">{fmt(r.revenue)} đ</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="dashboard-table-section">
         <div className="dashboard-table-header">
@@ -87,16 +144,14 @@ export default function Dashboard() {
                     <td>{index + 1}</td>
                     <td>
                       <span className="movie-dot"></span>
-                      {ticket.movieName}
+                      {ticket.movieTitle || ticket.movieName}
                     </td>
                     <td>{ticket.customerName}</td>
-                    <td>
-                      <span className="seat-badge">{ticket.seat}</span>
-                    </td>
+                    <td><span className="seat-badge">{ticket.seat || "—"}</span></td>
                     <td>{ticket.cinemaName}</td>
-                    <td>{ticket.areaName}</td>
-                    <td className="price-cell">{ticket.price}</td>
-                    <td>{ticket.createdAt}</td>
+                    <td>{ticket.areaName || "—"}</td>
+                    <td className="price-cell">{fmt(ticket.price)}</td>
+                    <td>{ticket.issuedAt || ticket.createdAt}</td>
                   </tr>
                 ))}
               </tbody>

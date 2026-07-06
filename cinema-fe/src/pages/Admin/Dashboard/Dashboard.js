@@ -10,6 +10,7 @@ import {
 import {
   getDashboardStats,
   getRecentTickets,
+  getDashboardData,
 } from "./dashboardService";
 
 
@@ -179,7 +180,9 @@ export function buildDashboardCards(stats) {
 export function useDashboard() {
   const [stats, setStats] = useState(DEFAULT_DASHBOARD_STATS);
   const [recentTickets, setRecentTickets] = useState([]);
-
+  const [todayRevenue, setTodayRevenue] = useState(0);
+  const [revenueByDayArr, setRevenueByDayArr] = useState([]);
+  const [revenueByShowtimeArr, setRevenueByShowtimeArr] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -191,16 +194,17 @@ export function useDashboard() {
     try {
       setLoading(true);
       setError("");
-
-      const [statsData, recentTicketData] = await Promise.all([
-        getDashboardStats(),
-        getRecentTickets(),
-      ]);
-
-      // getDashboardStats đã trả về đúng format { totalMovies, totalUsers, totalTickets, revenue }
-      setStats(normalizeDashboardStats(statsData));
-      // getRecentTickets đã trả về array chuẩn
-      setRecentTickets(Array.isArray(recentTicketData) ? recentTicketData : normalizeRecentTickets(recentTicketData));
+      const data = await getDashboardData();
+      setStats(normalizeDashboardStats({
+        totalMovies: data.totalMovies,
+        totalUsers: data.totalUsers,
+        totalTickets: data.totalTickets,
+        revenue: data.totalRevenue,
+      }));
+      setTodayRevenue(data.todayRevenue);
+      setRevenueByDayArr(data.revenueByDayArr);
+      setRevenueByShowtimeArr(data.revenueByShowtimeArr);
+      setRecentTickets(Array.isArray(data.recentTickets) ? data.recentTickets : []);
     } catch (err) {
       console.error("Dashboard error:", err);
       setStats(DEFAULT_DASHBOARD_STATS);
@@ -214,20 +218,9 @@ export function useDashboard() {
   const cards = buildDashboardCards(stats);
 
   return {
-    stats,
-    setStats,
-
-    recentTickets,
-    setRecentTickets,
-
-    cards,
-
-    loading,
-    setLoading,
-
-    error,
-    setError,
-
+    stats, cards, recentTickets,
+    todayRevenue, revenueByDayArr, revenueByShowtimeArr,
+    loading, error,
     fetchDashboardData,
   };
 }
