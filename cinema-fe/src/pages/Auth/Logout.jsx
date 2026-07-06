@@ -1,4 +1,4 @@
-import { useLogout } from "./Logout.js";
+﻿import { useLogout } from "./useLogout.js";
 
 function Logout() {
   const { userEmail, handleLogout } = useLogout();

@@ -153,7 +153,7 @@ export async function getShowtimesByMovie(movieId) {
   return Array.isArray(data) ? data : data?.data || data?.items || [];
 }
 
-import { generateMockSeats } from "./booking";
+import { generateMockSeats } from "./usebooking";
 
 export async function getSeatsByRoomId(roomId) {
   if (!roomId) return [];

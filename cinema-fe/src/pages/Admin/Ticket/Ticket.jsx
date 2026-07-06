@@ -1,8 +1,54 @@
 import "./Ticket.css";
 import { createPortal } from "react-dom";
-import { STATUS_OPTIONS, useTicket } from "./Ticket.js";
+import {
+  MdAdd,
+  MdConfirmationNumber,
+  MdTrendingUp,
+  MdAccountBalanceWallet,
+  MdSearch,
+  MdMovie,
+  MdLocationOn,
+  MdCalendarMonth,
+  MdChair,
+  MdPerson,
+  MdLocalActivity,
+  MdVisibility,
+  MdEdit,
+  MdDelete,
+} from "react-icons/md";
+import {
+  useTicket,
+  STATUS_OPTIONS,
+  getTicketId,
+  getTicketCode,
+  getTicketCustomerName,
+  getTicketMovieTitle,
+  getTicketSeatCode,
+  getTicketPrice,
+  getTicketCinema,
+  getTicketArea,
+  getTicketRoom,
+  getTicketStatusDisplayName,
+  getTicketShowtime,
+  formatMoney,
+} from "./useTicket.js";
 
-export default function Ve() {
+// Helper for status styling matching the mockup
+function getStatusStyle(status) {
+  const displayStatus = getTicketStatusDisplayName(status);
+  switch (displayStatus) {
+    case "Đã thanh toán":
+      return { bg: "#e6f9f0", color: "#16a34a", label: "Đã thanh toán" };
+    case "Giữ chỗ":
+      return { bg: "#fff3e0", color: "#e67e00", label: "Giữ chỗ" };
+    case "Đã hủy":
+      return { bg: "#fce7f3", color: "#db2777", label: "Đã hủy" };
+    default:
+      return { bg: "#f3f4f6", color: "#6b7280", label: displayStatus || "—" };
+  }
+}
+
+export default function Ticket() {
   const {
     loading,
     error,
@@ -10,273 +56,396 @@ export default function Ve() {
     setSearch,
     filterStatus,
     setFilterStatus,
+    filterCinemaId,
+    setFilterCinemaId,
+    cinemaOptions,
     filtered,
+    pageItems,
+    totalPages,
+    safePage,
+    setPage,
+
+    /* Stats */
+    totalCount,
+    soldCount,
+    totalRevenue,
+
+    /* Modal add/edit */
     showModal,
     editId,
     formData,
     formLoading,
     formError,
-    handleDelete,
     openAddModal,
     openEditModal,
     closeModal,
     handleChange,
     handleSubmitForm,
+    handleDelete,
   } = useTicket();
 
   return (
-    <div className="p-1">
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-2xl text-gray-800">Quản Lý Vé</h4>
-        <button
-          className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-100 active:scale-98 transition-all duration-150"
-          onClick={openAddModal}
-        >
-          + Thêm Vé
+    <div className="tk-wrapper">
+      {/* ── Header ── */}
+      <div className="tk-header">
+        <h4 className="tk-title">Quản Lý Vé</h4>
+        <button className="tk-btn-add" onClick={openAddModal}>
+          <MdAdd size={18} />
+          Thêm vé
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex flex-wrap gap-3 mb-6">
-          <div className="flex-1 min-w-[280px] relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔍</span>
-            <input
-              type="text"
-              placeholder="Tìm mã vé, tên khách hàng, tên phim..."
-              className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <select
-            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200 min-w-[180px]"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {loading && (
-          <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
-            <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent text-blue-600 rounded-full mr-2"></span>
-            Đang tải dữ liệu...
-          </div>
-        )}
-        
-        {error && (
-          <div className="p-4 mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
-            <span>⚠️</span> {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50/75 border-b border-gray-100 text-gray-600 font-semibold">
-                  <th className="px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">Mã Vé</th>
-                  <th className="px-4 py-3 text-left">Khách Hàng</th>
-                  <th className="px-4 py-3 text-left">Phim</th>
-                  <th className="px-4 py-3 text-left">Khu Vực</th>
-                  <th className="px-4 py-3 text-left">Rạp</th>
-                  <th className="px-4 py-3 text-left">Phòng</th>
-                  <th className="px-4 py-3 text-left">Ghế</th>
-                  <th className="px-4 py-3 text-left">Giá Vé</th>
-                  <th className="px-4 py-3 text-left">Trạng Thái</th>
-                  <th className="px-4 py-3 text-left">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-10 text-gray-400">
-                      Không tìm thấy vé nào
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((t, i) => (
-                    <tr key={t.id || t.ticketId} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3.5 text-gray-500 font-medium">{i + 1}</td>
-                      <td className="px-4 py-3.5 font-semibold text-gray-800">{t.code || t.ticketCode || `VE${t.id}`}</td>
-                      <td className="px-4 py-3.5 text-gray-600">{t.customerName}</td>
-                      <td className="px-4 py-3.5 text-gray-700 font-medium">{t.movieTitle}</td>
-                      <td className="px-4 py-3.5 text-gray-600">{t.areaName || t.area || "—"}</td>
-                      <td className="px-4 py-3.5 text-gray-600">{t.cinemaName || t.cinema || "—"}</td>
-                      <td className="px-4 py-3.5 text-gray-600">{t.roomName || t.room || "—"}</td>
-                      <td className="px-4 py-3.5"><span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded font-mono text-xs font-semibold">{t.seatCode}</span></td>
-                      <td className="px-4 py-3.5 font-bold text-gray-800">{(t.price || t.amount || 0).toLocaleString("vi-VN")} đ</td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            t.status === "Đã thanh toán"
-                              ? "bg-green-50 text-green-700 border border-green-150"
-                              : t.status === "Đã đặt"
-                              ? "bg-yellow-50 text-yellow-700 border border-yellow-150"
-                              : "bg-red-50 text-red-700 border border-red-150"
-                          }`}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex gap-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-800 hover:underline font-semibold text-xs transition-colors"
-                            onClick={() => openEditModal(t)}
-                          >
-                            Sửa
-                          </button>
-                          <button
-                            className="text-red-500 hover:text-red-700 hover:underline font-semibold text-xs transition-colors"
-                            onClick={() => handleDelete(t.id || t.ticketId)}
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* ── Stats Row ── */}
+      <div className="tk-stats-row">
+        <StatCard
+          icon={<MdConfirmationNumber size={32} />}
+          iconBg="#fff7ed"
+          iconColor="#f97316"
+          label="Tổng vé hôm nay"
+          value={`${totalCount} vé`}
+        />
+        <StatCard
+          icon={<MdTrendingUp size={32} />}
+          iconBg="#f0fdf4"
+          iconColor="#16a34a"
+          label="Đã bán"
+          value={`${soldCount} vé`}
+        />
+        <StatCard
+          icon={<MdAccountBalanceWallet size={32} />}
+          iconBg="#fff7ed"
+          iconColor="#f97316"
+          label="Doanh thu vé"
+          value={formatMoney(totalRevenue)}
+        />
       </div>
 
-      {showModal &&
-        createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden border border-gray-100">
-              <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-                <h5 className="font-bold text-lg text-gray-800">
-                  {editId !== null ? "Cập Nhật Thông Tin Vé" : "Thêm Vé Mới"}
-                </h5>
+      {/* ── Filter Bar ── */}
+      <div className="tk-filter-bar">
+        <div className="tk-search-wrap">
+          <MdSearch size={18} className="tk-search-icon" />
+          <input
+            type="text"
+            className="tk-search-input"
+            placeholder="Tìm theo mã vé, tên khách hàng, phim..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+
+        <select
+          className="tk-status-select"
+          value={filterCinemaId}
+          onChange={(e) => {
+            setFilterCinemaId(e.target.value);
+            setPage(1);
+          }}
+        >
+          {cinemaOptions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="tk-status-select"
+          value={filterStatus}
+          onChange={(e) => {
+            setFilterStatus(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả trạng thái</option>
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── Loading / Error ── */}
+      {loading && <p className="tk-msg">Đang tải dữ liệu vé...</p>}
+      {error && <p className="tk-msg tk-msg--error">{error}</p>}
+
+      {/* ── Cards Grid ── */}
+      {!loading && !error && (
+        <>
+          {pageItems.length === 0 ? (
+            <p className="tk-msg">Không có vé nào phù hợp.</p>
+          ) : (
+            <div className="tk-grid">
+              {pageItems.map((ticket, index) => {
+                const id = getTicketId(ticket);
+                const code = getTicketCode(ticket);
+                const customer = getTicketCustomerName(ticket);
+                const movie = getTicketMovieTitle(ticket);
+                const seat = getTicketSeatCode(ticket);
+                const price = getTicketPrice(ticket);
+                const cinema = getTicketCinema(ticket);
+                const area = getTicketArea(ticket);
+                const room = getTicketRoom(ticket);
+                const showtime = getTicketShowtime(ticket);
+                const statusStyle = getStatusStyle(ticket.status);
+
+                const ticketIndex = String(
+                  index + 1 + (safePage - 1) * 5
+                ).padStart(2, "0");
+
+                return (
+                  <div key={id || index} className="tk-card">
+                    {/* Card Header */}
+                    <div className="tk-card-head">
+                      <h6 className="tk-card-name" title={code}>
+                        Vé {ticketIndex} – {area}
+                      </h6>
+                      <span
+                        className="tk-card-badge"
+                        style={{
+                          background: statusStyle.bg,
+                          color: statusStyle.color,
+                        }}
+                      >
+                        {statusStyle.label}
+                      </span>
+                    </div>
+
+                    {/* Card details list */}
+                    <div className="tk-card-info">
+                      <InfoRow icon={<MdMovie />} label="Phim:" value={movie} />
+                      <InfoRow
+                        icon={<MdLocationOn />}
+                        label="Chi nhánh:"
+                        value={cinema}
+                      />
+                      <InfoRow
+                        icon={<MdCalendarMonth />}
+                        label="Suất chiếu:"
+                        value={showtime}
+                      />
+                      <InfoRow icon={<MdChair />} label="Ghế:" value={seat} />
+                      <InfoRow
+                        icon={<MdPerson />}
+                        label="Khách hàng:"
+                        value={customer}
+                      />
+                      <InfoRow
+                        icon={<MdLocalActivity />}
+                        label="Tổng tiền:"
+                        value={formatMoney(price)}
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="tk-card-actions">
+                      <button
+                        className="tk-card-btn tk-card-btn--detail"
+                        onClick={() => openEditModal(ticket)}
+                      >
+                        <MdVisibility size={15} /> Chi tiết
+                      </button>
+                      <button
+                        className="tk-card-btn tk-card-btn--edit"
+                        onClick={() => openEditModal(ticket)}
+                      >
+                        <MdEdit size={15} /> Sửa
+                      </button>
+                      <button
+                        className="tk-card-btn tk-card-btn--delete"
+                        onClick={() => handleDelete(id)}
+                        title="Xóa vé"
+                      >
+                        <MdDelete size={15} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Pagination Footer ── */}
+          {filtered.length > 0 && (
+            <div className="tk-footer">
+              <span className="tk-footer-info">
+                Hiển thị {Math.min((safePage - 1) * 5 + 1, filtered.length)}–
+                {Math.min(safePage * 5, filtered.length)} của {filtered.length} vé
+              </span>
+              <div className="tk-pagination">
                 <button
-                  type="button"
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-650 text-2xl leading-none transition-colors"
+                  className="tk-page-btn"
+                  disabled={safePage === 1}
+                  onClick={() => setPage(safePage - 1)}
                 >
-                  &times;
+                  Trước
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    className={`tk-page-btn${
+                      p === safePage ? " tk-page-btn--active" : ""
+                    }`}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  className="tk-page-btn"
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage(safePage + 1)}
+                >
+                  Sau
                 </button>
               </div>
+            </div>
+          )}
+        </>
+      )}
 
-              <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Mã Vé <span className="text-red-500">*</span>
+      {/* ── Modal Add / Edit ── */}
+      {showModal &&
+        createPortal(
+          <div className="tk-modal-overlay">
+            <div className="tk-modal">
+              <h5 className="tk-modal-title">
+                {editId !== null ? "Cập Nhật Thông Tin Vé" : "Thêm Vé Mới"}
+              </h5>
+              {formError && <p className="tk-form-error">{formError}</p>}
+              <form onSubmit={handleSubmitForm} className="tk-form">
+                {/* Mã vé */}
+                <div className="tk-field">
+                  <label className="tk-label">
+                    Mã vé <span className="tk-required">*</span>
                   </label>
                   <input
                     type="text"
                     name="code"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                     value={formData.code}
                     onChange={handleChange}
-                    placeholder="Nhập mã vé (Ví dụ: VE001)"
+                    className="tk-input font-mono"
+                    placeholder="VD: VE01, TICKET99"
+                    required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Khách Hàng <span className="text-red-500">*</span>
+                {/* Khách hàng */}
+                <div className="tk-field">
+                  <label className="tk-label">
+                    Tên khách hàng <span className="tk-required">*</span>
                   </label>
                   <input
                     type="text"
                     name="customerName"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                     value={formData.customerName}
                     onChange={handleChange}
+                    className="tk-input"
                     placeholder="Nhập tên khách hàng"
+                    required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Phim <span className="text-red-500">*</span>
+                {/* Tên phim */}
+                <div className="tk-field">
+                  <label className="tk-label">
+                    Tên phim <span className="tk-required">*</span>
                   </label>
                   <input
                     type="text"
                     name="movieTitle"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                     value={formData.movieTitle}
                     onChange={handleChange}
+                    className="tk-input"
                     placeholder="Nhập tên phim"
+                    required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Ghế <span className="text-red-500">*</span>
+                {/* Ghế + Giá vé */}
+                <div className="tk-field-row">
+                  <div className="tk-field">
+                    <label className="tk-label">
+                      Ghế <span className="tk-required">*</span>
                     </label>
                     <input
                       type="text"
                       name="seatCode"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200 font-mono"
                       value={formData.seatCode}
                       onChange={handleChange}
-                      placeholder="Ví dụ: A1"
+                      className="tk-input font-mono"
+                      placeholder="VD: A5, A6"
+                      required
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Giá Vé <span className="text-red-500">*</span>
-                    </label>
+                  <div className="tk-field">
+                    <label className="tk-label">Giá Vé (đ)</label>
                     <input
                       type="number"
                       name="price"
-                      min="0"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
                       value={formData.price}
                       onChange={handleChange}
-                      placeholder="Ví dụ: 75000"
+                      className="tk-input"
+                      placeholder="VD: 95000"
+                      min={0}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Trạng Thái
-                  </label>
+                {/* Chi nhánh */}
+                <div className="tk-field">
+                  <label className="tk-label">Chi nhánh</label>
                   <select
-                    name="status"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all duration-200"
-                    value={formData.status}
+                    name="cinemaId"
+                    value={formData.cinemaId}
                     onChange={handleChange}
+                    className="tk-input"
                   >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
+                    <option value="">-- Chọn chi nhánh --</option>
+                    {cinemaOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {formError && (
-                  <p className="text-red-500 text-xs font-semibold">{formError}</p>
-                )}
+                {/* Trạng thái */}
+                <div className="tk-field">
+                  <label className="tk-label">Trạng Thái</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="tk-input"
+                  >
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-gray-50">
+                {/* Actions */}
+                <div className="tk-modal-actions">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-250 text-gray-700 hover:bg-gray-50 transition-all"
+                    className="tk-btn-cancel"
+                    disabled={formLoading}
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
+                    className="tk-btn-submit"
                     disabled={formLoading}
-                    className="px-5 py-2 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-100 disabled:opacity-60 transition-all"
                   >
-                    {formLoading ? "Đang lưu..." : "Lưu Lại"}
+                    {formLoading ? "Đang lưu..." : editId !== null ? "Cập Nhật" : "Thêm Vé"}
                   </button>
                 </div>
               </form>
@@ -288,3 +457,33 @@ export default function Ve() {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   SUB-COMPONENTS (Pure UI)
+═══════════════════════════════════════════════════════════ */
+
+function StatCard({ icon, iconBg, iconColor, label, value }) {
+  return (
+    <div className="tk-stat-card">
+      <div
+        className="tk-stat-icon"
+        style={{ background: iconBg, color: iconColor }}
+      >
+        {icon}
+      </div>
+      <div className="tk-stat-body">
+        <p className="tk-stat-label">{label}</p>
+        <p className="tk-stat-value">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value }) {
+  return (
+    <div className="tk-info-row">
+      <span className="tk-info-icon">{icon}</span>
+      <span className="tk-info-label">{label}</span>
+      <span className="tk-info-value">{value || "—"}</span>
+    </div>
+  );
+}

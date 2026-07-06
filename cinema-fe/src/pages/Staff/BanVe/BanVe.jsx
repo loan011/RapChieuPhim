@@ -1,5 +1,5 @@
-import "./BanVe.css";
-import { useBanVe } from "./BanVe.js";
+﻿import "./BanVe.css";
+import { useBanVe } from "./useBanVe.js";
 import { MdMovie, MdChair, MdCheckCircle } from "react-icons/md";
 
 export default function StaffBanVe() {

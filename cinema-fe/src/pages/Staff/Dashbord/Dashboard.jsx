@@ -1,5 +1,5 @@
-import "./Dashboard.css";
-import { useDashboard } from "./Dashboard.js";
+﻿import "./Dashboard.css";
+import { useDashboard } from "./useDashboard.js";
 import { MdMovie, MdConfirmationNumber, MdTrendingUp, MdPeople } from "react-icons/md";
 
 export default function StaffDashboard() {

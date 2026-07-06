@@ -1,285 +1,377 @@
 import "./Room.css";
 import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import {
-  ROOM_TYPE_OPTIONS,
-  ROOM_STATUS_OPTIONS,
-  useRoom,
-  getRoomId,
-  getRoomName,
-  getRoomCinemaName,
-  getRoomTotalSeats,
-  getRoomType,
-  getRoomStatusText,
-  getCinemaId,
-  getCinemaName,
-} from "./Room.js";
+  MdAdd,
+  MdOndemandVideo,
+  MdCheckCircleOutline,
+  MdChair,
+  MdLocationOn,
+  MdScreenshotMonitor,
+  MdSpeaker,
+  MdVisibility,
+  MdEdit,
+} from "react-icons/md";
+import { useRoom } from "./useRoom.js";
 
-const TABLE_HEADERS = [
-  "#",
-  "Tên Phòng",
-  "Rạp Chiếu",
-  "Sức Chứa",
-  "Loại Phòng",
-  "Trạng Thái",
-  "Thao Tác",
-];
+const PAGE_SIZE = 5;
 
-export default function Room() {
+// ── Status helpers ──────────────────────────────────────────
+function getStatusStyle(isActive) {
+  if (isActive === true || isActive === "true" || isActive === "Active")
+    return { bg: "#e6f9f0", color: "#16a34a", label: "Đang hoạt động" };
+  if (
+    isActive === "maintenance" ||
+    isActive === "Maintenance" ||
+    isActive === "Bảo trì"
+  )
+    return { bg: "#fff7e6", color: "#d97706", label: "Bảo trì" };
+  return { bg: "#fce7f3", color: "#db2777", label: "Tạm dừng" };
+}
+
+// ── Main Component ──────────────────────────────────────────
+export default function RoomAdmin() {
   const {
-    list,
-    cinemas,
     loading,
     error,
-
+    rooms,
+    cinemas,
+    search,
+    setSearch,
     showModal,
-    editId,
+    isEditing,
     form,
-    submitting,
     formError,
-
-    openAddModal,
-    openEditModal,
-    closeModal,
+    submitting,
+    roomTypeOptions,
+    roomStatusOptions,
+    cinemaOptions,
     handleChange,
     handleSubmit,
-    handleDelete,
+    openAddModal,
+    openEditRoom,
+    closeModal,
+    handleDeleteRoom,
   } = useRoom();
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Phòng Chiếu</h4>
+  const [page, setPage] = useState(1);
+  const [selectedCinemaFilter, setSelectedCinemaFilter] = useState("");
 
-        <button
-          type="button"
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={openAddModal}
-        >
-          + Thêm
+  useEffect(() => {
+    if (cinemas.length > 0 && !selectedCinemaFilter) {
+      const firstId = String(
+        cinemas[0]?.cinemaId ??
+        cinemas[0]?.CinemaId ??
+        cinemas[0]?.id ??
+        cinemas[0]?.Id ??
+        ""
+      );
+      setSelectedCinemaFilter(firstId);
+    }
+  }, [cinemas, selectedCinemaFilter]);
+
+  // ── Helper lấy cinemaId từ room ──
+  function getRoomCinemaId(r) {
+    return String(
+      r?.cinemaId ?? r?.CinemaId ??
+      r?.cinema?.cinemaId ?? r?.cinema?.CinemaId ??
+      r?.Cinema?.cinemaId ?? r?.Cinema?.CinemaId ?? ""
+    );
+  }
+
+  // ── Lọc theo chi nhánh trước ──
+  const roomsByCinema = selectedCinemaFilter
+    ? rooms.filter((r) => getRoomCinemaId(r) === selectedCinemaFilter)
+    : rooms;
+
+  // ── Stats dựa trên toàn bộ phòng (không phụ thuộc filter) ──
+  const totalRooms = roomsByCinema.length;
+  const activeRooms = roomsByCinema.filter((r) => {
+    const v = r?.isActive ?? r?.IsActive ?? r?.status ?? r?.Status;
+    return v === true || v === "true" || v === "Active";
+  }).length;
+  const totalSeats = roomsByCinema.reduce(
+    (acc, r) =>
+      acc + Number(r?.totalSeats ?? r?.TotalSeats ?? r?.capacity ?? 0),
+    0
+  );
+
+  // ── Lọc thêm theo keyword ──
+  const keyword = (search || "").trim().toLowerCase();
+  const filtered = keyword
+    ? roomsByCinema.filter((r) => {
+        const name = (r?.roomName ?? r?.RoomName ?? "").toLowerCase();
+        const cinema = (
+          r?.cinemaName ??
+          r?.CinemaName ??
+          r?.cinema?.cinemaName ??
+          ""
+        ).toLowerCase();
+        const type = (r?.roomType ?? r?.RoomType ?? "").toLowerCase();
+        return name.includes(keyword) || cinema.includes(keyword) || type.includes(keyword);
+      })
+    : roomsByCinema;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
+
+  function handleCinemaFilterChange(e) {
+    setSelectedCinemaFilter(e.target.value);
+    setPage(1);
+  }
+
+  return (
+    <div className="rm-wrapper">
+      {/* ── Header ── */}
+      <div className="rm-header">
+        <h4 className="rm-title">Quản Lý Phòng Chiếu</h4>
+        <button className="rm-btn-add" onClick={openAddModal}>
+          <MdAdd size={18} />
+          Thêm phòng chiếu
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-        {loading && (
-          <p className="text-gray-500 text-sm">Đang tải...</p>
-        )}
-
-        {error && (
-          <p className="text-red-500 text-sm">{error}</p>
-        )}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  {TABLE_HEADERS.map((header) => (
-                    <th key={header} className="px-3 py-2 text-left">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {list.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={TABLE_HEADERS.length}
-                      className="text-center py-6 text-gray-400"
-                    >
-                      Không có dữ liệu
-                    </td>
-                  </tr>
-                ) : (
-                  list.map((room, index) => {
-                    const roomId = getRoomId(room);
-
-                    return (
-                      <tr
-                        key={roomId ?? index}
-                        className="border-t border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="px-3 py-2">{index + 1}</td>
-
-                        <td className="px-3 py-2 font-medium">
-                          {getRoomName(room)}
-                        </td>
-
-                        <td className="px-3 py-2">
-                          {getRoomCinemaName(room, cinemas)}
-                        </td>
-
-                        <td className="px-3 py-2">
-                          {getRoomTotalSeats(room)}
-                        </td>
-
-                        <td className="px-3 py-2">
-                          {getRoomType(room)}
-                        </td>
-
-                        <td className="px-3 py-2">
-                          {getRoomStatusText(room)}
-                        </td>
-
-                        <td className="px-3 py-2 flex gap-2">
-                          <button
-                            type="button"
-                            className="text-blue-600 hover:underline text-xs"
-                            onClick={() => openEditModal(room)}
-                          >
-                            Sửa
-                          </button>
-
-                          <button
-                            type="button"
-                            className="text-red-500 hover:underline text-xs"
-                            onClick={() => handleDelete(roomId)}
-                          >
-                            Xóa
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* ── Stats ── */}
+      <div className="rm-stats-row">
+        <StatCard
+          icon={<MdOndemandVideo size={32} />}
+          iconBg="#fff7ed"
+          iconColor="#f97316"
+          label="Tổng phòng chiếu"
+          value={`${totalRooms} phòng`}
+        />
+        <StatCard
+          icon={<MdCheckCircleOutline size={32} />}
+          iconBg="#f0fdf4"
+          iconColor="#16a34a"
+          label="Phòng đang hoạt động"
+          value={`${activeRooms} phòng`}
+        />
+        <StatCard
+          icon={<MdChair size={32} />}
+          iconBg="#f0f4ff"
+          iconColor="#6366f1"
+          label="Tổng ghế"
+          value={totalSeats.toLocaleString("vi-VN") + " ghế"}
+        />
       </div>
 
+      {/* ── Filter bar ── */}
+      <div className="rm-filter-bar">
+        {/* Dropdown chi nhánh */}
+        <div className="rm-filter-cinema">
+          <select
+            className="rm-cinema-select"
+            value={selectedCinemaFilter}
+            onChange={handleCinemaFilterChange}
+          >
+            {cinemaOptions.map((opt) => (
+              <option key={opt.value} value={String(opt.value)}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search */}
+        <input
+          type="text"
+          className="rm-search"
+          placeholder="Tìm kiếm theo tên phòng, loại phòng..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+        />
+      </div>
+
+      {/* ── Loading / Error ── */}
+      {loading && <p className="rm-msg">Đang tải dữ liệu...</p>}
+      {error && <p className="rm-msg rm-msg--error">{error}</p>}
+
+      {/* ── Cards ── */}
+      {!loading && !error && (
+        <>
+          {pageItems.length === 0 ? (
+            <p className="rm-msg">Không có dữ liệu phù hợp.</p>
+          ) : (
+            <div className="rm-grid">
+              {pageItems.map((room, idx) => {
+                const id =
+                  room?.roomId ?? room?.RoomId ?? room?.id ?? room?.Id ?? idx;
+                const isActive =
+                  room?.isActive ?? room?.IsActive ?? room?.status ?? true;
+                const style = getStatusStyle(isActive);
+                return (
+                  <RoomCard
+                    key={id}
+                    room={room}
+                    statusStyle={style}
+                    onEdit={() => openEditRoom(room)}
+                    onDelete={() => handleDeleteRoom(id)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Pagination ── */}
+          <div className="rm-footer">
+            <span className="rm-footer-info">
+              Hiển thị{" "}
+              {Math.min((safePage - 1) * PAGE_SIZE + 1, filtered.length)}–
+              {Math.min(safePage * PAGE_SIZE, filtered.length)} của{" "}
+              {filtered.length} phòng chiếu
+            </span>
+            <div className="rm-pagination">
+              <button
+                className="rm-page-btn"
+                disabled={safePage === 1}
+                onClick={() => setPage(safePage - 1)}
+              >
+                Trước
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  className={`rm-page-btn${p === safePage ? " rm-page-btn--active" : ""}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                className="rm-page-btn"
+                disabled={safePage === totalPages}
+                onClick={() => setPage(safePage + 1)}
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Modal ── */}
       {showModal &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-              <h5 className="font-bold text-lg mb-4">
-                {editId !== null ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
+          <div className="rm-modal-overlay">
+            <div className="rm-modal">
+              <h5 className="rm-modal-title">
+                {isEditing ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
               </h5>
 
-              {formError && (
-                <p className="text-red-500 text-sm mb-3">{formError}</p>
-              )}
+              {formError && <p className="rm-form-error">{formError}</p>}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                {/* Rạp chiếu */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Rạp Chiếu <span className="text-red-500">*</span>
+              <form onSubmit={handleSubmit} className="rm-form">
+                {/* Chi nhánh */}
+                <div className="rm-field">
+                  <label className="rm-label">
+                    Chi Nhánh <span className="rm-required">*</span>
                   </label>
-
                   <select
                     name="cinemaId"
                     value={form.cinemaId}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="rm-input"
                   >
-                    <option value="">-- Chọn rạp --</option>
-
-                    {cinemas.map((cinema) => {
-                      const cinemaId = getCinemaId(cinema);
-
-                      return (
-                        <option key={cinemaId} value={cinemaId}>
-                          {getCinemaName(cinema)}
-                        </option>
-                      );
-                    })}
+                    <option value="">-- Chọn chi nhánh --</option>
+                    {cinemaOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 {/* Tên phòng */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tên Phòng <span className="text-red-500">*</span>
+                <div className="rm-field">
+                  <label className="rm-label">
+                    Tên Phòng Chiếu <span className="rm-required">*</span>
                   </label>
-
                   <input
                     type="text"
                     name="roomName"
                     value={form.roomName}
                     onChange={handleChange}
                     placeholder="Nhập tên phòng chiếu"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="rm-input"
                   />
                 </div>
 
-                {/* Sức chứa */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sức Chứa <span className="text-red-500">*</span>
-                  </label>
-
-                  <input
-                    type="number"
-                    name="totalSeats"
-                    value={form.totalSeats}
-                    onChange={handleChange}
-                    placeholder="Nhập sức chứa (số ghế)"
-                    min={1}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-
-                {/* Loại phòng */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Loại Phòng
-                  </label>
-
-                  <select
-                    name="roomType"
-                    value={form.roomType}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  >
-                    {ROOM_TYPE_OPTIONS.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
+                {/* Loại phòng + Sức chứa */}
+                <div className="rm-field-row">
+                  <div className="rm-field">
+                    <label className="rm-label">Loại Phòng</label>
+                    <select
+                      name="roomType"
+                      value={form.roomType}
+                      onChange={handleChange}
+                      className="rm-input"
+                    >
+                      {roomTypeOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="rm-field">
+                    <label className="rm-label">
+                      Sức Chứa <span className="rm-required">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="totalSeats"
+                      value={form.totalSeats}
+                      onChange={handleChange}
+                      placeholder="Số ghế"
+                      min={1}
+                      className="rm-input"
+                    />
+                  </div>
                 </div>
 
                 {/* Trạng thái */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trạng Thái
-                  </label>
-
+                <div className="rm-field">
+                  <label className="rm-label">Trạng Thái</label>
                   <select
                     name="isActive"
                     value={String(form.isActive)}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="rm-input"
                   >
-                    {ROOM_STATUS_OPTIONS.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
+                    {roomStatusOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Nút hành động */}
-                <div className="flex justify-end gap-2 mt-2">
+                {/* Actions */}
+                <div className="rm-modal-actions">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
+                    className="rm-btn-cancel"
                     disabled={submitting}
                   >
                     Hủy
                   </button>
-
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                    className="rm-btn-submit"
                     disabled={submitting}
                   >
                     {submitting
                       ? "Đang xử lý..."
-                      : editId !== null
+                      : isEditing
                       ? "Cập Nhật"
                       : "Thêm Mới"}
                   </button>
@@ -289,6 +381,84 @@ export default function Room() {
           </div>,
           document.body
         )}
+    </div>
+  );
+}
+
+// ── StatCard ───────────────────────────────────────────────
+function StatCard({ icon, iconBg, iconColor, label, value }) {
+  return (
+    <div className="rm-stat-card">
+      <div className="rm-stat-icon" style={{ background: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+      <div className="rm-stat-body">
+        <p className="rm-stat-label">{label}</p>
+        <p className="rm-stat-value">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── RoomCard ───────────────────────────────────────────────
+function RoomCard({ room, statusStyle, onEdit, onDelete }) {
+  const name =
+    room?.roomName ?? room?.RoomName ?? room?.name ?? "—";
+  const cinemaName =
+    room?.cinemaName ??
+    room?.CinemaName ??
+    room?.cinema?.cinemaName ??
+    room?.cinema?.CinemaName ??
+    "—";
+  const roomType = room?.roomType ?? room?.RoomType ?? "—";
+  const totalSeats =
+    room?.totalSeats ?? room?.TotalSeats ?? room?.capacity ?? 0;
+  const equipment =
+    room?.equipment ?? room?.Equipment ?? room?.devices ?? room?.Devices ?? "";
+
+  return (
+    <div className="rm-card">
+      {/* Name + Badge */}
+      <div className="rm-card-head">
+        <h6 className="rm-card-name">{name}</h6>
+        <span
+          className="rm-card-badge"
+          style={{ background: statusStyle.bg, color: statusStyle.color }}
+        >
+          {statusStyle.label}
+        </span>
+      </div>
+
+      {/* Info */}
+      <div className="rm-card-info">
+        <InfoRow icon={<MdLocationOn />} label="Chi nhánh:" value={cinemaName} />
+        <InfoRow icon={<MdScreenshotMonitor />} label="Loại phòng:" value={roomType} />
+        <InfoRow icon={<MdChair />} label="Sức chứa:" value={`${totalSeats} ghế`} />
+        {equipment && (
+          <InfoRow icon={<MdSpeaker />} label="Thiết bị:" value={equipment} multiline />
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="rm-card-actions">
+        <button className="rm-card-btn rm-card-btn--detail" onClick={() => {}}>
+          <MdVisibility size={15} /> Chi tiết
+        </button>
+        <button className="rm-card-btn rm-card-btn--edit" onClick={onEdit}>
+          <MdEdit size={15} /> Sửa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── InfoRow ────────────────────────────────────────────────
+function InfoRow({ icon, label, value, multiline }) {
+  return (
+    <div className={`rm-info-row${multiline ? " rm-info-row--multiline" : ""}`}>
+      <span className="rm-info-icon">{icon}</span>
+      <span className="rm-info-label">{label}</span>
+      <span className="rm-info-value">{value || "—"}</span>
     </div>
   );
 }

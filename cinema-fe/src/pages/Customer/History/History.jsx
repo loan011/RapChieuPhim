@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
 import {
   MdReceiptLong,
@@ -12,7 +12,7 @@ import {
   useBookingHistory,
   getHistoryTypeConfig,
   formatMoney,
-} from "./History.js";
+} from "./useHistory.js";
 
 const TABS = [
   { key: "all", label: "Tất cả" },

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getMovieList, getAreaList as getServiceAreaList } from "./moviesService.js";
-import { getHomeShowtimes, getHomeCinemas, getHomeRooms } from "../home.js";
+import { getHomeShowtimes, getHomeCinemas, getHomeRooms } from "../usehome.js";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

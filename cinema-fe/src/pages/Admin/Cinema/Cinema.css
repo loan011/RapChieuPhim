@@ -1,16 +1,425 @@
-/* RapChieu Admin */
-.admin-table thead th {
-  background: #f9fafb;
-  font-size: 0.8rem;
-  color: #6b7280;
-  padding: 0.5rem 0.75rem;
+/* ═══════════════════════════════════════════════
+   Quản Lí Chi Nhánh – Cinema.css
+   ═══════════════════════════════════════════════ */
+
+/* ── Wrapper ── */
+.cn-wrapper {
+  padding: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-.admin-table tbody tr:hover {
-  background: #f9fafb;
+/* ── Header ── */
+.cn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
-
-.admin-table td {
-  padding: 0.5rem 0.75rem;
+.cn-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+.cn-btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f97316;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
   font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+}
+.cn-btn-add:hover {
+  background: #ea6c05;
+  transform: translateY(-1px);
+}
+
+/* ── Stats row ── */
+.cn-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.cn-stat-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: box-shadow 0.18s;
+}
+.cn-stat-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
+}
+.cn-stat-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cn-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cn-stat-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 500;
+}
+.cn-stat-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* ── Search ── */
+.cn-search-row {
+  margin-bottom: 20px;
+}
+.cn-search {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 0.875rem;
+  width: 100%;
+  max-width: 360px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: #fff;
+}
+.cn-search:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+/* ── Messages ── */
+.cn-msg {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  padding: 32px 0;
+}
+.cn-msg--error {
+  color: #dc2626;
+}
+
+/* ── Card Grid ── */
+.cn-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1400px) {
+  .cn-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 1100px) {
+  .cn-grid { grid-template-columns: repeat(3, 1fr); }
+  .cn-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 750px) {
+  .cn-grid { grid-template-columns: repeat(2, 1fr); }
+  .cn-stats-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .cn-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Branch Card ── */
+.cn-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.18s, transform 0.15s;
+}
+.cn-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+  transform: translateY(-2px);
+}
+
+/* Card head */
+.cn-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cn-card-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.35;
+}
+.cn-card-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+/* Info rows */
+.cn-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.cn-info-row {
+  display: grid;
+  grid-template-columns: 16px auto 1fr;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #374151;
+}
+.cn-info-row--multiline {
+  align-items: flex-start;
+}
+.cn-info-icon {
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+}
+.cn-info-label {
+  color: #6b7280;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.cn-info-value {
+  color: #111827;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* Card buttons */
+.cn-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid #f3f4f6;
+}
+.cn-card-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 7px;
+  padding: 7px 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+}
+.cn-card-btn--detail {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+.cn-card-btn--detail:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #f5f3ff;
+}
+.cn-card-btn--edit {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+.cn-card-btn--edit:hover {
+  border-color: #f97316;
+  color: #f97316;
+  background: #fff7ed;
+}
+
+/* ── Footer / Pagination ── */
+.cn-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cn-footer-info {
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+.cn-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cn-page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cn-page-btn:hover:not(:disabled) {
+  border-color: #f97316;
+  color: #f97316;
+}
+.cn-page-btn--active {
+  background: #f97316;
+  border-color: #f97316;
+  color: #fff !important;
+  font-weight: 700;
+}
+.cn-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Modal ── */
+.cn-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(2px);
+}
+.cn-modal {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 480px;
+  padding: 28px 28px 24px;
+  animation: cn-modal-in 0.2s ease;
+}
+@keyframes cn-modal-in {
+  from { opacity: 0; transform: translateY(-16px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.cn-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 18px;
+}
+.cn-form-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+}
+
+/* Form elements */
+.cn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cn-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cn-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
+.cn-required {
+  color: #ef4444;
+}
+.cn-input {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+.cn-input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  background: #fff;
+}
+
+/* Modal actions */
+.cn-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+.cn-btn-cancel {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cn-btn-cancel:hover:not(:disabled) {
+  border-color: #9ca3af;
+  color: #374151;
+}
+.cn-btn-submit {
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: none;
+  background: #f97316;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cn-btn-submit:hover:not(:disabled) {
+  background: #ea6c05;
+}
+.cn-btn-submit:disabled,
+.cn-btn-cancel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

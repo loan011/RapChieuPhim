@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import "../../styles/Register.css";
 
-import { useRegister } from "./Register.js";
+import { useRegister } from "./useRegister.js";
 
 function Register() {
   const {

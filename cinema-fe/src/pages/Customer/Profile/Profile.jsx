@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerProfile.css";
 import {
   MdCameraAlt,
@@ -14,7 +14,7 @@ import {
   GENDER_OPTIONS,
   useProfile,
   getProfileFallbackAvatar,
-} from "./Profile.js";
+} from "./useProfile.js";
 
 export default function Profile() {
   const {

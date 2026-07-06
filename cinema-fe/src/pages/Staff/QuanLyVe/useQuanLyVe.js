@@ -1,18 +1,8 @@
-import { useEffect, useState } from "react";
-import { getTicketList, deleteTicket, createTicket, updateTicket } from "./ticketService";
+﻿import { useEffect, useState } from "react";
+import { fetchTickets, removeTicket, addTicket, editTicket } from "./QuanLyVeService";
+import { STATUS_OPTIONS, EMPTY_FORM } from "../../Admin/Ticket/useTicket.js";
 
-export const STATUS_OPTIONS = ["Đã đặt", "Đã thanh toán", "Đã hủy"];
-
-export const EMPTY_FORM = {
-  code: "",
-  customerName: "",
-  movieTitle: "",
-  seatCode: "",
-  price: 0,
-  status: "Đã đặt",
-};
-
-export function useTicket() {
+export function useQuanLyVe() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +30,7 @@ export function useTicket() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getTicketList();
+      const data = await fetchTickets();
       setList(normalizeArray(data));
     } catch (err) {
       setList([]);
@@ -53,7 +43,7 @@ export function useTicket() {
   async function handleDelete(id) {
     if (!confirm("Bạn có chắc muốn xóa vé này?")) return;
     try {
-      await deleteTicket(id);
+      await removeTicket(id);
       fetchData();
     } catch (err) {
       alert(err?.message || "Xóa vé thất bại.");
@@ -133,9 +123,9 @@ export function useTicket() {
     try {
       setFormLoading(true);
       if (editId !== null) {
-        await updateTicket(editId, payload);
+        await editTicket(editId, payload);
       } else {
-        await createTicket(payload);
+        await addTicket(payload);
       }
       closeModal();
       fetchData();
@@ -174,6 +164,7 @@ export function useTicket() {
     formData,
     formLoading,
     formError,
+    STATUS_OPTIONS,
     fetchData,
     handleDelete,
     openAddModal,

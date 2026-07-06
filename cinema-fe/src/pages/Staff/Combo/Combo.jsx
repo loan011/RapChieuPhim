@@ -1,5 +1,5 @@
-import "./Combo.css";
-import { useCombo } from "./Combo.js";
+﻿import "./Combo.css";
+import { useCombo } from "./useCombo.js";
 import { MdFastfood, MdAdd, MdRemove, MdShoppingCart, MdReceipt, MdCheckCircle } from "react-icons/md";
 
 export default function StaffCombo() {

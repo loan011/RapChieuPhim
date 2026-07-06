@@ -1,4 +1,4 @@
-import "./Notice.css";
+﻿import "./Notice.css";
 import {
   NOTICE_TARGET_OPTIONS,
   NOTICE_TYPE_OPTIONS,
@@ -9,7 +9,7 @@ import {
   getNoticeTargetLabel,
   getNoticeCreatedAt,
   getNoticeTypeStyle,
-} from "./Notice.js";
+} from "./useNotice.js";
 
 export default function Notice() {
   const {

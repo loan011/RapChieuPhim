@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
 import {
@@ -15,7 +15,7 @@ import {
   useTicket,
   getTicketStatusLabel,
   handlePosterError,
-} from "./Ticket.js";
+} from "./useTicket.js";
 
 const TABS = [
   { key: "all", label: "Tất cả" },

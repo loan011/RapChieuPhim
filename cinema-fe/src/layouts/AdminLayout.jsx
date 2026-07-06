@@ -26,7 +26,7 @@ const navItems = [
   { to: "/admin/nhan-vien",    label: "Nhan Vien",      icon: <MdBadge /> },
   { to: "/admin/khach-hang",   label: "Khach Hang",     icon: <MdPersonOutline /> },
   { to: "/admin/phim",         label: "Phim",           icon: <MdMovie /> },
-  { to: "/admin/rap-chieu",    label: "Rap Chieu",      icon: <MdTheaters /> },
+  { to: "/admin/rap-chieu",    label: "Quản Lí Chi Nhánh", icon: <MdTheaters /> },
   { to: "/admin/phong-chieu",  label: "Phong Chieu",    icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",   label: "Suat Chieu",     icon: <MdCalendarMonth /> },
   { to: "/admin/ve",           label: "Ve",             icon: <MdConfirmationNumber /> },

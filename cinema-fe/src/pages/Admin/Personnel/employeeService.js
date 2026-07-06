@@ -65,6 +65,8 @@ export async function createEmployee(employee) {
     gender: employee.gender || "Nam",
     roleName: "Staff",
     cinemaId: employee.cinemaId ? Number(employee.cinemaId) : null,
+    position: employee.position || "Nhân viên bán vé",
+    Position: employee.position || "Nhân viên bán vé",
   };
 
   const response = await fetch(`${API_URL}/Auth/CreateInternalAccount`, {
@@ -93,6 +95,8 @@ export async function updateEmployee(id, employee) {
     role: "Staff",
     isActive: employee.isActive === true || employee.status === "Active",
     cinemaId: employee.cinemaId ? Number(employee.cinemaId) : null,
+    position: employee.position || "Nhân viên bán vé",
+    Position: employee.position || "Nhân viên bán vé",
     ...(employee.password ? { password: employee.password, confirmPassword: employee.password } : {})
   };
 

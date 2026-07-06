@@ -1,11 +1,11 @@
-import {
+﻿import {
   getApiUrl,
   readResponse,
   getErrorMessage,
   getAuthHeaders,
 } from "../../../services/apiHelper";
 
-import { generateMockSeats } from "../../Booking/booking.js";
+import { generateMockSeats } from "../../Booking/usebooking.js";
 
 const API_URL = getApiUrl();
 

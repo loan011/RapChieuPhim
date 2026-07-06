@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 
 import CustomerProfileDropdown from "../components/CustomerProfileDropdown";
 import "../styles/Home.css";
@@ -29,7 +29,7 @@ import {
   getStartHour,
   getShowtimeStatus,
   isBookable,
-} from "./home.js";
+} from "./usehome.js";
 
 function Home() {
   const {

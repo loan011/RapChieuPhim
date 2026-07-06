@@ -7,8 +7,19 @@ import {
   deleteCinema,
   getAreaList,
 } from "./cinemaService";
+import { getRoomList } from "../Room/roomService";
+import { getEmployeeList } from "../Personnel/employeeService";
 
 // Text configurations are now handled directly inside Cinema.jsx.
+
+export function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+  return [];
+}
 
 export const EMPTY_CINEMA_FORM = {
   cinemaName: "",
@@ -218,16 +229,62 @@ export function useCinema() {
       setLoading(true);
       setError("");
 
-      const [cinemaData, areaData] = await Promise.all([
+      const [cinemaData, areaData, roomData, employeeData] = await Promise.all([
         getCinemaList(),
         getAreaList(),
+        getRoomList().catch(() => []),
+        getEmployeeList().catch(() => []),
       ]);
 
-      setList(Array.isArray(cinemaData) ? cinemaData : []);
-      setAreas(Array.isArray(areaData) ? areaData : []);
+      const normalizedCinemas = normalizeArray(cinemaData);
+      const normalizedRooms = normalizeArray(roomData);
+      const normalizedEmployees = normalizeArray(employeeData);
+
+      const mappedCinemas = normalizedCinemas.map((c) => {
+        const cId = String(c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id ?? "");
+        
+        // Count rooms
+        const rCount = normalizedRooms.filter(
+          (r) => String(r?.cinemaId ?? r?.CinemaId ?? r?.cinema?.cinemaId ?? r?.cinema?.CinemaId ?? "") === cId
+        ).length;
+
+        // Count staff
+        const sCount = normalizedEmployees.filter((e) => {
+          const ecId = String(e?.cinemaId ?? e?.CinemaId ?? "");
+          let localCId = "";
+          try {
+            const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+            localCId = String(mappings[e?.email ?? e?.Email ?? ""] || "");
+          } catch {}
+          return ecId === cId || localCId === cId;
+        }).length;
+
+        // Find manager
+        const manager = normalizedEmployees.find((e) => {
+          const ecId = String(e?.cinemaId ?? e?.CinemaId ?? "");
+          let localCId = "";
+          try {
+            const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+            localCId = String(mappings[e?.email ?? e?.Email ?? ""] || "");
+          } catch {}
+          const isAtCinema = ecId === cId || localCId === cId;
+          const pos = String(e?.position ?? e?.Position ?? e?.roleName ?? e?.RoleName ?? "").toLowerCase();
+          return isAtCinema && (pos.includes("quản lý") || pos.includes("nhân viên trưởng"));
+        });
+        const mName = manager ? (manager?.fullName ?? manager?.FullName ?? manager?.name ?? manager?.Name) : "—";
+
+        return {
+          ...c,
+          roomCount: rCount,
+          staffCount: sCount,
+          managerName: mName,
+        };
+      });
+
+      setList(mappedCinemas);
+      setAreas(normalizeArray(areaData));
     } catch (err) {
       console.error("Lỗi tải dữ liệu rạp chiếu:", err);
-
       setList([]);
       setAreas([]);
       setError(err.message || "Lấy dữ liệu rạp chiếu thất bại!");
@@ -285,30 +342,12 @@ export function useCinema() {
 
       if (editId !== null) {
         await updateCinema(editId, payload);
-
-        setList((prev) =>
-          prev.map((cinema) =>
-            String(getCinemaId(cinema)) === String(editId)
-              ? {
-                  ...cinema,
-                  ...payload,
-                }
-              : cinema
-          )
-        );
       } else {
-        const created = await createCinema(payload);
-
-        setList((prev) => [
-          ...prev,
-          {
-            ...payload,
-            ...(created || {}),
-          },
-        ]);
+        await createCinema(payload);
       }
 
       closeModal();
+      fetchInitialData();
     } catch (err) {
       console.error("Lỗi lưu rạp chiếu:", err);
 

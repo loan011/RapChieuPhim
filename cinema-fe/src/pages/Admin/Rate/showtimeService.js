@@ -24,16 +24,11 @@ function normalizeArray(data) {
 ========================= */
 
 function toApiStatus(status) {
-  if (!status) return "Active";
-
-  if (status === "Đang bán") return "Active";
+  if (!status)               return "Active";
   if (status === "Đang chiếu") return "Active";
-  if (status === "Chưa mở bán") return "Active";
-  if (status === "Hết vé") return "Active";
-
-  if (status === "Đã chiếu") return "Completed";
-  if (status === "Hủy") return "Cancelled";
-
+  if (status === "Sắp chiếu")  return "Active";
+  if (status === "Chiếu sớm")  return "Active";
+  if (status === "Đã chiếu")   return "Completed";
   return status;
 }
 

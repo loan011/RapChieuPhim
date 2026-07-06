@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import {
   MdLocationOn,
   MdCalendarToday,
@@ -37,7 +37,7 @@ import {
   getSeatDisplayNumber,
   isSeatAvailable,
   getSeatPrice,
-} from "./booking.js";
+} from "./usebooking.js";
 
 export default function Booking() {
   const {

@@ -1,5 +1,5 @@
-import "./Dashboard.css";
-import { useDashboard } from "./Dashboard.js";
+﻿import "./Dashboard.css";
+import { useDashboard } from "./useDashboard.js";
 
 export default function Dashboard() {
   const { cards, recentTickets, loading, error } = useDashboard();

@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import "../../styles/TicketPrice.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
-import { useTicketPrice } from "./TicketPrice.js";
+import { useTicketPrice } from "./useTicketPrice.js";
 
 function TicketPrice() {
   const {

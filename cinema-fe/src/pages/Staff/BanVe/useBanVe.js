@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import { getMovieList } from "../../Admin/Film/movieService";
 import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
 import { getSeatsByRoomId, getAvailableSeats, createBooking } from "../../Booking/bookingService";
-import { createBookingDates, getShowtimeId, getShowtimeRoomId, getShowtimeDate, getShowtimeHour, getSeatId, getSeatPrice } from "../../Booking/booking.js";
+import { createBookingDates, getShowtimeId, getShowtimeRoomId, getShowtimeDate, getShowtimeHour, getSeatId, getSeatPrice } from "../../Booking/usebooking.js";
 
 export function useBanVe() {
   const [movies, setMovies] = useState([]);

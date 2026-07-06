@@ -1,5 +1,5 @@
-import "./QuetQR.css";
-import { useQuetQR } from "./QuetQR.js";
+﻿import "./QuetQR.css";
+import { useQuetQR } from "./useQuetQR.js";
 import { MdQrCodeScanner, MdCameraAlt, MdCheckCircle, MdError, MdWarning, MdArrowForward } from "react-icons/md";
 
 export default function StaffQuetQR() {

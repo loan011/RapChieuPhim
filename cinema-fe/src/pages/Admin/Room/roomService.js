@@ -6,6 +6,17 @@ import {
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
+const ROOM_ENDPOINT = "Rooms";
+
+function buildRoomUrl(id = "") {
+  const baseUrl = API_URL.replace(/\/$/, "");
+
+  if (id) {
+    return `${baseUrl}/${ROOM_ENDPOINT}/${id}`;
+  }
+
+  return `${baseUrl}/${ROOM_ENDPOINT}`;
+}
 
 function normalizeArray(data) {
   if (Array.isArray(data)) return data;
@@ -17,94 +28,84 @@ function normalizeArray(data) {
   return [];
 }
 
-// GET /api/Rooms
-export async function getRoomList() {
-  const response = await fetch(`${API_URL}/Rooms`, {
-    method: "GET",
-    headers: getAuthHeaders(),
+function buildHeaders(hasBody = false) {
+  const headers = {
+    ...getAuthHeaders(),
+  };
+
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
+}
+
+async function sendRoomRequest({
+  id = "",
+  method = "GET",
+  body,
+  errorMessage = "Có lỗi xảy ra!",
+}) {
+  const hasBody = body !== undefined;
+
+  const response = await fetch(buildRoomUrl(id), {
+    method,
+    headers: buildHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : undefined,
   });
 
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách phòng chiếu thất bại!")
-    );
+    throw new Error(getErrorMessage(data, errorMessage));
   }
+
+  return data;
+}
+
+// Lấy danh sách phòng chiếu
+export async function getRoomList() {
+  const data = await sendRoomRequest({
+    method: "GET",
+    errorMessage: "Lấy danh sách phòng chiếu thất bại!",
+  });
 
   return normalizeArray(data);
 }
 
-// GET /api/Rooms/:id
+// Lấy chi tiết 1 phòng chiếu
 export async function getRoomById(id) {
-  const response = await fetch(`${API_URL}/Rooms/${id}`, {
+  return sendRoomRequest({
+    id,
     method: "GET",
-    headers: getAuthHeaders(),
+    errorMessage: "Lấy thông tin phòng chiếu thất bại!",
   });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy thông tin phòng chiếu thất bại!")
-    );
-  }
-
-  return data;
 }
 
-// POST /api/Rooms
-export async function createRoom(room) {
-  const response = await fetch(`${API_URL}/Rooms`, {
+// Thêm phòng chiếu
+export async function createRoom(roomData) {
+  return sendRoomRequest({
     method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(room),
+    body: roomData,
+    errorMessage: "Thêm phòng chiếu thất bại!",
   });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Thêm phòng chiếu thất bại!")
-    );
-  }
-
-  return data;
 }
 
-// PUT /api/Rooms/:id
-export async function updateRoom(id, room) {
-  const response = await fetch(`${API_URL}/Rooms/${id}`, {
+// Cập nhật phòng chiếu
+export async function updateRoom(id, roomData) {
+  return sendRoomRequest({
+    id,
     method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(room),
+    body: roomData,
+    errorMessage: "Cập nhật phòng chiếu thất bại!",
   });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Cập nhật phòng chiếu thất bại!")
-    );
-  }
-
-  return data;
 }
 
-// DELETE /api/Rooms/:id
+// Xóa phòng chiếu
 export async function deleteRoom(id) {
-  const response = await fetch(`${API_URL}/Rooms/${id}`, {
+  return sendRoomRequest({
+    id,
     method: "DELETE",
-    headers: getAuthHeaders(),
+    errorMessage: "Xóa phòng chiếu thất bại!",
   });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Xóa phòng chiếu thất bại!")
-    );
-  }
-
-  return data;
 }

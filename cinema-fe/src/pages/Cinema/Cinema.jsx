@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 import "../../styles/Cinema.css";
-import { useCustomerCinema, getCinemaImage } from "./Cinema.js";
+import { useCustomerCinema, getCinemaImage } from "./useCinema.js";
 
 export default function Cinema() {
   const {

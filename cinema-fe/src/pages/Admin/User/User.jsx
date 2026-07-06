@@ -1,4 +1,4 @@
-import "./User.css";
+﻿import "./User.css";
 import { createPortal } from "react-dom";
 
 import {
@@ -16,7 +16,7 @@ import {
   getRole,
   getStatus,
   getCreatedAt,
-} from "./User.js";
+} from "./useUser.js";
 
 export default function NguoiDung() {
   const {

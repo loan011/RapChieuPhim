@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getDashboardStats, getRecentTickets } from "./DashboardService";
-import { normalizeDashboardStats, normalizeRecentTickets, formatMoney } from "../../Admin/Dashboard/Dashboard.js";
+import { normalizeDashboardStats, normalizeRecentTickets, formatMoney } from "../../Admin/Dashboard/useDashboard.js";
 
 export function useDashboard() {
   const [stats, setStats] = useState({ totalMovies: 0, totalUsers: 0, totalTickets: 0, revenue: 0 });

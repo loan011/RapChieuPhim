@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
@@ -18,7 +18,7 @@ import {
   getMovieDuration,
   getMovieReleaseDate,
   getMovieTrailer,
-} from "./Movies.js";
+} from "./useMovies.js";
 
 import {
   getShowtimeMovieId,
@@ -32,7 +32,7 @@ import {
   getCinemaName,
   getShowDate,
   createDateRange,
-} from "../home.js";
+} from "../usehome.js";
 
 function Movies() {
   const {

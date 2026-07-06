@@ -1,6 +1,6 @@
-import "./QuanLyVe.css";
+﻿import "./QuanLyVe.css";
 import { createPortal } from "react-dom";
-import { useQuanLyVe } from "./QuanLyVe.js";
+import { useQuanLyVe } from "./useQuanLyVe.js";
 import { MdConfirmationNumber, MdSearch, MdFilterList, MdAdd, MdEdit, MdDelete, MdClose } from "react-icons/md";
 
 export default function StaffQuanLyVe() {
