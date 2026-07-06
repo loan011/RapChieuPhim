@@ -11,6 +11,7 @@ import {
   getShowtimeId,
   getShowtimeMovieTitle,
   getShowtimeRoomName,
+  getRoomCinemaId,
   getMovieId,
   getMovieTitle,
   getShowDate,
@@ -47,7 +48,7 @@ function formatDate(dateStr) {
 export default function Rate() {
   const {
     /* data */
-    movies, rooms,
+    movies, rooms, cinemas,
     loading, error,
     /* modal/form */
     showModal, editId, form, formError, submitting,
@@ -303,15 +304,28 @@ export default function Rate() {
               </div>
 
               <div className="lc-field">
-                <label className="lc-label">Phòng Chiếu <span className="lc-required">*</span></label>
-                <select name="roomId" value={form.roomId} onChange={handleChange} className="lc-input">
-                  <option value="">-- Chọn phòng chiếu --</option>
-                  {rooms.map((r) => {
-                    const rId   = r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
-                    const rName = r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
-                    const cName = r?.cinemaName ?? r?.CinemaName ?? r?.cinema?.cinemaName ?? r?.cinema?.CinemaName ?? "";
-                    return <option key={rId} value={rId}>{cName ? `${rName} — ${cName}` : rName}</option>;
+                <label className="lc-label">Chi Nhánh / Khu Vực <span className="lc-required">*</span></label>
+                <select name="cinemaId" value={form.cinemaId} onChange={handleChange} className="lc-input">
+                  <option value="">-- Chọn chi nhánh/khu vực --</option>
+                  {cinemas.map((c) => {
+                    const cId   = c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
+                    const cName = c?.cinemaName ?? c?.CinemaName ?? c?.name ?? c?.Name ?? "—";
+                    return <option key={cId} value={cId}>{cName}</option>;
                   })}
+                </select>
+              </div>
+
+              <div className="lc-field">
+                <label className="lc-label">Phòng Chiếu <span className="lc-required">*</span></label>
+                <select name="roomId" value={form.roomId} onChange={handleChange} className="lc-input" disabled={!form.cinemaId}>
+                  <option value="">-- Chọn phòng chiếu --</option>
+                  {rooms
+                    .filter((r) => String(getRoomCinemaId(r)) === String(form.cinemaId))
+                    .map((r) => {
+                      const rId   = r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
+                      const rName = r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
+                      return <option key={rId} value={rId}>{rName}</option>;
+                    })}
                 </select>
               </div>
 

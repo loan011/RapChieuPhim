@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   MdLocationOn,
   MdCalendarToday,
@@ -53,8 +53,6 @@ export default function Booking() {
     loading,
     loadingSeats,
     bookingError,
-    showPaymentSuccess,
-    newTicketIds,
     userEmail,
     dates,
     filteredShowtimes,
@@ -66,18 +64,27 @@ export default function Booking() {
     rowsKeys,
     groupedSeats,
     handleCheckout,
-    handleFinishBooking,
     timeLeft,
     isHoldActive,
+
+    showComboModal,
+    setShowComboModal,
+    combos,
+    comboQuantities,
+    selectedCombos,
+    totalCombosAmount,
+    finalTotalAmount,
+    updateComboQuantity,
+    handleConfirmBooking,
   } = useBooking();
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
+
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  // Lấy số ghế để sort đúng: A1, A2, A3
   const getSeatSortNumber = (seat) => {
     const raw =
       seat?.seatNumber ??
@@ -88,24 +95,22 @@ export default function Booking() {
       getSeatLabel(seat);
 
     const match = String(raw).match(/\d+/);
+
     return match ? Number(match[0]) : 0;
   };
 
-  // Sort ghế theo số ghế, không sort theo chuỗi
   const sortSeatsByNumber = (seats = []) => {
     return [...seats].sort(
       (a, b) => getSeatSortNumber(a) - getSeatSortNumber(b)
     );
   };
 
-  // Sort hàng ghế A, B, C, D
   const sortRows = (rows = []) => {
     return [...rows].sort((a, b) =>
       String(a).localeCompare(String(b), "vi", { numeric: true })
     );
   };
 
-  // Chuẩn hóa class loại ghế
   const normalizeSeatClassType = (seatType) => {
     const type = String(seatType || "").toLowerCase();
 
@@ -114,6 +119,36 @@ export default function Booking() {
     if (type === "sweetbox") return "couple";
 
     return type;
+  };
+
+  const isImageSrc = (value) => {
+    const text = String(value || "").trim();
+
+    return (
+      text.startsWith("/") ||
+      text.startsWith("http://") ||
+      text.startsWith("https://") ||
+      text.startsWith("data:image")
+    );
+  };
+
+  const renderComboImage = (image, name) => {
+    if (isImageSrc(image)) {
+      return (
+        <img
+          src={image}
+          alt={name}
+          style={{
+            width: "42px",
+            height: "42px",
+            objectFit: "contain",
+            borderRadius: "8px",
+          }}
+        />
+      );
+    }
+
+    return <span style={{ fontSize: "2rem" }}>{image || "🍿"}</span>;
   };
 
   if (loading) {
@@ -128,6 +163,11 @@ export default function Booking() {
     return (
       <div className="booking-loading">
         Không tìm thấy thông tin bộ phim này!
+        {bookingError && (
+          <p style={{ marginTop: "8px", color: "#ef4444" }}>
+            {bookingError}
+          </p>
+        )}
       </div>
     );
   }
@@ -479,78 +519,257 @@ export default function Booking() {
         </div>
       </div>
 
-      {showPaymentSuccess && (
-        <div className="payment-success-modal-overlay">
-          <div className="payment-success-modal-box">
-            <div className="modal-success-icon-wrap">
-              <MdCheckCircle className="success-icon" />
-            </div>
+      {showComboModal && (
+        <div className="payment-success-modal-overlay" style={{ zIndex: 100 }}>
+          <div
+            className="payment-success-modal-box"
+            style={{
+              maxWidth: "600px",
+              width: "100%",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              padding: "24px",
+            }}
+          >
+            <h2
+              className="modal-title"
+              style={{
+                fontSize: "1.3rem",
+                fontWeight: "800",
+                color: "#16a34a",
+                textAlign: "center",
+                marginBottom: "8px",
+              }}
+            >
+              🍿 CHỌN THÊM BẮP NƯỚC 🥤
+            </h2>
 
-            <h2 className="modal-title">THANH TOÁN THÀNH CÔNG</h2>
-
-            <p className="modal-desc">
-              Vé xem phim của bạn đã được thanh toán và đăng ký thành công!
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "0.85rem",
+                color: "#6b7280",
+                marginBottom: "20px",
+              }}
+            >
+              Tiết kiệm hơn khi mua kèm combo bắp nước trực tuyến!
             </p>
 
-            <div className="ticket-invoice-receipt">
-              <div className="invoice-header">
-                <h3>VÉ XEM PHIM ĐIỆN TỬ</h3>
-                <span className="invoice-id">
-                  Mã vé: {newTicketIds.join(", ")}
-                </span>
-              </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                marginBottom: "24px",
+              }}
+            >
+              {combos.map((item) => {
+                const itemId = item.comboId ?? item.foodId ?? item.id;
+                const quantity = comboQuantities[itemId] || 0;
 
-              <div className="invoice-body-details">
-                <p>
-                  🎬 Phim: <strong>{getMovieTitle(movie)}</strong>
-                </p>
+                return (
+                  <div
+                    key={itemId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px",
+                      border: "1px solid #f3f4f6",
+                      borderRadius: "12px",
+                      background: "#f9fafb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        flex: 1,
+                      }}
+                    >
+                      {renderComboImage(item.image, item.name)}
 
-                <p>
-                  📍 Rạp:{" "}
-                  <strong>
-                    {getCinemaNameById(cinemas, selectedCinemaId)}
-                  </strong>
-                </p>
+                      <div>
+                        <h4
+                          style={{
+                            fontWeight: "700",
+                            color: "#374151",
+                            fontSize: "0.9rem",
+                            margin: 0,
+                          }}
+                        >
+                          {item.name}
+                        </h4>
 
-                <p>
-                  📅 Ngày chiếu:{" "}
-                  <strong>
-                    {dates.find((d) => d.iso === selectedDateIso)?.label ||
-                      selectedDateIso}
-                  </strong>
-                </p>
+                        <p
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#9ca3af",
+                            margin: "2px 0 0",
+                            lineHeight: "1.2",
+                          }}
+                        >
+                          {item.description}
+                        </p>
 
-                <p>
-                  ⏰ Suất chiếu:{" "}
-                  <strong>
-                    {selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}
-                  </strong>
-                </p>
+                        <p
+                          style={{
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            color: "#f97316",
+                            margin: "4px 0 0",
+                          }}
+                        >
+                          {Number(item.price).toLocaleString("vi-VN")}đ
+                        </p>
+                      </div>
+                    </div>
 
-                <p>
-                  🎟 Ghế:{" "}
-                  <strong>{selectedSeats.map(getSeatLabel).join(", ")}</strong>
-                </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        marginLeft: "12px",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => updateComboQuantity(itemId, -1)}
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "50%",
+                          border: "1px solid #d1d5db",
+                          background: "#fff",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                        }}
+                        disabled={quantity <= 0}
+                      >
+                        -
+                      </button>
 
-                <p>
-                  💰 Tổng cộng:{" "}
-                  <strong>{totalAmount.toLocaleString("vi-VN")}đ</strong>
-                </p>
-              </div>
+                      <span
+                        style={{
+                          width: "16px",
+                          textAlign: "center",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {quantity}
+                      </span>
 
-              <div className="invoice-qr-wrap">
-                <MdQrCode2 className="invoice-qr-code" />
-                <p>Vui lòng xuất trình mã này tại quầy để nhận vé giấy</p>
+                      <button
+                        type="button"
+                        onClick={() => updateComboQuantity(itemId, 1)}
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "50%",
+                          border: "1px solid #d1d5db",
+                          background: "#fff",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                background: "#f3f4f6",
+                borderRadius: "10px",
+                padding: "14px",
+                marginBottom: "20px",
+              }}
+            >
+              <h4
+                style={{
+                  margin: "0 0 10px",
+                  fontWeight: "700",
+                  fontSize: "0.85rem",
+                  color: "#374151",
+                  borderBottom: "1px dashed #d1d5db",
+                  paddingBottom: "6px",
+                }}
+              >
+                CHI TIẾT ĐƠN HÀNG
+              </h4>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                  fontSize: "0.8rem",
+                  color: "#4b5563",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Tiền vé ({selectedSeats.length} ghế):</span>
+                  <span>{totalAmount.toLocaleString("vi-VN")}đ</span>
+                </div>
+
+                {totalCombosAmount > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      color: "#16a34a",
+                      fontWeight: "600",
+                    }}
+                  >
+                    <span>Bắp nước mua thêm:</span>
+                    <span>+{totalCombosAmount.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "0.95rem",
+                    fontWeight: "800",
+                    color: "#111827",
+                    borderTop: "1px solid #d1d5db",
+                    paddingTop: "8px",
+                    marginTop: "4px",
+                  }}
+                >
+                  <span>TỔNG CỘNG:</span>
+                  <span style={{ color: "#ef4444" }}>
+                    {finalTotalAmount.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="modal-finish-close-btn"
-              onClick={handleFinishBooking}
-            >
-              HOÀN TẤT & ĐẾN VÉ CỦA TÔI
-            </button>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                className="modal-finish-close-btn"
+                style={{ flex: 1, background: "#9ca3af", padding: "10px 0" }}
+                onClick={() => setShowComboModal(false)}
+              >
+                HỦY
+              </button>
+
+              <button
+                type="button"
+                className="modal-finish-close-btn"
+                style={{ flex: 2, background: "#f97316", padding: "10px 0" }}
+                onClick={handleConfirmBooking}
+              >
+                XÁC NHẬN ĐẶT VÉ
+              </button>
+            </div>
           </div>
         </div>
       )}

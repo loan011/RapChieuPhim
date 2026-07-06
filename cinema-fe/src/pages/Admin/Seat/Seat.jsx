@@ -5,6 +5,8 @@ import {
   useSeat,
   SEAT_TYPE_OPTIONS,
   SEAT_STATUS_OPTIONS,
+  SEAT_ROW_OPTIONS,
+  SEAT_NUMBER_OPTIONS,
   getSeatId,
   getSeatCode,
   getSeatRow,
@@ -521,30 +523,40 @@ export default function Seat() {
                     <label className="se-label">
                       Hàng Ghế <span className="se-required">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       name="seatRow"
                       value={form.seatRow}
                       onChange={handleChange}
-                      placeholder="VD: A, B"
                       className="se-input"
-                      maxLength={2}
                       required
-                    />
+                    >
+                      <option value="">-- Chọn hàng ghế --</option>
+                      {SEAT_ROW_OPTIONS.map((row) => (
+                        <option key={row.value} value={row.value}>
+                          {row.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
                   <div className="se-field">
                     <label className="se-label">
                       Số Thứ Tự Ghế <span className="se-required">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       name="seatNumber"
-                      value={form.seatNumber}
+                      value={String(form.seatNumber)}
                       onChange={handleChange}
-                      placeholder="VD: 01 hoặc 01-02"
                       className="se-input"
                       required
-                    />
+                    >
+                      <option value="">-- Chọn số ghế --</option>
+                      {SEAT_NUMBER_OPTIONS.map((number) => (
+                        <option key={number.value} value={number.value}>
+                          {number.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

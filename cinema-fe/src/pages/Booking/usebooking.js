@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   getCinemas,
@@ -11,22 +11,26 @@ import {
   createBooking,
   holdSeat,
   releaseSeat,
+  getCombos,
 } from "./bookingService.js";
 
 /* =========================
    LOCAL USER
 ========================= */
 
-export function getSavedUser() {
+export function safeParseJson(value, fallback = {}) {
   try {
-    return (
-      JSON.parse(localStorage.getItem("user")) ||
-      JSON.parse(localStorage.getItem("currentUser")) ||
-      {}
-    );
+    return value ? JSON.parse(value) : fallback;
   } catch {
-    return {};
+    return fallback;
   }
+}
+
+export function getSavedUser() {
+  const user = safeParseJson(localStorage.getItem("user"), null);
+  const currentUser = safeParseJson(localStorage.getItem("currentUser"), null);
+
+  return user || currentUser || {};
 }
 
 export function getUserEmail() {
@@ -42,17 +46,42 @@ export function getUserEmail() {
 }
 
 /* =========================
+   BOOKING STATE
+   Hỗ trợ:
+   1. navigate state
+   2. sessionStorage
+   3. query params cũ
+========================= */
+
+export function getBookingStateFromLocation(location) {
+  const stateData = location?.state || {};
+  const sessionData = safeParseJson(sessionStorage.getItem("bookingState"), {});
+
+  return {
+    ...sessionData,
+    ...stateData,
+  };
+}
+
+export function saveBookingState(state) {
+  sessionStorage.setItem("bookingState", JSON.stringify(state));
+}
+
+/* =========================
    BOOKING DATE
 ========================= */
 
 export function createBookingDates(totalDays = 7) {
   const days = [];
 
-  for (let i = 0; i < totalDays; i++) {
+  for (let i = 0; i < totalDays; i += 1) {
     const date = new Date();
     date.setDate(date.getDate() + i);
 
-    const iso = date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const iso = `${year}-${month}-${day}`;
 
     const label =
       i === 0
@@ -73,9 +102,7 @@ export function createBookingDates(totalDays = 7) {
 }
 
 /* =========================
-   API WRAPPER FOR BOOKING.JSX
-   Booking.jsx chỉ gọi 2 hàm này,
-   không cần tự Promise.all API nữa.
+   API WRAPPER
 ========================= */
 
 export async function loadBookingInitialData({
@@ -94,7 +121,7 @@ export async function loadBookingInitialData({
 
   if (showtimeParam) {
     initialShowtime = showtimes.find(
-      (st) => String(getShowtimeId(st)) === String(showtimeParam)
+      (showtime) => String(getShowtimeId(showtime)) === String(showtimeParam)
     );
   }
 
@@ -107,17 +134,18 @@ export async function loadBookingInitialData({
 
   if (initialShowtime) {
     const room = rooms.find(
-      (r) => String(getRoomId(r)) === String(getShowtimeRoomId(initialShowtime))
+      (item) =>
+        String(getRoomId(item)) === String(getShowtimeRoomId(initialShowtime))
     );
 
     if (room) {
       selectedCinemaId = String(getRoomCinemaId(room));
     }
 
-    const date = getShowtimeDate(initialShowtime);
+    const showtimeDate = getShowtimeDate(initialShowtime);
 
-    if (date) {
-      selectedDateIso = date;
+    if (showtimeDate) {
+      selectedDateIso = showtimeDate;
     }
   }
 
@@ -172,7 +200,13 @@ export async function loadBookingSeatsData(selectedShowtime) {
 ========================= */
 
 export function getMovieTitle(movie) {
-  return movie?.title || movie?.Title || movie?.movieTitle || movie?.MovieTitle || "";
+  return (
+    movie?.title ||
+    movie?.Title ||
+    movie?.movieTitle ||
+    movie?.MovieTitle ||
+    ""
+  );
 }
 
 export function getMoviePoster(movie) {
@@ -259,6 +293,10 @@ export function getRoomCinemaId(room) {
     room?.CinemaId ??
     room?.cinemaID ??
     room?.CinemaID ??
+    room?.cinema?.cinemaId ??
+    room?.cinema?.CinemaId ??
+    room?.Cinema?.cinemaId ??
+    room?.Cinema?.CinemaId ??
     ""
   );
 }
@@ -291,23 +329,35 @@ export function getShowtimeRoomId(showtime) {
     showtime?.roomID ??
     showtime?.RoomID ??
     showtime?.room?.roomId ??
+    showtime?.room?.RoomId ??
+    showtime?.Room?.roomId ??
     showtime?.Room?.RoomId ??
     ""
   );
 }
 
 export function getShowtimeDate(showtime) {
+  const startTimeVal = showtime?.startTime || showtime?.StartTime;
+  const validStartTimeAsDate = (typeof startTimeVal === "string" && startTimeVal.includes("-")) ? startTimeVal : null;
+
   const rawDate =
     showtime?.showDate ||
     showtime?.ShowDate ||
     showtime?.date ||
     showtime?.Date ||
-    showtime?.startTime ||
-    showtime?.StartTime ||
+    validStartTimeAsDate ||
     showtime?.showtimeDate ||
     showtime?.ShowtimeDate;
 
   if (!rawDate) return "";
+
+  const d = new Date(rawDate);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
   return String(rawDate).split("T")[0];
 }
@@ -353,7 +403,7 @@ export function filterShowtimesForBooking({
   selectedCinemaId,
 }) {
   const now = new Date();
-  // UTC to GMT+7 (Vietnam time)
+
   const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   const todayStr = vnTime.toISOString().split("T")[0];
 
@@ -373,9 +423,9 @@ export function filterShowtimesForBooking({
 
     if (!sameDate || !sameCinema) return false;
 
-    // If it is today, hide showtimes in the past
     if (showtimeDate === todayStr) {
       const showtimeHour = getShowtimeHour(showtime);
+
       return showtimeHour >= currentTimeStr;
     }
 
@@ -439,53 +489,6 @@ export function getSeatDisplayNumber(seat) {
   return getSeatNumber(seat);
 }
 
-export function generateMockSeats(roomId) {
-  const rows = ["A", "B", "C", "D", "E", "F", "G"];
-  const seats = [];
-  let seatIdCounter = 20000 + Number(roomId || 0) * 150;
-
-  rows.forEach((row) => {
-    let seatType = "Standard";
-    if (row === "E" || row === "F") {
-      seatType = "VIP";
-    } else if (row === "G") {
-      seatType = "Sweetbox";
-    }
-
-    let cols = [1, 10, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9];
-    if (row === "A") {
-      cols = [1, 11, 12, 2, 3, 4, 5, 6, 7, 8, 9];
-    } else if (row === "G") {
-      cols = [1, 10, 11, 12, 2, 3, 4, 5, 7, 8, 9];
-    }
-
-    cols.forEach((col) => {
-      const sId = seatIdCounter++;
-      seats.push({
-        seatId: sId,
-        SeatId: sId,
-        id: sId,
-        seatRow: row,
-        SeatRow: row,
-        row: row,
-        Row: row,
-        seatNumber: col,
-        SeatNumber: col,
-        number: col,
-        Number: col,
-        seatType: seatType,
-        SeatType: seatType,
-        type: seatType,
-        Type: seatType,
-        roomId: Number(roomId),
-        status: "Available",
-      });
-    });
-  });
-
-  return seats;
-}
-
 export function isSeatAvailable(seat, availableSeats) {
   const seatId = getSeatId(seat);
 
@@ -509,7 +512,11 @@ export function getSeatPrice(seat, selectedShowtime) {
 
   const type = String(getSeatType(seat)).toLowerCase();
 
-  if (type.includes("sweetbox") || type.includes("couple") || type.includes("đôi")) {
+  if (
+    type.includes("sweetbox") ||
+    type.includes("couple") ||
+    type.includes("đôi")
+  ) {
     return basePrice + 40000;
   }
 
@@ -545,23 +552,81 @@ export function groupSeatsByRow(seats) {
    BOOKING PAYLOAD
 ========================= */
 
-export function buildBookingPayload({ userId, showtimeId, seat, selectedShowtime }) {
-  return {
+export function buildBookingPayload({
+  userId,
+  showtimeId,
+  seat,
+  selectedShowtime,
+  selectedCombos = [],
+}) {
+  const payload = {
     userId: Number(userId),
     showtimeId: Number(showtimeId),
     seatId: Number(getSeatId(seat)),
+    seatIds: [Number(getSeatId(seat))],
+    SeatIds: [Number(getSeatId(seat))],
     totalPrice: Number(getSeatPrice(seat, selectedShowtime)),
     status: "Paid",
     paymentStatus: "Paid",
   };
+
+  if (selectedCombos.length > 0) {
+    const list = selectedCombos.map((combo) => {
+      const foodId = Number(combo.foodId ?? combo.comboId ?? combo.id);
+
+      return {
+        foodId,
+        comboId: foodId,
+        quantity: Number(combo.quantity),
+      };
+    });
+
+    payload.bookingFoods = list;
+    payload.foods = list;
+    payload.bookingCombos = list;
+    payload.combos = list;
+  }
+
+  return payload;
 }
 
-export function useBooking() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+/* =========================
+   USE BOOKING HOOK
+========================= */
 
-  const movieParam = searchParams.get("movie");
-  const showtimeParam = searchParams.get("showtimeId");
+export function useBooking() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const bookingState = getBookingStateFromLocation(location);
+
+  const queryMovie = searchParams.get("movie");
+  const queryShowtimeId = searchParams.get("showtimeId");
+  const queryTime = searchParams.get("time");
+
+  const movieParam =
+    bookingState.movieId ??
+    bookingState.movie ??
+    bookingState.MovieId ??
+    bookingState.MovieID ??
+    queryMovie ??
+    "";
+
+  const showtimeParam =
+    bookingState.showtimeId ??
+    bookingState.showTimeId ??
+    bookingState.ShowtimeId ??
+    bookingState.ShowTimeId ??
+    queryShowtimeId ??
+    "";
+
+  const timeParam =
+    bookingState.time ??
+    bookingState.showTime ??
+    bookingState.ShowTime ??
+    queryTime ??
+    "";
 
   const [movie, setMovie] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
@@ -579,8 +644,9 @@ export function useBooking() {
   const [loading, setLoading] = useState(true);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [bookingError, setBookingError] = useState("");
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
-  const [newTicketIds, setNewTicketIds] = useState([]);
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [combos, setCombos] = useState([]);
+  const [comboQuantities, setComboQuantities] = useState({});
 
   const savedUser = getSavedUser();
   const userEmail = getUserEmail();
@@ -591,7 +657,31 @@ export function useBooking() {
   const [isHoldActive, setIsHoldActive] = useState(false);
   const holdKeysRef = useRef({});
 
-  // Countdown timer effect
+  useEffect(() => {
+    if (queryMovie || queryShowtimeId || queryTime) {
+      const nextBookingState = {
+        movieId: movieParam,
+        showtimeId: showtimeParam,
+        time: timeParam,
+      };
+
+      saveBookingState(nextBookingState);
+
+      navigate("/booking", {
+        replace: true,
+        state: nextBookingState,
+      });
+    }
+  }, [
+    queryMovie,
+    queryShowtimeId,
+    queryTime,
+    movieParam,
+    showtimeParam,
+    timeParam,
+    navigate,
+  ]);
+
   useEffect(() => {
     if (selectedSeats.length === 0) {
       setIsHoldActive(false);
@@ -602,19 +692,25 @@ export function useBooking() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          
-          // Giải phóng tất cả ghế đang giữ
+
           const keys = Object.values(holdKeysRef.current);
-          Promise.all(keys.map(key => releaseSeat(key).catch(e => console.error(e))))
-            .finally(() => {
-              holdKeysRef.current = {};
-              setSelectedSeats([]);
-              setIsHoldActive(false);
-              alert("Thời gian giữ ghế đã hết hạn. Các ghế bạn chọn đã được giải phóng!");
-            });
+
+          Promise.all(
+            keys.map((key) =>
+              releaseSeat(key).catch((err) => console.error(err))
+            )
+          ).finally(() => {
+            holdKeysRef.current = {};
+            setSelectedSeats([]);
+            setIsHoldActive(false);
+            alert(
+              "Thời gian giữ ghế đã hết hạn. Các ghế bạn chọn đã được giải phóng!"
+            );
+          });
 
           return 300;
         }
+
         return prev - 1;
       });
     }, 1000);
@@ -622,12 +718,14 @@ export function useBooking() {
     return () => clearInterval(timer);
   }, [selectedSeats.length]);
 
-  // Giải phóng ghế khi rời khỏi trang (unmount)
   useEffect(() => {
     return () => {
       const keys = Object.values(holdKeysRef.current);
+
       if (keys.length > 0) {
-        keys.forEach(key => releaseSeat(key).catch(e => console.error(e)));
+        keys.forEach((key) =>
+          releaseSeat(key).catch((err) => console.error(err))
+        );
       }
     };
   }, []);
@@ -642,9 +740,73 @@ export function useBooking() {
   }, [navigate]);
 
   useEffect(() => {
-    if (!movieParam) return;
+    async function loadCombos() {
+      try {
+        const data = await getCombos();
 
+        const normalized = data.map((item, index) => {
+          const id =
+            item?.foodId ??
+            item?.FoodId ??
+            item?.comboId ??
+            item?.ComboId ??
+            item?.id ??
+            item?.Id ??
+            index;
+
+          const name =
+            item?.foodName ??
+            item?.FoodName ??
+            item?.name ??
+            item?.Name ??
+            item?.comboName ??
+            item?.ComboName ??
+            "Đồ ăn kèm";
+
+          const price =
+            item?.price ?? item?.Price ?? item?.unitPrice ?? item?.UnitPrice ?? 0;
+
+          const description = item?.description ?? item?.Description ?? "";
+
+          const image =
+            item?.image ||
+            item?.Image ||
+            item?.imageUrl ||
+            item?.ImageUrl ||
+            "";
+
+          return {
+            id,
+            comboId: id,
+            foodId: id,
+            name,
+            price,
+            description,
+            image,
+          };
+        });
+
+        setCombos(normalized);
+      } catch (err) {
+        console.error("Không tải được danh sách combo:", err);
+        setCombos([]);
+      }
+    }
+
+    loadCombos();
+  }, []);
+
+  useEffect(() => {
     async function init() {
+      if (!movieParam) {
+        setLoading(false);
+        setMovie(null);
+        setBookingError(
+          "Không tìm thấy thông tin phim. Vui lòng quay lại trang phim và chọn suất chiếu lại."
+        );
+        return;
+      }
+
       setLoading(true);
       setBookingError("");
 
@@ -670,6 +832,9 @@ export function useBooking() {
         setShowtimes([]);
         setCinemas([]);
         setRooms([]);
+        setBookingError(
+          err?.message || "Lỗi khi tải thông tin đặt vé. Vui lòng thử lại."
+        );
       } finally {
         setLoading(false);
       }
@@ -774,18 +939,22 @@ export function useBooking() {
     const showtimeId = getShowtimeId(selectedShowtime);
 
     const isSelected = selectedSeats.some(
-      (s) => String(getSeatId(s)) === String(seatId)
+      (selectedSeat) => String(getSeatId(selectedSeat)) === String(seatId)
     );
 
     if (isSelected) {
       try {
         const holdKey = holdKeysRef.current[seatId];
+
         if (holdKey) {
           await releaseSeat(holdKey);
           delete holdKeysRef.current[seatId];
         }
+
         setSelectedSeats((prev) =>
-          prev.filter((s) => String(getSeatId(s)) !== String(seatId))
+          prev.filter(
+            (selectedSeat) => String(getSeatId(selectedSeat)) !== String(seatId)
+          )
         );
       } catch (err) {
         console.error("Lỗi giải phóng ghế:", err);
@@ -793,15 +962,17 @@ export function useBooking() {
     } else {
       try {
         setLoadingSeats(true);
+
         const data = await holdSeat(showtimeId, seatId);
-        
+
         const holdKey = data?.holdKey || data?.HoldKey || data;
+
         if (holdKey) {
           holdKeysRef.current[seatId] = holdKey;
         }
 
         setSelectedSeats((prev) => [...prev, seat]);
-        setTimeLeft(300); // Reset bộ đếm thời gian
+        setTimeLeft(300);
         setIsHoldActive(true);
       } catch (err) {
         console.error("Lỗi giữ ghế:", err);
@@ -812,15 +983,71 @@ export function useBooking() {
     }
   }
 
-  const totalAmount = selectedSeats.reduce(
-    (sum, seat) => sum + getSeatPrice(seat, selectedShowtime),
-    0
-  );
+  const updateComboQuantity = (comboId, delta) => {
+    setComboQuantities((prev) => {
+      const currentQuantity = prev[comboId] || 0;
+      const nextQuantity = Math.max(0, currentQuantity + delta);
+
+      return {
+        ...prev,
+        [comboId]: nextQuantity,
+      };
+    });
+  };
+
+  const selectedCombos = useMemo(() => {
+    return combos
+      .map((combo) => {
+        const id =
+          combo.foodId ??
+          combo.FoodId ??
+          combo.comboId ??
+          combo.id ??
+          combo.Id ??
+          combo.ComboId;
+
+        const name =
+          combo.name ??
+          combo.Name ??
+          combo.foodName ??
+          combo.FoodName ??
+          combo.comboName ??
+          combo.ComboName ??
+          "Combo";
+
+        return {
+          ...combo,
+          foodId: id,
+          comboId: id,
+          name,
+          quantity: comboQuantities[id] || 0,
+        };
+      })
+      .filter((combo) => combo.quantity > 0);
+  }, [combos, comboQuantities]);
+
+  const totalAmount = useMemo(() => {
+    return selectedSeats.reduce(
+      (sum, seat) => sum + getSeatPrice(seat, selectedShowtime),
+      0
+    );
+  }, [selectedSeats, selectedShowtime]);
+
+  const totalCombosAmount = useMemo(() => {
+    return selectedCombos.reduce(
+      (sum, item) => sum + Number(item.price) * Number(item.quantity),
+      0
+    );
+  }, [selectedCombos]);
+
+  const finalTotalAmount = useMemo(() => {
+    return totalAmount + totalCombosAmount;
+  }, [totalAmount, totalCombosAmount]);
 
   const groupedSeats = groupSeatsByRow(allSeats);
   const rowsKeys = Object.keys(groupedSeats).sort();
 
-  async function handleCheckout() {
+  function handleCheckout() {
     if (!userEmail) {
       alert("Vui lòng đăng nhập trước khi tiến hành thanh toán!");
       navigate("/login");
@@ -837,6 +1064,10 @@ export function useBooking() {
       return;
     }
 
+    setShowComboModal(true);
+  }
+
+  async function handleConfirmBooking() {
     const showtimeId = getShowtimeId(selectedShowtime);
 
     const userId =
@@ -853,18 +1084,31 @@ export function useBooking() {
 
     setLoadingSeats(true);
     setBookingError("");
+    setShowComboModal(false);
 
     try {
-      const bookingPromises = selectedSeats.map(async (seat) => {
-        const payload = buildBookingPayload({
-          userId,
-          showtimeId,
-          seat,
-          selectedShowtime,
-        });
+      const bookingResults = await Promise.all(
+        selectedSeats.map(async (seat, index) => {
+          const combosForPayload = index === 0 ? selectedCombos : [];
+          const extraPrice = index === 0 ? totalCombosAmount : 0;
 
-        const data = await createBooking(payload);
+          const payload = buildBookingPayload({
+            userId,
+            showtimeId,
+            seat,
+            selectedShowtime,
+            selectedCombos: combosForPayload,
+          });
 
+          payload.totalPrice = Number(payload.totalPrice) + Number(extraPrice);
+
+          const data = await createBooking(payload);
+
+          return data;
+        })
+      );
+
+      const bookedIds = bookingResults.map((data) => {
         return (
           data?.bookingId ??
           data?.BookingId ??
@@ -874,14 +1118,23 @@ export function useBooking() {
         );
       });
 
-      const bookedIds = await Promise.all(bookingPromises);
-
-      // Xóa thông tin giữ ghế cục bộ vì đã tạo booking thành công
+      // Giải phóng thông tin giữ ghế cục bộ
       holdKeysRef.current = {};
       setIsHoldActive(false);
-
-      setNewTicketIds(bookedIds);
-      setShowPaymentSuccess(true);
+      
+      // Navigate to separate payment page
+      navigate("/payment", {
+        state: {
+          bookingIds: bookedIds.map(Number),
+          totalAmount: finalTotalAmount,
+          movie,
+          selectedCinemaId,
+          selectedDateIso,
+          selectedShowtime,
+          selectedSeats,
+          selectedCombos,
+        },
+      });
     } catch (err) {
       console.error("Đặt vé thất bại:", err);
 
@@ -890,11 +1143,6 @@ export function useBooking() {
     } finally {
       setLoadingSeats(false);
     }
-  }
-
-  function handleFinishBooking() {
-    setShowPaymentSuccess(false);
-    navigate("/customer/ve-cua-toi");
   }
 
   return {
@@ -911,8 +1159,6 @@ export function useBooking() {
     loading,
     loadingSeats,
     bookingError,
-    showPaymentSuccess,
-    newTicketIds,
     savedUser,
     userEmail,
     dates,
@@ -925,8 +1171,18 @@ export function useBooking() {
     rowsKeys,
     groupedSeats,
     handleCheckout,
-    handleFinishBooking,
     timeLeft,
     isHoldActive,
+
+    // Combo states
+    showComboModal,
+    setShowComboModal,
+    combos,
+    comboQuantities,
+    selectedCombos,
+    totalCombosAmount,
+    finalTotalAmount,
+    updateComboQuantity,
+    handleConfirmBooking,
   };
 }

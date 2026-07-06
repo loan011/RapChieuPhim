@@ -479,11 +479,11 @@
 }
 
 .counter-seat-btn.seat-taken {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.12);
+  border-color: #27272a !important;
+  background: #000000 !important;
+  color: #3f3f46 !important;
   cursor: not-allowed;
-  opacity: 0.3;
+  opacity: 1 !important;
 }
 
 .counter-seat-legend {
@@ -537,8 +537,8 @@
 }
 
 .legend-taken {
-  border: 1px solid rgba(63, 63, 70, 0.7);
-  background: rgba(24, 24, 27, 0.35);
+  border: 1px solid #27272a;
+  background: #000000;
 }
 
 .sell-ticket-form {

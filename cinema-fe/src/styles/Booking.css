@@ -308,9 +308,9 @@
 
 /* Taken seat style */
 .seat-node.taken {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  color: rgba(255, 255, 255, 0.15) !important;
+  background: #111113 !important;
+  border: 1px solid #27272a !important;
+  color: #3f3f46 !important;
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -320,7 +320,7 @@
   position: absolute;
   font-size: 16px;
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.2);
+  color: #52525b;
 }
 
 /* Selected state style */

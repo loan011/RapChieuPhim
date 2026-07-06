@@ -13,14 +13,25 @@ async function apiGet(url) {
     headers: getAuthHeaders(),
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     response = await fetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  return readResponse(response);
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage?.(data) ||
+        data?.message ||
+        data?.title ||
+        `Lỗi API status: ${response.status}`
+    );
+  }
+
+  return data;
 }
 
 async function apiPost(url, body) {
@@ -30,7 +41,18 @@ async function apiPost(url, body) {
     body: JSON.stringify(body),
   });
 
-  return readResponse(response);
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage?.(data) ||
+        data?.message ||
+        data?.title ||
+        `Lỗi API status: ${response.status}`
+    );
+  }
+
+  return data;
 }
 
 async function apiDelete(url, body) {
@@ -40,7 +62,18 @@ async function apiDelete(url, body) {
     body: JSON.stringify(body),
   });
 
-  return readResponse(response);
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessage?.(data) ||
+        data?.message ||
+        data?.title ||
+        `Lỗi API status: ${response.status}`
+    );
+  }
+
+  return data;
 }
 
 async function tryGet(urls) {
@@ -52,9 +85,11 @@ async function tryGet(urls) {
     } catch (err) {
       lastError = err;
       console.warn("API GET lỗi:", url, err.message);
-      
-      // Nếu là lỗi phiên đăng nhập hết hạn (401), ném lỗi ra ngoài lập tức để redirect
-      if (err.message.includes("Phiên đăng nhập") || err.message.includes("hết hạn")) {
+
+      if (
+        err.message.includes("Phiên đăng nhập") ||
+        err.message.includes("hết hạn")
+      ) {
         throw err;
       }
     }
@@ -73,7 +108,10 @@ async function tryPost(urls, body) {
       lastError = err;
       console.warn("API POST lỗi:", url, err.message);
 
-      if (err.message.includes("Phiên đăng nhập") || err.message.includes("hết hạn")) {
+      if (
+        err.message.includes("Phiên đăng nhập") ||
+        err.message.includes("hết hạn")
+      ) {
         throw err;
       }
     }
@@ -92,13 +130,29 @@ async function tryDelete(urls, body) {
       lastError = err;
       console.warn("API DELETE lỗi:", url, err.message);
 
-      if (err.message.includes("Phiên đăng nhập") || err.message.includes("hết hạn")) {
+      if (
+        err.message.includes("Phiên đăng nhập") ||
+        err.message.includes("hết hạn")
+      ) {
         throw err;
       }
     }
   }
 
   throw lastError || new Error("Không gọi được API");
+}
+
+function normalizeArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.$values)) return data.$values;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.result)) return data.result;
+  return [];
+}
+
+function unwrapData(data) {
+  return data?.data || data?.result || data;
 }
 
 export async function getCinemas() {
@@ -109,7 +163,7 @@ export async function getCinemas() {
     `${API_URL}/api/Cinema`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  return normalizeArray(data);
 }
 
 export async function getRooms() {
@@ -120,7 +174,7 @@ export async function getRooms() {
     `${API_URL}/api/Room`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  return normalizeArray(data);
 }
 
 export async function getMovieById(movieId) {
@@ -133,7 +187,7 @@ export async function getMovieById(movieId) {
     `${API_URL}/api/Movies/GetById/${movieId}`,
   ]);
 
-  return data?.data || data;
+  return unwrapData(data);
 }
 
 export async function getShowtimesByMovie(movieId) {
@@ -150,10 +204,8 @@ export async function getShowtimesByMovie(movieId) {
     `${API_URL}/Showtime?movieId=${movieId}`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  return normalizeArray(data);
 }
-
-import { generateMockSeats } from "./usebooking";
 
 export async function getSeatsByRoomId(roomId) {
   if (!roomId) return [];
@@ -169,11 +221,7 @@ export async function getSeatsByRoomId(roomId) {
     `${API_URL}/Seat?roomId=${roomId}`,
   ]);
 
-  const seats = Array.isArray(data) ? data : data?.data || data?.items || [];
-  if (seats.length === 0) {
-    return generateMockSeats(roomId);
-  }
-  return seats;
+  return normalizeArray(data);
 }
 
 export async function getAvailableSeats(showtimeId) {
@@ -190,7 +238,7 @@ export async function getAvailableSeats(showtimeId) {
     `${API_URL}/Booking/GetAvailableSeats?showtimeId=${showtimeId}`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  return normalizeArray(data);
 }
 
 export async function createBooking(payload) {
@@ -204,7 +252,7 @@ export async function createBooking(payload) {
     payload
   );
 
-  return data?.data || data;
+  return unwrapData(data);
 }
 
 export async function holdSeat(showTimeId, seatId) {
@@ -213,10 +261,13 @@ export async function holdSeat(showTimeId, seatId) {
       `${API_URL}/Bookings/Hold`,
       `${API_URL}/api/Bookings/Hold`,
     ],
-    { showTimeId: Number(showTimeId), seatId: Number(seatId) }
+    {
+      showTimeId: Number(showTimeId),
+      seatId: Number(seatId),
+    }
   );
 
-  return data?.data || data;
+  return unwrapData(data);
 }
 
 export async function releaseSeat(holdKey) {
@@ -228,5 +279,18 @@ export async function releaseSeat(holdKey) {
     { holdKey }
   );
 
-  return data?.data || data;
+  return unwrapData(data);
+}
+
+export async function getCombos() {
+  const data = await tryGet([
+    `${API_URL}/Foods/Available`,
+    `${API_URL}/api/Foods/Available`,
+    `${API_URL}/Foods`,
+    `${API_URL}/api/Foods`,
+    `${API_URL}/Combos`,
+    `${API_URL}/api/Combos`,
+  ]);
+
+  return normalizeArray(data);
 }

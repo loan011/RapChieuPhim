@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
 import {
@@ -231,7 +231,17 @@ export default function Ticket() {
                 </div>
                 <div className="detail-info-row">
                   <span className="info-label">Đồ ăn và Thức uống:</span>
-                  <span className="info-value">Không có</span>
+                  <span className="info-value" style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
+                    {selectedTicket.foods && selectedTicket.foods.length > 0 ? (
+                      selectedTicket.foods.map((food, idx) => (
+                        <div key={idx} style={{ fontSize: "0.85rem", color: "#374151" }}>
+                          {food.name} <span style={{ color: "#9ca3af" }}>(x{food.quantity})</span>
+                        </div>
+                      ))
+                    ) : (
+                      "Không có"
+                    )}
+                  </span>
                 </div>
                 <div className="detail-info-row total">
                   <span className="info-label">Tổng cộng:</span>

@@ -25,6 +25,7 @@ export const STATUS_OPTIONS = [
 ];
 
 export const EMPTY_FORM = {
+  cinemaId:  "",
   movieId:   "",
   roomId:    "",
   showDate:  "",
@@ -159,6 +160,7 @@ export function buildFormFromShowtime(s) {
   };
 }
 export function validateShowtimeForm(form) {
+  if (!form.cinemaId)                             return "Vui lòng chọn chi nhánh/khu vực.";
   if (!form.movieId)                              return "Vui lòng chọn phim.";
   if (!form.roomId)                               return "Vui lòng chọn phòng chiếu.";
   if (!form.showDate)                             return "Vui lòng chọn ngày chiếu.";
@@ -189,7 +191,7 @@ export function buildShowtimePayload(form) {
    INTERNAL HELPERS (cinema / room derivation)
 ═══════════════════════════════════════════════════════════ */
 
-function _getRoomCinemaId(room) {
+export function getRoomCinemaId(room) {
   return String(
     room?.cinemaId     ?? room?.CinemaId     ??
     room?.cinema?.cinemaId ?? room?.cinema?.CinemaId ??
@@ -206,7 +208,7 @@ function _getRoomCinemaName(room) {
 function _getShowtimeCinemaId(showtime, rooms) {
   const rid  = getShowtimeRoomId(showtime);
   const room = rooms.find((r) => String(getRoomId(r)) === String(rid));
-  return room ? _getRoomCinemaId(room) : "";
+  return room ? getRoomCinemaId(room) : "";
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -276,7 +278,15 @@ export function useRate() {
     setEditId(null); setForm(EMPTY_FORM); setFormError(""); setShowModal(true);
   }
   function openEditModal(item) {
-    setEditId(getShowtimeId(item)); setForm(buildFormFromShowtime(item));
+    setEditId(getShowtimeId(item));
+    const baseForm = buildFormFromShowtime(item);
+    const rId = baseForm.roomId;
+    const roomObj = rooms.find((r) => String(getRoomId(r)) === String(rId));
+    const cId = roomObj ? _getRoomCinemaId(roomObj) : "";
+    setForm({
+      ...baseForm,
+      cinemaId: cId || "",
+    });
     setFormError(""); setShowModal(true);
   }
   function closeModal() {
@@ -284,7 +294,11 @@ export function useRate() {
   }
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === "cinemaId") {
+      setForm((prev) => ({ ...prev, cinemaId: value, roomId: "" }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   }
   async function handleSubmit(e) {
     e.preventDefault();
@@ -337,7 +351,7 @@ export function useRate() {
     } else {
       const map = new Map();
       rooms.forEach((r) => {
-        const id   = _getRoomCinemaId(r);
+        const id   = getRoomCinemaId(r);
         const name = _getRoomCinemaName(r);
         if (id && !map.has(id)) map.set(id, name || `Chi nhánh ${id}`);
       });

@@ -1,4 +1,4 @@
-﻿import "./BanVe.css";
+import "./BanVe.css";
 import { useBanVe } from "./useBanVe.js";
 import { MdMovie, MdChair, MdCheckCircle } from "react-icons/md";
 
@@ -39,6 +39,13 @@ export default function StaffBanVe() {
     getSeatTypeLabel,
     getSelectedSeatsText,
     getSelectedShowtimeBasePrice,
+
+    // QR states
+    showQrModal,
+    paymentQrCode,
+    paymentTicketIds,
+    handleCompleteStaffQrPayment,
+    handleCancelStaffQrPayment,
   } = useBanVe();
 
   return (
@@ -381,6 +388,62 @@ export default function StaffBanVe() {
           )}
         </div>
       </div>
+      {showQrModal && (
+        <div className="payment-success-modal-overlay" style={{ zIndex: 101 }}>
+          <div className="payment-success-modal-box" style={{ maxWidth: "450px", textAlign: "center", padding: "28px" }}>
+            <h2 className="modal-title" style={{ fontSize: "1.5rem", color: "#f97316", marginBottom: "8px", fontWeight: "900" }}>
+              QUÉT MÃ THANH TOÁN QR
+            </h2>
+            <p className="modal-desc" style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 20px" }}>
+              Vui lòng hướng dẫn khách hàng quét mã QR dưới đây để thực hiện thanh toán chuyển khoản tại quầy.
+            </p>
+
+            <div style={{ background: "#ffffff", padding: "16px", borderRadius: "16px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", marginBottom: "20px" }}>
+              {paymentQrCode.startsWith("data:image") || paymentQrCode.startsWith("http") ? (
+                <img 
+                  src={paymentQrCode} 
+                  alt="Payment QR Code" 
+                  style={{ width: "240px", height: "240px", objectFit: "contain", display: "block" }} 
+                />
+              ) : (
+                <img 
+                  src={`data:image/png;base64,${paymentQrCode}`} 
+                  alt="Payment QR Code" 
+                  style={{ width: "240px", height: "240px", objectFit: "contain", display: "block" }} 
+                />
+              )}
+            </div>
+
+            <div className="ticket-invoice-receipt" style={{ textAlign: "left", marginBottom: "24px", padding: "16px", background: "#f9fafb", borderRadius: "12px", border: "1px solid #e5e7eb", color: "#374151" }}>
+              <p style={{ margin: "0 0 8px", fontSize: "0.9rem" }}>
+                💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{formatMoney(totalAmount)}đ</strong>
+              </p>
+              <p style={{ margin: "0", fontSize: "0.85rem" }}>
+                📝 Nội dung chuyển khoản: <strong style={{ wordBreak: "break-all" }}>Thanh toan ve {paymentTicketIds.join(", ")}</strong>
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                className="modal-finish-close-btn"
+                style={{ flex: 1, background: "#9ca3af", margin: 0, padding: "12px 0" }}
+                onClick={handleCancelStaffQrPayment}
+              >
+                HỦY GIAO DỊCH
+              </button>
+              <button
+                type="button"
+                className="modal-finish-close-btn"
+                style={{ flex: 2, background: "#22c55e", margin: 0, padding: "12px 0" }}
+                onClick={handleCompleteStaffQrPayment}
+              >
+                XÁC NHẬN ĐÃ NHẬN TIỀN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

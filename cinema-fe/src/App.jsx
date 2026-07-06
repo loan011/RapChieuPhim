@@ -9,6 +9,7 @@ import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
 import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
 import Cinema from "./pages/Cinema/Cinema.jsx";
 import Booking from "./pages/Booking/Booking.jsx";
+import Payment from "./pages/Payment/Payment.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -91,6 +92,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
               <Booking />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/payment"
+          element={
+            <ProtectedRoute allowedRoles={["Customer"]}>
+              <Payment />
             </ProtectedRoute>
           }
         />
