@@ -14,7 +14,7 @@ import {
 } from "react-icons/md";
 import { useRoom } from "./useRoom.js";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 15;
 
 // ── Status helpers ──────────────────────────────────────────
 function getStatusStyle(isActive) {
@@ -114,10 +114,30 @@ export default function RoomAdmin() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
-  );
+  const pageItems = filtered.slice(0, page * PAGE_SIZE);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      let target = e.target;
+      if (target === document) {
+        target = document.documentElement || document.body;
+      }
+      if (!target) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        setPage((prev) => {
+          if (prev * PAGE_SIZE < filtered.length) {
+            return prev + 1;
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [filtered.length]);
 
   function handleCinemaFilterChange(e) {
     setSelectedCinemaFilter(e.target.value);
@@ -220,39 +240,15 @@ export default function RoomAdmin() {
             </div>
           )}
 
-          {/* ── Pagination ── */}
-          <div className="rm-footer">
+          {/* ── Scroll/Pagination Footer Info ── */}
+          <div className="rm-footer" style={{ justifyContent: "center", margin: "24px 0" }}>
             <span className="rm-footer-info">
-              Hiển thị{" "}
-              {Math.min((safePage - 1) * PAGE_SIZE + 1, filtered.length)}–
-              {Math.min(safePage * PAGE_SIZE, filtered.length)} của{" "}
-              {filtered.length} phòng chiếu
+              {pageItems.length < filtered.length ? (
+                `Đang hiển thị ${pageItems.length} trên ${filtered.length} phòng chiếu (Cuộn xuống để xem thêm...)`
+              ) : (
+                `Đã hiển thị tất cả ${filtered.length} phòng chiếu`
+              )}
             </span>
-            <div className="rm-pagination">
-              <button
-                className="rm-page-btn"
-                disabled={safePage === 1}
-                onClick={() => setPage(safePage - 1)}
-              >
-                Trước
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  className={`rm-page-btn${p === safePage ? " rm-page-btn--active" : ""}`}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                className="rm-page-btn"
-                disabled={safePage === totalPages}
-                onClick={() => setPage(safePage + 1)}
-              >
-                Sau
-              </button>
-            </div>
           </div>
         </>
       )}

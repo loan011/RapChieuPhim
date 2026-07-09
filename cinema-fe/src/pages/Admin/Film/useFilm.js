@@ -7,7 +7,7 @@ import {
   deleteMovie,
 } from "./movieService";
 
-export const PAGE_SIZE = 5;
+export const PAGE_SIZE = 15;
 
 export const STATUS_OPTIONS = [
   "Đang chiếu",
@@ -225,6 +225,7 @@ export function useFilm() {
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterGenre, setFilterGenre] = useState("");
   const [page, setPage] = useState(1);
 
   // Form add/edit states
@@ -270,27 +271,72 @@ export function useFilm() {
     return list.filter((m) => getMovieStatusDisplayName(m) === "Sắp chiếu").length;
   }, [list]);
 
-  /* ── Filter list ── */
   const filtered = useMemo(() => {
-    const kw = search.toLowerCase().trim();
-    return list.filter((movie) => {
-      const title = getMovieTitle(movie).toLowerCase();
-      const genre = getMovieGenre(movie, categoryMap, movieCategoryMap).toLowerCase();
-      const status = getMovieStatusDisplayName(movie).toLowerCase();
+  const kw = search.toLowerCase().trim();
+  const selectedGenre = filterGenre.toLowerCase().trim();
 
-      const matchSearch = !kw || title.includes(kw) || genre.includes(kw);
-      const matchStatus = filterStatus ? status === filterStatus.toLowerCase() : true;
+  return list.filter((movie) => {
+    const title = getMovieTitle(movie).toLowerCase();
+    const genre = getMovieGenre(movie, categoryMap, movieCategoryMap).toLowerCase();
+    const status = getMovieStatusDisplayName(movie).toLowerCase();
 
-      return matchSearch && matchStatus;
-    });
-  }, [list, search, filterStatus, categoryMap, movieCategoryMap]);
+    // Search chỉ theo tên phim
+    const matchSearch = !kw || title.includes(kw);
 
-  /* ── Pagination ── */
+    // Lọc trạng thái
+    const matchStatus = filterStatus
+      ? status === filterStatus.toLowerCase()
+      : true;
+
+    // Lọc thể loại
+    const matchGenre = selectedGenre
+      ? genre
+          .split(",")
+          .map((g) => g.trim().toLowerCase())
+          .includes(selectedGenre)
+      : true;
+
+    return matchSearch && matchStatus && matchGenre;
+  });
+}, [
+  list,
+  search,
+  filterStatus,
+  filterGenre,
+  categoryMap,
+  movieCategoryMap,
+]);
+
+  /* ── Pagination / Infinite Scroll ── */
   const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), [filtered]);
   const safePage = useMemo(() => Math.min(page, totalPages), [page, totalPages]);
   const pageItems = useMemo(() => {
-    return filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  }, [filtered, safePage]);
+    return filtered.slice(0, page * PAGE_SIZE);
+  }, [filtered, page]);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      let target = e.target;
+      if (target === document) {
+        target = document.documentElement || document.body;
+      }
+      if (!target) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        setPage((prev) => {
+          if (prev * PAGE_SIZE < filtered.length) {
+            return prev + 1;
+          }
+          return prev;
+        });
+      }
+    };
+
+    // Use capture phase (true) to intercept scrolls inside layout containers
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [filtered.length]);
 
   /* ── Handlers ── */
   async function handleDelete(id) {
@@ -457,6 +503,8 @@ export function useFilm() {
     setSearch,
     filterStatus,
     setFilterStatus,
+    filterGenre,
+    setFilterGenre,
     page,
     setPage,
     pageItems,

@@ -50,6 +50,8 @@ export default function Film() {
     setSearch,
     filterStatus,
     setFilterStatus,
+    filterGenre,
+    setFilterGenre,
     pageItems,
     totalPages,
     safePage,
@@ -122,7 +124,7 @@ export default function Film() {
           <input
             type="text"
             className="fm-search-input"
-            placeholder="Tìm kiếm phim theo tên, thể loại..."
+            placeholder="Tìm kiếm phim theo tên..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -130,6 +132,22 @@ export default function Film() {
             }}
           />
         </div>
+
+        <select
+          className="fm-status-select"
+          value={filterGenre}
+          onChange={(e) => {
+            setFilterGenre(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả thể loại</option>
+          {categoryOptions.map((category) => (
+            <option key={category.id} value={category.name}>
+              {category.name}
+            </option>
+          ))}
+        </select>
 
         <select
           className="fm-status-select"
@@ -234,43 +252,6 @@ export default function Film() {
               })}
             </div>
           )}
-
-          {/* ── Pagination Footer ── */}
-          {filtered.length > 0 && (
-            <div className="fm-footer">
-              <span className="fm-footer-info">
-                Hiển thị {Math.min((safePage - 1) * 5 + 1, filtered.length)}–
-                {Math.min(safePage * 5, filtered.length)} của {filtered.length} phim
-              </span>
-              <div className="fm-pagination">
-                <button
-                  className="fm-page-btn"
-                  disabled={safePage === 1}
-                  onClick={() => setPage(safePage - 1)}
-                >
-                  Trước
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    className={`fm-page-btn${
-                      p === safePage ? " fm-page-btn--active" : ""
-                    }`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  className="fm-page-btn"
-                  disabled={safePage === totalPages}
-                  onClick={() => setPage(safePage + 1)}
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -302,42 +283,68 @@ export default function Film() {
                   />
                 </div>
 
-                {/* Thể loại + Đạo diễn */}
-                <div className="fm-field-row">
-                  <div className="fm-field">
-                    <label className="fm-label">Thể loại</label>
-                    <div className="fm-genre-input-wrap">
-                      <input
-                        type="text"
-                        name="genre"
-                        value={form.genre}
-                        onChange={handleChange}
-                        className="fm-input"
-                        placeholder="VD: Hành động, Viễn tưởng"
-                      />
-                      <select
-                        onChange={handleGenreSelect}
-                        className="fm-input fm-genre-quick-select"
-                        value=""
-                      >
-                        <option value="" disabled>-- Chọn thêm thể loại nhanh --</option>
-                        {categoryOptions.map((c) => (
-                          <option key={c.id} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="fm-field">
-                    <label className="fm-label">Đạo diễn</label>
+                {/* Thể loại */}
+                <div className="fm-field">
+                  <label className="fm-label">Thể loại</label>
+                  <div className="fm-genre-input-wrap">
                     <input
                       type="text"
-                      name="director"
-                      value={form.director}
+                      name="genre"
+                      value={form.genre}
                       onChange={handleChange}
                       className="fm-input"
-                      placeholder="Nhập tên đạo diễn"
+                      placeholder="VD: Hành động, Viễn tưởng"
+                    />
+                    <select
+                      onChange={handleGenreSelect}
+                      className="fm-input fm-genre-quick-select"
+                      value=""
+                    >
+                      <option value="" disabled>-- Chọn thêm thể loại nhanh --</option>
+                      {categoryOptions.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Đạo diễn */}
+                <div className="fm-field">
+                  <label className="fm-label">Đạo diễn</label>
+                  <input
+                    type="text"
+                    name="director"
+                    value={form.director}
+                    onChange={handleChange}
+                    className="fm-input"
+                    placeholder="Nhập tên đạo diễn"
+                  />
+                </div>
+
+                {/* Ngôn ngữ + Phụ đề */}
+                <div className="fm-field-row">
+                  <div className="fm-field">
+                    <label className="fm-label">Ngôn ngữ</label>
+                    <input
+                      type="text"
+                      name="language"
+                      value={form.language}
+                      onChange={handleChange}
+                      className="fm-input"
+                      placeholder="VD: Tiếng Anh, Tiếng Việt"
+                    />
+                  </div>
+                  <div className="fm-field">
+                    <label className="fm-label">Phụ đề</label>
+                    <input
+                      type="text"
+                      name="subtitles"
+                      value={form.subtitles}
+                      onChange={handleChange}
+                      className="fm-input"
+                      placeholder="VD: Phụ đề Tiếng Việt"
                     />
                   </div>
                 </div>
@@ -424,12 +431,12 @@ export default function Film() {
                     <div className="fm-field">
                       <label className="fm-label">Hoặc nhập link ảnh poster (URL)</label>
                       <input
-                        type="url"
+                        type="text"
                         name="posterUrl"
                         value={form.posterUrl}
                         onChange={handleChange}
                         className="fm-input"
-                        placeholder="https://example.com/poster.jpg"
+                        placeholder="Ví dụ: /img/poster.jpg hoặc https://example.com/poster.jpg"
                       />
                     </div>
                   </div>
@@ -439,7 +446,7 @@ export default function Film() {
                 <div className="fm-field">
                   <label className="fm-label">Link video trailer (Youtube)</label>
                   <input
-                    type="url"
+                    type="text"
                     name="trailerUrl"
                     value={form.trailerUrl}
                     onChange={handleChange}
@@ -459,32 +466,6 @@ export default function Film() {
                     placeholder="Mô tả tóm tắt nội dung phim..."
                     rows={3}
                   />
-                </div>
-
-                {/* Ngôn ngữ + Phụ đề */}
-                <div className="fm-field-row">
-                  <div className="fm-field">
-                    <label className="fm-label">Ngôn ngữ</label>
-                    <input
-                      type="text"
-                      name="language"
-                      value={form.language}
-                      onChange={handleChange}
-                      className="fm-input"
-                      placeholder="VD: Tiếng Anh, Tiếng Việt"
-                    />
-                  </div>
-                  <div className="fm-field">
-                    <label className="fm-label">Phụ đề</label>
-                    <input
-                      type="text"
-                      name="subtitles"
-                      value={form.subtitles}
-                      onChange={handleChange}
-                      className="fm-input"
-                      placeholder="VD: Phụ đề Tiếng Việt"
-                    />
-                  </div>
                 </div>
 
                 {/* Actions */}
