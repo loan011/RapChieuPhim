@@ -8,7 +8,7 @@ import {
   MdSearch,
   MdEdit,
   MdVisibility,
-  MdDelete,
+  MdVisibilityOff,
   MdAccessTime,
   MdPerson,
   MdShield,
@@ -21,6 +21,7 @@ import {
   getMovieDuration,
   getMovieDirector,
   getMovieReleaseDate,
+  getMovieEndDate,
   getMoviePoster,
   getMovieAgeRating,
   getMovieStatusDisplayName,
@@ -79,6 +80,10 @@ export default function Film() {
     handleSubmit,
     handleDelete,
     getMovieGenreText,
+    showDetailModal,
+    selectedDetailMovie,
+    openDetailModal,
+    closeDetailModal,
   } = useFilm();
 
   return (
@@ -124,7 +129,7 @@ export default function Film() {
           <input
             type="text"
             className="fm-search-input"
-            placeholder="Tìm kiếm phim theo tên..."
+            placeholder="Tìm kiếm phim"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -183,6 +188,7 @@ export default function Film() {
                 const duration = getMovieDuration(movie);
                 const director = getMovieDirector(movie);
                 const releaseDate = getMovieReleaseDate(movie);
+                const endDate = getMovieEndDate(movie);
                 const poster = getMoviePoster(movie);
                 const rating = getMovieAgeRating(movie);
                 const status = getMovieStatusDisplayName(movie);
@@ -197,9 +203,9 @@ export default function Film() {
                       <button
                         className="fm-card-btn-delete"
                         onClick={() => handleDelete(id)}
-                        title="Xóa phim"
+                        title="Ẩn phim"
                       >
-                        <MdDelete size={16} />
+                        <MdVisibilityOff size={16} />
                       </button>
                     </div>
 
@@ -228,6 +234,12 @@ export default function Film() {
                           icon={<MdCalendarMonth />}
                           value={`Khởi chiếu: ${releaseDate}`}
                         />
+                        {endDate !== "Chưa có" && (
+                          <DetailRow
+                            icon={<MdCalendarMonth />}
+                            value={`Kết thúc: ${endDate}`}
+                          />
+                        )}
                         <DetailRow icon={<MdShield />} value={rating} />
                       </div>
 
@@ -235,7 +247,7 @@ export default function Film() {
                       <div className="fm-card-actions">
                         <button
                           className="fm-card-btn fm-card-btn--detail"
-                          onClick={() => openEditModal(movie)} // Use edit modal for now or detail view
+                          onClick={() => openDetailModal(movie)}
                         >
                           <MdVisibility size={15} /> Chi tiết
                         </button>
@@ -244,6 +256,13 @@ export default function Film() {
                           onClick={() => openEditModal(movie)}
                         >
                           <MdEdit size={15} /> Sửa
+                        </button>
+                        <button
+                          className="fm-card-btn fm-card-btn--delete-action"
+                          onClick={() => handleDelete(id)}
+                          title="Ẩn phim"
+                        >
+                          <MdVisibilityOff size={15} /> Ẩn
                         </button>
                       </div>
                     </div>
@@ -349,7 +368,7 @@ export default function Film() {
                   </div>
                 </div>
 
-                {/* Thời lượng + Ngày khởi chiếu */}
+                {/* Thời lượng + Giới hạn tuổi */}
                 <div className="fm-field-row">
                   <div className="fm-field">
                     <label className="fm-label">Thời lượng (phút)</label>
@@ -362,35 +381,6 @@ export default function Film() {
                       placeholder="VD: 120"
                       min={1}
                     />
-                  </div>
-                  <div className="fm-field">
-                    <label className="fm-label">Ngày khởi chiếu</label>
-                    <input
-                      type="date"
-                      name="releaseDate"
-                      value={form.releaseDate}
-                      onChange={handleChange}
-                      className="fm-input"
-                    />
-                  </div>
-                </div>
-
-                {/* Trạng thái + Giới hạn tuổi */}
-                <div className="fm-field-row">
-                  <div className="fm-field">
-                    <label className="fm-label">Trạng thái</label>
-                    <select
-                      name="status"
-                      value={form.status}
-                      onChange={handleChange}
-                      className="fm-input"
-                    >
-                      {STATUS_OPTIONS.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                   <div className="fm-field">
                     <label className="fm-label">Giới hạn tuổi</label>
@@ -407,6 +397,47 @@ export default function Film() {
                       <option value="T18">T18 (Trên 18 tuổi)</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Ngày khởi chiếu + Ngày kết thúc */}
+                <div className="fm-field-row">
+                  <div className="fm-field">
+                    <label className="fm-label">Ngày khởi chiếu</label>
+                    <input
+                      type="date"
+                      name="releaseDate"
+                      value={form.releaseDate}
+                      onChange={handleChange}
+                      className="fm-input"
+                    />
+                  </div>
+                  <div className="fm-field">
+                    <label className="fm-label">Ngày kết thúc</label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={form.endDate}
+                      onChange={handleChange}
+                      className="fm-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Trạng thái */}
+                <div className="fm-field">
+                  <label className="fm-label">Trạng thái</label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="fm-input"
+                  >
+                    {STATUS_OPTIONS.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Poster Preview and Selection */}
@@ -491,8 +522,119 @@ export default function Film() {
           </div>,
           document.body
         )}
+
+      {/* ── Movie Detail Modal (Read-only) ── */}
+      {showDetailModal && selectedDetailMovie && (
+        createPortal(
+          <div className="fm-modal-overlay" onClick={closeDetailModal}>
+            <div 
+              className="fm-modal" 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ maxWidth: "750px", width: "90%" }}
+            >
+              {/* Modal Header */}
+              <div className="fm-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "16px" }}>
+                <h3 className="fm-modal-title" style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1f2937", margin: 0 }}>
+                  Chi Tiết Phim: {getMovieTitle(selectedDetailMovie)}
+                </h3>
+                <button 
+                  className="fm-modal-close" 
+                  onClick={closeDetailModal}
+                  style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#6b7280" }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="fm-modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                  {/* Left Column: Poster & Trailer */}
+                  <div>
+                    <div style={{ borderRadius: "8px", overflow: "hidden", marginBottom: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+                      <img 
+                        src={getMoviePoster(selectedDetailMovie)} 
+                        alt={getMovieTitle(selectedDetailMovie)} 
+                        style={{ width: "100%", height: "260px", objectFit: "cover" }} 
+                      />
+                    </div>
+
+                    {/* Trailer Video */}
+                    <div style={{ marginTop: "16px" }}>
+                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151", marginBottom: "8px" }}>Trailer Phim:</h4>
+                      {selectedDetailMovie.trailerUrl || selectedDetailMovie.TrailerUrl || selectedDetailMovie.trailerURL || selectedDetailMovie.TrailerURL ? (
+                        <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: "8px", overflow: "hidden" }}>
+                          <iframe
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+                            src={getEmbedUrl(selectedDetailMovie.trailerUrl || selectedDetailMovie.TrailerUrl || selectedDetailMovie.trailerURL || selectedDetailMovie.TrailerURL)}
+                            title="Trailer"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          ></iframe>
+                        </div>
+                      ) : (
+                        <div style={{ padding: "16px", background: "#f3f4f6", borderRadius: "8px", fontSize: "0.85rem", color: "#6b7280", textAlign: "center" }}>
+                          Phim này chưa cấu hình link trailer.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Content & Metadata */}
+                  <div>
+                    <div style={{ marginBottom: "16px" }}>
+                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Nội Dung Phim:</h4>
+                      <p style={{ fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.5", margin: 0, whiteSpace: "pre-wrap" }}>
+                        {selectedDetailMovie.description || selectedDetailMovie.Description || "Chưa có nội dung miêu tả."}
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#f9fafb", padding: "14px", borderRadius: "8px", border: "1px solid #f3f4f6" }}>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Thể loại:</span> {getMovieGenreText(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Đạo diễn:</span> {getMovieDirector(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Thời lượng:</span> {getMovieDuration(selectedDetailMovie)} phút</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Giới hạn tuổi:</span> {getMovieAgeRating(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Trạng thái:</span> {getMovieStatusDisplayName(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Khởi chiếu:</span> {getMovieReleaseDate(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Kết thúc:</span> {getMovieEndDate(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Ngôn ngữ:</span> {selectedDetailMovie.language || selectedDetailMovie.Language || "Chưa có"}</div>
+                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Phụ đề:</span> {selectedDetailMovie.subtitles || selectedDetailMovie.Subtitles || "Chưa có"}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="fm-modal-actions" style={{ marginTop: "18px", borderTop: "1px solid #e5e7eb", paddingTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+                <button 
+                  type="button" 
+                  className="fm-btn-cancel" 
+                  onClick={closeDetailModal}
+                  style={{ padding: "8px 20px" }}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      )}
     </div>
   );
+}
+
+function getEmbedUrl(url) {
+  if (!url) return "";
+  let videoId = "";
+  if (url.includes("youtube.com/watch?v=")) {
+    videoId = url.split("v=")[1]?.split("&")[0];
+  } else if (url.includes("youtu.be/")) {
+    videoId = url.split("youtu.be/")[1]?.split("?")[0];
+  } else if (url.includes("youtube.com/embed/")) {
+    return url;
+  }
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
 }
 
 /* ═══════════════════════════════════════════════════════════

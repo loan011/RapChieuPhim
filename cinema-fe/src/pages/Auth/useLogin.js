@@ -68,11 +68,11 @@ export function useLogin() {
     }
 
     if (role === "customer") {
-      navigate("/movies", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
 
-    navigate("/movies", { replace: true });
+    navigate("/", { replace: true });
   }
 
   async function handleLogin(e) {

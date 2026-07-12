@@ -317,6 +317,11 @@
   color: #f97316;
   background: #fff7ed;
 }
+.fm-card-btn--delete-action:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}
 
 /* ── Pagination Footer ── */
 .fm-footer {

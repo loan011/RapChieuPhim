@@ -7,7 +7,6 @@ import Register from "./pages/Auth/Register.jsx";
 import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
 import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
-import Cinema from "./pages/Cinema/Cinema.jsx";
 import Booking from "./pages/Booking/Booking.jsx";
 import Payment from "./pages/Payment/Payment.jsx";
 
@@ -55,16 +54,21 @@ function App() {
           path="/"
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
-              <Home />
+              <Movies />
             </ProtectedRoute>
           }
         />
 
         <Route
           path="/movies"
+          element={<Navigate to="/" replace />}
+        />
+
+        <Route
+          path="/showtimes"
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
-              <Movies />
+              <Home />
             </ProtectedRoute>
           }
         />
@@ -74,15 +78,6 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
               <TicketPrice />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/cinema"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <Cinema />
             </ProtectedRoute>
           }
         />

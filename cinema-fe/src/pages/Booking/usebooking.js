@@ -199,6 +199,10 @@ export async function loadBookingSeatsData(selectedShowtime) {
    MOVIE HELPER
 ========================= */
 
+export function getMovieId(movie) {
+  return movie?.movieId ?? movie?.MovieId ?? movie?.id ?? movie?.Id ?? "";
+}
+
 export function getMovieTitle(movie) {
   return (
     movie?.title ||
@@ -606,26 +610,26 @@ export function useBooking() {
   const queryTime = searchParams.get("time");
 
   const movieParam =
-    bookingState.movieId ??
-    bookingState.movie ??
-    bookingState.MovieId ??
-    bookingState.MovieID ??
-    queryMovie ??
+    queryMovie ||
+    bookingState.movieId ||
+    bookingState.movie ||
+    bookingState.MovieId ||
+    bookingState.MovieID ||
     "";
 
   const showtimeParam =
-    bookingState.showtimeId ??
-    bookingState.showTimeId ??
-    bookingState.ShowtimeId ??
-    bookingState.ShowTimeId ??
-    queryShowtimeId ??
+    queryShowtimeId ||
+    bookingState.showtimeId ||
+    bookingState.showTimeId ||
+    bookingState.ShowtimeId ||
+    bookingState.ShowTimeId ||
     "";
 
   const timeParam =
-    bookingState.time ??
-    bookingState.showTime ??
-    bookingState.ShowTime ??
-    queryTime ??
+    queryTime ||
+    bookingState.time ||
+    bookingState.showTime ||
+    bookingState.ShowTime ||
     "";
 
   const [movie, setMovie] = useState(null);

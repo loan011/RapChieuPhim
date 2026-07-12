@@ -1,6 +1,7 @@
 import "./Cinema.css";
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MdStorefront,
   MdPeople,
@@ -64,6 +65,7 @@ export default function RapChieu() {
   } = useCinema();
 
   const [page, setPage] = useState(1);
+  const navigate = useNavigate();
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -173,6 +175,7 @@ export default function RapChieu() {
                     statusStyle={style}
                     onEdit={() => openEditModal(cinema)}
                     onDelete={() => handleDelete(id)}
+                    onDetail={() => navigate(`/admin/phong-chieu?cinemaId=${id}`)}
                   />
                 );
               })}
@@ -347,7 +350,7 @@ function StatCard({ icon, iconBg, iconColor, label, value }) {
 }
 
 // ─── BranchCard ───────────────────────────────────────────
-function BranchCard({ cinema, statusStyle, onEdit, onDelete }) {
+function BranchCard({ cinema, statusStyle, onEdit, onDelete, onDetail }) {
   const managerName =
     cinema?.managerName ?? cinema?.ManagerName ?? cinema?.manager ?? "—";
   const staffCount =
@@ -358,11 +361,12 @@ function BranchCard({ cinema, statusStyle, onEdit, onDelete }) {
   return (
     <div className="cn-card">
       {/* Name + Badge */}
-      <div className="cn-card-head">
-        <h6 className="cn-card-name">{getCinemaName(cinema)}</h6>
+      <div className="cn-card-head" onClick={onDetail} style={{ cursor: "pointer" }}>
+        <h6 className="cn-card-name" style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#3b82f6"} onMouseOut={(e) => e.target.style.color = ""}>{getCinemaName(cinema)}</h6>
         <span
           className="cn-card-badge"
           style={{ background: statusStyle.bg, color: statusStyle.color }}
+          onClick={(e) => e.stopPropagation()}
         >
           {statusStyle.label}
         </span>
@@ -372,7 +376,13 @@ function BranchCard({ cinema, statusStyle, onEdit, onDelete }) {
       <div className="cn-card-info">
         <InfoRow icon={<MdPersonOutline />} label="Quản lý:" value={managerName} />
         <InfoRow icon={<MdGroup />} label="Nhân viên:" value={`${staffCount} nhân viên`} />
-        <InfoRow icon={<MdMeetingRoom />} label="Phòng chiếu:" value={`${roomCount} phòng chiếu`} />
+        <InfoRow 
+          icon={<MdMeetingRoom />} 
+          label="Phòng chiếu:" 
+          value={`${roomCount} phòng chiếu`} 
+          className="cn-info-row-clickable"
+          onClick={onDetail}
+        />
         <InfoRow
           icon={<MdLocationOn />}
           label="Địa chỉ:"
@@ -383,7 +393,7 @@ function BranchCard({ cinema, statusStyle, onEdit, onDelete }) {
 
       {/* Actions */}
       <div className="cn-card-actions">
-        <button className="cn-card-btn cn-card-btn--detail" onClick={() => {}}>
+        <button className="cn-card-btn cn-card-btn--detail" onClick={onDetail}>
           <MdVisibility size={15} /> Chi tiết
         </button>
         <button className="cn-card-btn cn-card-btn--edit" onClick={onEdit}>
@@ -395,9 +405,12 @@ function BranchCard({ cinema, statusStyle, onEdit, onDelete }) {
 }
 
 // ─── InfoRow ──────────────────────────────────────────────
-function InfoRow({ icon, label, value, multiline }) {
+function InfoRow({ icon, label, value, multiline, onClick, className }) {
   return (
-    <div className={`cn-info-row${multiline ? " cn-info-row--multiline" : ""}`}>
+    <div 
+      className={`cn-info-row${multiline ? " cn-info-row--multiline" : ""}${className ? " " + className : ""}`}
+      onClick={onClick}
+    >
       <span className="cn-info-icon">{icon}</span>
       <span className="cn-info-label">{label}</span>
       <span className="cn-info-value">{value || "—"}</span>

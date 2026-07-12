@@ -22,6 +22,7 @@ export const EMPTY_FORM = {
   duration: "",
   director: "",
   releaseDate: "",
+  endDate: "",
   status: "Đang chiếu",
   posterUrl: "",
   trailerUrl: "",
@@ -67,6 +68,10 @@ export function getMovieReleaseDateRaw(movie) {
   return movie?.releaseDate ?? movie?.ReleaseDate ?? movie?.startDate ?? movie?.StartDate ?? movie?.openingDate ?? movie?.OpeningDate ?? movie?.premiereDate ?? movie?.PremiereDate ?? "";
 }
 
+export function getMovieEndDateRaw(movie) {
+  return movie?.endDate ?? movie?.EndDate ?? "";
+}
+
 export function formatDate(dateValue) {
   if (!dateValue) return "Chưa có";
   const date = new Date(dateValue);
@@ -88,6 +93,10 @@ export function getMovieReleaseDate(movie) {
   return formatDate(getMovieReleaseDateRaw(movie));
 }
 
+export function getMovieEndDate(movie) {
+  return formatDate(getMovieEndDateRaw(movie));
+}
+
 export function getMoviePoster(movie) {
   const poster = movie?.posterUrl ?? movie?.PosterUrl ?? movie?.posterURL ?? movie?.PosterURL ?? movie?.imageUrl ?? movie?.ImageUrl ?? movie?.image ?? movie?.Image ?? "";
   return poster || "/img/no-image.png";
@@ -98,6 +107,25 @@ export function getMovieAgeRating(movie) {
 }
 
 export function getMovieStatusDisplayName(movie) {
+  const rawEnd = getMovieEndDateRaw(movie);
+  if (rawEnd) {
+    const endDt = new Date(rawEnd);
+    endDt.setHours(23, 59, 59, 999);
+    if (!isNaN(endDt.getTime()) && endDt <= new Date()) {
+      return "Đã chiếu";
+    }
+  }
+
+  // Check if release date is reached/passed
+  const rawRelease = getMovieReleaseDateRaw(movie);
+  if (rawRelease) {
+    const releaseDt = new Date(rawRelease);
+    releaseDt.setHours(0, 0, 0, 0); // Start of release day
+    if (!isNaN(releaseDt.getTime()) && releaseDt <= new Date()) {
+      return "Đang chiếu";
+    }
+  }
+
   const rawStatus = (movie?.status ?? movie?.Status ?? movie?.movieStatus ?? movie?.MovieStatus ?? "").toLowerCase();
   if (rawStatus.includes("đang chiếu") || rawStatus === "now" || rawStatus.includes("đang bán") || rawStatus === "active") {
     return "Đang chiếu";
@@ -111,14 +139,7 @@ export function getMovieStatusDisplayName(movie) {
   if (rawStatus.includes("chiếu sớm")) {
     return "Chiếu sớm";
   }
-  // Auto-promote or default based on release date if status is unclear
-  const rawRelease = getMovieReleaseDateRaw(movie);
-  if (rawRelease) {
-    const releaseDt = new Date(rawRelease);
-    if (!isNaN(releaseDt.getTime()) && releaseDt <= new Date()) {
-      return "Đang chiếu";
-    }
-  }
+
   return "Sắp chiếu";
 }
 
@@ -232,6 +253,10 @@ export function useFilm() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // Detail Modal states
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedDetailMovie, setSelectedDetailMovie] = useState(null);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -252,7 +277,13 @@ export function useFilm() {
       const maps = buildCategoryMaps(categories);
       setCategoryMap(maps.categoryMap);
       setMovieCategoryMap(maps.movieCategoryMap);
-      setList(normalizeArray(movies));
+      
+      const normalized = normalizeArray(movies);
+      const activeMovies = normalized.filter((m) => {
+        const status = (m?.status ?? m?.Status ?? "").toLowerCase();
+        return status !== "đã xóa";
+      });
+      setList(activeMovies);
     } catch (err) {
       console.error("Lỗi tải danh sách phim:", err);
       setError(err.message || "Không tải được danh sách phim");
@@ -344,12 +375,54 @@ export function useFilm() {
       alert("Không tìm thấy ID phim");
       return;
     }
-    if (!window.confirm("Bạn có chắc muốn xóa phim này?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn ẩn phim này?")) return;
 
     try {
-      await deleteMovie(id);
-      setList((prev) => prev.filter((movie) => String(getMovieId(movie)) !== String(id)));
+      const movie = list.find((m) => String(getMovieId(m)) === String(id));
+      if (!movie) return;
+
+      const rawRelease = getMovieReleaseDateRaw(movie);
+      let releaseDateStr = "";
+      if (rawRelease) {
+        const date = new Date(rawRelease);
+        if (!isNaN(date.getTime())) {
+          releaseDateStr = date.toISOString().split("T")[0];
+        } else {
+          releaseDateStr = String(rawRelease).split("T")[0];
+        }
+      }
+
+      const rawEnd = getMovieEndDateRaw(movie);
+      let endDateStr = "";
+      if (rawEnd) {
+        const date = new Date(rawEnd);
+        if (!isNaN(date.getTime())) {
+          endDateStr = date.toISOString().split("T")[0];
+        } else {
+          endDateStr = String(rawEnd).split("T")[0];
+        }
+      }
+
+      const payload = {
+        title: getMovieTitle(movie),
+        genre: getMovieGenre(movie, categoryMap, movieCategoryMap),
+        duration: movie?.duration ?? movie?.Duration ?? movie?.durationMinutes ?? movie?.DurationMinutes ?? null,
+        director: getMovieDirector(movie),
+        releaseDate: releaseDateStr || null,
+        endDate: endDateStr || null,
+        status: "Đã xóa",
+        posterUrl: getMoviePoster(movie) === "/img/no-image.png" ? null : getMoviePoster(movie),
+        trailerUrl: movie?.trailerUrl ?? movie?.TrailerUrl ?? movie?.trailerURL ?? movie?.TrailerURL ?? null,
+        ageRating: getMovieAgeRating(movie),
+        description: movie?.description ?? movie?.Description ?? "",
+        language: movie?.language ?? movie?.Language ?? "",
+        subtitles: movie?.subtitles ?? movie?.Subtitles ?? "",
+      };
+
+      await updateMovie(id, payload);
+      setList((prev) => prev.filter((m) => String(getMovieId(m)) !== String(id)));
     } catch (err) {
+      console.error("Lỗi xóa phim:", err);
       alert(err?.message || "Xóa phim thất bại");
     }
   }
@@ -374,6 +447,17 @@ export function useFilm() {
       }
     }
 
+    const rawEnd = getMovieEndDateRaw(movie);
+    let endDateStr = "";
+    if (rawEnd) {
+      const date = new Date(rawEnd);
+      if (!isNaN(date.getTime())) {
+        endDateStr = date.toISOString().split("T")[0];
+      } else {
+        endDateStr = String(rawEnd).split("T")[0];
+      }
+    }
+
     setEditId(getMovieId(movie));
     setForm({
       title: getMovieTitle(movie),
@@ -381,6 +465,7 @@ export function useFilm() {
       duration: String(movie?.duration ?? movie?.Duration ?? movie?.durationMinutes ?? movie?.DurationMinutes ?? ""),
       director: getMovieDirector(movie),
       releaseDate: releaseDateStr,
+      endDate: endDateStr,
       status: getMovieStatusDisplayName(movie),
       posterUrl: getMoviePoster(movie) === "/img/no-image.png" ? "" : getMoviePoster(movie),
       trailerUrl: movie?.trailerUrl ?? movie?.TrailerUrl ?? movie?.trailerURL ?? movie?.TrailerURL ?? "",
@@ -402,10 +487,36 @@ export function useFilm() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setForm((prev) => {
+      let updatedStatus = prev.status;
+
+      const tempForm = {
+        ...prev,
+        [name]: value
+      };
+
+      if (tempForm.releaseDate) {
+        const releaseDt = new Date(tempForm.releaseDate);
+        releaseDt.setHours(0, 0, 0, 0);
+        if (!isNaN(releaseDt.getTime()) && releaseDt <= new Date()) {
+          updatedStatus = "Đang chiếu";
+        }
+      }
+
+      if (tempForm.endDate) {
+        const endDt = new Date(tempForm.endDate);
+        endDt.setHours(23, 59, 59, 999);
+        if (!isNaN(endDt.getTime()) && endDt <= new Date()) {
+          updatedStatus = "Đã chiếu";
+        }
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+        status: updatedStatus,
+      };
+    });
   }
 
   function handleGenreSelect(e) {
@@ -452,13 +563,40 @@ export function useFilm() {
       return;
     }
 
+    if (editId === null) {
+      const titleExists = list.some(
+        (movie) => getMovieTitle(movie).toLowerCase().trim() === form.title.toLowerCase().trim()
+      );
+      if (titleExists) {
+        setFormError("Phim này đã tồn tại trong hệ thống.");
+        return;
+      }
+    }
+
+    let finalStatus = form.status;
+    if (form.releaseDate) {
+      const releaseDt = new Date(form.releaseDate);
+      releaseDt.setHours(0, 0, 0, 0);
+      if (!isNaN(releaseDt.getTime()) && releaseDt <= new Date()) {
+        finalStatus = "Đang chiếu";
+      }
+    }
+    if (form.endDate) {
+      const endDt = new Date(form.endDate);
+      endDt.setHours(23, 59, 59, 999);
+      if (!isNaN(endDt.getTime()) && endDt <= new Date()) {
+        finalStatus = "Đã chiếu";
+      }
+    }
+
     const payload = {
       title: form.title.trim(),
       genre: form.genre.trim(),
       duration: form.duration ? Number(form.duration) : null,
       director: form.director.trim(),
       releaseDate: form.releaseDate || null,
-      status: form.status,
+      endDate: form.endDate || null,
+      status: finalStatus,
       posterUrl: form.posterUrl.trim() || null,
       trailerUrl: form.trailerUrl.trim() || null,
       ageRating: form.ageRating,
@@ -493,6 +631,16 @@ export function useFilm() {
 
   function getMovieGenreText(movie) {
     return getMovieGenre(movie, categoryMap, movieCategoryMap);
+  }
+
+  function openDetailModal(movie) {
+    setSelectedDetailMovie(movie);
+    setShowDetailModal(true);
+  }
+
+  function closeDetailModal() {
+    setSelectedDetailMovie(null);
+    setShowDetailModal(false);
   }
 
   return {
@@ -533,5 +681,11 @@ export function useFilm() {
     handleSubmit,
     handleDelete,
     getMovieGenreText,
+
+    /* Detail Modal */
+    showDetailModal,
+    selectedDetailMovie,
+    openDetailModal,
+    closeDetailModal,
   };
 }

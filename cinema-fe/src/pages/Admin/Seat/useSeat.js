@@ -18,7 +18,7 @@ export const SEAT_TYPE_OPTIONS = [
 
 export const SEAT_STATUS_OPTIONS = [
   { value: "true", label: "Hoạt động" },
-  { value: "false", label: "Ngừng hoạt động" },
+  { value: "false", label: "Bảo trì" },
 ];
 
 export const SEAT_ROW_OPTIONS = [
@@ -227,7 +227,7 @@ export function getSeatStatus(seat) {
   const isActive = seat?.isActive ?? seat?.IsActive;
 
   if (isActive === true) return "Hoạt động";
-  if (isActive === false) return "Ngừng hoạt động";
+  if (isActive === false) return "Bảo trì";
 
   return seat?.status ?? seat?.Status ?? "Chưa có";
 }
@@ -317,6 +317,11 @@ export function useSeat() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
+  const queryRoomId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("roomId");
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -340,7 +345,23 @@ export function useSeat() {
       setRooms(normalizedRooms);
       setCinemas(normalizedCinemas);
 
-      if (normalizedCinemas.length > 0 && !filterCinemaId) {
+      if (queryRoomId && normalizedRooms.length > 0) {
+        const targetRoom = normalizedRooms.find(r => String(getRoomId(r)) === String(queryRoomId));
+        if (targetRoom) {
+          const targetCinemaId = String(getRoomCinemaId(targetRoom) ?? "");
+          setFilterCinemaId(targetCinemaId);
+          setFilterRoom(String(queryRoomId));
+        } else if (normalizedCinemas.length > 0 && !filterCinemaId) {
+          const firstCinemaId = String(getCinemaId(normalizedCinemas[0]) ?? "");
+          setFilterCinemaId(firstCinemaId);
+          const cinemaRooms = normalizedRooms.filter(
+            (room) => String(getRoomCinemaId(room)) === firstCinemaId
+          );
+          if (cinemaRooms.length > 0 && !filterRoom) {
+            setFilterRoom(String(getRoomId(cinemaRooms[0])));
+          }
+        }
+      } else if (normalizedCinemas.length > 0 && !filterCinemaId) {
         const firstCinemaId = String(getCinemaId(normalizedCinemas[0]) ?? "");
 
         setFilterCinemaId(firstCinemaId);
@@ -553,9 +574,9 @@ export function useSeat() {
   }, [selectedRoomSeats, list]);
 
   /* ── Modal Handlers ── */
-  function openAddModal() {
+  function openAddModal(initialValues = null) {
     setEditId(null);
-    setForm(EMPTY_SEAT_FORM);
+    setForm(initialValues ? { ...EMPTY_SEAT_FORM, ...initialValues } : EMPTY_SEAT_FORM);
     setFormError("");
     setShowModal(true);
   }

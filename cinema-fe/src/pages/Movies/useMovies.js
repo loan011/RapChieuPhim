@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getMovieList, getAreaList as getServiceAreaList } from "./moviesService.js";
 import { getHomeShowtimes, getHomeCinemas, getHomeRooms } from "../usehome.js";
 
@@ -566,8 +566,7 @@ export function getMovieTrailer(movie) {
 ========================= */
 
 export function useMovies() {
-  const [activeTab, setActiveTab] = useState("now");
-  const [movies, setMovies] = useState([]);
+  const [allMovies, setAllMovies] = useState([]);
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
   const [showtimes, setShowtimes] = useState([]);
@@ -580,13 +579,43 @@ export function useMovies() {
 
   const userEmail = getMovieUserEmail();
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  // Lọc phim đang chiếu (now): có status đang chiếu HOẶC (sắp chiếu NHƯNG đã đến/qua ngày chiếu)
+  const moviesNow = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return allMovies.filter((m) => {
+      const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
+      
+      const rawRelease = m.releaseDate || m.ReleaseDate || m.release_date || m.startDate || m.StartDate || m.openingDate || m.OpeningDate || m.premiereDate || m.PremiereDate;
+      const releaseDate = rawRelease ? new Date(rawRelease) : null;
+      const isReleased = releaseDate && !isNaN(releaseDate.getTime()) && releaseDate <= today;
+
+      const matchesStatus = status.includes("đang chiếu") || status === "now";
+      const autoPromoted = (status.includes("sắp chiếu") || status === "coming") && isReleased;
+      return matchesStatus || autoPromoted;
+    });
+  }, [allMovies]);
+
+  // Lọc phim sắp chiếu (coming): có status sắp chiếu VÀ chưa đến ngày chiếu
+  const moviesComing = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return allMovies.filter((m) => {
+      const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
+      
+      const rawRelease = m.releaseDate || m.ReleaseDate || m.release_date || m.startDate || m.StartDate || m.openingDate || m.OpeningDate || m.premiereDate || m.PremiereDate;
+      const releaseDate = rawRelease ? new Date(rawRelease) : null;
+      const notYetReleased = !releaseDate || isNaN(releaseDate.getTime()) || releaseDate > today;
+
+      const matchesStatus = status.includes("sắp chiếu") || status === "coming";
+      return matchesStatus && notYetReleased;
+    });
+  }, [allMovies]);
 
   useEffect(() => {
-    fetchMoviesByTab(activeTab);
-  }, [activeTab]);
+    fetchInitialData();
+    fetchAllMoviesData();
+  }, []);
 
   async function fetchInitialData() {
     try {
@@ -604,7 +633,6 @@ export function useMovies() {
       movieCategoryCache = initData.categories;
     } catch (error) {
       console.error("Lỗi tải thông tin ban đầu:", error);
-
       setCategories([]);
       setAreas([]);
       setCinemas([]);
@@ -613,35 +641,29 @@ export function useMovies() {
     }
   }
 
-  async function fetchMoviesByTab(tabKey) {
+  async function fetchAllMoviesData() {
     try {
       setLoading(true);
 
-      const [apiMovies, showtimeData] = await Promise.all([
-        getMoviesByTab(tabKey),
+      const [data, showtimeData] = await Promise.all([
+        getMovieList(),
         getHomeShowtimes().catch((err) => {
           console.error("Lỗi tải danh sách suất chiếu:", err);
           return [];
         }),
       ]);
 
-      console.log("Danh sách phim từ API:", apiMovies);
+      console.log("Danh sách phim từ API:", data);
 
-      setMovies(Array.isArray(apiMovies) ? apiMovies : []);
+      setAllMovies(Array.isArray(data) ? data : normalizeArray(data));
       setShowtimes(showtimeData);
     } catch (error) {
-      console.error("Lỗi tải danh sách phim theo tab:", error);
-
-      setMovies([]);
+      console.error("Lỗi tải danh sách phim:", error);
+      setAllMovies([]);
       setShowtimes([]);
     } finally {
       setLoading(false);
     }
-  }
-
-  function changeTab(tabName) {
-    setActiveTab(tabName);
-    setSelectedTrailer(null);
   }
 
   function handleAreaChange(areaId) {
@@ -699,11 +721,9 @@ export function useMovies() {
   }
 
   return {
-    activeTab,
-    setActiveTab,
-
-    movies,
-    setMovies,
+    allMovies,
+    moviesNow,
+    moviesComing,
 
     categories,
     setCategories,
@@ -731,13 +751,12 @@ export function useMovies() {
 
     userEmail,
 
-    changeTab,
     handleAreaChange,
     openTrailer,
     closeTrailer,
     getBookingLink,
     fetchInitialData,
-    fetchMoviesByTab,
+    fetchAllMoviesData,
     hasValidShowtimes,
 
     getMovieGenre: getMovieGenreWithCategories,

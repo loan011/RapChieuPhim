@@ -1,6 +1,7 @@
 import "./Room.css";
 import { createPortal } from "react-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MdAdd,
   MdOndemandVideo,
@@ -55,10 +56,18 @@ export default function RoomAdmin() {
   } = useRoom();
 
   const [page, setPage] = useState(1);
+  const navigate = useNavigate();
   const [selectedCinemaFilter, setSelectedCinemaFilter] = useState("");
 
+  const queryCinemaId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("cinemaId");
+  }, []);
+
   useEffect(() => {
-    if (cinemas.length > 0 && !selectedCinemaFilter) {
+    if (queryCinemaId) {
+      setSelectedCinemaFilter(String(queryCinemaId));
+    } else if (cinemas.length > 0 && !selectedCinemaFilter) {
       const firstId = String(
         cinemas[0]?.cinemaId ??
         cinemas[0]?.CinemaId ??
@@ -68,7 +77,7 @@ export default function RoomAdmin() {
       );
       setSelectedCinemaFilter(firstId);
     }
-  }, [cinemas, selectedCinemaFilter]);
+  }, [cinemas, selectedCinemaFilter, queryCinemaId]);
 
   // ── Helper lấy cinemaId từ room ──
   function getRoomCinemaId(r) {
@@ -234,6 +243,7 @@ export default function RoomAdmin() {
                     statusStyle={style}
                     onEdit={() => openEditRoom(room)}
                     onDelete={() => handleDeleteRoom(id)}
+                    onDetailSeat={() => navigate(`/admin/ghe?roomId=${id}`)}
                   />
                 );
               })}
@@ -397,7 +407,7 @@ function StatCard({ icon, iconBg, iconColor, label, value }) {
 }
 
 // ── RoomCard ───────────────────────────────────────────────
-function RoomCard({ room, statusStyle, onEdit, onDelete }) {
+function RoomCard({ room, statusStyle, onEdit, onDelete, onDetailSeat }) {
   const name =
     room?.roomName ?? room?.RoomName ?? room?.name ?? "—";
   const cinemaName =
@@ -415,11 +425,12 @@ function RoomCard({ room, statusStyle, onEdit, onDelete }) {
   return (
     <div className="rm-card">
       {/* Name + Badge */}
-      <div className="rm-card-head">
-        <h6 className="rm-card-name">{name}</h6>
+      <div className="rm-card-head" onClick={onDetailSeat} style={{ cursor: "pointer" }}>
+        <h6 className="rm-card-name" style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#3b82f6"} onMouseOut={(e) => e.target.style.color = ""}>{name}</h6>
         <span
           className="rm-card-badge"
           style={{ background: statusStyle.bg, color: statusStyle.color }}
+          onClick={(e) => e.stopPropagation()}
         >
           {statusStyle.label}
         </span>
@@ -429,7 +440,13 @@ function RoomCard({ room, statusStyle, onEdit, onDelete }) {
       <div className="rm-card-info">
         <InfoRow icon={<MdLocationOn />} label="Chi nhánh:" value={cinemaName} />
         <InfoRow icon={<MdScreenshotMonitor />} label="Loại phòng:" value={roomType} />
-        <InfoRow icon={<MdChair />} label="Sức chứa:" value={`${totalSeats} ghế`} />
+        <InfoRow 
+          icon={<MdChair />} 
+          label="Sức chứa:" 
+          value={`${totalSeats} ghế`} 
+          className="rm-info-row-clickable"
+          onClick={onDetailSeat}
+        />
         {equipment && (
           <InfoRow icon={<MdSpeaker />} label="Thiết bị:" value={equipment} multiline />
         )}
@@ -437,7 +454,7 @@ function RoomCard({ room, statusStyle, onEdit, onDelete }) {
 
       {/* Actions */}
       <div className="rm-card-actions">
-        <button className="rm-card-btn rm-card-btn--detail" onClick={() => {}}>
+        <button className="rm-card-btn rm-card-btn--detail" onClick={onDetailSeat}>
           <MdVisibility size={15} /> Chi tiết
         </button>
         <button className="rm-card-btn rm-card-btn--edit" onClick={onEdit}>
@@ -449,9 +466,12 @@ function RoomCard({ room, statusStyle, onEdit, onDelete }) {
 }
 
 // ── InfoRow ────────────────────────────────────────────────
-function InfoRow({ icon, label, value, multiline }) {
+function InfoRow({ icon, label, value, multiline, onClick, className }) {
   return (
-    <div className={`rm-info-row${multiline ? " rm-info-row--multiline" : ""}`}>
+    <div 
+      className={`rm-info-row${multiline ? " rm-info-row--multiline" : ""}${className ? " " + className : ""}`}
+      onClick={onClick}
+    >
       <span className="rm-info-icon">{icon}</span>
       <span className="rm-info-label">{label}</span>
       <span className="rm-info-value">{value || "—"}</span>

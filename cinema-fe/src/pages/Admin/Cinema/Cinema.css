@@ -415,3 +415,22 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* Clickable room row styling */
+.cn-info-row-clickable {
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.cn-info-row-clickable:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.cn-info-row-clickable:hover .cn-info-label {
+  color: #1d4ed8;
+}
+.cn-info-row-clickable:hover .cn-info-icon {
+  color: #3b82f6;
+}

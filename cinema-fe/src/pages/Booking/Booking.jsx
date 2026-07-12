@@ -1,45 +1,90 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   MdLocationOn,
   MdCalendarToday,
   MdAccessTime,
   MdPayment,
-  MdCheckCircle,
-  MdQrCode2,
+  MdArrowBack,
 } from "react-icons/md";
-
-import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 import "../../styles/Booking.css";
+import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
+import { useBooking } from "./usebooking.js";
 
 import {
-  useBooking,
-
+  getCinemaId,
+  getCinemaName,
+  getMovieId,
   getMovieTitle,
   getMoviePoster,
   getMovieAgeRating,
   getMovieDuration,
   getMovieDirector,
-
-  getCinemaId,
-  getCinemaName,
-  getCinemaNameById,
-
+  getRoomId,
   getRoomName,
-  findRoomByShowtime,
-
   getShowtimeId,
+  getShowtimeRoomId,
+  getShowtimeDate,
   getShowtimeHour,
   getShowtimeBasePrice,
-
   getSeatId,
+  getSeatRow,
+  getSeatNumber,
   getSeatType,
   getSeatLabel,
   getSeatDisplayNumber,
   isSeatAvailable,
   getSeatPrice,
+  groupSeatsByRow,
+  getCinemaNameById,
 } from "./usebooking.js";
 
+// Helper to format date like "Thứ 7, 18/05/2024"
+function getFormattedDateLabel(dateIso) {
+  if (!dateIso) return "Chưa chọn";
+  const d = new Date(dateIso);
+  if (isNaN(d.getTime())) return String(dateIso);
+  const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+  const dayLabel = dayNames[d.getDay()];
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dayLabel}, ${dd}/${mm}/${yyyy}`;
+}
+
+function renderComboImage(image, name) {
+  let imgSrc = image || "";
+  
+  if (imgSrc && !imgSrc.startsWith("http") && !imgSrc.startsWith("data:") && !imgSrc.startsWith("/")) {
+    imgSrc = `http://localhost:7013/uploads/${imgSrc}`;
+  }
+  
+  if (!imgSrc) {
+    imgSrc = "/img/no-image.png";
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={name || "Combo"}
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = "/img/no-image.png";
+      }}
+      style={{
+        width: "55px",
+        height: "55px",
+        borderRadius: "8px",
+        objectFit: "cover",
+        background: "rgba(255,255,255,0.05)",
+      }}
+    />
+  );
+}
+
 export default function Booking() {
+  const navigate = useNavigate();
+
   const {
     movie,
     cinemas,
@@ -50,6 +95,7 @@ export default function Booking() {
     allSeats,
     availableSeats,
     selectedSeats,
+    setSelectedSeats,
     loading,
     loadingSeats,
     bookingError,
@@ -81,27 +127,16 @@ export default function Booking() {
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
-
-  const getSeatSortNumber = (seat) => {
-    const raw =
-      seat?.seatNumber ??
-      seat?.SeatNumber ??
-      seat?.seatNo ??
-      seat?.SeatNo ??
-      getSeatDisplayNumber(seat) ??
-      getSeatLabel(seat);
-
-    const match = String(raw).match(/\d+/);
-
-    return match ? Number(match[0]) : 0;
   };
 
   const sortSeatsByNumber = (seats = []) => {
     return [...seats].sort(
-      (a, b) => getSeatSortNumber(a) - getSeatSortNumber(b)
+      (a, b) => {
+        const aNum = parseInt(getSeatNumber(a)) || 0;
+        const bNum = parseInt(getSeatNumber(b)) || 0;
+        return aNum - bNum;
+      }
     );
   };
 
@@ -113,270 +148,299 @@ export default function Booking() {
 
   const normalizeSeatClassType = (seatType) => {
     const type = String(seatType || "").toLowerCase();
-
-    if (type === "normal") return "standard";
-    if (type === "thường") return "standard";
+    if (type === "normal" || type === "thường") return "standard";
     if (type === "sweetbox") return "couple";
-
     return type;
   };
 
-  const isImageSrc = (value) => {
-    const text = String(value || "").trim();
+  // Find active room and cinema models
+  const selectedCinema = useMemo(() => {
+    return cinemas.find(c => String(getCinemaId(c)) === String(selectedCinemaId));
+  }, [cinemas, selectedCinemaId]);
 
-    return (
-      text.startsWith("/") ||
-      text.startsWith("http://") ||
-      text.startsWith("https://") ||
-      text.startsWith("data:image")
-    );
-  };
+  const selectedRoom = useMemo(() => {
+    if (!selectedShowtime) return null;
+    const roomId = getShowtimeRoomId(selectedShowtime);
+    return rooms.find(r => String(getRoomId(r)) === String(roomId));
+  }, [rooms, selectedShowtime]);
 
-  const renderComboImage = (image, name) => {
-    if (isImageSrc(image)) {
-      return (
-        <img
-          src={image}
-          alt={name}
-          style={{
-            width: "42px",
-            height: "42px",
-            objectFit: "contain",
-            borderRadius: "8px",
-          }}
-        />
+  // Group and render seats, merging couple seats into double-wide capsules
+  const renderSeatsRow = (row) => {
+    const sortedSeats = sortSeatsByNumber(groupedSeats[row] || []);
+    const elements = [];
+
+    for (let i = 0; i < sortedSeats.length; i++) {
+      const seat = sortedSeats[i];
+      const seatType = getSeatType(seat);
+      const seatClassType = normalizeSeatClassType(seatType);
+
+      // Group couple seats (consecutive Sweetbox/Couple seats)
+      if (seatClassType === "couple") {
+        const nextSeat = sortedSeats[i + 1];
+        const nextSeatType = nextSeat ? getSeatType(nextSeat) : "";
+        const nextSeatClassType = nextSeat ? normalizeSeatClassType(nextSeatType) : "";
+
+        if (nextSeat && nextSeatClassType === "couple") {
+          const seatId1 = getSeatId(seat);
+          const seatId2 = getSeatId(nextSeat);
+
+          const available1 = isSeatAvailable(seat, availableSeats);
+          const available2 = isSeatAvailable(nextSeat, availableSeats);
+          const available = available1 && available2;
+
+          const selected1 = selectedSeats.some(s => String(getSeatId(s)) === String(seatId1));
+          const selected2 = selectedSeats.some(s => String(getSeatId(s)) === String(seatId2));
+          const selected = selected1 || selected2;
+
+          let seatClass = "seat-node couple-merged";
+          if (!available) {
+            seatClass += " taken";
+          } else if (selected) {
+            seatClass += " selected";
+          } else {
+            seatClass += " couple";
+          }
+
+          const num1 = getSeatDisplayNumber(seat);
+          const num2 = getSeatDisplayNumber(nextSeat);
+
+          elements.push(
+            <button
+              key={`${seatId1}-${seatId2}`}
+              type="button"
+              className={seatClass}
+              disabled={!available}
+              onClick={() => {
+                if (!available) return;
+                let nextSelected = [...selectedSeats];
+                const has1 = nextSelected.some(s => String(getSeatId(s)) === String(seatId1));
+                const has2 = nextSelected.some(s => String(getSeatId(s)) === String(seatId2));
+
+                if (has1 || has2) {
+                  // Toggle off
+                  nextSelected = nextSelected.filter(s => String(getSeatId(s)) !== String(seatId1) && String(getSeatId(s)) !== String(seatId2));
+                } else {
+                  // Toggle on both
+                  nextSelected.push(seat, nextSeat);
+                }
+                setSelectedSeats(nextSelected);
+              }}
+              title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime) * 2).toLocaleString("vi-VN")}đ)`}
+            >
+              {selected ? (
+                <span className="selected-checkmark">✓</span>
+              ) : (
+                `${getSeatRow(seat)}${num1} ${getSeatRow(nextSeat)}${num2}`
+              )}
+            </button>
+          );
+
+          i++; // Skip next seat as it is merged
+          continue;
+        }
+      }
+
+      // Standard seat node
+      const seatId = getSeatId(seat);
+      const available = isSeatAvailable(seat, availableSeats);
+      const selected = selectedSeats.some(s => String(getSeatId(s)) === String(seatId));
+
+      let seatClass = "seat-node";
+      if (!available) {
+        seatClass += " taken";
+      } else if (selected) {
+        seatClass += " selected";
+      } else {
+        seatClass += ` ${seatClassType}`;
+      }
+
+      elements.push(
+        <button
+          key={seatId}
+          type="button"
+          className={seatClass}
+          disabled={!available}
+          onClick={() => handleSeatClick(seat)}
+          title={`${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(seat, selectedShowtime).toLocaleString("vi-VN")}đ)`}
+        >
+          {selected ? (
+            <span className="selected-checkmark">✓</span>
+          ) : !available ? (
+            <span className="seat-lock-icon">🔒</span>
+          ) : (
+            getSeatDisplayNumber(seat)
+          )}
+        </button>
       );
     }
 
-    return <span style={{ fontSize: "2rem" }}>{image || "🍿"}</span>;
+    return elements;
   };
-
-  if (loading) {
-    return (
-      <div className="booking-loading">
-        Đang tải thông tin phim và phòng chiếu...
-      </div>
-    );
-  }
-
-  if (!movie) {
-    return (
-      <div className="booking-loading">
-        Không tìm thấy thông tin bộ phim này!
-        {bookingError && (
-          <p style={{ marginTop: "8px", color: "#ef4444" }}>
-            {bookingError}
-          </p>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="booking-page-layout">
+      {/* Top Login Bar */}
       <div className="movie-top-login">
-        {userEmail ? (
-          <CustomerProfileDropdown />
-        ) : (
-          <>
-            <Link to="/login">Đăng nhập</Link>
-            <span style={{ margin: "0 6px" }}>|</span>
-            <Link to="/register">Đăng ký</Link>
-          </>
-        )}
+        <div className="top-login-content">
+          {userEmail ? (
+            <CustomerProfileDropdown />
+          ) : (
+            <div className="auth-links">
+              <Link to="/login">Đăng nhập</Link>
+              <span> | </span>
+              <Link to="/register">Đăng ký</Link>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Header Bar */}
       <header className="movie-header">
-        <div className="movie-logo">
-          <span>Cinemas</span>
-          <b>HCM</b>
+        <div className="movie-logo-container">
+          <Link to="/" className="movie-logo">
+            <span>Cinemas</span><b>HCM</b>
+          </Link>
         </div>
 
-        <nav>
-          <Link to="/movies">PHIM</Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-          <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+        <nav className="movie-nav">
+          <Link to="/showtimes">Lịch chiếu</Link>
+          <Link to="/">Phim</Link>
+          <Link to="/ticket-price">Giá vé</Link>
+          <a href="#news">Ưu đãi</a>
+          <a href="#member">Thành viên</a>
+          <a href="#food">Food & Drink</a>
         </nav>
       </header>
 
-      <div className="booking-main-container">
+      {/* Steps indicator bar */}
+      <div className="bk-steps-progress-container">
+        <div className="bk-steps-progress">
+          <div className="bk-step active">
+            <span className="step-number">1</span>
+            <span className="step-label">Chọn ghế</span>
+          </div>
+          <div className="bk-step-line active"></div>
+          <div className="bk-step">
+            <span className="step-number">2</span>
+            <span className="step-label">Thanh toán</span>
+          </div>
+          <div className="bk-step-line"></div>
+          <div className="bk-step">
+            <span className="step-number">3</span>
+            <span className="step-label">Hoàn tất</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid Wrapper */}
+      <div className="booking-main-container bk-booking-grid">
+        {/* Left Side: Seat Map */}
         <div className="booking-left-section">
-          <div className="booking-movie-summary-card">
-            <img
-              src={getMoviePoster(movie)}
-              alt={getMovieTitle(movie)}
-              className="booking-summary-poster"
-            />
+          
+          {/* Showtime Static Details Card */}
+          {selectedShowtime && (
+            <div className="bk-showtime-detail-card">
+              <img
+                src={getMoviePoster(movie)}
+                alt={getMovieTitle(movie)}
+                className="bk-detail-poster"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/img/no-image.png";
+                }}
+              />
+              <div className="bk-detail-info">
+                <h1 className="bk-detail-title">{getMovieTitle(movie)}</h1>
+                
+                <div className="bk-detail-grid">
+                  <div className="bk-grid-item">
+                    <span className="bk-grid-icon">📍</span>
+                    <div className="bk-grid-text">
+                      <strong>{getCinemaNameById(cinemas, selectedCinemaId)}</strong>
+                      <span>{selectedCinema?.address || selectedCinema?.Address || "135 Hai Bà Trưng, Quận 1, TP. HCM"}</span>
+                    </div>
+                  </div>
 
-            <div className="booking-summary-info">
-              <span className="age-badge-style">
-                {getMovieAgeRating(movie)}
-              </span>
+                  <div className="bk-grid-item">
+                    <span className="bk-grid-icon">🚪</span>
+                    <div className="bk-grid-text">
+                      <strong>Phòng chiếu</strong>
+                      <span>{selectedRoom ? getRoomName(selectedRoom) : "N/A"}</span>
+                    </div>
+                  </div>
 
-              <h1>{getMovieTitle(movie)}</h1>
+                  <div className="bk-grid-item">
+                    <span className="bk-grid-icon">📅</span>
+                    <div className="bk-grid-text">
+                      <strong>Ngày chiếu</strong>
+                      <span>{getFormattedDateLabel(selectedDateIso)}</span>
+                    </div>
+                  </div>
 
-              <p>⏱ Thời lượng: {getMovieDuration(movie)}</p>
-              <p>🎬 Đạo diễn: {getMovieDirector(movie)}</p>
-            </div>
-          </div>
-
-          <div className="booking-section-card">
-            <h2 className="step-title">
-              <span className="step-num-icon">1</span>
-              Chọn Suất Chiếu
-            </h2>
-
-            <div className="params-selectors-grid">
-              <div className="param-group">
-                <label>
-                  <MdLocationOn /> Chọn Rạp
-                </label>
-
-                <select
-                  value={selectedCinemaId}
-                  onChange={(e) => handleCinemaChange(e.target.value)}
-                >
-                  <option value="">Chọn rạp</option>
-
-                  {cinemas.map((cinema) => {
-                    const id = getCinemaId(cinema);
-
-                    return (
-                      <option key={id} value={String(id)}>
-                        {getCinemaName(cinema)}
-                      </option>
-                    );
-                  })}
-                </select>
+                  <div className="bk-grid-item">
+                    <span className="bk-grid-icon">⏰</span>
+                    <div className="bk-grid-text">
+                      <strong>Suất chiếu</strong>
+                      <span>{getShowtimeHour(selectedShowtime)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <div className="param-group">
-                <label>
-                  <MdCalendarToday /> Chọn Ngày
-                </label>
-
-                <select
-                  value={selectedDateIso}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                >
-                  {dates.map((date) => (
-                    <option key={date.iso} value={date.iso}>
-                      {date.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="bk-detail-format-badge">2D</div>
             </div>
+          )}
 
-            <div className="showtimes-selector-block">
-              <label className="sub-param-label">
-                <MdAccessTime /> Khung Giờ Chiếu Trong Ngày
-              </label>
-
-              <div className="booking-showtimes-grid">
-                {filteredShowtimes.length > 0 ? (
-                  filteredShowtimes.map((showtime) => {
-                    const showtimeId = getShowtimeId(showtime);
-                    const time = getShowtimeHour(showtime);
-                    const room = findRoomByShowtime(showtime, rooms);
-                    const roomName = room ? getRoomName(room) : "N/A";
-
-                    const isActive =
-                      String(getShowtimeId(selectedShowtime)) ===
-                      String(showtimeId);
-
-                    return (
-                      <button
-                        key={showtimeId}
-                        type="button"
-                        className={`booking-time-btn ${
-                          isActive ? "active" : ""
-                        }`}
-                        onClick={() => handleShowtimeClick(showtime)}
-                      >
-                        {time} ({roomName})
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="no-showtimes-text">
-                    Không có suất chiếu nào phù hợp trong ngày này.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="booking-section-card">
-            <h2 className="step-title">
-              <span className="step-num-icon">2</span>
-              Chọn Ghế Ngồi
-            </h2>
-
+          {/* Seat selection card */}
+          <div className="booking-section-card bk-seat-section">
             {loadingSeats ? (
-              <div className="seats-loading">
-                Đang tải sơ đồ ghế ngồi...
-              </div>
+              <div className="seats-loading">Đang tải sơ đồ ghế ngồi...</div>
             ) : selectedShowtime && allSeats.length > 0 ? (
               <>
-                <div className="cinema-screen-container">
-                  <div className="cinema-screen-curved"></div>
-                  <p className="screen-label">MÀN HÌNH CHIẾU</p>
+                {/* 1. Seat Type Legends Row (Moved to top) */}
+                <div className="seats-legend-bar bk-legends-row">
+                  <div className="legend-item">
+                    <div className="seat-node legend-box standard"></div>
+                    <span>
+                      Ghế thường / {Number(getShowtimeBasePrice(selectedShowtime)).toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+
+                  <div className="legend-item">
+                    <div className="seat-node legend-box vip"></div>
+                    <span>
+                      Ghế VIP / {(Number(getShowtimeBasePrice(selectedShowtime)) + 20000).toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+
+                  <div className="legend-item">
+                    <div className="seat-node legend-box couple"></div>
+                    <span>
+                      Ghế Couple / {(Number(getShowtimeBasePrice(selectedShowtime)) + 40000).toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+
+                  <div className="legend-item">
+                    <div className="seat-node legend-box taken">
+                      <span className="seat-lock-icon" style={{ fontSize: "10px" }}>🔒</span>
+                    </div>
+                    <span>Ghế bảo trì / Không bán</span>
+                  </div>
                 </div>
 
-                <div className="seats-map-matrix">
+                {/* 2. Curved screen indicator */}
+                <div className="cinema-screen-container bk-screen-box">
+                  <div className="cinema-screen-curved"></div>
+                  <p className="screen-label">MÀN HÌNH</p>
+                </div>
+
+                {/* 3. Seat Grid Matrix */}
+                <div className="seats-map-matrix bk-matrix-box">
                   {sortRows(rowsKeys).map((row) => (
                     <div key={row} className="seats-row">
                       <span className="row-letter">{row}</span>
 
                       <div className="seats-row-cols">
-                        {sortSeatsByNumber(groupedSeats[row] || []).map(
-                          (seat) => {
-                            const available = isSeatAvailable(
-                              seat,
-                              availableSeats
-                            );
-
-                            const selected = selectedSeats.some(
-                              (s) =>
-                                String(getSeatId(s)) === String(getSeatId(seat))
-                            );
-
-                            const seatType = getSeatType(seat);
-                            const seatClassType =
-                              normalizeSeatClassType(seatType);
-
-                            let seatClass = "seat-node";
-
-                            if (!available) {
-                              seatClass += " taken";
-                            } else if (selected) {
-                              seatClass += " selected";
-                            } else {
-                              seatClass += ` ${seatClassType}`;
-                            }
-
-                            return (
-                              <div
-                                key={getSeatId(seat)}
-                                className={seatClass}
-                                onClick={() => handleSeatClick(seat)}
-                                title={`${getSeatLabel(
-                                  seat
-                                )} (${seatType} - ${getSeatPrice(
-                                  seat,
-                                  selectedShowtime
-                                ).toLocaleString("vi-VN")}đ)`}
-                              >
-                                {getSeatDisplayNumber(seat)}
-                              </div>
-                            );
-                          }
-                        )}
+                        {renderSeatsRow(row)}
                       </div>
 
                       <span className="row-letter">{row}</span>
@@ -384,66 +448,24 @@ export default function Booking() {
                   ))}
                 </div>
 
-                <div className="seats-legend-bar">
-                  <div className="legend-item">
-                    <div className="seat-node legend-box standard"></div>
-                    <span>
-                      Thường (
-                      {Number(
-                        getShowtimeBasePrice(selectedShowtime)
-                      ).toLocaleString("vi-VN")}
-                      đ)
-                    </span>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="seat-node legend-box vip"></div>
-                    <span>
-                      VIP (
-                      {(
-                        Number(getShowtimeBasePrice(selectedShowtime)) + 20000
-                      ).toLocaleString("vi-VN")}
-                      đ)
-                    </span>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="seat-node legend-box couple"></div>
-                    <span>
-                      Couple (
-                      {(
-                        Number(getShowtimeBasePrice(selectedShowtime)) + 40000
-                      ).toLocaleString("vi-VN")}
-                      đ)
-                    </span>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="seat-node legend-box selected"></div>
-                    <span>Đang chọn</span>
-                  </div>
-
-                  <div className="legend-item">
-                    <div className="seat-node legend-box taken"></div>
-                    <span>Đã đặt</span>
-                  </div>
+                {/* 4. Scroll down note */}
+                <div className="bk-scroll-down-note">
+                  <span className="bk-scroll-icon">🖱️</span>
+                  <span>Kéo xuống để xem thêm (nếu có)</span>
                 </div>
               </>
             ) : selectedShowtime && allSeats.length === 0 ? (
-              <p className="no-seats-text">
-                Phòng chiếu này chưa có dữ liệu ghế.
-              </p>
+              <p className="no-seats-text">Phòng chiếu này chưa có dữ liệu ghế.</p>
             ) : (
-              <p className="no-seats-text">
-                Vui lòng chọn suất chiếu để hiển thị sơ đồ ghế.
-              </p>
+              <p className="no-seats-text">Vui lòng chọn suất chiếu để hiển thị sơ đồ ghế.</p>
             )}
           </div>
         </div>
 
+        {/* Right Side: Detailed Booking Info Panel */}
         <div className="booking-right-sidebar">
-          <div className="checkout-summary-card">
-            <h2 className="summary-title">Tóm Tắt Đặt Vé</h2>
+          <div className="checkout-summary-card bk-summary-sidebar">
+            <h2 className="summary-title bk-summary-title">THÔNG TIN ĐẶT VÉ</h2>
 
             {isHoldActive && (
               <div className="seat-hold-timer-alert">
@@ -451,84 +473,181 @@ export default function Booking() {
               </div>
             )}
 
+            {/* Movie Info with small poster */}
+            <div className="bk-sidebar-movie-row">
+              <img
+                src={getMoviePoster(movie)}
+                alt={getMovieTitle(movie)}
+                className="bk-sidebar-poster"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/img/no-image.png";
+                }}
+              />
+              <h3 className="bk-sidebar-movie-title">{getMovieTitle(movie)}</h3>
+            </div>
+
             <div className="summary-divider"></div>
 
-            <div className="summary-detail-list">
-              <div className="summary-row-item">
-                <span className="label">Phim:</span>
-                <span className="value font-bold text-red-500">
-                  {getMovieTitle(movie)}
-                </span>
+            {/* Showtime specifications */}
+            <div className="summary-detail-list bk-sidebar-details">
+              <div className="summary-row-item bk-sidebar-row">
+                <span className="bk-row-icon">📍</span>
+                <span className="bk-row-val">{getCinemaNameById(cinemas, selectedCinemaId)}</span>
               </div>
 
-              <div className="summary-row-item">
-                <span className="label">Rạp:</span>
-                <span className="value">
-                  {getCinemaNameById(cinemas, selectedCinemaId)}
-                </span>
+              <div className="summary-row-item bk-sidebar-row">
+                <span className="bk-row-icon">🚪</span>
+                <span className="bk-row-val">Phòng chiếu: {selectedRoom ? getRoomName(selectedRoom) : "N/A"}</span>
               </div>
 
-              <div className="summary-row-item">
-                <span className="label">Ngày chiếu:</span>
-                <span className="value">
-                  {dates.find((d) => d.iso === selectedDateIso)?.label ||
-                    selectedDateIso ||
-                    "Chưa chọn"}
-                </span>
+              <div className="summary-row-item bk-sidebar-row">
+                <span className="bk-row-icon">📅</span>
+                <span className="bk-row-val">Ngày chiếu: {getFormattedDateLabel(selectedDateIso)}</span>
               </div>
 
-              <div className="summary-row-item">
-                <span className="label">Suất chiếu:</span>
-                <span className="value font-bold">
-                  {selectedShowtime
-                    ? getShowtimeHour(selectedShowtime)
-                    : "Chưa chọn"}
-                </span>
+              <div className="summary-row-item bk-sidebar-row">
+                <span className="bk-row-icon">⏰</span>
+                <span className="bk-row-val">Suất chiếu: {selectedShowtime ? getShowtimeHour(selectedShowtime) : "Chưa chọn"}</span>
               </div>
 
-              <div className="summary-row-item">
-                <span className="label">Ghế đã chọn:</span>
-                <span className="value font-bold text-yellow-500">
-                  {selectedSeats.length > 0
-                    ? selectedSeats.map(getSeatLabel).join(", ")
-                    : "Chưa chọn"}
-                </span>
+              <div className="summary-row-item bk-sidebar-row">
+                <span className="bk-row-icon">🎬</span>
+                <span className="bk-row-val">Định dạng: 2D</span>
               </div>
             </div>
 
             <div className="summary-divider"></div>
 
-            <div className="summary-total-price-box">
-              <span>TỔNG TIỀN</span>
-              <h2>{totalAmount.toLocaleString("vi-VN")}đ</h2>
+            {/* Selected Seats Badges and Clear Button */}
+            <div className="bk-sidebar-seats-block">
+              <div className="bk-seats-header">
+                <strong>GHẾ ĐÃ CHỌN</strong>
+                {selectedSeats.length > 0 && (
+                  <button
+                    type="button"
+                    className="bk-clear-all-btn"
+                    onClick={() => setSelectedSeats([])}
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
+              </div>
+              
+              <div className="bk-seats-pills">
+                {selectedSeats.length > 0 ? (
+                  selectedSeats.map(seat => (
+                    <span key={getSeatId(seat)} className="bk-seat-badge">
+                      {getSeatLabel(seat)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="bk-no-seats-selected">Chưa chọn ghế</span>
+                )}
+              </div>
             </div>
 
-            {bookingError && (
-              <p className="booking-error-text">{bookingError}</p>
-            )}
+            <div className="summary-divider"></div>
 
-            <button
-              type="button"
-              className="booking-checkout-submit-btn"
-              onClick={handleCheckout}
-              disabled={selectedSeats.length === 0 || !selectedShowtime}
-            >
-              <MdPayment /> THANH TOÁN
-            </button>
+            {/* Prices Breakdown */}
+            <div className="bk-sidebar-prices">
+              {selectedSeats.length > 0 && (
+                <div className="bk-price-row">
+                  <span>Ghế đã chọn ({selectedSeats.length}x)</span>
+                  <strong>{totalAmount.toLocaleString("vi-VN")}đ</strong>
+                </div>
+              )}
+
+              {totalCombosAmount > 0 && (
+                <div className="bk-price-row">
+                  <span>Combo bắp nước</span>
+                  <strong>{totalCombosAmount.toLocaleString("vi-VN")}đ</strong>
+                </div>
+              )}
+
+              {selectedSeats.length > 0 && (
+                <div className="bk-price-row">
+                  <span>Phí đặt vé</span>
+                  <strong>10.000đ</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="summary-divider"></div>
+
+            {/* Total calculation */}
+            <div className="summary-total-price-box bk-sidebar-total">
+              <span>Tổng thanh toán</span>
+              <h2 className="bk-total-price">
+                {selectedSeats.length > 0
+                  ? (finalTotalAmount + 10000).toLocaleString("vi-VN") + "đ"
+                  : "0đ"}
+              </h2>
+            </div>
+
+            {bookingError && <p className="booking-error-text">{bookingError}</p>}
+
+            {/* Action Buttons */}
+            <div className="bk-sidebar-actions">
+              <button
+                type="button"
+                className="booking-checkout-submit-btn bk-btn-checkout"
+                onClick={handleCheckout}
+                disabled={selectedSeats.length === 0 || !selectedShowtime}
+              >
+                <MdPayment style={{ marginRight: "8px" }} /> TIẾP TỤC THANH TOÁN
+              </button>
+
+              <button
+                type="button"
+                className="bk-btn-back"
+                onClick={() => navigate(-1)}
+              >
+                <MdArrowBack style={{ marginRight: "6px" }} /> QUAY LẠI
+              </button>
+            </div>
+
+            {/* Secure payment message */}
+            <div className="bk-secure-note">
+              <span className="bk-secure-icon">🛡️</span>
+              <div className="bk-secure-text">
+                <strong>Thành toán bảo mật 100%</strong>
+                <span>Thông tin của bạn được bảo vệ tuyệt đối.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Combo modal choice */}
       {showComboModal && (
-        <div className="payment-success-modal-overlay" style={{ zIndex: 100 }}>
+        <div 
+          className="payment-success-modal-overlay" 
+          style={{ 
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000
+          }}
+        >
           <div
             className="payment-success-modal-box"
             style={{
               maxWidth: "600px",
-              width: "100%",
+              width: "90%",
               maxHeight: "85vh",
               overflowY: "auto",
               padding: "24px",
+              background: "#181818",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: "16px",
+              color: "#fff",
+              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+              margin: "auto"
             }}
           >
             <h2
@@ -536,7 +655,7 @@ export default function Booking() {
               style={{
                 fontSize: "1.3rem",
                 fontWeight: "800",
-                color: "#16a34a",
+                color: "#e50914",
                 textAlign: "center",
                 marginBottom: "8px",
               }}
@@ -548,7 +667,7 @@ export default function Booking() {
               style={{
                 textAlign: "center",
                 fontSize: "0.85rem",
-                color: "#6b7280",
+                color: "rgba(255,255,255,0.6)",
                 marginBottom: "20px",
               }}
             >
@@ -575,9 +694,9 @@ export default function Booking() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       padding: "12px",
-                      border: "1px solid #f3f4f6",
+                      border: "1px solid rgba(255,255,255,0.05)",
                       borderRadius: "12px",
-                      background: "#f9fafb",
+                      background: "#222222",
                     }}
                   >
                     <div
@@ -594,82 +713,68 @@ export default function Booking() {
                         <h4
                           style={{
                             fontWeight: "700",
-                            color: "#374151",
+                            color: "#fff",
                             fontSize: "0.9rem",
                             margin: 0,
                           }}
                         >
                           {item.name}
                         </h4>
-
                         <p
                           style={{
                             fontSize: "0.75rem",
-                            color: "#9ca3af",
-                            margin: "2px 0 0",
-                            lineHeight: "1.2",
+                            color: "rgba(255,255,255,0.5)",
+                            margin: "4px 0 0",
                           }}
                         >
                           {item.description}
                         </p>
-
                         <p
                           style={{
                             fontSize: "0.85rem",
-                            fontWeight: "600",
-                            color: "#f97316",
+                            color: "#e50914",
+                            fontWeight: "700",
                             margin: "4px 0 0",
                           }}
                         >
-                          {Number(item.price).toLocaleString("vi-VN")}đ
+                          {item.price.toLocaleString("vi-VN")}đ
                         </p>
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        marginLeft: "12px",
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <button
                         type="button"
-                        onClick={() => updateComboQuantity(itemId, -1)}
+                        onClick={() => updateComboQuantity(itemId, quantity - 1)}
+                        disabled={quantity <= 0}
                         style={{
                           width: "28px",
                           height: "28px",
                           borderRadius: "50%",
-                          border: "1px solid #d1d5db",
-                          background: "#fff",
-                          cursor: "pointer",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: quantity <= 0 ? "rgba(255,255,255,0.02)" : "#333",
+                          color: "#fff",
+                          cursor: quantity <= 0 ? "not-allowed" : "pointer",
                           fontWeight: "bold",
                         }}
-                        disabled={quantity <= 0}
                       >
                         -
                       </button>
 
-                      <span
-                        style={{
-                          width: "16px",
-                          textAlign: "center",
-                          fontWeight: "bold",
-                        }}
-                      >
+                      <span style={{ minWidth: "20px", textAlign: "center", fontWeight: "700" }}>
                         {quantity}
                       </span>
 
                       <button
                         type="button"
-                        onClick={() => updateComboQuantity(itemId, 1)}
+                        onClick={() => updateComboQuantity(itemId, quantity + 1)}
                         style={{
                           width: "28px",
                           height: "28px",
                           borderRadius: "50%",
-                          border: "1px solid #d1d5db",
-                          background: "#fff",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "#333",
+                          color: "#fff",
                           cursor: "pointer",
                           fontWeight: "bold",
                         }}
@@ -684,90 +789,38 @@ export default function Booking() {
 
             <div
               style={{
-                background: "#f3f4f6",
-                borderRadius: "10px",
-                padding: "14px",
-                marginBottom: "20px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingTop: "16px",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <h4
-                style={{
-                  margin: "0 0 10px",
-                  fontWeight: "700",
-                  fontSize: "0.85rem",
-                  color: "#374151",
-                  borderBottom: "1px dashed #d1d5db",
-                  paddingBottom: "6px",
-                }}
-              >
-                CHI TIẾT ĐƠN HÀNG
-              </h4>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  fontSize: "0.8rem",
-                  color: "#4b5563",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Tiền vé ({selectedSeats.length} ghế):</span>
-                  <span>{totalAmount.toLocaleString("vi-VN")}đ</span>
-                </div>
-
-                {totalCombosAmount > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      color: "#16a34a",
-                      fontWeight: "600",
-                    }}
-                  >
-                    <span>Bắp nước mua thêm:</span>
-                    <span>+{totalCombosAmount.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.95rem",
-                    fontWeight: "800",
-                    color: "#111827",
-                    borderTop: "1px solid #d1d5db",
-                    paddingTop: "8px",
-                    marginTop: "4px",
-                  }}
-                >
-                  <span>TỔNG CỘNG:</span>
-                  <span style={{ color: "#ef4444" }}>
-                    {finalTotalAmount.toLocaleString("vi-VN")}đ
-                  </span>
-                </div>
+              <div>
+                <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }}>
+                  Tiền bắp nước thêm:
+                </span>
+                <h3 style={{ margin: 0, color: "#e50914", fontWeight: "800" }}>
+                  {totalCombosAmount.toLocaleString("vi-VN")}đ
+                </h3>
               </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                type="button"
-                className="modal-finish-close-btn"
-                style={{ flex: 1, background: "#9ca3af", padding: "10px 0" }}
-                onClick={() => setShowComboModal(false)}
-              >
-                HỦY
-              </button>
 
               <button
                 type="button"
-                className="modal-finish-close-btn"
-                style={{ flex: 2, background: "#f97316", padding: "10px 0" }}
                 onClick={handleConfirmBooking}
+                style={{
+                  background: "#e50914",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "12px 24px",
+                  fontWeight: "800",
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(229, 9, 20, 0.4)",
+                }}
               >
-                XÁC NHẬN ĐẶT VÉ
+                XÁC NHẬN & ĐẶT VÉ
               </button>
             </div>
           </div>

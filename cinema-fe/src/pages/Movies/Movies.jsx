@@ -1,10 +1,9 @@
-﻿import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/Movies.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 
 import {
-  MOVIE_TABS,
   useMovies,
   getAreaId,
   getAreaName,
@@ -13,7 +12,6 @@ import {
   getMovieImage,
   getMovieAge,
   getMovieTag,
-  getMovieStatus,
   getMovieGenre,
   getMovieDuration,
   getMovieReleaseDate,
@@ -25,7 +23,6 @@ import {
   getShowtimeId,
   getStartHour,
   getShowtimeStatus,
-  isBookable,
   findRoomByShowtime,
   findCinemaByRoom,
   getRoomName,
@@ -36,18 +33,17 @@ import {
 
 function Movies() {
   const {
-    activeTab,
-    movies,
+    allMovies,
+    moviesNow,
+    moviesComing,
     areas,
     selectedAreaId,
     selectedTrailer,
     loading,
     userEmail,
-    changeTab,
     handleAreaChange,
     openTrailer,
     closeTrailer,
-    getBookingLink,
     hasValidShowtimes,
     cinemas,
     rooms,
@@ -57,10 +53,92 @@ function Movies() {
   const [selectedMovieForShowtimes, setSelectedMovieForShowtimes] = useState(null);
   const [modalAreaId, setModalAreaId] = useState("");
   const [modalDate, setModalDate] = useState("");
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const nowShowingRef = useRef(null);
+  const upcomingRef = useRef(null);
 
   const modalDates = useMemo(() => {
     return createDateRange(new Date(), 7);
   }, []);
+
+  const handleBuyTicketFromDetail = () => {
+    if (!selectedTrailer) return;
+    const targetMovie = selectedTrailer;
+    closeTrailer();
+    setSelectedMovieForShowtimes(targetMovie);
+    setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+    setModalDate(modalDates[0].iso);
+  };
+
+  // Filter moviesNow by header area selection if selectedAreaId is present
+  const filteredMoviesNow = useMemo(() => {
+    if (!selectedAreaId) return moviesNow;
+    
+    // Filter movies that have showtimes in cinemas of the selected area
+    return moviesNow.filter((movie) => {
+      const movieId = getMovieId(movie);
+      return showtimes.some((st) => {
+        const stMovieId = st?.movieId ?? st?.MovieId ?? st?.movie?.movieId ?? st?.movie?.MovieId;
+        if (String(stMovieId) !== String(movieId)) return false;
+        
+        const room = findRoomByShowtime(st, rooms);
+        if (!room) return false;
+        
+        const cinema = findCinemaByRoom(room, cinemas);
+        if (!cinema) return false;
+        
+        const cinemaAreaId = cinema?.areaId ?? cinema?.AreaId;
+        return String(cinemaAreaId) === String(selectedAreaId);
+      });
+    });
+  }, [moviesNow, selectedAreaId, showtimes, rooms, cinemas]);
+
+  // Filter moviesComing by area (usually show all upcoming movies since they don't have showtimes yet)
+  const filteredMoviesComing = useMemo(() => {
+    return moviesComing;
+  }, [moviesComing]);
+
+  const sliderMovies = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const fourDaysAgo = new Date();
+    fourDaysAgo.setDate(today.getDate() - 4);
+    fourDaysAgo.setHours(0, 0, 0, 0);
+
+    const newReleases = filteredMoviesNow.filter((movie) => {
+      const rawRelease = movie.releaseDate || movie.ReleaseDate || movie.release_date || movie.startDate || movie.StartDate || movie.openingDate || movie.OpeningDate || movie.premiereDate || movie.PremiereDate;
+      if (!rawRelease) return false;
+      const releaseDt = new Date(rawRelease);
+      return !isNaN(releaseDt.getTime()) && releaseDt >= fourDaysAgo && releaseDt <= today;
+    });
+
+    if (newReleases.length > 0) {
+      return newReleases;
+    }
+
+    return filteredMoviesNow.slice(0, 5);
+  }, [filteredMoviesNow]);
+
+  // Auto-advance slide every 5s
+  useEffect(() => {
+    if (sliderMovies.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % sliderMovies.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [sliderMovies]);
+
+  const scrollContainer = (ref, direction) => {
+    if (ref.current) {
+      const scrollAmount = 300 * 2;
+      ref.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   const groupedModalShowtimes = useMemo(() => {
     if (!selectedMovieForShowtimes) return [];
@@ -122,166 +200,310 @@ function Movies() {
 
   return (
     <div className="movies-page">
-      {userEmail ? (
-        <div className="movie-top-login">
-          <CustomerProfileDropdown />
+      {/* Header Bar */}
+      <div className="movie-top-login">
+        <div className="top-login-content">
+          {userEmail ? (
+            <CustomerProfileDropdown />
+          ) : (
+            <div className="auth-links">
+              <Link to="/login">Đăng nhập</Link>
+              <span> | </span>
+              <Link to="/register">Đăng ký</Link>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="movie-top-login">
-          <Link to="/login">Đăng nhập</Link>
-          <span> | </span>
-          <Link to="/register">Đăng ký</Link>
-          <span> GB</span>
-        </div>
-      )}
+      </div>
 
       <header className="movie-header">
-        <div className="movie-logo">
-          <span>Cinemas</span>
-          <b>HCM</b>
+        <div className="movie-logo-container">
+          <Link to="/" className="movie-logo">
+            <span>Cinemas</span><b>HCM</b>
+          </Link>
         </div>
 
-        <select
-          className="movie-select"
-          value={selectedAreaId}
-          onChange={(e) => handleAreaChange(e.target.value)}
-        >
-          <option value="">Chọn rạp HCM</option>
-
-          {areas.map((area, index) => {
-            const areaId = getAreaId(area);
-
-            return (
-              <option key={areaId || index} value={areaId}>
-                {getAreaName(area)}
-              </option>
-            );
-          })}
-        </select>
-
-        <nav>
-          <Link className="active" to="/movies">
-            PHIM
-          </Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-          <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+        <nav className="movie-nav">
+          <Link to="/showtimes">Lịch chiếu</Link>
+          <Link to="/" className="active">Phim</Link>
+          <Link to="/ticket-price">Giá vé</Link>
         </nav>
+
+
       </header>
 
+      {/* Main Content */}
       <main className="movies-content">
-        <div className="movie-tabs">
-          {MOVIE_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={activeTab === tab.key ? "active" : ""}
-              onClick={() => changeTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {loading && <p className="movie-loading">Đang tải phim...</p>}
-
-        {!loading && movies.length === 0 && (
-          <p className="movie-loading">Không có phim trong mục này.</p>
-        )}
-
-        <section className="movie-grid">
-          {!loading &&
-            movies.map((movie, index) => {
+        {/* Banner Hero Slider */}
+        {sliderMovies.length > 0 && (
+          <section className="hero-slider">
+            {sliderMovies.map((movie, idx) => {
+              const isActive = idx === currentSlide;
               const movieId = getMovieId(movie);
-
               return (
-                <div className="movie-card-style" key={movieId || index}>
-                  <div
-                    className="movie-poster-style"
-                    onClick={() => openTrailer(movie)}
-                  >
-                    <img
-                      src={getMovieImage(movie)}
-                      alt={getMovieTitle(movie)}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
-                      }}
-                    />
-
-                    <span className="movie-age-style">
-                      {getMovieAge(movie)}
-                    </span>
-
-                    <span className="movie-tag-style">
-                      {getMovieTag(movie, activeTab)}
-                    </span>
-
-                    <button
-                      type="button"
-                      className="play-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openTrailer(movie);
-                      }}
-                    >
-                      ▶
-                    </button>
+                <div
+                  key={movieId || idx}
+                  className={`slide-item ${isActive ? "active" : ""}`}
+                  style={{
+                    backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.4) 100%), url(${getMovieImage(movie)})`
+                  }}
+                >
+                  <div className="slide-content">
+                    <span className="slide-tag">NỔI BẬT</span>
+                    <h1 className="slide-title">{getMovieTitle(movie)}</h1>
+                    <p className="slide-meta">
+                      Thể loại: <strong>{getMovieGenre(movie)}</strong> | Thời lượng: <strong>{getMovieDuration(movie)}</strong>
+                    </p>
+                    <p className="slide-desc">
+                      Chào mừng bạn đến với hệ thống rạp chiếu phim CGV. Trải nghiệm âm thanh Dolby Atmos sống động và hình ảnh IMAX sắc nét đỉnh cao cùng bom tấn hành động hấp dẫn này.
+                    </p>
+                    <div className="slide-actions">
+                      {hasValidShowtimes(movie) ? (
+                        <button
+                          type="button"
+                          className="slide-btn-primary"
+                          onClick={() => {
+                            setSelectedMovieForShowtimes(movie);
+                            setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+                            setModalDate(modalDates[0].iso);
+                          }}
+                        >
+                          🎟️ MUA VÉ NGAY
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="slide-btn-primary disabled-btn"
+                          disabled
+                        >
+                          🗓️ KHỞI CHIẾU: {getMovieReleaseDate(movie)}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="slide-btn-secondary"
+                        onClick={() => openTrailer(movie)}
+                      >
+                        ▶ CHI TIẾT
+                      </button>
+                    </div>
                   </div>
-
-                  <h2>{getMovieTitle(movie)}</h2>
-
-                  <p>
-                    <b>Thể loại:</b> {getMovieGenre(movie)}
-                  </p>
-
-                  <p>
-                    <b>Thời lượng:</b> {getMovieDuration(movie)}
-                  </p>
-
-                  <p>
-                    <b>Khởi chiếu:</b>{" "}
-                    {getMovieReleaseDate(movie)}
-                  </p>
-
-                  <p>
-                    <b>Trạng thái:</b>{" "}
-                    {getMovieStatus(movie, activeTab)}
-                  </p>
-
-                  {activeTab !== "coming" && !hasValidShowtimes(movie) ? (
-                    <button
-                      type="button"
-                      className="buy-ticket-btn disabled-btn"
-                      disabled
-                    >
-                      🎟️ HẾT SUẤT CHIẾU
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="buy-ticket-btn"
-                      onClick={() => {
-                        setSelectedMovieForShowtimes(movie);
-                        setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
-                        setModalDate(modalDates[0].iso);
-                      }}
-                    >
-                      🎟️ MUA VÉ
-                    </button>
-                  )}
                 </div>
               );
             })}
-        </section>
+            
+            {/* Slider arrows */}
+            {sliderMovies.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="slider-arrow slider-arrow-left"
+                  onClick={() => setCurrentSlide((prev) => (prev - 1 + sliderMovies.length) % sliderMovies.length)}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="slider-arrow slider-arrow-right"
+                  onClick={() => setCurrentSlide((prev) => (prev + 1) % sliderMovies.length)}
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            {/* Slider dots */}
+            <div className="slider-dots">
+              {sliderMovies.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`dot-btn ${idx === currentSlide ? "active" : ""}`}
+                  onClick={() => setCurrentSlide(idx)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {loading && <p className="movie-loading">Đang tải danh sách phim...</p>}
+
+        {/* PHIM ĐANG CHIẾU */}
+        {!loading && filteredMoviesNow.length > 0 && (
+          <section className="movie-section-slider">
+            <div className="section-header-row">
+              <h2 className="section-title">PHIM ĐANG CHIẾU</h2>
+              <a href="#all" className="section-link">Xem tất cả ›</a>
+            </div>
+
+            <div className="slider-container-relative">
+              <button
+                type="button"
+                className="scroll-btn scroll-btn-left"
+                onClick={() => scrollContainer(nowShowingRef, "left")}
+              >
+                ‹
+              </button>
+              
+              <div className="movie-scroll-list" ref={nowShowingRef}>
+                {filteredMoviesNow.map((movie, index) => {
+                  const movieId = getMovieId(movie);
+                  // Generate an elegant international standard rating out of 10
+                  const ratingVal = (8 + (movieId % 17) / 10).toFixed(1);
+
+                  return (
+                    <div className="movie-card-style" key={movieId || index}>
+                      <div className="movie-poster-style" onClick={() => openTrailer(movie)}>
+                        <img
+                          src={getMovieImage(movie)}
+                          alt={getMovieTitle(movie)}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
+                          }}
+                        />
+                        <span className="movie-age-style">{getMovieAge(movie)}</span>
+                        <span className="movie-rating-badge">★ {ratingVal}</span>
+                        <button
+                          type="button"
+                          className="play-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTrailer(movie);
+                          }}
+                        >
+                          ▶
+                        </button>
+                      </div>
+
+                      <h3 className="movie-card-title">{getMovieTitle(movie)}</h3>
+                      <p className="movie-card-genre">{getMovieGenre(movie)}</p>
+                      
+                      <div className="movie-card-buttons">
+                        {!hasValidShowtimes(movie) ? (
+                          <button
+                            type="button"
+                            className="buy-ticket-btn disabled-btn"
+                            disabled
+                          >
+                            Hết vé
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="buy-ticket-btn"
+                            onClick={() => {
+                              setSelectedMovieForShowtimes(movie);
+                              setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+                              setModalDate(modalDates[0].iso);
+                            }}
+                          >
+                            Mua vé
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="trailer-btn"
+                          onClick={() => openTrailer(movie)}
+                        >
+                          Chi tiết
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="scroll-btn scroll-btn-right"
+                onClick={() => scrollContainer(nowShowingRef, "right")}
+              >
+                ›
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* PHIM SẮP CHIẾU */}
+        {!loading && filteredMoviesComing.length > 0 && (
+          <section className="movie-section-slider upcoming-section">
+            <div className="section-header-row">
+              <h2 className="section-title">PHIM SẮP CHIẾU</h2>
+            </div>
+
+            <div className="slider-container-relative">
+              <button
+                type="button"
+                className="scroll-btn scroll-btn-left"
+                onClick={() => scrollContainer(upcomingRef, "left")}
+              >
+                ‹
+              </button>
+              
+              <div className="movie-scroll-list" ref={upcomingRef}>
+                {filteredMoviesComing.map((movie, index) => {
+                  const movieId = getMovieId(movie);
+
+                  return (
+                    <div className="movie-card-style" key={movieId || index}>
+                      <div className="movie-poster-style" onClick={() => openTrailer(movie)}>
+                        <img
+                          src={getMovieImage(movie)}
+                          alt={getMovieTitle(movie)}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
+                          }}
+                        />
+                        <span className="movie-age-style">{getMovieAge(movie)}</span>
+                        <div className="upcoming-tag-ribbon">SẮP CHIẾU</div>
+                        <button
+                          type="button"
+                          className="play-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTrailer(movie);
+                          }}
+                        >
+                          ▶
+                        </button>
+                      </div>
+
+                      <h3 className="movie-card-title">{getMovieTitle(movie)}</h3>
+                      <p className="movie-card-genre">{getMovieGenre(movie)}</p>
+                      
+                      <div className="upcoming-release-date">
+                        🗓️ {getMovieReleaseDate(movie)}
+                      </div>
+                      <button
+                        type="button"
+                        className="trailer-btn-solo"
+                        onClick={() => openTrailer(movie)}
+                      >
+                        Chi tiết
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="scroll-btn scroll-btn-right"
+                onClick={() => scrollContainer(upcomingRef, "right")}
+              >
+                ›
+              </button>
+            </div>
+          </section>
+        )}
+
       </main>
 
+      {/* Trailer Modal (Detail Modal) */}
       {selectedTrailer && (
-        <div className="trailer-overlay">
-          <div className="trailer-modal">
+        <div className="trailer-overlay" onClick={closeTrailer}>
+          <div className="trailer-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "850px", width: "90%", padding: "24px" }}>
             <button
               type="button"
               className="trailer-close"
@@ -289,29 +511,133 @@ function Movies() {
             >
               ×
             </button>
-
-            <h2>
-              TRAILER - {getMovieTitle(selectedTrailer)}
+            <h2 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#fff", marginBottom: "16px", borderBottom: "1px solid rgba(255, 255, 255, 0.1)", paddingBottom: "12px" }}>
+              CHI TIẾT PHIM: {getMovieTitle(selectedTrailer)}
             </h2>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Top Side: Video Trailer (Large screen format) */}
+              <div style={{ position: "relative", width: "100%", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255, 255, 255, 0.1)", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)" }}>
+                {getMovieTrailer(selectedTrailer) ? (
+                  <iframe
+                    src={getMovieTrailer(selectedTrailer)}
+                    title={`Trailer ${getMovieTitle(selectedTrailer)}`}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    style={{ width: "100%", aspectRatio: "16/9", border: "none", display: "block", background: "#000" }}
+                  ></iframe>
+                ) : (
+                  <div style={{ width: "100%", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.03)" }}>
+                    🎬 Phim này chưa có trailer chính thức.
+                  </div>
+                )}
+              </div>
 
-            <hr />
+              {/* Bottom Side: Split Grid for Info & Metadata */}
+              <div className="detail-modal-split" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", color: "#fff" }}>
+                {/* Left Side: Description */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <h4 style={{ fontSize: "1rem", fontWeight: "800", color: "#e50914", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    NỘI DUNG PHIM
+                  </h4>
+                  <div 
+                    className="detail-modal-desc" 
+                    style={{ 
+                      fontSize: "0.9rem", 
+                      color: "rgba(255,255,255,0.75)", 
+                      lineHeight: "1.6", 
+                      margin: 0, 
+                      maxHeight: "190px", 
+                      overflowY: "auto",
+                      paddingRight: "8px",
+                      textAlign: "justify",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    {selectedTrailer.description || selectedTrailer.Description || "Chưa có thông tin nội dung mô tả của bộ phim này."}
+                  </div>
+                </div>
 
-            {getMovieTrailer(selectedTrailer) ? (
-              <iframe
-                src={getMovieTrailer(selectedTrailer)}
-                title={`Trailer ${getMovieTitle(
-                  selectedTrailer
-                )}`}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-              ></iframe>
-            ) : (
-              <p>Phim này chưa có trailer.</p>
-            )}
+                {/* Right Side: Metadata list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(255, 255, 255, 0.03)", padding: "16px", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.06)", justifyContent: "center" }}>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🏷️ Thể loại:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieGenre(selectedTrailer)}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🎬 Đạo diễn:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.director || selectedTrailer.Director || "Đang cập nhật"}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>⏱️ Thời lượng:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieDuration(selectedTrailer)}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🔞 Độ tuổi:</span> 
+                    <span style={{ background: "#e50914", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "800", display: "inline-block" }}>
+                      {getMovieAge(selectedTrailer)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📅 Khởi chiếu:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieReleaseDate(selectedTrailer)}</span>
+                  </div>
+                  {selectedTrailer.language && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🗣️ Ngôn ngữ:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.language}</span>
+                    </div>
+                  )}
+                  {selectedTrailer.subtitles && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📝 Phụ đề:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.subtitles}</span>
+                    </div>
+                  )}
+                  {(selectedTrailer.actors || selectedTrailer.Actors) && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>👥 Diễn viên:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.actors || selectedTrailer.Actors}</span>
+                    </div>
+                  )}
+                  
+                  {hasValidShowtimes(selectedTrailer) && (
+                    <button
+                      type="button"
+                      onClick={handleBuyTicketFromDetail}
+                      style={{ 
+                        marginTop: "12px", 
+                        padding: "10px 0", 
+                        fontSize: "13.5px", 
+                        fontWeight: "800", 
+                        background: "#e50914", 
+                        borderRadius: "6px",
+                        border: "none",
+                        color: "#fff",
+                        cursor: "pointer",
+                        width: "100%",
+                        textAlign: "center",
+                        boxShadow: "0 4px 12px rgba(229, 9, 20, 0.3)",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.background = "#b20710";
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.background = "#e50914";
+                      }}
+                    >
+                      🎟️ ĐẶT VÉ NGAY
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Showtimes Modal */}
       {selectedMovieForShowtimes && (
         <div className="showtime-modal-overlay" onClick={() => setSelectedMovieForShowtimes(null)}>
           <div className="showtime-modal-content" onClick={(e) => e.stopPropagation()}>

@@ -1,4 +1,5 @@
 import "./Seat.css";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import * as IconsMd from "react-icons/md";
 import {
@@ -29,6 +30,7 @@ const {
   MdAdd: IconAdd,
   MdEdit: IconEdit,
   MdDelete: IconDelete,
+  MdClose: IconClose,
 } = IconsMd;
 
 // Helper for row list status badges
@@ -66,6 +68,38 @@ function getSeatPrice(type) {
   if (t === "vip") return 100000;
   if (t === "couple") return 150000;
   return 70000;
+}
+
+// Group adjacent Couple seats in a row into a single double seat representation
+function groupRowSeats(seats) {
+  const grouped = [];
+  let i = 0;
+  while (i < seats.length) {
+    const seat = seats[i];
+    const type = getSeatType(seat).toLowerCase();
+
+    // Group if current and next seat are both Couple seats of the same row
+    if (
+      type === "couple" &&
+      i + 1 < seats.length &&
+      getSeatType(seats[i + 1]).toLowerCase() === "couple"
+    ) {
+      grouped.push({
+        isGroup: true,
+        seats: [seat, seats[i + 1]],
+        type: "couple",
+      });
+      i += 2;
+    } else {
+      grouped.push({
+        isGroup: false,
+        seat: seat,
+        type: type,
+      });
+      i += 1;
+    }
+  }
+  return grouped;
 }
 
 export default function Seat() {
@@ -119,6 +153,41 @@ export default function Seat() {
   // Determine active layout
   const activeLayout = seatMapLayout.length > 0 ? seatMapLayout : mockSeatLayout;
 
+  const [selectedSeat, setSelectedSeat] = useState(null);
+
+  // Reset selected seat when room changes
+  useEffect(() => {
+    setSelectedSeat(null);
+  }, [filterRoom, filterCinemaId]);
+
+  // Keep selectedSeat in sync with list updates (e.g. edit/delete/create)
+  useEffect(() => {
+    if (selectedSeat) {
+      const idStr = String(getSeatId(selectedSeat));
+      if (idStr.startsWith("mock-")) {
+        // If it's a mock seat, see if a real seat has been created with the same row and number
+        const realSeat = selectedRoomSeats.find(
+          (s) =>
+            getSeatRow(s) === getSeatRow(selectedSeat) &&
+            getSeatNumber(s) === getSeatNumber(selectedSeat)
+        );
+        if (realSeat) {
+          setSelectedSeat(realSeat);
+        }
+      } else {
+        // Real seat: sync with updated data, or clear if deleted
+        const updatedSeat = selectedRoomSeats.find(
+          (s) => String(getSeatId(s)) === String(getSeatId(selectedSeat))
+        );
+        if (updatedSeat) {
+          setSelectedSeat(updatedSeat);
+        } else {
+          setSelectedSeat(null);
+        }
+      }
+    }
+  }, [selectedRoomSeats]);
+
   return (
     <div className="se-wrapper">
       {/* ── Header ── */}
@@ -161,219 +230,184 @@ export default function Seat() {
         />
       </div>
 
-      {/* ── Main content grid (2 columns) ── */}
-      <div className="se-main-grid">
+      {/* ── Filter Bar ── */}
+      <div className="se-filter-bar se-top-filter-bar">
+        <select
+          className="se-filter-select"
+          value={filterCinemaId}
+          onChange={(e) => {
+            const cinemaId = e.target.value;
+            setFilterCinemaId(cinemaId);
+            const cinemaRooms = rooms.filter(r => String(getRoomCinemaId(r)) === cinemaId);
+            if (cinemaRooms.length > 0) {
+              setFilterRoom(String(getRoomId(cinemaRooms[0])));
+            } else {
+              setFilterRoom("");
+            }
+            setPage(1);
+          }}
+        >
+          {cinemas.map((c) => (
+            <option key={getCinemaId(c)} value={getCinemaId(c)}>
+              {getCinemaName(c)}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="se-filter-select"
+          value={filterRoom}
+          onChange={(e) => {
+            setFilterRoom(e.target.value);
+            setPage(1);
+          }}
+        >
+          {rooms
+            .filter(
+              (r) =>
+                !filterCinemaId ||
+                String(getRoomCinemaId(r)) === String(filterCinemaId)
+            )
+            .map((room) => (
+              <option key={getRoomId(room)} value={getRoomId(room)}>
+                {getRoomFullName(room, cinemas)}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      {/* ── Main content grid (1 or 2 columns) ── */}
+      <div className={`se-main-grid ${selectedSeat ? "se-main-grid--split" : "se-main-grid--full"}`}>
         
-        {/* ── Left Column: Seat List Table ── */}
-        <div className="se-list-col">
-          {/* Filters */}
-          <div className="se-filter-bar">
-            <select
-              className="se-filter-select"
-              value={filterCinemaId}
-              onChange={(e) => {
-                const cinemaId = e.target.value;
-                setFilterCinemaId(cinemaId);
-                const cinemaRooms = rooms.filter(r => String(getRoomCinemaId(r)) === cinemaId);
-                if (cinemaRooms.length > 0) {
-                  setFilterRoom(String(getRoomId(cinemaRooms[0])));
-                } else {
-                  setFilterRoom("");
-                }
-                setPage(1);
-              }}
-            >
-              {cinemas.map((c) => (
-                <option key={getCinemaId(c)} value={getCinemaId(c)}>
-                  {getCinemaName(c)}
-                </option>
-              ))}
-            </select>
+        {/* ── Left Column: Seat Details Panel ── */}
+        {selectedSeat && (
+          <div className="se-list-col">
+            {loading && <p className="se-msg">Đang tải thông tin...</p>}
+            {error && <p className="se-msg se-msg--error">{error}</p>}
 
-            <select
-              className="se-filter-select"
-              value={filterRoom}
-              onChange={(e) => {
-                setFilterRoom(e.target.value);
-                setPage(1);
-              }}
-            >
-              {rooms
-                .filter(
-                  (r) =>
-                    !filterCinemaId ||
-                    String(getRoomCinemaId(r)) === String(filterCinemaId)
-                )
-                .map((room) => (
-                  <option key={getRoomId(room)} value={getRoomId(room)}>
-                    {getRoomFullName(room, cinemas)}
-                  </option>
-                ))}
-            </select>
+            {!loading && !error && (
+              <div className="se-detail-card">
+                <div className="se-detail-card-header">
+                  <h5 className="se-detail-title">Thông Tin Chi Tiết Ghế</h5>
+                  <button
+                    type="button"
+                    className="se-detail-close-btn"
+                    onClick={() => setSelectedSeat(null)}
+                    title="Đóng chi tiết"
+                  >
+                    <IconClose size={20} />
+                  </button>
+                </div>
+                
+                {(() => {
+                  const isMock = String(getSeatId(selectedSeat)).startsWith("mock-");
+                  const type = getSeatType(selectedSeat);
+                  const typeStyle = getTypeStyle(type);
+                  const status = getSeatStatus(selectedSeat);
+                  const statusBadge = getStatusBadgeStyle(status);
 
-            <select
-              className="se-filter-select"
-              value={filterType}
-              onChange={(e) => {
-                setFilterType(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Tất cả loại ghế</option>
-              {SEAT_TYPE_OPTIONS.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+                  return (
+                    <div className="se-detail-content">
+                      <div className="se-detail-header-row">
+                        <div className={`se-detail-seat-badge se-detail-seat-badge--${type.toLowerCase()}`}>
+                          {getSeatCode(selectedSeat)}
+                        </div>
+                        <div className="se-detail-summary">
+                          <span className="se-detail-room-name">
+                            {isMock ? selectedRoomName : getRoomNameBySeat(selectedSeat, rooms, cinemas)}
+                          </span>
+                          <span className="se-detail-seat-type">{typeStyle.label}</span>
+                        </div>
+                      </div>
 
-            <div className="se-search-wrap">
-              <IconSearch size={18} className="se-search-icon" />
-              <input
-                type="text"
-                className="se-search-input"
-                placeholder="Tìm kiếm ghế..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-          </div>
+                      <div className="se-detail-info-list">
+                        <div className="se-detail-info-item">
+                          <span className="se-detail-info-label">Hàng ghế:</span>
+                          <span className="se-detail-info-val se-font-bold">{getSeatRow(selectedSeat)}</span>
+                        </div>
+                        <div className="se-detail-info-item">
+                          <span className="se-detail-info-label">Số ghế:</span>
+                          <span className="se-detail-info-val se-font-bold">{getSeatNumber(selectedSeat)}</span>
+                        </div>
+                        <div className="se-detail-info-item">
+                          <span className="se-detail-info-label">Loại ghế:</span>
+                          <span className="se-detail-info-val">
+                            <span
+                              className="se-status-badge"
+                              style={{
+                                background: typeStyle.dotColor + "15",
+                                color: typeStyle.dotColor,
+                              }}
+                            >
+                              {typeStyle.label}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="se-detail-info-item">
+                          <span className="se-detail-info-label">Giá vé:</span>
+                          <span className="se-detail-info-val se-col-price">
+                            {formatMoney(getSeatPrice(type))}
+                          </span>
+                        </div>
+                        <div className="se-detail-info-item">
+                          <span className="se-detail-info-label">Trạng thái:</span>
+                          <span className="se-detail-info-val">
+                            {isMock ? (
+                              <span className="se-status-badge" style={{ background: "#fff3e0", color: "#e67e00" }}>
+                                Chưa khởi tạo
+                              </span>
+                            ) : (
+                              <span
+                                className="se-status-badge"
+                                style={{
+                                  background: statusBadge.bg,
+                                  color: statusBadge.color,
+                                }}
+                              >
+                                {statusBadge.label}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
 
-          {/* Table Card */}
-          {loading && <p className="se-msg">Đang tải danh sách ghế...</p>}
-          {error && <p className="se-msg se-msg--error">{error}</p>}
-
-          {!loading && !error && (
-            <>
-              <div className="se-table-card">
-                <div className="se-table-responsive">
-                  <table className="se-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: "50px" }}>STT</th>
-                        <th>Hàng</th>
-                        <th>Số ghế</th>
-                        <th>Loại ghế</th>
-                        <th>Giá vé (đ)</th>
-                        <th>Trạng thái</th>
-                        <th style={{ width: "90px", textAlign: "center" }}>Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageItems.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="se-table-empty">
-                            Không tìm thấy ghế nào phù hợp.
-                          </td>
-                        </tr>
+                      {isMock ? (
+                        <div className="se-detail-actions">
+                          <button
+                            type="button"
+                            className="se-detail-btn se-detail-btn--edit"
+                            style={{ background: "#f97316", color: "#fff", borderColor: "#f97316" }}
+                            onClick={() =>
+                              openAddModal({
+                                roomId: filterRoom || (rooms[0] ? getRoomId(rooms[0]) : ""),
+                                seatRow: getSeatRow(selectedSeat),
+                                seatNumber: getSeatNumber(selectedSeat),
+                                seatType: getSeatType(selectedSeat),
+                                isActive: true,
+                              })
+                            }
+                          >
+                            <IconAdd size={16} /> Khởi tạo ghế này
+                          </button>
+                        </div>
                       ) : (
-                        pageItems.map((seat, index) => {
-                          const id = getSeatId(seat);
-                          const row = getSeatRow(seat);
-                          const number = getSeatNumber(seat);
-                          const type = getSeatType(seat);
-                          const typeStyle = getTypeStyle(type);
-                          const status = getSeatStatus(seat);
-                          const statusBadge = getStatusBadgeStyle(status);
-                          const globalIdx = index + 1 + (safePage - 1) * PAGE_SIZE;
-
-                          return (
-                            <tr key={id || index}>
-                              <td className="se-col-idx">{globalIdx}</td>
-                              <td className="se-col-row">{row || "—"}</td>
-                              <td className="se-col-num">{number || "—"}</td>
-                              <td>
-                                <div className="se-type-cell">
-                                  <span
-                                    className="se-type-dot"
-                                    style={{ background: typeStyle.dotColor }}
-                                  />
-                                  <span className="se-type-label">{typeStyle.label}</span>
-                                </div>
-                              </td>
-                              <td className="se-col-price">
-                                {formatMoney(getSeatPrice(type))}
-                              </td>
-                              <td>
-                                <span
-                                  className="se-status-badge"
-                                  style={{
-                                    background: statusBadge.bg,
-                                    color: statusBadge.color,
-                                  }}
-                                >
-                                  {statusBadge.label}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="se-row-actions">
-                                  <button
-                                    className="se-row-btn se-row-btn--edit"
-                                    onClick={() => openEditModal(seat)}
-                                    title="Sửa ghế"
-                                  >
-                                    <IconEdit size={14} />
-                                  </button>
-                                  <button
-                                    className="se-row-btn se-row-btn--delete"
-                                    onClick={() => handleDelete(id)}
-                                    title="Xóa ghế"
-                                  >
-                                    <IconDelete size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
+                        <div className="se-detail-actions">
+                          <button
+                            type="button"
+                            className="se-detail-btn se-detail-btn--edit"
+                            onClick={() => openEditModal(selectedSeat)}
+                          >
+                            <IconEdit size={16} /> Chỉnh sửa ghế
+                          </button>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
-
-              {/* Pagination info and bar */}
-              {filtered.length > 0 && (
-                <div className="se-pagination-footer">
-                  <span className="se-footer-info">
-                    Hiển thị {Math.min((safePage - 1) * PAGE_SIZE + 1, filtered.length)}–
-                    {Math.min(safePage * PAGE_SIZE, filtered.length)} của {filtered.length} ghế
-                  </span>
-                  <div className="se-pagination">
-                    <button
-                      className="se-page-btn"
-                      disabled={safePage === 1}
-                      onClick={() => setPage(safePage - 1)}
-                    >
-                      Trước
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        className={`se-page-btn${
-                          p === safePage ? " se-page-btn--active" : ""
-                        }`}
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      className="se-page-btn"
-                      disabled={safePage === totalPages}
-                      onClick={() => setPage(safePage + 1)}
-                    >
-                      Sau
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* ── Right Column: Seat Map Grid ── */}
         <div className="se-map-col">
@@ -384,15 +418,31 @@ export default function Seat() {
             <div className="se-map-legend">
               <div className="se-legend-item">
                 <span className="se-legend-box se-legend-box--standard" />
-                <span className="se-legend-txt">Ghế thường</span>
+                <div className="se-legend-info-col">
+                  <span className="se-legend-txt">Ghế thường</span>
+                  <span className="se-legend-price">70.000đ</span>
+                </div>
               </div>
               <div className="se-legend-item">
                 <span className="se-legend-box se-legend-box--vip" />
-                <span className="se-legend-txt">Ghế VIP</span>
+                <div className="se-legend-info-col">
+                  <span className="se-legend-txt">Ghế VIP</span>
+                  <span className="se-legend-price">100.000đ</span>
+                </div>
               </div>
               <div className="se-legend-item">
                 <span className="se-legend-box se-legend-box--couple" />
-                <span className="se-legend-txt">Ghế Couple</span>
+                <div className="se-legend-info-col">
+                  <span className="se-legend-txt">Ghế Couple</span>
+                  <span className="se-legend-price">150.000đ</span>
+                </div>
+              </div>
+              <div className="se-legend-item">
+                <span className="se-legend-box se-legend-box--maintenance" />
+                <div className="se-legend-info-col">
+                  <span className="se-legend-txt">Ghế Bảo trì</span>
+                  <span className="se-legend-price">Không bán</span>
+                </div>
               </div>
             </div>
 
@@ -414,35 +464,88 @@ export default function Seat() {
 
                     {/* Seat list */}
                     <div className="se-row-seats-flex">
-                      {row.seats.map((seat) => {
-                        const type = getSeatType(seat).toLowerCase();
-                        const seatCode = getSeatCode(seat);
-                        const numOnly = getSeatNumber(seat);
-                        
-                        // Determine label inside seat first
-                        let labelText = numOnly ? String(numOnly).padStart(2, "0") : seatCode;
-                        if (type === "couple") {
-                          labelText = seatCode.includes("-") ? seatCode : `${labelText} ❤`;
+                      {groupRowSeats(row.seats).map((item, idx) => {
+                        if (item.isGroup) {
+                          const [seat1, seat2] = item.seats;
+                          const rowName = row.rowName;
+                          const num1 = getSeatNumber(seat1);
+                          const num2 = getSeatNumber(seat2);
+                          const labelText = `${rowName}${num1} ${rowName}${num2}`;
+                          
+                          const isMaintenance = getSeatStatus(seat1) === "Bảo trì" || getSeatStatus(seat2) === "Bảo trì";
+                          const isSelected = selectedSeat && (
+                            String(getSeatId(selectedSeat)) === String(getSeatId(seat1)) ||
+                            String(getSeatId(selectedSeat)) === String(getSeatId(seat2))
+                          );
+                          
+                          let seatClass = "se-seat-box se-seat-box--couple se-seat-box--couple-double";
+                          if (isMaintenance) {
+                            seatClass += " se-seat-box--maintenance";
+                          }
+                          
+                          return (
+                            <div
+                              key={getSeatId(seat1) || idx}
+                              className={`${seatClass}${isSelected ? " se-seat-box--selected" : ""}`}
+                              title={`Hàng ${rowName} - Ghế ${labelText} (COUPLE)`}
+                              onClick={() => setSelectedSeat(seat1)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <span className="se-seat-lbl">{labelText}</span>
+                            </div>
+                          );
+                        } else {
+                          const seat = item.seat;
+                          const type = getSeatType(seat).toLowerCase();
+                          const seatCode = getSeatCode(seat);
+                          const numOnly = getSeatNumber(seat);
+                          
+                          // Determine label inside seat first
+                          let labelText = numOnly ? String(numOnly).padStart(2, "0") : seatCode;
+                          if (type === "couple") {
+                            const rowName = row.rowName;
+                            if (seatCode.includes("-")) {
+                              const parts = seatCode.replace(/[A-Za-z]/g, "").split("-");
+                              if (parts.length === 2) {
+                                const num1 = parts[0].padStart(2, "0");
+                                const num2 = parts[1].padStart(2, "0");
+                                labelText = `${rowName}${num1} ${rowName}${num2}`;
+                              } else {
+                                labelText = seatCode;
+                              }
+                            } else {
+                              labelText = seatCode.startsWith(rowName) ? seatCode : `${rowName}${labelText}`;
+                            }
+                          }
+
+                          const isMaintenance = getSeatStatus(seat) === "Bảo trì";
+
+                          let seatClass = "se-seat-box se-seat-box--standard";
+                          if (type === "vip") {
+                            seatClass = "se-seat-box se-seat-box--vip";
+                          } else if (type === "couple") {
+                            const isDouble = labelText.includes("-") || labelText.includes(" ");
+                            seatClass = `se-seat-box se-seat-box--couple${isDouble ? " se-seat-box--couple-double" : ""}`;
+                          }
+
+                          if (isMaintenance) {
+                            seatClass += " se-seat-box--maintenance";
+                          }
+
+                          const isSelected = selectedSeat && getSeatCode(selectedSeat) === getSeatCode(seat);
+
+                          return (
+                            <div
+                              key={getSeatId(seat)}
+                              className={`${seatClass}${isSelected ? " se-seat-box--selected" : ""}`}
+                              title={`Hàng ${row.rowName} - Ghế ${labelText} (${type.toUpperCase()})`}
+                              onClick={() => setSelectedSeat(seat)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <span className="se-seat-lbl">{labelText}</span>
+                            </div>
+                          );
                         }
-
-                        let seatClass = "se-seat-box se-seat-box--standard";
-                        if (type === "vip") {
-                          seatClass = "se-seat-box se-seat-box--vip";
-                        } else if (type === "couple") {
-                          const isDouble = labelText.includes("-");
-                          seatClass = `se-seat-box se-seat-box--couple${isDouble ? " se-seat-box--couple-double" : ""}`;
-                        }
-
-
-                        return (
-                          <div
-                            key={getSeatId(seat)}
-                            className={seatClass}
-                            title={`Hàng ${row.rowName} - Ghế ${labelText} (${type.toUpperCase()})`}
-                          >
-                            <span className="se-seat-lbl">{labelText}</span>
-                          </div>
-                        );
                       })}
                     </div>
 
