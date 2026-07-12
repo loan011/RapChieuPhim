@@ -19,10 +19,7 @@ import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
-import TaiKhoan from "./pages/Admin/Account/Account.jsx";
-import NguoiDung from "./pages/Admin/User/User.jsx";
-import NhanVien from "./pages/Admin/Personnel/Personnel.jsx";
-import KhachHang from "./pages/Admin/Customer/Customer.jsx";
+import UserManagement from "./pages/Admin/UserManagement/UserManagement.jsx";
 import Phim from "./pages/Admin/Film/Film.jsx";
 import PhongChieu from "./pages/Admin/Room/Room.jsx";
 import RapChieu from "./pages/Admin/Cinema/Cinema.jsx";
@@ -165,10 +162,7 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="tai-khoan" element={<TaiKhoan />} />
-          <Route path="nguoi-dung" element={<NguoiDung />} />
-          <Route path="nhan-vien" element={<NhanVien />} />
-          <Route path="khach-hang" element={<KhachHang />} />
+          <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
           <Route path="phim" element={<Phim />} />
           <Route path="phong-chieu" element={<PhongChieu />} />
           <Route path="rap-chieu" element={<RapChieu />} />

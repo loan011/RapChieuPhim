@@ -2,10 +2,7 @@ import "../styles/Admin/AdminLayout.css";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   MdDashboard,
-  MdAccountCircle,
   MdPeople,
-  MdBadge,
-  MdPersonOutline,
   MdMovie,
   MdMeetingRoom,
   MdCalendarMonth,
@@ -23,19 +20,16 @@ import {
 import { useState } from "react";
 
 const navItems = [
-  { to: "/admin/dashboard",    label: "Dashboard",      icon: <MdDashboard /> },
-  { to: "/admin/tai-khoan",    label: "Tai Khoan",      icon: <MdAccountCircle /> },
-  { to: "/admin/nguoi-dung",   label: "Nguoi Dung",     icon: <MdPeople /> },
-  { to: "/admin/nhan-vien",    label: "Nhan Vien",      icon: <MdBadge /> },
-  { to: "/admin/khach-hang",   label: "Khach Hang",     icon: <MdPersonOutline /> },
-  { to: "/admin/phim",         label: "Phim",           icon: <MdMovie /> },
-  { to: "/admin/rap-chieu",    label: "Quản Lí Chi Nhánh", icon: <MdTheaters /> },
-  { to: "/admin/phong-chieu",  label: "Phong Chieu",    icon: <MdMeetingRoom /> },
-  { to: "/admin/suat-chieu",   label: "Suat Chieu",     icon: <MdCalendarMonth /> },
-  { to: "/admin/ve",           label: "Ve",             icon: <MdConfirmationNumber /> },
-  { to: "/admin/hoa-don",      label: "Hoa Don",        icon: <MdReceiptLong /> },
-  { to: "/admin/ghe",          label: "Ghe",            icon: <MdChair /> },
-  { to: "/admin/thong-bao",    label: "Thong Bao",      icon: <MdNotifications /> },
+  { to: "/admin/dashboard",             label: "Dashboard",              icon: <MdDashboard /> },
+  { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Người Dùng",    icon: <MdPeople /> },
+  { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
+  { to: "/admin/rap-chieu",             label: "Quản Lí Chi Nhánh",     icon: <MdTheaters /> },
+  { to: "/admin/phong-chieu",           label: "Phong Chieu",            icon: <MdMeetingRoom /> },
+  { to: "/admin/suat-chieu",            label: "Suat Chieu",             icon: <MdCalendarMonth /> },
+  { to: "/admin/ve",                    label: "Ve",                     icon: <MdConfirmationNumber /> },
+  { to: "/admin/hoa-don",               label: "Hoa Don",                icon: <MdReceiptLong /> },
+  { to: "/admin/ghe",                   label: "Ghe",                    icon: <MdChair /> },
+  { to: "/admin/thong-bao",             label: "Thong Bao",              icon: <MdNotifications /> },
 ];
 
 export default function AdminLayout() {
