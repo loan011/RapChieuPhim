@@ -163,9 +163,9 @@ function App() {
           <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
           <Route path="phim" element={<Phim />} />
           <Route path="phong-chieu" element={<PhongChieu />} />
-          <Route path="rap-chieu" element={<RapChieu />} />
+          <Route path="rap-chieu" element={<Navigate to="/admin/phong-chieu" replace />} />
           <Route path="suat-chieu" element={<SuatChieu />} />
-          <Route path="ghe" element={<Ghe />} />
+          <Route path="ghe" element={<Navigate to="/admin/phong-chieu" replace />} />
           <Route path="thong-bao" element={<ThongBao />} />
         </Route>
 

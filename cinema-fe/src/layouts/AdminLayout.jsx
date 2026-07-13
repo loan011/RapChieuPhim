@@ -21,11 +21,9 @@ const navItems = [
   { to: "/admin/dashboard",             label: "Dashboard",              icon: <MdDashboard /> },
   { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Người Dùng",    icon: <MdPeople /> },
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
-  { to: "/admin/rap-chieu",             label: "Quản Lí Chi Nhánh",     icon: <MdTheaters /> },
-  { to: "/admin/phong-chieu",           label: "Phong Chieu",            icon: <MdMeetingRoom /> },
-  { to: "/admin/suat-chieu",            label: "Suat Chieu",             icon: <MdCalendarMonth /> },
-  { to: "/admin/ghe",                   label: "Ghe",                    icon: <MdChair /> },
-  { to: "/admin/thong-bao",             label: "Thong Bao",              icon: <MdNotifications /> },
+  { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
+  { to: "/admin/suat-chieu",            label: "Suất Chiếu",             icon: <MdCalendarMonth /> },
+  { to: "/admin/thong-bao",             label: "Thông Báo",              icon: <MdNotifications /> },
 ];
 
 export default function AdminLayout() {

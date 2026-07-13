@@ -1,7 +1,6 @@
 import "./Room.css";
 import { createPortal } from "react-dom";
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   MdAdd,
   MdOndemandVideo,
@@ -12,62 +11,145 @@ import {
   MdSpeaker,
   MdVisibility,
   MdEdit,
+  MdMoreVert,
+  MdDelete,
+  MdClose,
+  MdEventSeat,
+  MdFavorite
 } from "react-icons/md";
-import { useRoom } from "./useRoom.js";
+import { useRoom, getRoomCinemaName } from "./useRoom.js";
+import {
+  useSeat,
+  SEAT_TYPE_OPTIONS,
+  SEAT_STATUS_OPTIONS,
+  SEAT_ROW_OPTIONS,
+  SEAT_NUMBER_OPTIONS,
+  getSeatId,
+  getSeatCode,
+  getSeatRow,
+  getSeatNumber,
+  getSeatType,
+  getSeatStatus,
+  getRoomId,
+  getRoomFullName,
+  getRoomNameBySeat,
+  getCinemaId,
+  getCinemaName,
+  getRoomCinemaId
+} from "../Seat/useSeat.js";
 
-const PAGE_SIZE = 15;
-
-// ── Status helpers ──────────────────────────────────────────
-function getStatusStyle(isActive) {
-  if (isActive === true || isActive === "true" || isActive === "Active")
-    return { bg: "#e6f9f0", color: "#16a34a", label: "Đang hoạt động" };
-  if (
-    isActive === "maintenance" ||
-    isActive === "Maintenance" ||
-    isActive === "Bảo trì"
-  )
-    return { bg: "#fff7e6", color: "#d97706", label: "Bảo trì" };
-  return { bg: "#fce7f3", color: "#db2777", label: "Tạm dừng" };
+// Helper status info matching user screenshot mocks
+function getStatusInfo(room) {
+  const v = room?.isActive ?? room?.IsActive ?? room?.status ?? room?.Status;
+  const name = String(room?.roomName ?? room?.RoomName ?? "").toLowerCase();
+  
+  if (name.includes("05") || name.includes("dọn") || name.includes("clean")) {
+    return { dotClass: "cleaning", label: "Đang dọn dẹp" };
+  }
+  if (v === "maintenance" || v === "Bảo trì" || name.includes("03") || name.includes("trì")) {
+    return { dotClass: "maintenance", label: "Bảo trì máy chiếu" };
+  }
+  return { dotClass: "active", label: "Sẵn sàng" };
 }
 
-// ── Main Component ──────────────────────────────────────────
+// Group Couple seats in a row into single double representation
+function groupRowSeats(seats) {
+  const grouped = [];
+  let i = 0;
+  while (i < seats.length) {
+    const seat = seats[i];
+    const type = getSeatType(seat).toLowerCase();
+
+    if (
+      type === "couple" &&
+      i + 1 < seats.length &&
+      getSeatType(seats[i + 1]).toLowerCase() === "couple"
+    ) {
+      grouped.push({
+        isGroup: true,
+        seats: [seat, seats[i + 1]],
+        type: "couple",
+      });
+      i += 2;
+    } else {
+      grouped.push({
+        isGroup: false,
+        seat: seat,
+        type: type,
+      });
+      i += 1;
+    }
+  }
+  return grouped;
+}
+
 export default function RoomAdmin() {
+  // ── 1. Room Hook ──
   const {
-    loading,
-    error,
     rooms,
     cinemas,
-    search,
-    setSearch,
-    showModal,
-    isEditing,
-    form,
-    formError,
-    submitting,
+    loading: loadingRooms,
+    error: errorRooms,
+    showModal: showRoomModal,
+    isEditing: isEditingRoom,
+    form: roomForm,
+    formError: roomFormError,
+    submitting: submittingRoom,
     roomTypeOptions,
     roomStatusOptions,
     cinemaOptions,
-    handleChange,
-    handleSubmit,
-    openAddModal,
+    handleChange: handleRoomChange,
+    handleSubmit: handleRoomSubmit,
+    openAddModal: openAddRoomModal,
     openEditRoom,
-    closeModal,
+    closeModal: closeRoomModal,
     handleDeleteRoom,
   } = useRoom();
 
-  const [page, setPage] = useState(1);
-  const navigate = useNavigate();
-  const [selectedCinemaFilter, setSelectedCinemaFilter] = useState("");
+  // ── 2. Seat Hook ──
+  const {
+    filterRoom,
+    setFilterRoom,
+    selectedRoomSeats,
+    seatMapLayout,
+    mockSeatLayout,
+    dynamicStats,
+    showModal: showSeatModal,
+    editId: editSeatId,
+    form: seatForm,
+    submitting: submittingSeat,
+    formError: seatFormError,
+    openAddModal: openAddSeatModal,
+    openEditModal: openEditSeatModal,
+    closeModal: closeSeatModal,
+    handleChange: handleSeatChange,
+    handleSubmit: handleSeatSubmit,
+    handleDelete: handleDeleteSeat,
+  } = useSeat();
 
-  const queryCinemaId = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("cinemaId");
+  // ── 3. Local UI States ──
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [selectedCinemaFilter, setSelectedCinemaFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const [selectedSeat, setSelectedSeat] = useState(null);
+  
+  const menuRef = useRef(null);
+
+  // Close actions menu dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setActiveMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Sync selected cinema filter with first cinema
   useEffect(() => {
-    if (queryCinemaId) {
-      setSelectedCinemaFilter(String(queryCinemaId));
-    } else if (cinemas.length > 0 && !selectedCinemaFilter) {
+    if (cinemas.length > 0 && !selectedCinemaFilter) {
       const firstId = String(
         cinemas[0]?.cinemaId ??
         cinemas[0]?.CinemaId ??
@@ -77,126 +159,105 @@ export default function RoomAdmin() {
       );
       setSelectedCinemaFilter(firstId);
     }
-  }, [cinemas, selectedCinemaFilter, queryCinemaId]);
+  }, [cinemas, selectedCinemaFilter]);
 
-  // ── Helper lấy cinemaId từ room ──
-  function getRoomCinemaId(r) {
-    return String(
-      r?.cinemaId ?? r?.CinemaId ??
-      r?.cinema?.cinemaId ?? r?.cinema?.CinemaId ??
-      r?.Cinema?.cinemaId ?? r?.Cinema?.CinemaId ?? ""
-    );
-  }
+  // Sync selected room with filterRoom & first room loaded
+  const filteredRooms = useMemo(() => {
+    let list = selectedCinemaFilter
+      ? rooms.filter((r) => String(r?.cinemaId ?? r?.CinemaId ?? r?.cinema?.cinemaId ?? "") === selectedCinemaFilter)
+      : rooms;
 
-  // ── Lọc theo chi nhánh trước ──
-  const roomsByCinema = selectedCinemaFilter
-    ? rooms.filter((r) => getRoomCinemaId(r) === selectedCinemaFilter)
-    : rooms;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(r => 
+        (r?.roomName ?? r?.RoomName ?? "").toLowerCase().includes(q) ||
+        (r?.roomType ?? r?.RoomType ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [rooms, selectedCinemaFilter, searchQuery]);
 
-  // ── Stats dựa trên toàn bộ phòng (không phụ thuộc filter) ──
-  const totalRooms = roomsByCinema.length;
-  const activeRooms = roomsByCinema.filter((r) => {
-    const v = r?.isActive ?? r?.IsActive ?? r?.status ?? r?.Status;
-    return v === true || v === "true" || v === "Active";
-  }).length;
-  const totalSeats = roomsByCinema.reduce(
-    (acc, r) =>
-      acc + Number(r?.totalSeats ?? r?.TotalSeats ?? r?.capacity ?? 0),
-    0
-  );
-
-  // ── Lọc thêm theo keyword ──
-  const keyword = (search || "").trim().toLowerCase();
-  const filtered = keyword
-    ? roomsByCinema.filter((r) => {
-        const name = (r?.roomName ?? r?.RoomName ?? "").toLowerCase();
-        const cinema = (
-          r?.cinemaName ??
-          r?.CinemaName ??
-          r?.cinema?.cinemaName ??
-          ""
-        ).toLowerCase();
-        const type = (r?.roomType ?? r?.RoomType ?? "").toLowerCase();
-        return name.includes(keyword) || cinema.includes(keyword) || type.includes(keyword);
-      })
-    : roomsByCinema;
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(0, page * PAGE_SIZE);
-
+  // Initialize selectedRoomId and filterRoom
   useEffect(() => {
-    const handleScroll = (e) => {
-      let target = e.target;
-      if (target === document) {
-        target = document.documentElement || document.body;
+    if (filteredRooms.length > 0) {
+      const firstRoomId = String(getRoomId(filteredRooms[0]));
+      if (!selectedRoomId || !filteredRooms.some(r => String(getRoomId(r)) === selectedRoomId)) {
+        setSelectedRoomId(firstRoomId);
+        setFilterRoom(firstRoomId);
       }
-      if (!target) return;
+    } else {
+      setSelectedRoomId("");
+      setFilterRoom("");
+    }
+  }, [filteredRooms, selectedRoomId]);
 
-      const { scrollTop, scrollHeight, clientHeight } = target;
-      if (scrollTop + clientHeight >= scrollHeight - 100) {
-        setPage((prev) => {
-          if (prev * PAGE_SIZE < filtered.length) {
-            return prev + 1;
-          }
-          return prev;
-        });
-      }
-    };
+  // Sync selected seat on room changes
+  useEffect(() => {
+    setSelectedSeat(null);
+  }, [selectedRoomId]);
 
-    window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
-  }, [filtered.length]);
-
-  function handleCinemaFilterChange(e) {
-    setSelectedCinemaFilter(e.target.value);
-    setPage(1);
+  // Handle room row selection
+  function handleSelectRoom(roomId) {
+    const idStr = String(roomId);
+    setSelectedRoomId(idStr);
+    setFilterRoom(idStr);
   }
+
+  // Calculate layout (mock if empty)
+  const activeLayout = seatMapLayout.length > 0 ? seatMapLayout : mockSeatLayout;
+
+  // Stats calculation
+  const totalCount = filteredRooms.length;
+  const activeCount = filteredRooms.filter(r => getStatusInfo(r).dotClass === "active").length;
+  const cleaningCount = filteredRooms.filter(r => getStatusInfo(r).dotClass === "cleaning").length;
+  const maintenanceCount = filteredRooms.filter(r => getStatusInfo(r).dotClass === "maintenance").length;
 
   return (
     <div className="rm-wrapper">
       {/* ── Header ── */}
-      <div className="rm-header">
-        <h4 className="rm-title">Quản Lý Phòng Chiếu</h4>
-        <button className="rm-btn-add" onClick={openAddModal}>
-          <MdAdd size={18} />
-          Thêm phòng chiếu
+      <div className="rm-header-top">
+        <div>
+          <div className="rm-subtitle">Cơ sở vật chất</div>
+          <div className="rm-logo-area">
+            <h4 className="rm-title-main">Quản Lý Phòng Chiếu</h4>
+          </div>
+        </div>
+        <button className="rm-btn-add-new" onClick={openAddRoomModal}>
+          <MdAdd size={20} />
+          Thêm Phòng
         </button>
       </div>
 
-      {/* ── Stats ── */}
-      <div className="rm-stats-row">
-        <StatCard
-          icon={<MdOndemandVideo size={32} />}
-          iconBg="#fff7ed"
-          iconColor="#f97316"
-          label="Tổng phòng chiếu"
-          value={`${totalRooms} phòng`}
-        />
-        <StatCard
-          icon={<MdCheckCircleOutline size={32} />}
-          iconBg="#f0fdf4"
-          iconColor="#16a34a"
-          label="Phòng đang hoạt động"
-          value={`${activeRooms} phòng`}
-        />
-        <StatCard
-          icon={<MdChair size={32} />}
-          iconBg="#f0f4ff"
-          iconColor="#6366f1"
-          label="Tổng ghế"
-          value={totalSeats.toLocaleString("vi-VN") + " ghế"}
-        />
+      {/* ── Stats Row ── */}
+      <div className="rm-stats-row-new">
+        <div className="rm-stat-card-new red">
+          <p className="rm-stat-label-new">Tổng Số Phòng</p>
+          <p className="rm-stat-value-new">{totalCount}</p>
+        </div>
+        <div className="rm-stat-card-new yellow">
+          <p className="rm-stat-label-new">Đang Sử Dụng</p>
+          <p className="rm-stat-value-new">{activeCount}</p>
+        </div>
+        <div className="rm-stat-card-new gray">
+          <p className="rm-stat-label-new">Đang Dọn Dẹp</p>
+          <p className="rm-stat-value-new">{cleaningCount}</p>
+        </div>
+        <div className="rm-stat-card-new purple">
+          <p className="rm-stat-label-new">Bảo Trì</p>
+          <p className="rm-stat-value-new">{maintenanceCount}</p>
+        </div>
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="rm-filter-bar">
-        {/* Dropdown chi nhánh */}
-        <div className="rm-filter-cinema">
+      {/* ── Filter & Search Bar ── */}
+      <div className="rm-filter-bar-new">
+        <div className="rm-filters-left">
           <select
-            className="rm-cinema-select"
+            className="rm-select-dark"
             value={selectedCinemaFilter}
-            onChange={handleCinemaFilterChange}
+            onChange={(e) => {
+              setSelectedCinemaFilter(e.target.value);
+              setSelectedRoomId("");
+            }}
           >
             {cinemaOptions.map((opt) => (
               <option key={opt.value} value={String(opt.value)}>
@@ -206,85 +267,345 @@ export default function RoomAdmin() {
           </select>
         </div>
 
-        {/* Search */}
         <input
           type="text"
-          className="rm-search"
-          placeholder="Tìm kiếm theo tên phòng, loại phòng..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
+          className="rm-search-dark"
+          placeholder="Tìm phòng..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      {/* ── Loading / Error ── */}
-      {loading && <p className="rm-msg">Đang tải dữ liệu...</p>}
-      {error && <p className="rm-msg rm-msg--error">{error}</p>}
+      {/* ── Rooms Table ── */}
+      <div className="rm-table-card">
+        <table className="rm-table">
+          <thead>
+            <tr>
+              <th className="rm-th">Tên phòng</th>
+              <th className="rm-th">Chi nhánh</th>
+              <th className="rm-th">Sức chứa</th>
+              <th className="rm-th">Loại hình</th>
+              <th className="rm-th">Trạng thái</th>
+              <th className="rm-th" style={{ textAlign: "right" }}>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingRooms ? (
+              <tr>
+                <td colSpan={6} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
+                  Đang tải dữ liệu phòng...
+                </td>
+              </tr>
+            ) : filteredRooms.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
+                  Không tìm thấy phòng phù hợp.
+                </td>
+              </tr>
+            ) : (
+              filteredRooms.map((room, idx) => {
+                const id = String(getRoomId(room) ?? idx);
+                const isSelected = selectedRoomId === id;
+                const status = getStatusInfo(room);
+                const roomType = room?.roomType ?? room?.RoomType ?? "2D Standard";
+                const totalSeats = room?.totalSeats ?? room?.TotalSeats ?? room?.capacity ?? 0;
+                
+                let badgeClass = "rm-badge-type standard";
+                if (roomType.toUpperCase().includes("IMAX")) badgeClass = "rm-badge-type imax";
+                else if (roomType.toUpperCase().includes("DOLBY")) badgeClass = "rm-badge-type dolby";
+                else if (roomType.toUpperCase().includes("VIP")) badgeClass = "rm-badge-type vip";
 
-      {/* ── Cards ── */}
-      {!loading && !error && (
-        <>
-          {pageItems.length === 0 ? (
-            <p className="rm-msg">Không có dữ liệu phù hợp.</p>
-          ) : (
-            <div className="rm-grid">
-              {pageItems.map((room, idx) => {
-                const id =
-                  room?.roomId ?? room?.RoomId ?? room?.id ?? room?.Id ?? idx;
-                const isActive =
-                  room?.isActive ?? room?.IsActive ?? room?.status ?? true;
-                const style = getStatusStyle(isActive);
+                const cinemaName = getRoomCinemaName(room, cinemas);
+
                 return (
-                  <RoomCard
+                  <tr
                     key={id}
-                    room={room}
-                    statusStyle={style}
-                    onEdit={() => openEditRoom(room)}
-                    onDelete={() => handleDeleteRoom(id)}
-                    onDetailSeat={() => navigate(`/admin/ghe?roomId=${id}`)}
-                  />
+                    className={`rm-tr ${isSelected ? "selected" : ""}`}
+                    onClick={() => handleSelectRoom(id)}
+                  >
+                    <td className="rm-td">
+                      <div className="rm-room-name-cell">
+                        <span className="rm-room-icon"><MdOndemandVideo /></span>
+                        <span>{room?.roomName ?? room?.RoomName ?? "Phòng"}</span>
+                      </div>
+                    </td>
+                    <td className="rm-td">{cinemaName}</td>
+                    <td className="rm-td">{totalSeats} Ghế</td>
+                    <td className="rm-td">
+                      <span className={badgeClass}>{roomType}</span>
+                    </td>
+                    <td className="rm-td">
+                      <div className="rm-status-dot-wrap">
+                        <span className={`rm-status-dot ${status.dotClass}`} />
+                        <span>{status.label}</span>
+                      </div>
+                    </td>
+                    <td className="rm-td" style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                      <div className="rm-action-menu-container">
+                        <button
+                          className="rm-action-btn"
+                          onClick={() => setActiveMenuId(activeMenuId === id ? null : id)}
+                        >
+                          <MdMoreVert size={20} />
+                        </button>
+                        {activeMenuId === id && (
+                          <div className="rm-action-dropdown" ref={menuRef}>
+                            <button
+                              className="rm-dropdown-item"
+                              onClick={() => {
+                                openEditRoom(room);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <MdEdit /> Sửa phòng
+                            </button>
+                            <button
+                              className="rm-dropdown-item delete"
+                              onClick={() => {
+                                if (window.confirm("Bạn có chắc chắn muốn xóa phòng này?")) {
+                                  handleDeleteRoom(id);
+                                }
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <MdDelete /> Xóa phòng
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Seat Map & Revenue Panel ── */}
+      {selectedRoomId && (
+        <div className="rm-split-layout">
+          {/* Left Column: Seat Map */}
+          <div className="rm-map-card">
+            <div className="rm-map-title-row">
+              <h5 className="rm-map-title">
+                Sơ Đồ Ghế - {
+                  rooms.find(r => String(getRoomId(r)) === selectedRoomId)?.roomName ?? "Phòng"
+                }
+              </h5>
+              
+              <div className="rm-map-legend">
+                <div className="rm-legend-item">
+                  <span className="rm-legend-box empty" />
+                  <span className="rm-legend-txt">Trống</span>
+                </div>
+                <div className="rm-legend-item">
+                  <span className="rm-legend-box booked" />
+                  <span className="rm-legend-txt">Đã đặt</span>
+                </div>
+                <div className="rm-legend-item">
+                  <span className="rm-legend-box vip" />
+                  <span className="rm-legend-txt">VIP</span>
+                </div>
+                <div className="rm-legend-item">
+                  <span className="rm-legend-box couple" />
+                  <span className="rm-legend-txt">Couple</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Screen */}
+            <div className="rm-screen-container">
+              <div className="rm-screen-bar" />
+              <p className="rm-screen-txt">MÀN HÌNH</p>
+            </div>
+
+            {/* Seats Layout Matrix */}
+            <div className="rm-grid-matrix">
+              {activeLayout.map((row) => {
+                return (
+                  <div className="rm-matrix-row" key={row.rowName}>
+                    <span className="rm-row-label">{row.rowName}</span>
+                    <div className="rm-row-seats-flex">
+                      {groupRowSeats(row.seats).map((item, idx) => {
+                        if (item.isGroup) {
+                          const [seat1, seat2] = item.seats;
+                          const rowName = row.rowName;
+                          const num1 = getSeatNumber(seat1);
+                          const num2 = getSeatNumber(seat2);
+                          const labelText = `${rowName}${num1} ${rowName}${num2}`;
+                          
+                          const isMaintenance = getSeatStatus(seat1) === "Bảo trì" || getSeatStatus(seat2) === "Bảo trì";
+                          const isSelected = selectedSeat && (
+                            String(getSeatId(selectedSeat)) === String(getSeatId(seat1)) ||
+                            String(getSeatId(selectedSeat)) === String(getSeatId(seat2))
+                          );
+                          
+                          // Mock booked state for UI visual mapping
+                          const isBooked = !isMaintenance && (Number(num1) % 4 === 0 || Number(num1) === 3);
+
+                          let seatClass = "rm-seat-box couple";
+                          if (isMaintenance) seatClass += " maintenance";
+                          else if (isBooked) seatClass += " booked";
+                          if (isSelected) seatClass += " selected";
+
+                          return (
+                            <div
+                              key={getSeatId(seat1) || idx}
+                              className={seatClass}
+                              title={`Hàng ${rowName} - Ghế ${labelText} (Couple)`}
+                              onClick={() => setSelectedSeat(seat1)}
+                            >
+                              <span className="rm-seat-lbl">{labelText}</span>
+                            </div>
+                          );
+                        } else {
+                          const seat = item.seat;
+                          const type = getSeatType(seat).toLowerCase();
+                          const seatCode = getSeatCode(seat);
+                          const numOnly = getSeatNumber(seat);
+                          
+                          let labelText = numOnly ? String(numOnly).padStart(2, "0") : seatCode;
+                          const isMaintenance = getSeatStatus(seat) === "Bảo trì";
+                          
+                          // Mock booked state for UI visual mapping
+                          const isBooked = !isMaintenance && (Number(numOnly) % 5 === 0 || Number(numOnly) === 2 || Number(numOnly) === 7);
+
+                          let seatClass = "rm-seat-box standard";
+                          if (type === "vip") seatClass = "rm-seat-box vip";
+                          else if (type === "couple") seatClass = "rm-seat-box couple";
+
+                          if (isMaintenance) seatClass += " maintenance";
+                          else if (isBooked) seatClass += " booked";
+
+                          const isSelected = selectedSeat && getSeatCode(selectedSeat) === getSeatCode(seat);
+                          if (isSelected) seatClass += " selected";
+
+                          return (
+                            <div
+                              key={getSeatId(seat)}
+                              className={seatClass}
+                              title={`Ghế ${seatCode} (${type.toUpperCase()})`}
+                              onClick={() => setSelectedSeat(seat)}
+                            >
+                              <span className="rm-seat-lbl">{labelText}</span>
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
+                    <span className="rm-row-label">{row.rowName}</span>
+                  </div>
                 );
               })}
             </div>
-          )}
-
-          {/* ── Scroll/Pagination Footer Info ── */}
-          <div className="rm-footer" style={{ justifyContent: "center", margin: "24px 0" }}>
-            <span className="rm-footer-info">
-              {pageItems.length < filtered.length ? (
-                `Đang hiển thị ${pageItems.length} trên ${filtered.length} phòng chiếu (Cuộn xuống để xem thêm...)`
-              ) : (
-                `Đã hiển thị tất cả ${filtered.length} phòng chiếu`
-              )}
-            </span>
           </div>
-        </>
+
+          {/* Right Column: Panel details */}
+          <div className="rm-side-panel">
+            <button
+              className="rm-btn-side rm-btn-side-primary"
+              onClick={() => openAddSeatModal({ roomId: selectedRoomId })}
+              style={{ padding: "12px", fontSize: "0.95rem" }}
+            >
+              <MdAdd size={20} /> Thêm ghế mới
+            </button>
+
+            {/* Seat detail if selected */}
+            <div className="rm-side-card" style={{ flex: 1 }}>
+              <h6 className="rm-side-title">
+                {selectedSeat ? "Chi Tiết Ghế Ngồi" : "Chọn Ghế Để Xem"}
+              </h6>
+
+              {selectedSeat ? (
+                <div className="rm-detail-info-list">
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Mã ghế:</span>
+                    <span className="rm-detail-info-val text-red-500">{getSeatCode(selectedSeat)}</span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Hàng ghế:</span>
+                    <span className="rm-detail-info-val">{getSeatRow(selectedSeat)}</span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Số thứ tự:</span>
+                    <span className="rm-detail-info-val">{getSeatNumber(selectedSeat)}</span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Loại ghế:</span>
+                    <span className="rm-detail-info-val">{getSeatType(selectedSeat)}</span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Trạng thái:</span>
+                    <span className="rm-detail-info-val">{getSeatStatus(selectedSeat)}</span>
+                  </div>
+
+                  <div className="rm-detail-actions">
+                    {String(getSeatId(selectedSeat)).startsWith("mock-") ? (
+                      <button
+                        className="rm-btn-side rm-btn-side-primary"
+                        onClick={() => openAddSeatModal({
+                          roomId: selectedRoomId,
+                          seatRow: getSeatRow(selectedSeat),
+                          seatNumber: getSeatNumber(selectedSeat),
+                          seatType: getSeatType(selectedSeat),
+                          isActive: true
+                        })}
+                      >
+                        Khởi tạo ghế
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="rm-btn-side rm-btn-side-secondary"
+                          onClick={() => openEditSeatModal(selectedSeat)}
+                        >
+                          Chỉnh sửa ghế
+                        </button>
+                        <button
+                          className="rm-btn-side rm-btn-side-primary"
+                          onClick={() => {
+                            if (window.confirm("Bạn có chắc chắn muốn xóa ghế này?")) {
+                              handleDeleteSeat(getSeatId(selectedSeat));
+                            }
+                          }}
+                        >
+                          Xóa ghế
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", color: "#8e8e93", padding: "20px 0", fontSize: "0.85rem" }}>
+                  Hãy bấm vào một ô ghế trên sơ đồ để xem thông tin chi tiết hoặc cập nhật trạng thái của ghế đó.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ── Modal ── */}
-      {showModal &&
+      {/* ── Room Add/Edit Modal ── */}
+      {showRoomModal &&
         createPortal(
           <div className="rm-modal-overlay">
             <div className="rm-modal">
               <h5 className="rm-modal-title">
-                {isEditing ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
+                {isEditingRoom ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
               </h5>
 
-              {formError && <p className="rm-form-error">{formError}</p>}
+              {roomFormError && <p className="rm-form-error">{roomFormError}</p>}
 
-              <form onSubmit={handleSubmit} className="rm-form">
-                {/* Chi nhánh */}
+              <form onSubmit={handleRoomSubmit} className="rm-form">
                 <div className="rm-field">
-                  <label className="rm-label">
-                    Chi Nhánh <span className="rm-required">*</span>
-                  </label>
+                  <label className="rm-label">Chi Nhánh <span className="rm-required">*</span></label>
                   <select
                     name="cinemaId"
-                    value={form.cinemaId}
-                    onChange={handleChange}
+                    value={roomForm.cinemaId}
+                    onChange={handleRoomChange}
                     className="rm-input"
+                    required
                   >
                     <option value="">-- Chọn chi nhánh --</option>
                     {cinemaOptions.map((opt) => (
@@ -295,29 +616,26 @@ export default function RoomAdmin() {
                   </select>
                 </div>
 
-                {/* Tên phòng */}
                 <div className="rm-field">
-                  <label className="rm-label">
-                    Tên Phòng Chiếu <span className="rm-required">*</span>
-                  </label>
+                  <label className="rm-label">Tên Phòng Chiếu <span className="rm-required">*</span></label>
                   <input
                     type="text"
                     name="roomName"
-                    value={form.roomName}
-                    onChange={handleChange}
-                    placeholder="Nhập tên phòng chiếu"
+                    value={roomForm.roomName}
+                    onChange={handleRoomChange}
                     className="rm-input"
+                    placeholder="Nhập tên phòng chiếu"
+                    required
                   />
                 </div>
 
-                {/* Loại phòng + Sức chứa */}
                 <div className="rm-field-row">
                   <div className="rm-field">
                     <label className="rm-label">Loại Phòng</label>
                     <select
                       name="roomType"
-                      value={form.roomType}
-                      onChange={handleChange}
+                      value={roomForm.roomType}
+                      onChange={handleRoomChange}
                       className="rm-input"
                     >
                       {roomTypeOptions.map((opt) => (
@@ -328,28 +646,25 @@ export default function RoomAdmin() {
                     </select>
                   </div>
                   <div className="rm-field">
-                    <label className="rm-label">
-                      Sức Chứa <span className="rm-required">*</span>
-                    </label>
+                    <label className="rm-label">Sức Chứa <span className="rm-required">*</span></label>
                     <input
                       type="number"
                       name="totalSeats"
-                      value={form.totalSeats}
-                      onChange={handleChange}
-                      placeholder="Số ghế"
-                      min={1}
+                      value={roomForm.totalSeats}
+                      onChange={handleRoomChange}
                       className="rm-input"
+                      min={1}
+                      required
                     />
                   </div>
                 </div>
 
-                {/* Trạng thái */}
                 <div className="rm-field">
                   <label className="rm-label">Trạng Thái</label>
                   <select
                     name="isActive"
-                    value={String(form.isActive)}
-                    onChange={handleChange}
+                    value={String(roomForm.isActive)}
+                    onChange={handleRoomChange}
                     className="rm-input"
                   >
                     {roomStatusOptions.map((opt) => (
@@ -360,26 +675,12 @@ export default function RoomAdmin() {
                   </select>
                 </div>
 
-                {/* Actions */}
                 <div className="rm-modal-actions">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="rm-btn-cancel"
-                    disabled={submitting}
-                  >
+                  <button type="button" onClick={closeRoomModal} className="rm-btn-cancel" disabled={submittingRoom}>
                     Hủy
                   </button>
-                  <button
-                    type="submit"
-                    className="rm-btn-submit"
-                    disabled={submitting}
-                  >
-                    {submitting
-                      ? "Đang xử lý..."
-                      : isEditing
-                      ? "Cập Nhật"
-                      : "Thêm Mới"}
+                  <button type="submit" className="rm-btn-submit" disabled={submittingRoom}>
+                    {submittingRoom ? "Đang xử lý..." : isEditingRoom ? "Cập Nhật" : "Thêm Mới"}
                   </button>
                 </div>
               </form>
@@ -387,94 +688,120 @@ export default function RoomAdmin() {
           </div>,
           document.body
         )}
-    </div>
-  );
-}
 
-// ── StatCard ───────────────────────────────────────────────
-function StatCard({ icon, iconBg, iconColor, label, value }) {
-  return (
-    <div className="rm-stat-card">
-      <div className="rm-stat-icon" style={{ background: iconBg, color: iconColor }}>
-        {icon}
-      </div>
-      <div className="rm-stat-body">
-        <p className="rm-stat-label">{label}</p>
-        <p className="rm-stat-value">{value}</p>
-      </div>
-    </div>
-  );
-}
+      {/* ── Seat Add/Edit Modal ── */}
+      {showSeatModal &&
+        createPortal(
+          <div className="rm-modal-overlay">
+            <div className="rm-modal">
+              <h5 className="rm-modal-title">
+                {editSeatId !== null ? "Cập Nhật Ghế" : "Thêm Ghế Ngồi"}
+              </h5>
 
-// ── RoomCard ───────────────────────────────────────────────
-function RoomCard({ room, statusStyle, onEdit, onDelete, onDetailSeat }) {
-  const name =
-    room?.roomName ?? room?.RoomName ?? room?.name ?? "—";
-  const cinemaName =
-    room?.cinemaName ??
-    room?.CinemaName ??
-    room?.cinema?.cinemaName ??
-    room?.cinema?.CinemaName ??
-    "—";
-  const roomType = room?.roomType ?? room?.RoomType ?? "—";
-  const totalSeats =
-    room?.totalSeats ?? room?.TotalSeats ?? room?.capacity ?? 0;
-  const equipment =
-    room?.equipment ?? room?.Equipment ?? room?.devices ?? room?.Devices ?? "";
+              {seatFormError && <p className="rm-form-error">{seatFormError}</p>}
 
-  return (
-    <div className="rm-card">
-      {/* Name + Badge */}
-      <div className="rm-card-head" onClick={onDetailSeat} style={{ cursor: "pointer" }}>
-        <h6 className="rm-card-name" style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#3b82f6"} onMouseOut={(e) => e.target.style.color = ""}>{name}</h6>
-        <span
-          className="rm-card-badge"
-          style={{ background: statusStyle.bg, color: statusStyle.color }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {statusStyle.label}
-        </span>
-      </div>
+              <form onSubmit={handleSeatSubmit} className="rm-form">
+                <div className="rm-field">
+                  <label className="rm-label">Phòng Chiếu <span className="rm-required">*</span></label>
+                  <select
+                    name="roomId"
+                    value={seatForm.roomId}
+                    onChange={handleSeatChange}
+                    className="rm-input"
+                    required
+                    disabled
+                  >
+                    {rooms.map((room) => (
+                      <option key={getRoomId(room)} value={getRoomId(room)}>
+                        {getRoomFullName(room, cinemas)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* Info */}
-      <div className="rm-card-info">
-        <InfoRow icon={<MdLocationOn />} label="Chi nhánh:" value={cinemaName} />
-        <InfoRow icon={<MdScreenshotMonitor />} label="Loại phòng:" value={roomType} />
-        <InfoRow 
-          icon={<MdChair />} 
-          label="Sức chứa:" 
-          value={`${totalSeats} ghế`} 
-          className="rm-info-row-clickable"
-          onClick={onDetailSeat}
-        />
-        {equipment && (
-          <InfoRow icon={<MdSpeaker />} label="Thiết bị:" value={equipment} multiline />
+                <div className="rm-field-row">
+                  <div className="rm-field">
+                    <label className="rm-label">Hàng Ghế <span className="rm-required">*</span></label>
+                    <select
+                      name="seatRow"
+                      value={seatForm.seatRow}
+                      onChange={handleSeatChange}
+                      className="rm-input"
+                      required
+                    >
+                      <option value="">-- Hàng --</option>
+                      {SEAT_ROW_OPTIONS.map((row) => (
+                        <option key={row.value} value={row.value}>
+                          {row.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rm-field">
+                    <label className="rm-label">Số Ghế <span className="rm-required">*</span></label>
+                    <select
+                      name="seatNumber"
+                      value={String(seatForm.seatNumber)}
+                      onChange={handleSeatChange}
+                      className="rm-input"
+                      required
+                    >
+                      <option value="">-- Số --</option>
+                      {SEAT_NUMBER_OPTIONS.map((number) => (
+                        <option key={number.value} value={number.value}>
+                          {number.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="rm-field">
+                  <label className="rm-label">Loại Ghế</label>
+                  <select
+                    name="seatType"
+                    value={seatForm.seatType}
+                    onChange={handleSeatChange}
+                    className="rm-input"
+                  >
+                    {SEAT_TYPE_OPTIONS.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rm-field">
+                  <label className="rm-label">Trạng Thái hoạt động</label>
+                  <select
+                    name="isActive"
+                    value={String(seatForm.isActive)}
+                    onChange={handleSeatChange}
+                    className="rm-input"
+                  >
+                    {SEAT_STATUS_OPTIONS.map((st) => (
+                      <option key={st.value} value={st.value}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rm-modal-actions">
+                  <button type="button" onClick={closeSeatModal} className="rm-btn-cancel" disabled={submittingSeat}>
+                    Hủy
+                  </button>
+                  <button type="submit" className="rm-btn-submit" disabled={submittingSeat}>
+                    {submittingSeat ? "Đang lưu..." : editSeatId !== null ? "Cập Nhật" : "Thêm Ghế"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
-      </div>
-
-      {/* Actions */}
-      <div className="rm-card-actions">
-        <button className="rm-card-btn rm-card-btn--detail" onClick={onDetailSeat}>
-          <MdVisibility size={15} /> Chi tiết
-        </button>
-        <button className="rm-card-btn rm-card-btn--edit" onClick={onEdit}>
-          <MdEdit size={15} /> Sửa
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── InfoRow ────────────────────────────────────────────────
-function InfoRow({ icon, label, value, multiline, onClick, className }) {
-  return (
-    <div 
-      className={`rm-info-row${multiline ? " rm-info-row--multiline" : ""}${className ? " " + className : ""}`}
-      onClick={onClick}
-    >
-      <span className="rm-info-icon">{icon}</span>
-      <span className="rm-info-label">{label}</span>
-      <span className="rm-info-value">{value || "—"}</span>
     </div>
   );
 }

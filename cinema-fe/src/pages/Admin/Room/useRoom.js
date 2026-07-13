@@ -238,7 +238,7 @@ function findCinemaByRoom(room, cinemas = []) {
   });
 }
 
-function getRoomCinemaName(room, cinemas = []) {
+export function getRoomCinemaName(room, cinemas = []) {
   const directCinemaName = getRoomCinemaNameWithoutFallback(room);
 
   if (directCinemaName) return directCinemaName;
