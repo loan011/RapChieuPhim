@@ -133,6 +133,126 @@ export default function RoomAdmin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null);
+
+  const [priceStdWeekday, setPriceStdWeekday] = useState("");
+  const [priceStdWeekend, setPriceStdWeekend] = useState("");
+  const [priceVipWeekday, setPriceVipWeekday] = useState("");
+  const [priceVipWeekend, setPriceVipWeekend] = useState("");
+  const [priceCoupleWeekday, setPriceCoupleWeekday] = useState("");
+  const [priceCoupleWeekend, setPriceCoupleWeekend] = useState("");
+
+  // Sync price forms with current modal mode
+  useEffect(() => {
+    if (showRoomModal && roomForm) {
+      if (isEditingRoom) {
+        const cId = roomForm.cinemaId;
+        const rName = roomForm.roomName;
+        
+        const stdWd = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
+        const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
+        const vipWd = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
+        const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
+        const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
+        const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
+
+        const isImax = String(roomForm.roomType).toUpperCase().includes("IMAX");
+
+        setPriceStdWeekday(stdWd || (isImax ? "150.000" : "70.000"));
+        setPriceStdWeekend(stdWe || (isImax ? "180.000" : "90.000"));
+        setPriceVipWeekday(vipWd || (isImax ? "180.000" : "90.000"));
+        setPriceVipWeekend(vipWe || (isImax ? "220.000" : "120.000"));
+        setPriceCoupleWeekday(cpWd || (isImax ? "" : "130.000"));
+        setPriceCoupleWeekend(cpWe || (isImax ? "" : "160.000"));
+      } else {
+        const isImax = String(roomForm.roomType).toUpperCase().includes("IMAX");
+        setPriceStdWeekday(isImax ? "150.000" : "70.000");
+        setPriceStdWeekend(isImax ? "180.000" : "90.000");
+        setPriceVipWeekday(isImax ? "180.000" : "90.000");
+        setPriceVipWeekend(isImax ? "220.000" : "120.000");
+        setPriceCoupleWeekday(isImax ? "" : "130.000");
+        setPriceCoupleWeekend(isImax ? "" : "160.000");
+      }
+    }
+  }, [showRoomModal, isEditingRoom, roomForm?.cinemaId, roomForm?.roomName]);
+
+  // Sync price defaults when roomType option changes in form
+  useEffect(() => {
+    if (showRoomModal && roomForm && !isEditingRoom) {
+      const isImax = String(roomForm.roomType).toUpperCase().includes("IMAX");
+      if (isImax) {
+        setPriceStdWeekday("150.000");
+        setPriceStdWeekend("180.000");
+        setPriceVipWeekday("180.000");
+        setPriceVipWeekend("220.000");
+        setPriceCoupleWeekday("");
+        setPriceCoupleWeekend("");
+      } else {
+        setPriceStdWeekday("70.000");
+        setPriceStdWeekend("90.000");
+        setPriceVipWeekday("90.000");
+        setPriceVipWeekend("120.000");
+        setPriceCoupleWeekday("130.000");
+        setPriceCoupleWeekend("160.000");
+      }
+    }
+  }, [roomForm?.roomType, showRoomModal, isEditingRoom]);
+
+  const handleCustomRoomSubmit = async (e) => {
+    e.preventDefault();
+    const cId = roomForm.cinemaId;
+    const rName = roomForm.roomName;
+    
+    localStorage.setItem(`room_price_std_wd_c${cId}_r${rName}`, priceStdWeekday);
+    localStorage.setItem(`room_price_std_we_c${cId}_r${rName}`, priceStdWeekend);
+    localStorage.setItem(`room_price_vip_wd_c${cId}_r${rName}`, priceVipWeekday);
+    localStorage.setItem(`room_price_vip_we_c${cId}_r${rName}`, priceVipWeekend);
+    localStorage.setItem(`room_price_cp_wd_c${cId}_r${rName}`, priceCoupleWeekday);
+    localStorage.setItem(`room_price_cp_we_c${cId}_r${rName}`, priceCoupleWeekend);
+
+    await handleRoomSubmit(e);
+  };
+  
+  const getRoomPriceText = (room, type) => {
+    const cId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
+    const rName = room?.roomName ?? room?.RoomName ?? "";
+    
+    const stdWd = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
+    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
+    const vipWd = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
+    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
+    const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
+    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
+
+    const roomType = room?.roomType ?? room?.RoomType ?? "2D";
+    const isImax = String(roomType).toUpperCase().includes("IMAX");
+
+    const formatShorthand = (val, def) => {
+      if (!val) return def;
+      // Strip ".000" or similar for shorthand view in table
+      return String(val).replace(/\.000/g, "k").replace(/\.500/g, "k5").replace(/ đ/g, "");
+    };
+
+    if (type === "std") {
+      if (stdWd || stdWe) {
+        return `${formatShorthand(stdWd, "0")} / ${formatShorthand(stdWe, "0")}`;
+      }
+      return isImax ? "150k / 180k" : "70k / 90k";
+    }
+    if (type === "vip") {
+      if (vipWd || vipWe) {
+        return `${formatShorthand(vipWd, "0")} / ${formatShorthand(vipWe, "0")}`;
+      }
+      return isImax ? "180k / 220k" : "90k / 120k";
+    }
+    if (type === "couple") {
+      if (isImax) return "—";
+      if (cpWd || cpWe) {
+        return `${formatShorthand(cpWd, "0")} / ${formatShorthand(cpWe, "0")}`;
+      }
+      return "130k / 160k";
+    }
+    return "—";
+  };
   
   const menuRef = useRef(null);
 
@@ -205,6 +325,62 @@ export default function RoomAdmin() {
 
   // Calculate layout (mock if empty)
   const activeLayout = seatMapLayout.length > 0 ? seatMapLayout : mockSeatLayout;
+
+  const activeRoom = rooms.find(r => String(getRoomId(r)) === selectedRoomId);
+  const activeRoomType = activeRoom?.roomType ?? activeRoom?.RoomType ?? "2D";
+
+  const getSeatPrice = (seatType, roomType = "2D") => {
+    const type = String(seatType).toLowerCase();
+    const cId = activeRoom?.cinemaId ?? activeRoom?.CinemaId ?? "";
+    const rName = activeRoom?.roomName ?? activeRoom?.RoomName ?? "";
+    
+    const stdWd = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
+    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
+    const vipWd = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
+    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
+    const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
+    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
+
+    const isImax = String(roomType).toUpperCase().includes("IMAX");
+
+    if (type === "vip") {
+      if (vipWd || vipWe) return `${vipWd || "0"} đ / ${vipWe || "0"} đ`;
+      return isImax ? "180.000 đ / 220.000 đ" : "90.000 đ / 120.000 đ";
+    }
+    if (type === "couple" || type === "sweetbox") {
+      if (isImax) return "—";
+      if (cpWd || cpWe) return `${cpWd || "0"} đ / ${cpWe || "0"} đ`;
+      return "130.000 đ / 160.000 đ";
+    }
+    // Standard
+    if (stdWd || stdWe) return `${stdWd || "0"} đ / ${stdWe || "0"} đ`;
+    return isImax ? "150.000 đ / 180.000 đ" : "70.000 đ / 90.000 đ";
+  };
+
+  const getLateSeatPrice = (seatType, roomType = "2D") => {
+    const type = String(seatType).toLowerCase();
+    const cId = activeRoom?.cinemaId ?? activeRoom?.CinemaId ?? "";
+    const rName = activeRoom?.roomName ?? activeRoom?.RoomName ?? "";
+    
+    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
+    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
+    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
+
+    const isImax = String(roomType).toUpperCase().includes("IMAX");
+
+    if (type === "vip") {
+      if (vipWe) return `${vipWe} đ`;
+      return isImax ? "220.000 đ" : "120.000 đ";
+    }
+    if (type === "couple" || type === "sweetbox") {
+      if (isImax) return "—";
+      if (cpWe) return `${cpWe} đ`;
+      return "160.000 đ";
+    }
+    // Standard
+    if (stdWe) return `${stdWe} đ`;
+    return isImax ? "180.000 đ" : "90.000 đ";
+  };
 
   // Stats calculation
   const totalCount = filteredRooms.length;
@@ -285,6 +461,9 @@ export default function RoomAdmin() {
               <th className="rm-th">Chi nhánh</th>
               <th className="rm-th">Sức chứa</th>
               <th className="rm-th">Loại hình</th>
+              <th className="rm-th">Giá Thường</th>
+              <th className="rm-th">Giá VIP</th>
+              <th className="rm-th">Giá Couple</th>
               <th className="rm-th">Trạng thái</th>
               <th className="rm-th" style={{ textAlign: "right" }}>Thao tác</th>
             </tr>
@@ -292,13 +471,13 @@ export default function RoomAdmin() {
           <tbody>
             {loadingRooms ? (
               <tr>
-                <td colSpan={6} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
+                <td colSpan={9} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
                   Đang tải dữ liệu phòng...
                 </td>
               </tr>
             ) : filteredRooms.length === 0 ? (
               <tr>
-                <td colSpan={6} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
+                <td colSpan={9} className="rm-td" style={{ textAlign: "center", padding: 30 }}>
                   Không tìm thấy phòng phù hợp.
                 </td>
               </tr>
@@ -334,6 +513,9 @@ export default function RoomAdmin() {
                     <td className="rm-td">
                       <span className={badgeClass}>{roomType}</span>
                     </td>
+                    <td className="rm-td">{getRoomPriceText(room, "std")}</td>
+                    <td className="rm-td">{getRoomPriceText(room, "vip")}</td>
+                    <td className="rm-td">{getRoomPriceText(room, "couple")}</td>
                     <td className="rm-td">
                       <div className="rm-status-dot-wrap">
                         <span className={`rm-status-dot ${status.dotClass}`} />
@@ -397,11 +579,7 @@ export default function RoomAdmin() {
               <div className="rm-map-legend">
                 <div className="rm-legend-item">
                   <span className="rm-legend-box empty" />
-                  <span className="rm-legend-txt">Trống</span>
-                </div>
-                <div className="rm-legend-item">
-                  <span className="rm-legend-box booked" />
-                  <span className="rm-legend-txt">Đã đặt</span>
+                  <span className="rm-legend-txt">Thường</span>
                 </div>
                 <div className="rm-legend-item">
                   <span className="rm-legend-box vip" />
@@ -410,6 +588,10 @@ export default function RoomAdmin() {
                 <div className="rm-legend-item">
                   <span className="rm-legend-box couple" />
                   <span className="rm-legend-txt">Couple</span>
+                </div>
+                <div className="rm-legend-item">
+                  <span className="rm-legend-box maintenance" />
+                  <span className="rm-legend-txt">Bảo trì</span>
                 </div>
               </div>
             </div>
@@ -441,12 +623,8 @@ export default function RoomAdmin() {
                             String(getSeatId(selectedSeat)) === String(getSeatId(seat2))
                           );
                           
-                          // Mock booked state for UI visual mapping
-                          const isBooked = !isMaintenance && (Number(num1) % 4 === 0 || Number(num1) === 3);
-
                           let seatClass = "rm-seat-box couple";
                           if (isMaintenance) seatClass += " maintenance";
-                          else if (isBooked) seatClass += " booked";
                           if (isSelected) seatClass += " selected";
 
                           return (
@@ -468,15 +646,11 @@ export default function RoomAdmin() {
                           let labelText = numOnly ? String(numOnly).padStart(2, "0") : seatCode;
                           const isMaintenance = getSeatStatus(seat) === "Bảo trì";
                           
-                          // Mock booked state for UI visual mapping
-                          const isBooked = !isMaintenance && (Number(numOnly) % 5 === 0 || Number(numOnly) === 2 || Number(numOnly) === 7);
-
                           let seatClass = "rm-seat-box standard";
                           if (type === "vip") seatClass = "rm-seat-box vip";
                           else if (type === "couple") seatClass = "rm-seat-box couple";
 
                           if (isMaintenance) seatClass += " maintenance";
-                          else if (isBooked) seatClass += " booked";
 
                           const isSelected = selectedSeat && getSeatCode(selectedSeat) === getSeatCode(seat);
                           if (isSelected) seatClass += " selected";
@@ -534,6 +708,18 @@ export default function RoomAdmin() {
                   <div className="rm-detail-info-item">
                     <span className="rm-detail-info-label">Loại ghế:</span>
                     <span className="rm-detail-info-val">{getSeatType(selectedSeat)}</span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Giá vé:</span>
+                    <span className="rm-detail-info-val text-green-500 font-bold">
+                      {getSeatPrice(getSeatType(selectedSeat), activeRoomType)}
+                    </span>
+                  </div>
+                  <div className="rm-detail-info-item">
+                    <span className="rm-detail-info-label">Suất khuya (sau 21h):</span>
+                    <span className="rm-detail-info-val text-yellow-500 font-bold">
+                      {getLateSeatPrice(getSeatType(selectedSeat), activeRoomType)}
+                    </span>
                   </div>
                   <div className="rm-detail-info-item">
                     <span className="rm-detail-info-label">Trạng thái:</span>
@@ -597,7 +783,7 @@ export default function RoomAdmin() {
 
               {roomFormError && <p className="rm-form-error">{roomFormError}</p>}
 
-              <form onSubmit={handleRoomSubmit} className="rm-form">
+              <form onSubmit={handleCustomRoomSubmit} className="rm-form">
                 <div className="rm-field">
                   <label className="rm-label">Chi Nhánh <span className="rm-required">*</span></label>
                   <select
@@ -673,6 +859,78 @@ export default function RoomAdmin() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="rm-field" style={{ marginTop: "12px", borderTop: "1px solid #2c2c2e", paddingTop: "12px" }}>
+                  <label className="rm-label" style={{ color: "#ffd60a", fontWeight: "bold" }}>Bảng Giá Vé Ghế (Có thể điều chỉnh):</label>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "8px", fontSize: "0.8rem", color: "#aeaeb2", marginTop: "8px", alignItems: "center" }}>
+                    <div></div>
+                    <div style={{ textAlign: "center", fontWeight: "600", color: "#8e8e93" }}>Ngày Thường</div>
+                    <div style={{ textAlign: "center", fontWeight: "600", color: "#8e8e93" }}>Cuối Tuần</div>
+
+                    <div>Ghế Thường:</div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceStdWeekday}
+                        onChange={(e) => setPriceStdWeekday(e.target.value)}
+                        placeholder="70.000"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceStdWeekend}
+                        onChange={(e) => setPriceStdWeekend(e.target.value)}
+                        placeholder="90.000"
+                      />
+                    </div>
+
+                    <div>Ghế VIP:</div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceVipWeekday}
+                        onChange={(e) => setPriceVipWeekday(e.target.value)}
+                        placeholder="90.000"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceVipWeekend}
+                        onChange={(e) => setPriceVipWeekend(e.target.value)}
+                        placeholder="120.000"
+                      />
+                    </div>
+
+                    <div>Ghế Couple:</div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceCoupleWeekday}
+                        onChange={(e) => setPriceCoupleWeekday(e.target.value)}
+                        placeholder="130.000"
+                        disabled={roomForm.roomType?.toUpperCase().includes("IMAX")}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        className="rm-input-price"
+                        value={priceCoupleWeekend}
+                        onChange={(e) => setPriceCoupleWeekend(e.target.value)}
+                        placeholder="160.000"
+                        disabled={roomForm.roomType?.toUpperCase().includes("IMAX")}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="rm-modal-actions">
@@ -771,6 +1029,9 @@ export default function RoomAdmin() {
                       </option>
                     ))}
                   </select>
+                  <div className="text-xs text-green-500 font-semibold mt-1.5">
+                    Giá áp dụng: {getSeatPrice(seatForm.seatType, activeRoomType)}
+                  </div>
                 </div>
 
                 <div className="rm-field">

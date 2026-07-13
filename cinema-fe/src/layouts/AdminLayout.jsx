@@ -38,16 +38,16 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-[#0c0c0e] overflow-hidden text-gray-200">
       <aside
         className={`${
           sidebarOpen ? "w-56" : "w-14"
-        } bg-[#0d3875] text-white flex flex-col transition-all duration-200 shrink-0`}
+        } bg-[#111115] border-r border-[#2c2c2e]/60 text-white flex flex-col transition-all duration-200 shrink-0`}
       >
-        <div className="flex items-center gap-2 px-3 py-4 border-b border-white/10">
-          <MdMovie className="text-blue-400 text-2xl shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-4 border-b border-[#2c2c2e]/60">
+          <MdMovie className="text-[#ff3b30] text-2xl shrink-0" />
           {sidebarOpen && (
-            <span className="text-sm font-bold leading-tight">T&M Admin</span>
+            <span className="text-sm font-bold leading-tight tracking-wider text-white">T&M ADMIN</span>
           )}
         </div>
 
@@ -57,10 +57,10 @@ export default function AdminLayout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 mx-1 rounded text-sm transition-colors ${
+                `flex items-center gap-3 px-3 py-2 mx-1 rounded-lg text-sm transition-all duration-150 ${
                   isActive
-                    ? "bg-blue-600 text-white"
-                    : "text-blue-100 hover:bg-white/10 hover:text-white"
+                    ? "bg-[#ff3b30] text-white font-bold shadow-[0_2px_10px_rgba(255,59,48,0.2)]"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -74,8 +74,8 @@ export default function AdminLayout() {
           onClick={handleLogout}
           className={`flex items-center gap-3 rounded-xl text-sm font-medium text-white transition-all duration-200 ${
             sidebarOpen
-              ? "px-4 py-2.5 mx-3 mb-4 bg-white/10 hover:bg-white/20"
-              : "p-2 mx-1 mb-4 justify-center bg-white/10 hover:bg-white/20"
+              ? "px-4 py-2.5 mx-3 mb-4 bg-white/5 hover:bg-white/10"
+              : "p-2 mx-1 mb-4 justify-center bg-white/5 hover:bg-white/10"
           }`}
         >
           <MdLogout className="text-lg shrink-0" />
@@ -83,19 +83,16 @@ export default function AdminLayout() {
         </button>
       </aside>
 
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shrink-0">
+      <div className="flex flex-col flex-1 overflow-hidden bg-[#0c0c0e]">
+        <header className="bg-[#151518] border-b border-[#2c2c2e]/60 flex items-center justify-between px-6 py-3 shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-md hover:bg-gray-100"
+              className="text-gray-400 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5"
               aria-label="Toggle sidebar"
             >
               <MdMenu className="text-2xl" />
             </button>
-            <span className="text-gray-700 font-semibold text-sm hidden md:inline">
-              Hệ Thống Quản Lý Rạp Chiếu Phim T&M
-            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -107,14 +104,14 @@ export default function AdminLayout() {
               <input
                 type="text"
                 placeholder="Tìm kiếm..."
-                className="w-full pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full pl-9 pr-4 py-1.5 bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#ff3b30] focus:border-[#ff3b30] transition-all"
               />
             </div>
 
             {/* Notification Bell */}
-            <button className="relative w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-full text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all shrink-0">
+            <button className="relative w-9 h-9 flex items-center justify-center bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0">
               <MdNotificationsNone className="text-xl" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff3b30] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
                 5
               </span>
             </button>
@@ -125,32 +122,32 @@ export default function AdminLayout() {
                 onClick={() => setProfileMenuOpen((v) => !v)}
                 className="flex items-center gap-2 cursor-pointer focus:outline-none shrink-0"
               >
-                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+                <div className="w-9 h-9 rounded-full bg-[#ff3b30] flex items-center justify-center text-white font-semibold text-sm shrink-0">
                   BM
                 </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+                <span className="text-sm font-medium text-white hidden sm:inline">
                   Business Manager
                 </span>
-                <MdKeyboardArrowDown className={`text-gray-500 text-lg shrink-0 transition-transform ${profileMenuOpen ? "rotate-180" : ""}`} />
+                <MdKeyboardArrowDown className={`text-gray-400 text-lg shrink-0 transition-transform ${profileMenuOpen ? "rotate-180" : ""}`} />
               </button>
 
               {profileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-[#1c1c1e] rounded-lg shadow-xl border border-[#2c2c2e] py-1 z-50">
                   <button
                     onClick={() => {
                       setProfileMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2"
                   >
                     <span>Cấu hình tài khoản</span>
                   </button>
-                  <hr className="border-gray-100 my-1" />
+                  <hr className="border-[#2c2c2e] my-1" />
                   <button
                     onClick={() => {
                       setProfileMenuOpen(false);
                       handleLogout();
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-[#ff453a] hover:bg-white/5 flex items-center gap-2"
                   >
                     <MdLogout />
                     <span>Đăng xuất</span>
@@ -161,7 +158,7 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 bg-[#0c0c0e]">
           <Outlet />
         </main>
       </div>

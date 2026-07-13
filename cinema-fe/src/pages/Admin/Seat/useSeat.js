@@ -22,22 +22,14 @@ export const SEAT_STATUS_OPTIONS = [
 ];
 
 export const SEAT_ROW_OPTIONS = [
-  "A",
-  "B",
-  "C",
-  "D",
-  "E",
-  "F",
-  "G",
-  "H",
-  "I",
-  "J",
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+  "K", "L", "M", "N", "P", "Q", "R", "S", "T"
 ].map((row) => ({
   value: row,
   label: row,
 }));
 
-export const SEAT_NUMBER_OPTIONS = Array.from({ length: 20 }, (_, index) => {
+export const SEAT_NUMBER_OPTIONS = Array.from({ length: 30 }, (_, index) => {
   const value = String(index + 1);
 
   return {

@@ -12,22 +12,22 @@ const TABS = [
     key: "nhan-vien",
     label: "Nhân Viên",
     icon: <MdBadge />,
-    color: "#3b82f6",
-    bg: "#eff6ff",
+    color: "#ff3b30",
+    bg: "#1c1c1e",
   },
   {
     key: "khach-hang",
     label: "Khách Hàng",
     icon: <MdPersonOutline />,
-    color: "#10b981",
-    bg: "#ecfdf5",
+    color: "#30d158",
+    bg: "#1c1c1e",
   },
   {
     key: "tai-khoan",
     label: "Tài Khoản Đăng Nhập",
     icon: <MdManageAccounts />,
-    color: "#f59e0b",
-    bg: "#fffbeb",
+    color: "#ffd60a",
+    bg: "#1c1c1e",
   },
 ];
 
@@ -45,7 +45,6 @@ export default function UserManagement() {
           </span>
           <div>
             <h4 className="um-title">Quản Lý Người Dùng</h4>
-            <p className="um-subtitle">Nhân viên, khách hàng và tài khoản đăng nhập</p>
           </div>
         </div>
       </div>
