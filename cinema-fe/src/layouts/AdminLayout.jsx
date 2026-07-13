@@ -6,8 +6,6 @@ import {
   MdMovie,
   MdMeetingRoom,
   MdCalendarMonth,
-  MdConfirmationNumber,
-  MdReceiptLong,
   MdChair,
   MdNotifications,
   MdNotificationsNone,
@@ -26,8 +24,6 @@ const navItems = [
   { to: "/admin/rap-chieu",             label: "Quản Lí Chi Nhánh",     icon: <MdTheaters /> },
   { to: "/admin/phong-chieu",           label: "Phong Chieu",            icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",            label: "Suat Chieu",             icon: <MdCalendarMonth /> },
-  { to: "/admin/ve",                    label: "Ve",                     icon: <MdConfirmationNumber /> },
-  { to: "/admin/hoa-don",               label: "Hoa Don",                icon: <MdReceiptLong /> },
   { to: "/admin/ghe",                   label: "Ghe",                    icon: <MdChair /> },
   { to: "/admin/thong-bao",             label: "Thong Bao",              icon: <MdNotifications /> },
 ];

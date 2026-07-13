@@ -24,8 +24,6 @@ import Phim from "./pages/Admin/Film/Film.jsx";
 import PhongChieu from "./pages/Admin/Room/Room.jsx";
 import RapChieu from "./pages/Admin/Cinema/Cinema.jsx";
 import SuatChieu from "./pages/Admin/Rate/Rate.jsx";
-import AdminVe from "./pages/Admin/Ticket/Ticket.jsx";
-import HoaDon from "./pages/Admin/Bill/Bill.jsx";
 import Ghe from "./pages/Admin/Seat/Seat.jsx";
 import ThongBao from "./pages/Admin/Notice/Notice.jsx";
 
@@ -167,8 +165,6 @@ function App() {
           <Route path="phong-chieu" element={<PhongChieu />} />
           <Route path="rap-chieu" element={<RapChieu />} />
           <Route path="suat-chieu" element={<SuatChieu />} />
-          <Route path="ve" element={<AdminVe />} />
-          <Route path="hoa-don" element={<HoaDon />} />
           <Route path="ghe" element={<Ghe />} />
           <Route path="thong-bao" element={<ThongBao />} />
         </Route>

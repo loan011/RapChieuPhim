@@ -468,15 +468,33 @@ export function useSeat() {
   const seatMapLayout = useMemo(() => {
     if (selectedRoomSeats.length === 0) return [];
 
-    const rows = {};
+    // ── Step 1: Deduplicate by seatId (remove exact duplicates from API) ──
+    const seenIds = new Set();
+    const uniqueById = selectedRoomSeats.filter((seat) => {
+      const id = String(getSeatId(seat));
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
 
-    selectedRoomSeats.forEach((seat) => {
+    // ── Step 2: Deduplicate by (row + seatNumber) – keep first occurrence ──
+    const seenPositions = new Set();
+    const uniqueSeats = uniqueById.filter((seat) => {
       const row = getSeatRow(seat) || "A";
+      const num = normalizeSeatNumber(
+        seat?.seatNumber ?? seat?.SeatNumber ?? seat?.col ?? ""
+      );
+      const posKey = `${row}-${num}`;
+      if (seenPositions.has(posKey)) return false;
+      seenPositions.add(posKey);
+      return true;
+    });
 
-      if (!rows[row]) {
-        rows[row] = [];
-      }
-
+    // ── Step 3: Group into rows ──
+    const rows = {};
+    uniqueSeats.forEach((seat) => {
+      const row = getSeatRow(seat) || "A";
+      if (!rows[row]) rows[row] = [];
       rows[row].push(seat);
     });
 

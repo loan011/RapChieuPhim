@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import "./Rate.css";
 import { createPortal } from "react-dom";
 import {
@@ -24,6 +25,8 @@ import {
   getRoomCinemaId,
   getMovieId,
   getMovieTitle,
+  getMovieDurationMinutes,
+  isCrossMidnight,
   getStartHour,
   getEndHour,
   getBasePrice,
@@ -76,6 +79,11 @@ function getStatusStyle(status) {
 ═══════════════════════════════════════════════════════════ */
 
 export default function Rate() {
+  /* ── Local state: search phim trong modal ── */
+  const [formMovieSearch, setFormMovieSearch] = useState("");
+  const [showMovieDropdown, setShowMovieDropdown] = useState(false);
+  const movieSearchRef = useRef(null);
+
   const {
     /* data */
     movies,
@@ -491,37 +499,181 @@ export default function Rate() {
               {formError && <p className="lc-form-error">{formError}</p>}
 
               <form onSubmit={handleSubmit} className="lc-form">
-                <div className="lc-field">
+                <div className="lc-field" style={{ position: "relative" }}>
                   <label className="lc-label">
                     Phim <span className="lc-required">*</span>
                   </label>
 
-                  <select
-                    name="movieId"
-                    value={form.movieId}
-                    onChange={handleChange}
-                    className="lc-input"
-                  >
-                    <option value="">-- Chọn phim --</option>
+                  {/* Search input */}
+                  <div style={{ position: "relative" }}>
+                    <span style={{
+                      position: "absolute",
+                      left: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#9ca3af",
+                      fontSize: "1rem",
+                      pointerEvents: "none",
+                    }}>&#128269;</span>
+                    <input
+                      ref={movieSearchRef}
+                      type="text"
+                      className="lc-input"
+                      style={{ paddingLeft: 32 }}
+                      placeholder="Tìm tên phim..."
+                      value={formMovieSearch || (() => {
+                        if (!form.movieId) return "";
+                        const sel = movies.find(
+                          (m) => String(getMovieId(m)) === String(form.movieId)
+                        );
+                        return sel ? getMovieTitle(sel) : "";
+                      })()}
+                      onChange={(e) => {
+                        setFormMovieSearch(e.target.value);
+                        setShowMovieDropdown(true);
+                        if (!e.target.value) {
+                          handleChange({ target: { name: "movieId", value: "" } });
+                        }
+                      }}
+                      onFocus={() => {
+                        setFormMovieSearch("");
+                        setShowMovieDropdown(true);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowMovieDropdown(false), 180);
+                      }}
+                      autoComplete="off"
+                    />
+                    {formMovieSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormMovieSearch("");
+                          setShowMovieDropdown(false);
+                          handleChange({ target: { name: "movieId", value: "" } });
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: 8,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "1.1rem",
+                          color: "#9ca3af",
+                          padding: 0,
+                          lineHeight: 1,
+                        }}
+                        title="Xóa"
+                      >×</button>
+                    )}
+                  </div>
 
-                    {movies.map((m) => {
-                      const mId =
-                        m?.movieId ?? m?.MovieId ?? m?.id ?? m?.Id;
-                      const mTitle =
-                        m?.title ??
-                        m?.Title ??
-                        m?.movieTitle ??
-                        m?.MovieTitle ??
-                        m?.name ??
-                        "—";
+                  {/* Dropdown kết quả */}
+                  {showMovieDropdown && (() => {
+                    const kw = formMovieSearch.trim().toLowerCase();
+                    const filtered = movies.filter((m) =>
+                      !kw || getMovieTitle(m).toLowerCase().includes(kw)
+                    );
+                    return (
+                      <div style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        zIndex: 9999,
+                        background: "#fff",
+                        border: "1.5px solid #e5e7eb",
+                        borderRadius: 10,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.13)",
+                        maxHeight: 220,
+                        overflowY: "auto",
+                        marginTop: 4,
+                      }}>
+                        {filtered.length === 0 ? (
+                          <div style={{ padding: "10px 14px", color: "#9ca3af", fontSize: "0.88rem" }}>
+                            Không tìm thấy phìm
+                          </div>
+                        ) : filtered.map((m) => {
+                          const mId = getMovieId(m);
+                          const mTitle = getMovieTitle(m);
+                          const dur = getMovieDurationMinutes(m);
+                          const isSelected = String(form.movieId) === String(mId);
+                          return (
+                            <div
+                              key={mId}
+                              onMouseDown={() => {
+                                handleChange({ target: { name: "movieId", value: String(mId) } });
+                                setFormMovieSearch("");
+                                setShowMovieDropdown(false);
+                              }}
+                              style={{
+                                padding: "9px 14px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                background: isSelected ? "#f0f4ff" : "transparent",
+                                borderLeft: isSelected ? "3px solid #6366f1" : "3px solid transparent",
+                                fontSize: "0.9rem",
+                                transition: "background 0.15s",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = "#f9fafb";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) e.currentTarget.style.background = "transparent";
+                              }}
+                            >
+                              <span style={{ color: isSelected ? "#4f46e5" : "#111827", fontWeight: isSelected ? 600 : 400 }}>
+                                {mTitle}
+                              </span>
+                              {dur && (
+                                <span style={{
+                                  flexShrink: 0,
+                                  padding: "2px 8px",
+                                  borderRadius: 20,
+                                  background: "#f0f4ff",
+                                  color: "#6366f1",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                }}>
+                                  ⏱ {dur} phút
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
-                      return (
-                        <option key={mId} value={mId}>
-                          {mTitle}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  {/* Badge thời lượng phim đã chọn */}
+                  {form.movieId && (() => {
+                    const sel = movies.find(
+                      (m) => String(getMovieId(m)) === String(form.movieId)
+                    );
+                    const dur = getMovieDurationMinutes(sel);
+                    if (!dur) return null;
+                    return (
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginTop: 6,
+                        padding: "3px 10px",
+                        borderRadius: 20,
+                        background: "#f0f4ff",
+                        color: "#6366f1",
+                        fontSize: "0.82rem",
+                        fontWeight: 600,
+                      }}>
+                        ⏱ {dur} phút
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="lc-field">
@@ -626,13 +778,90 @@ export default function Rate() {
                       Giờ Kết Thúc <span className="lc-required">*</span>
                     </label>
 
-                    <input
-                      type="time"
-                      name="endHour"
-                      value={form.endHour}
-                      onChange={handleChange}
-                      className="lc-input"
-                    />
+                    {/* Kiểm tra xem phim đã chọn có thời lượng không */}
+                    {(() => {
+                      const selMovie = movies.find(
+                        (m) => String(getMovieId(m)) === String(form.movieId)
+                      );
+                      const dur = getMovieDurationMinutes(selMovie);
+                      const crossMid = isCrossMidnight(form.startHour, form.endHour);
+                      if (dur) {
+                        return (
+                          <>
+                            <div style={{ position: "relative" }}>
+                              <input
+                                type="time"
+                                name="endHour"
+                                value={form.endHour}
+                                readOnly
+                                className="lc-input"
+                                style={{ background: "#f3f4f6", cursor: "not-allowed", color: "#374151",
+                                  paddingRight: crossMid ? 72 : undefined }}
+                                title="Tự động tính từ thời lượng phim"
+                              />
+                              {crossMid && (
+                                <span style={{
+                                  position: "absolute",
+                                  right: 8,
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  background: "#f97316",
+                                  color: "#fff",
+                                  fontSize: "0.7rem",
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 20,
+                                  whiteSpace: "nowrap",
+                                  pointerEvents: "none",
+                                }}>
+                                  +1 ngày
+                                </span>
+                              )}
+                            </div>
+                            <span style={{
+                              display: "block",
+                              fontSize: "0.75rem",
+                              color: crossMid ? "#f97316" : "#6366f1",
+                              marginTop: 4,
+                            }}>
+                              {crossMid
+                                ? `⏱ Kết thúc sang ngày hôm sau (±${dur} phút)`
+                                : `⏱ Tự động tính: ${dur} phút`}
+                            </span>
+                          </>
+                        );
+                      }
+                      return (
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type="time"
+                            name="endHour"
+                            value={form.endHour}
+                            onChange={handleChange}
+                            className="lc-input"
+                            style={{ paddingRight: crossMid ? 72 : undefined }}
+                          />
+                          {crossMid && (
+                            <span style={{
+                              position: "absolute",
+                              right: 8,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "#f97316",
+                              color: "#fff",
+                              fontSize: "0.7rem",
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: 20,
+                              whiteSpace: "nowrap",
+                              pointerEvents: "none",
+                            }}>
+                              +1 ngày
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

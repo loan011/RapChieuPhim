@@ -427,14 +427,28 @@ export function useFilm() {
     }
   }
 
+  /* Tải lại danh sách thể loại mới nhất từ API */
+  async function refreshCategories() {
+    try {
+      const categories = await getMovieCategoryList();
+      const maps = buildCategoryMaps(categories);
+      setCategoryMap(maps.categoryMap);
+      setMovieCategoryMap(maps.movieCategoryMap);
+    } catch (err) {
+      console.warn("Không tải được danh sách thể loại:", err);
+    }
+  }
+
   function openAddModal() {
     setEditId(null);
     setForm(EMPTY_FORM);
     setFormError("");
     setShowModal(true);
+    refreshCategories(); /* cập nhật thể loại mới nhất */
   }
 
   function openEditModal(movie) {
+    refreshCategories(); /* cập nhật thể loại mới nhất */
     const rawRelease = getMovieReleaseDateRaw(movie);
     let releaseDateStr = "";
     if (rawRelease) {
@@ -458,10 +472,13 @@ export function useFilm() {
       }
     }
 
+    const rawGenre = getMovieGenre(movie, categoryMap, movieCategoryMap);
+    const genreForForm = rawGenre === "Chưa có" ? "" : rawGenre;
+
     setEditId(getMovieId(movie));
     setForm({
       title: getMovieTitle(movie),
-      genre: getMovieGenre(movie, categoryMap, movieCategoryMap),
+      genre: genreForForm,
       duration: String(movie?.duration ?? movie?.Duration ?? movie?.durationMinutes ?? movie?.DurationMinutes ?? ""),
       director: getMovieDirector(movie),
       releaseDate: releaseDateStr,
@@ -524,8 +541,9 @@ export function useFilm() {
     if (!selectedVal) return;
 
     setForm((prev) => {
+      /* Lọc bỏ "Chưa có" và giá trị rỗng trước khi thêm mới */
       const currentGenres = prev.genre
-        ? prev.genre.split(",").map((g) => g.trim()).filter(Boolean)
+        ? prev.genre.split(",").map((g) => g.trim()).filter((g) => g && g !== "Chưa có")
         : [];
       if (!currentGenres.includes(selectedVal)) {
         currentGenres.push(selectedVal);
@@ -535,7 +553,7 @@ export function useFilm() {
         genre: currentGenres.join(", "),
       };
     });
-    
+
     // Clear value to allow selecting again
     e.target.value = "";
   }
@@ -589,9 +607,30 @@ export function useFilm() {
       }
     }
 
+    /* Lọc bỏ "Chưa có" khỏi genre trước khi gửi */
+    const cleanGenre = (form.genre || "")
+      .split(",")
+      .map((g) => g.trim())
+      .filter((g) => g && g !== "Chưa có")
+      .join(", ");
+
+    /* Chuyển genre text → mảng categoryId để backend cập nhật bảng MovieCategories */
+    const genreNames = cleanGenre
+      ? cleanGenre.split(",").map((g) => g.trim()).filter(Boolean)
+      : [];
+
+    /* categoryMap: { id -> name } → cần name -> id */
+    const nameToIdMap = Object.fromEntries(
+      Object.entries(categoryMap).map(([id, name]) => [name.toLowerCase(), Number(id)])
+    );
+    const categoryIds = genreNames
+      .map((name) => nameToIdMap[name.toLowerCase()])
+      .filter((id) => id != null && !Number.isNaN(id));
+
     const payload = {
       title: form.title.trim(),
-      genre: form.genre.trim(),
+      genre: cleanGenre,
+      categoryIds: categoryIds,
       duration: form.duration ? Number(form.duration) : null,
       director: form.director.trim(),
       releaseDate: form.releaseDate || null,

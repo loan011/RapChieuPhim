@@ -84,6 +84,8 @@ export async function createMovie(movie) {
 
 // PUT /api/Movies/:id
 export async function updateMovie(id, movie) {
+  console.log(`[updateMovie] PUT /Movies/${id}`, movie);
+
   const response = await fetch(`${API_URL}/Movies/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
@@ -92,12 +94,15 @@ export async function updateMovie(id, movie) {
 
   const data = await readResponse(response);
 
+  console.log(`[updateMovie] response status: ${response.status}`, data);
+
   if (!response.ok) {
     throw new Error(getErrorMessage(data, "Cập nhật phim thất bại!"));
   }
 
   return data;
 }
+
 
 // DELETE /api/Movies/:id
 export async function deleteMovie(id) {

@@ -88,6 +88,37 @@ export function getMovieTitle(m) {
   );
 }
 
+/**
+ * Trả về thời lượng phim (phút) dưới dạng số, hoặc null nếu không có.
+ */
+export function getMovieDurationMinutes(m) {
+  const raw =
+    m?.duration ??
+    m?.Duration ??
+    m?.durationMinutes ??
+    m?.DurationMinutes ??
+    m?.runningTime ??
+    m?.RunningTime;
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Tính giờ kết thúc (HH:mm) từ giờ bắt đầu và số phút.
+ * @param {string} startHour  - "HH:mm"
+ * @param {number} durationMin - số phút
+ * @returns {string} "HH:mm"
+ */
+export function calcEndHour(startHour, durationMin) {
+  if (!startHour || !durationMin) return "";
+  const [hStr, mStr] = startHour.split(":");
+  const totalMins = Number(hStr) * 60 + Number(mStr) + Number(durationMin);
+  const endH = Math.floor(totalMins / 60) % 24;
+  const endM = totalMins % 60;
+  return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+}
+
 export function getRoomName(r) {
   return r?.roomName ?? r?.RoomName ?? r?.name ?? r?.Name ?? "Chưa có phòng";
 }
@@ -334,6 +365,20 @@ export function validateShowtimeForm(form) {
   return "";
 }
 
+/**
+ * Kiểm tra liệu suất chiếu có qua nửa đêm không.
+ * @param {string} startHour - "HH:mm"
+ * @param {string} endHour   - "HH:mm"
+ */
+export function isCrossMidnight(startHour, endHour) {
+  if (!startHour || !endHour) return false;
+  const toMins = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  return toMins(endHour) <= toMins(startHour);
+}
+
 export function buildShowtimePayload(form) {
   const STATUS_TO_API = {
     "Đang chiếu": "Active",
@@ -342,12 +387,19 @@ export function buildShowtimePayload(form) {
     "Đã chiếu": "Completed",
   };
 
+  /* Nếu kết thúc qua nửa đêm → endDate = showDate + 1 ngày */
+  const crossMidnight = isCrossMidnight(form.startHour, form.endHour);
+  const endDate = crossMidnight
+    ? toDateInputValue(addDays(parseDateOnly(form.showDate), 1))
+    : form.showDate;
+
   return {
     movieId: Number(form.movieId),
     roomId: Number(form.roomId),
     showDate: form.showDate,
     startTime: form.startHour,
     endTime: form.endHour,
+    endDate,                      /* ngày kết thúc (có thể là hôm sau) */
     basePrice: Number(form.basePrice),
     status: STATUS_TO_API[form.status] ?? form.status,
   };
@@ -444,6 +496,22 @@ export function useRate() {
     fetchData();
   }, []);
 
+  /* ── Tự động tính Giờ Kết Thúc khi movieId hoặc startHour thay đổi ── */
+
+  useEffect(() => {
+    if (!form.movieId || !form.startHour) return;
+    const selectedMovie = movies.find(
+      (m) => String(getMovieId(m)) === String(form.movieId)
+    );
+    const dur = getMovieDurationMinutes(selectedMovie);
+    if (!dur) return;
+    const newEnd = calcEndHour(form.startHour, dur);
+    if (newEnd && newEnd !== form.endHour) {
+      setForm((prev) => ({ ...prev, endHour: newEnd }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.movieId, form.startHour, movies]);
+
   async function fetchData() {
     try {
       setLoading(true);
@@ -526,6 +594,34 @@ export function useRate() {
         cinemaId: value,
         roomId: "",
       }));
+      return;
+    }
+
+    /* Khi chọn phim → tự động tính giờ kết thúc nếu đã có giờ bắt đầu */
+    if (name === "movieId") {
+      const selectedMovie = movies.find(
+        (m) => String(getMovieId(m)) === String(value)
+      );
+      const dur = getMovieDurationMinutes(selectedMovie);
+      setForm((prev) => {
+        const newEnd = dur && prev.startHour
+          ? calcEndHour(prev.startHour, dur)
+          : prev.endHour;
+        return { ...prev, movieId: value, endHour: newEnd };
+      });
+      return;
+    }
+
+    /* Khi đổi giờ bắt đầu → tự động tính lại giờ kết thúc nếu đã chọn phim */
+    if (name === "startHour") {
+      const selectedMovie = movies.find(
+        (m) => String(getMovieId(m)) === String(form.movieId)
+      );
+      const dur = getMovieDurationMinutes(selectedMovie);
+      setForm((prev) => {
+        const newEnd = dur && value ? calcEndHour(value, dur) : prev.endHour;
+        return { ...prev, startHour: value, endHour: newEnd };
+      });
       return;
     }
 

@@ -33,14 +33,25 @@ function toApiStatus(status) {
 }
 
 function normalizeShowtimePayload(showtime) {
+  /* Backend nhận HH:mm cho startTime/endTime
+     Khi qua nửa đêm: gửi thêm endDate = ngày hôm sau */
+  const endDate = showtime.endDate ?? showtime.showDate;
+
+  /* Đảm bảo chỉ gửi HH:mm (cắt bỏ phần date nếu có) */
+  const toHHmm = (t) => {
+    if (!t) return t;
+    return t.includes("T") ? t.split("T")[1].slice(0, 5) : t.slice(0, 5);
+  };
+
   return {
-    movieId: Number(showtime.movieId),
-    roomId: Number(showtime.roomId),
-    showDate: showtime.showDate,
-    startTime: showtime.startTime,
-    endTime: showtime.endTime,
+    movieId:   Number(showtime.movieId),
+    roomId:    Number(showtime.roomId),
+    showDate:  showtime.showDate,
+    endDate,                          /* ngày kết thúc (có thể là hôm sau) */
+    startTime: toHHmm(showtime.startTime),
+    endTime:   toHHmm(showtime.endTime),
     basePrice: Number(showtime.basePrice),
-    status: toApiStatus(showtime.status),
+    status:    toApiStatus(showtime.status),
   };
 }
 
