@@ -52,7 +52,7 @@ export default function AdminLayout() {
       <aside
         className={`${
           sidebarOpen ? "w-56" : "w-14"
-        } bg-gray-900 text-white flex flex-col transition-all duration-200 shrink-0`}
+        } bg-gray-900 text-white flex flex-col overflow-hidden transition-all duration-200 shrink-0`}
       >
         <div className="flex items-center gap-2 px-3 py-4 border-b border-gray-700">
           <MdMovie className="text-blue-400 text-2xl shrink-0" />
@@ -61,7 +61,7 @@ export default function AdminLayout() {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav className="flex-1 min-h-0 overflow-y-auto py-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -82,7 +82,7 @@ export default function AdminLayout() {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors"
+          className="shrink-0 flex items-center gap-3 px-3 py-2 mx-1 mb-2 rounded text-sm !text-white bg-gray-900 hover:bg-red-700 transition-colors border-t border-gray-700 pt-3"
         >
           <MdLogout className="text-lg shrink-0" />
           {sidebarOpen && <span>Dang Xuat</span>}
