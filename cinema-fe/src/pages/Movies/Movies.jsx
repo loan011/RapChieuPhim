@@ -254,7 +254,7 @@ function Movies() {
                       Thể loại: <strong>{getMovieGenre(movie)}</strong> | Thời lượng: <strong>{getMovieDuration(movie)}</strong>
                     </p>
                     <p className="slide-desc">
-                      Chào mừng bạn đến với hệ thống rạp chiếu phim CGV. Trải nghiệm âm thanh Dolby Atmos sống động và hình ảnh IMAX sắc nét đỉnh cao cùng bom tấn hành động hấp dẫn này.
+                      {movie.description || movie.Description || "Chào mừng bạn đến với hệ thống rạp chiếu phim Cinemas HCM. Trải nghiệm âm thanh Dolby Atmos sống động và hình ảnh IMAX sắc nét đỉnh cao cùng bom tấn hành động hấp dẫn này."}
                     </p>
                     <div className="slide-actions">
                       {hasValidShowtimes(movie) ? (

@@ -12,6 +12,7 @@ import {
   MdAccessTime,
   MdPerson,
   MdShield,
+  MdDelete,
 } from "react-icons/md";
 import {
   useFilm,
@@ -203,9 +204,9 @@ export default function Film() {
                       <button
                         className="fm-card-btn-delete"
                         onClick={() => handleDelete(id)}
-                        title="Ẩn phim"
+                        title="Xóa phim"
                       >
-                        <MdVisibilityOff size={16} />
+                        <MdDelete size={16} />
                       </button>
                     </div>
 
@@ -260,9 +261,9 @@ export default function Film() {
                         <button
                           className="fm-card-btn fm-card-btn--delete-action"
                           onClick={() => handleDelete(id)}
-                          title="Ẩn phim"
+                          title="Xóa phim"
                         >
-                          <MdVisibilityOff size={15} /> Ẩn
+                          <MdDelete size={15} /> Xóa
                         </button>
                       </div>
                     </div>
@@ -533,14 +534,14 @@ export default function Film() {
               style={{ maxWidth: "750px", width: "90%" }}
             >
               {/* Modal Header */}
-              <div className="fm-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e5e7eb", paddingBottom: "12px", marginBottom: "16px" }}>
-                <h3 className="fm-modal-title" style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1f2937", margin: 0 }}>
+              <div className="fm-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #3a3a3c", paddingBottom: "12px", marginBottom: "16px" }}>
+                <h3 className="fm-modal-title" style={{ fontSize: "1.25rem", fontWeight: "700", color: "#ffffff", margin: 0 }}>
                   Chi Tiết Phim: {getMovieTitle(selectedDetailMovie)}
                 </h3>
                 <button 
                   className="fm-modal-close" 
                   onClick={closeDetailModal}
-                  style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#6b7280" }}
+                  style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#aeaeb2" }}
                 >
                   &times;
                 </button>
@@ -561,7 +562,7 @@ export default function Film() {
 
                     {/* Trailer Video */}
                     <div style={{ marginTop: "16px" }}>
-                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151", marginBottom: "8px" }}>Trailer Phim:</h4>
+                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#ffffff", marginBottom: "8px" }}>Trailer Phim:</h4>
                       {selectedDetailMovie.trailerUrl || selectedDetailMovie.TrailerUrl || selectedDetailMovie.trailerURL || selectedDetailMovie.TrailerURL ? (
                         <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: "8px", overflow: "hidden" }}>
                           <iframe
@@ -573,7 +574,7 @@ export default function Film() {
                           ></iframe>
                         </div>
                       ) : (
-                        <div style={{ padding: "16px", background: "#f3f4f6", borderRadius: "8px", fontSize: "0.85rem", color: "#6b7280", textAlign: "center" }}>
+                        <div style={{ padding: "16px", background: "#2c2c2e", borderRadius: "8px", fontSize: "0.85rem", color: "#aeaeb2", textAlign: "center" }}>
                           Phim này chưa cấu hình link trailer.
                         </div>
                       )}
@@ -583,29 +584,29 @@ export default function Film() {
                   {/* Right Column: Content & Metadata */}
                   <div>
                     <div style={{ marginBottom: "16px" }}>
-                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Nội Dung Phim:</h4>
-                      <p style={{ fontSize: "0.88rem", color: "#4b5563", lineHeight: "1.5", margin: 0, whiteSpace: "pre-wrap" }}>
+                      <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "#ffffff", marginBottom: "6px" }}>Nội Dung Phim:</h4>
+                      <p style={{ fontSize: "0.88rem", color: "#e5e7eb", lineHeight: "1.5", margin: 0, whiteSpace: "pre-wrap" }}>
                         {selectedDetailMovie.description || selectedDetailMovie.Description || "Chưa có nội dung miêu tả."}
                       </p>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#f9fafb", padding: "14px", borderRadius: "8px", border: "1px solid #f3f4f6" }}>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Thể loại:</span> {getMovieGenreText(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Đạo diễn:</span> {getMovieDirector(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Thời lượng:</span> {getMovieDuration(selectedDetailMovie)} phút</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Giới hạn tuổi:</span> {getMovieAgeRating(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Trạng thái:</span> {getMovieStatusDisplayName(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Khởi chiếu:</span> {getMovieReleaseDate(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Kết thúc:</span> {getMovieEndDate(selectedDetailMovie)}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Ngôn ngữ:</span> {selectedDetailMovie.language || selectedDetailMovie.Language || "Chưa có"}</div>
-                      <div style={{ fontSize: "0.85rem" }}><span style={{ fontWeight: "600", color: "#4b5563" }}>Phụ đề:</span> {selectedDetailMovie.subtitles || selectedDetailMovie.Subtitles || "Chưa có"}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#2c2c2e", padding: "14px", borderRadius: "8px", border: "1px solid #3a3a3c" }}>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Thể loại:</span> {getMovieGenreText(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Đạo diễn:</span> {getMovieDirector(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Thời lượng:</span> {getMovieDuration(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Giới hạn tuổi:</span> {getMovieAgeRating(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Trạng thái:</span> {getMovieStatusDisplayName(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Khởi chiếu:</span> {getMovieReleaseDate(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Kết thúc:</span> {getMovieEndDate(selectedDetailMovie)}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Ngôn ngữ:</span> {selectedDetailMovie.language || selectedDetailMovie.Language || "Chưa có"}</div>
+                      <div style={{ fontSize: "0.85rem", color: "#ffffff" }}><span style={{ fontWeight: "600", color: "#aeaeb2" }}>Phụ đề:</span> {selectedDetailMovie.subtitles || selectedDetailMovie.Subtitles || "Chưa có"}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="fm-modal-actions" style={{ marginTop: "18px", borderTop: "1px solid #e5e7eb", paddingTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+              <div className="fm-modal-actions" style={{ marginTop: "18px", borderTop: "1px solid #3a3a3c", paddingTop: "12px", display: "flex", justifyContent: "flex-end" }}>
                 <button 
                   type="button" 
                   className="fm-btn-cancel" 

@@ -116,27 +116,85 @@ export function useBookingHistory() {
     async function fetchHistory() {
       try {
         setLoading(true);
-        const data = await getBookingHistory();
+        const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const userId = savedUser.userId ?? savedUser.id ?? savedUser.UserId ?? savedUser.Id;
+
+        if (!userId) {
+          setHistory([]);
+          setLoading(false);
+          return;
+        }
+
+        const data = await getBookingHistory(userId);
         let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+
         if (list.length === 0) {
-          setHistory(MOCK_HISTORY);
+          setHistory([]);
         } else {
-          setHistory(list.map((h) => {
-            const isRefund = h.status === "Đã hủy";
+          // Gom nhóm các ghế đặt cùng lúc dựa trên bookingDate
+          const groups = {};
+          list.forEach((b) => {
+            const key = b.bookingDate || b.BookingDate || "";
+            if (!groups[key]) {
+              groups[key] = [];
+            }
+            groups[key].push(b);
+          });
+
+          const historyItems = Object.values(groups).map((group, idx) => {
+            const first = group[0];
+            const statusStr = first.status || first.Status || "";
+            const isCancelled = statusStr === "Cancelled" || statusStr === "Đã hủy";
+
+            let dateStr = "Chưa rõ";
+            let timeStr = "";
+            const rawDate = first.bookingDate || first.BookingDate;
+            if (rawDate) {
+              const d = new Date(rawDate);
+              if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2, "0");
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const yyyy = d.getFullYear();
+                dateStr = `${dd}/${mm}/${yyyy}`;
+                timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+              }
+            }
+
+            const seatsStr = group
+              .map((g) => g.seatNumber || g.SeatNumber)
+              .filter(Boolean)
+              .join(", ");
+            const totalAmt = group.reduce((sum, g) => sum + (g.totalAmount || g.TotalAmount || 0), 0);
+
+            const movieTitle = first.movieTitle || first.MovieTitle || "Đặt vé xem phim";
+            const roomName = first.roomName || first.RoomName || "Phòng chiếu";
+            const cinemaName = first.cinemaName || first.CinemaName || "Rạp";
+
             return {
-              id: h.invoiceCode || h.code || `HD${h.id}`,
-              type: isRefund ? "refund" : "pay",
-              title: isRefund ? "Hoàn vé/Hủy giao dịch" : "Đặt vé xem phim",
-              detail: `Mã hóa đơn: ${h.code || `HD${h.id}`}`,
-              amount: isRefund ? (h.totalAmount || 0) : -(h.totalAmount || 0),
-              date: h.createdAt ? String(h.createdAt).split("T")[0] : "Chưa rõ",
-              time: "",
+              id: first.bookingId || first.BookingId || `BK${idx}`,
+              type: isCancelled ? "cancel" : "pay",
+              title: isCancelled ? `Hủy vé - ${movieTitle}` : `Đặt vé - ${movieTitle}`,
+              detail: isCancelled
+                ? `Vé bị hủy · ${group.length} ghế (${seatsStr})`
+                : `${group.length} ghế (${seatsStr}) · ${roomName} · ${cinemaName}`,
+              amount: isCancelled ? 0 : -totalAmt,
+              date: dateStr,
+              time: timeStr,
             };
-          }));
+          });
+
+          // Sắp xếp mới nhất lên đầu
+          historyItems.sort((a, b) => {
+            const dateA = a.date.split("/").reverse().join("-") + "T" + a.time;
+            const dateB = b.date.split("/").reverse().join("-") + "T" + b.time;
+            return dateB.localeCompare(dateA);
+          });
+
+          setHistory(historyItems);
         }
       } catch (err) {
-        console.error("Lỗi lấy lịch sử giao dịch, sử dụng mock:", err);
-        setHistory(MOCK_HISTORY);
+        console.error("Lỗi lấy lịch sử giao dịch:", err);
+        setHistory([]);
       } finally {
         setLoading(false);
       }

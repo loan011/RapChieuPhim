@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { usePayment } from "./Payment.js";
 import { MdCheckCircle, MdQrCode2, MdCreditCard, MdOutlineArrowBack } from "react-icons/md";
 import {
@@ -24,6 +24,8 @@ export default function Payment() {
     handlePaymentSubmit,
     handleCompleteQrPayment,
     handleFinishBooking,
+    timeLeft,
+    handleCancelAndGoBack,
   } = usePayment();
 
   if (!bookingData) {
@@ -44,18 +46,18 @@ export default function Payment() {
     selectedCombos,
   } = bookingData;
 
-  const handleGoBack = () => {
-    window.history.back();
-  };
-
   return (
-    <div className="payment-page-container">
+    <div className="payment-page-layout">
+      <div className="payment-page-container">
       {/* Header quay lại */}
-      <div className="payment-header">
-        <button className="payment-back-btn" onClick={handleGoBack}>
+      <div className="payment-header" style={{ flexWrap: "wrap", gap: "15px" }}>
+        <button className="payment-back-btn" onClick={handleCancelAndGoBack}>
           <MdOutlineArrowBack /> Quay lại đặt vé
         </button>
         <h2>THANH TOÁN ĐƠN VÉ</h2>
+        <div className="payment-timer-alert" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "8px 16px", borderRadius: "8px", fontSize: "0.95rem", fontWeight: "700" }}>
+          ⏱ Thời gian thanh toán: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+        </div>
       </div>
 
       <div className="payment-main-layout">
@@ -201,22 +203,14 @@ export default function Payment() {
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "12px" }}>
+             <div style={{ display: "flex", width: "100%" }}>
               <button
                 type="button"
                 className="modal-finish-close-btn"
-                style={{ flex: 1, background: "#9ca3af", margin: 0, padding: "12px 0" }}
-                onClick={() => setShowQrModal(false)}
+                style={{ width: "100%", background: "#ef4444", margin: 0, padding: "12px 0", borderRadius: "12px", fontWeight: "bold" }}
+                onClick={handleCancelAndGoBack}
               >
-                HỦY
-              </button>
-              <button
-                type="button"
-                className="modal-finish-close-btn"
-                style={{ flex: 2, background: "#22c55e", margin: 0, padding: "12px 0" }}
-                onClick={handleCompleteQrPayment}
-              >
-                TÔI ĐÃ THANH TOÁN
+                HỦY GIAO DỊCH
               </button>
             </div>
           </div>
@@ -226,58 +220,118 @@ export default function Payment() {
       {/* Modal báo thanh toán thành công */}
       {showPaymentSuccess && (
         <div className="payment-success-modal-overlay">
-          <div className="payment-success-modal-box">
-            <div className="modal-success-icon-wrap">
-              <MdCheckCircle className="success-icon" />
+          <div className="payment-success-modal-box" style={{ maxWidth: "480px", width: "100%", margin: "auto", padding: "28px 24px", background: "#181818", borderRadius: "20px", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 20px 50px rgba(0, 0, 0, 0.65)", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div className="modal-success-icon-wrap" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <MdCheckCircle className="success-icon" style={{ fontSize: "3.5rem", color: "#22c55e" }} />
             </div>
 
-            <h2 className="modal-title">THANH TOÁN THÀNH CÔNG</h2>
+            <h2 className="modal-title" style={{ fontSize: "1.35rem", fontWeight: "bold", color: "#22c55e", letterSpacing: "0.5px", marginTop: "12px", marginBottom: "6px" }}>
+              THANH TOÁN THÀNH CÔNG
+            </h2>
 
-            <p className="modal-desc">
+            <p className="modal-desc" style={{ fontSize: "0.85rem", color: "#9ca3af", margin: "0 0 20px", textAlign: "center", lineHeight: "1.4" }}>
               Vé xem phim của bạn đã được thanh toán và đăng ký thành công!
             </p>
 
-            <div className="ticket-invoice-receipt">
-              <div className="invoice-header">
-                <h3>VÉ XEM PHIM ĐIỆN TỬ</h3>
-                <span className="invoice-id">
+            {/* Premium Ticket Card */}
+            <div className="ticket-invoice-receipt" style={{ width: "100%", background: "linear-gradient(135deg, #242424 0%, #1a1a1a 100%)", borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.05)", boxShadow: "0 10px 25px rgba(0,0,0,0.2)", overflow: "hidden", position: "relative" }}>
+              
+              {/* Ticket Header */}
+              <div className="invoice-header" style={{ padding: "14px 20px", background: "rgba(255, 255, 255, 0.02)", borderBottom: "1px dashed rgba(255, 255, 255, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
+                <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: "700", color: "#f97316", letterSpacing: "1px" }}>
+                  VÉ XEM PHIM ĐIỆN TỬ
+                </h3>
+                <span className="invoice-id" style={{ fontSize: "0.8rem", color: "#38bdf8", fontWeight: "600" }}>
                   Mã vé: {newTicketIds.join(", ")}
                 </span>
               </div>
 
-              <div className="invoice-body-details">
-                <p>🎬 Phim: <strong>{getMovieTitle(movie)}</strong></p>
-                <p>📍 Rạp: <strong>Rạp Chiếu Phim</strong></p>
-                <p>📅 Ngày chiếu: <strong>{selectedDateIso}</strong></p>
-                <p>⏰ Suất chiếu: <strong>{selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}</strong></p>
-                <p>🎟 Ghế: <strong>{selectedSeats.map(getSeatLabel).join(", ")}</strong></p>
+              {/* Ticket Details */}
+              <div className="invoice-body-details" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left", fontSize: "0.88rem", color: "#d1d5db" }}>
+                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                  <span>🎬 Phim:</span>
+                  <strong style={{ color: "#ffffff" }}>{getMovieTitle(movie)}</strong>
+                </p>
+                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                  <span>📍 Rạp:</span>
+                  <strong style={{ color: "#ffffff" }}>Rạp Chiếu Phim</strong>
+                </p>
+                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                  <span>📅 Ngày chiếu:</span>
+                  <strong style={{ color: "#ffffff" }}>{selectedDateIso}</strong>
+                </p>
+                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                  <span>⏰ Suất chiếu:</span>
+                  <strong style={{ color: "#ffffff" }}>{selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}</strong>
+                </p>
+                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                  <span>🎟 Ghế:</span>
+                  <strong style={{ color: "#ffffff" }}>{selectedSeats.map(getSeatLabel).join(", ")}</strong>
+                </p>
                 {selectedCombos && selectedCombos.length > 0 && (
-                  <p>
-                    🍿 Bắp nước:{" "}
-                    <strong>
+                  <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
+                    <span>🍿 Bắp nước:</span>
+                    <strong style={{ color: "#ffffff", textAlign: "right" }}>
                       {selectedCombos.map((c) => `${c.name} (x${c.quantity})`).join(", ")}
                     </strong>
                   </p>
                 )}
-                <p>💰 Tổng cộng: <strong>{totalAmount.toLocaleString("vi-VN")}đ</strong></p>
+                <p style={{ margin: "8px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "1rem" }}>
+                  <span>💰 Tổng cộng:</span>
+                  <strong style={{ color: "#ef4444", fontSize: "1.15rem", fontWeight: "700" }}>
+                    {totalAmount.toLocaleString("vi-VN")}đ
+                  </strong>
+                </p>
               </div>
 
-              <div className="invoice-qr-wrap">
-                <MdQrCode2 className="invoice-qr-code" />
-                <p>Vui lòng xuất trình mã này tại quầy để nhận vé giấy</p>
+              {/* Decorative Ticket Dashed Line with Side Cutouts */}
+              <div style={{ position: "relative", borderTop: "2px dashed #181818", margin: "5px 0" }}>
+                <div style={{ position: "absolute", left: "-8px", top: "-9px", width: "16px", height: "16px", borderRadius: "50%", background: "#181818" }}></div>
+                <div style={{ position: "absolute", right: "-8px", top: "-9px", width: "16px", height: "16px", borderRadius: "50%", background: "#181818" }}></div>
+              </div>
+
+              {/* Ticket QR Section */}
+              <div className="invoice-qr-wrap" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "18px 20px" }}>
+                <div style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(newTicketIds.join(","))}`}
+                    alt="Ticket QR Code"
+                    style={{ width: "140px", height: "140px", objectFit: "contain", display: "block" }}
+                  />
+                </div>
+                <p style={{ fontSize: "0.78rem", color: "#9ca3af", margin: "4px 0 0", textAlign: "center", lineHeight: "1.3" }}>
+                  Quét mã này tại quầy bán vé hoặc máy soát vé để nhận vé giấy
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="modal-finish-close-btn"
-              onClick={handleFinishBooking}
-            >
-              HOÀN TẤT & ĐẾN VÉ CỦA TÔI
-            </button>
+            {/* Auto-redirect countdown bar */}
+            <div style={{ width: "100%", marginTop: "20px", textAlign: "center" }}>
+              <p style={{ fontSize: "0.82rem", color: "#9ca3af", margin: "0 0 8px" }}>
+                ⏳ Đang chuyển sang <strong style={{ color: "#f97316" }}>Vé của tôi</strong> trong giây lát...
+              </p>
+              <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", overflow: "hidden" }}>
+                <div
+                  style={{
+                    height: "100%",
+                    background: "linear-gradient(90deg, #f97316, #ea580c)",
+                    borderRadius: "4px",
+                    animation: "progressBar 2.5s linear forwards",
+                  }}
+                />
+              </div>
+            </div>
+
+            <style>{`
+              @keyframes progressBar {
+                from { width: 0%; }
+                to { width: 100%; }
+              }
+            `}</style>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -159,8 +159,6 @@ export async function getCinemas() {
   const data = await tryGet([
     `${API_URL}/Cinemas`,
     `${API_URL}/Cinema`,
-    `${API_URL}/api/Cinemas`,
-    `${API_URL}/api/Cinema`,
   ]);
 
   return normalizeArray(data);
@@ -170,8 +168,6 @@ export async function getRooms() {
   const data = await tryGet([
     `${API_URL}/Rooms`,
     `${API_URL}/Room`,
-    `${API_URL}/api/Rooms`,
-    `${API_URL}/api/Room`,
   ]);
 
   return normalizeArray(data);
@@ -183,8 +179,6 @@ export async function getMovieById(movieId) {
   const data = await tryGet([
     `${API_URL}/Movies/${movieId}`,
     `${API_URL}/Movies/GetById/${movieId}`,
-    `${API_URL}/api/Movies/${movieId}`,
-    `${API_URL}/api/Movies/GetById/${movieId}`,
   ]);
 
   return unwrapData(data);
@@ -197,11 +191,7 @@ export async function getShowtimesByMovie(movieId) {
     `${API_URL}/Showtimes/ByMovie/${movieId}`,
     `${API_URL}/Showtime/ByMovie/${movieId}`,
     `${API_URL}/Showtimes/Movie/${movieId}`,
-    `${API_URL}/Showtime/Movie/${movieId}`,
-    `${API_URL}/api/Showtimes/ByMovie/${movieId}`,
-    `${API_URL}/api/Showtime/ByMovie/${movieId}`,
     `${API_URL}/Showtimes?movieId=${movieId}`,
-    `${API_URL}/Showtime?movieId=${movieId}`,
   ]);
 
   return normalizeArray(data);
@@ -231,11 +221,7 @@ export async function getAvailableSeats(showtimeId) {
     `${API_URL}/Bookings/AvailableSeats/${showtimeId}`,
     `${API_URL}/Booking/AvailableSeats/${showtimeId}`,
     `${API_URL}/Seats/Available/${showtimeId}`,
-    `${API_URL}/Seat/Available/${showtimeId}`,
-    `${API_URL}/api/Bookings/AvailableSeats/${showtimeId}`,
-    `${API_URL}/api/Seats/Available/${showtimeId}`,
     `${API_URL}/Bookings/GetAvailableSeats?showtimeId=${showtimeId}`,
-    `${API_URL}/Booking/GetAvailableSeats?showtimeId=${showtimeId}`,
   ]);
 
   return normalizeArray(data);
@@ -246,8 +232,6 @@ export async function createBooking(payload) {
     [
       `${API_URL}/Bookings`,
       `${API_URL}/Booking`,
-      `${API_URL}/api/Bookings`,
-      `${API_URL}/api/Booking`,
     ],
     payload
   );
@@ -257,10 +241,7 @@ export async function createBooking(payload) {
 
 export async function holdSeat(showTimeId, seatId) {
   const data = await tryPost(
-    [
-      `${API_URL}/Bookings/Hold`,
-      `${API_URL}/api/Bookings/Hold`,
-    ],
+    [`${API_URL}/Bookings/Hold`],
     {
       showTimeId: Number(showTimeId),
       seatId: Number(seatId),
@@ -272,10 +253,7 @@ export async function holdSeat(showTimeId, seatId) {
 
 export async function releaseSeat(holdKey) {
   const data = await tryDelete(
-    [
-      `${API_URL}/Bookings/Hold`,
-      `${API_URL}/api/Bookings/Hold`,
-    ],
+    [`${API_URL}/Bookings/Hold`],
     { holdKey }
   );
 
@@ -285,12 +263,15 @@ export async function releaseSeat(holdKey) {
 export async function getCombos() {
   const data = await tryGet([
     `${API_URL}/Foods/Available`,
-    `${API_URL}/api/Foods/Available`,
     `${API_URL}/Foods`,
-    `${API_URL}/api/Foods`,
     `${API_URL}/Combos`,
-    `${API_URL}/api/Combos`,
   ]);
 
   return normalizeArray(data);
+}
+
+export async function cancelBooking(id) {
+  const data = await tryDelete([`${API_URL}/Bookings/${id}`]);
+
+  return unwrapData(data);
 }

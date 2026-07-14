@@ -55,11 +55,24 @@ export async function createPayment(payload) {
     [
       `${API_URL}/Payments`,
       `${API_URL}/Payment`,
-      `${API_URL}/api/Payments`,
-      `${API_URL}/api/Payment`,
     ],
     payload
   );
 
   return data?.data || data?.result || data;
+}
+
+export async function checkPaymentStatus(bookingId) {
+  try {
+    const response = await fetch(`${API_URL}/Payments/Status/${bookingId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (response.ok) {
+      const data = await readResponse(response);
+      return data?.isPaid || data?.IsPaid || false;
+    }
+  } catch (e) {
+    console.error("Lỗi kiểm tra trạng thái thanh toán:", e);
+  }
+  return false;
 }

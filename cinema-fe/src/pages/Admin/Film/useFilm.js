@@ -375,7 +375,7 @@ export function useFilm() {
       alert("Không tìm thấy ID phim");
       return;
     }
-    if (!window.confirm("Bạn có chắc chắn muốn ẩn phim này?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa phim này?")) return;
 
     try {
       const movie = list.find((m) => String(getMovieId(m)) === String(id));

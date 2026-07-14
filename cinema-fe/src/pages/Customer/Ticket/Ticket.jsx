@@ -159,8 +159,12 @@ export default function Ticket() {
                         </span>
 
                         {ticket.status === "upcoming" && (
-                          <div className="ticket-qr" title="Mã QR vé">
-                            <MdQrCode2 className="ticket-qr-icon" />
+                          <div className="ticket-qr" title="Mã QR vé" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px" }}>
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.id)}`}
+                              alt="Ticket QR Code"
+                              style={{ width: "40px", height: "40px", objectFit: "contain" }}
+                            />
                           </div>
                         )}
                       </div>
@@ -193,10 +197,14 @@ export default function Ticket() {
             </div>
 
             <div className="ticket-detail-modal-body">
-              <div className="ticket-detail-modal-qr-section">
+              <div className="ticket-detail-modal-qr-section" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                 <span className="room-entry-label">Mã vào khán phòng:</span>
-                <div className="detail-qr-code-wrapper">
-                  <MdQrCode2 className="detail-qr-code-icon" />
+                <div className="detail-qr-code-wrapper" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(selectedTicket.id)}`}
+                    alt="Ticket QR Code"
+                    style={{ width: "150px", height: "150px", objectFit: "contain", display: "block" }}
+                  />
                 </div>
                 <span className="detail-ticket-code">{selectedTicket.id}</span>
               </div>

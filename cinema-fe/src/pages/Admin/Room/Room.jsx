@@ -161,16 +161,16 @@ export default function RoomAdmin() {
         setPriceStdWeekend(stdWe || (isImax ? "180.000" : "90.000"));
         setPriceVipWeekday(vipWd || (isImax ? "180.000" : "90.000"));
         setPriceVipWeekend(vipWe || (isImax ? "220.000" : "120.000"));
-        setPriceCoupleWeekday(cpWd || (isImax ? "" : "130.000"));
-        setPriceCoupleWeekend(cpWe || (isImax ? "" : "160.000"));
+        setPriceCoupleWeekday(cpWd || "130.000");
+        setPriceCoupleWeekend(cpWe || "160.000");
       } else {
         const isImax = String(roomForm.roomType).toUpperCase().includes("IMAX");
         setPriceStdWeekday(isImax ? "150.000" : "70.000");
         setPriceStdWeekend(isImax ? "180.000" : "90.000");
         setPriceVipWeekday(isImax ? "180.000" : "90.000");
         setPriceVipWeekend(isImax ? "220.000" : "120.000");
-        setPriceCoupleWeekday(isImax ? "" : "130.000");
-        setPriceCoupleWeekend(isImax ? "" : "160.000");
+        setPriceCoupleWeekday("130.000");
+        setPriceCoupleWeekend("160.000");
       }
     }
   }, [showRoomModal, isEditingRoom, roomForm?.cinemaId, roomForm?.roomName]);
@@ -184,8 +184,8 @@ export default function RoomAdmin() {
         setPriceStdWeekend("180.000");
         setPriceVipWeekday("180.000");
         setPriceVipWeekend("220.000");
-        setPriceCoupleWeekday("");
-        setPriceCoupleWeekend("");
+        setPriceCoupleWeekday("130.000");
+        setPriceCoupleWeekend("160.000");
       } else {
         setPriceStdWeekday("70.000");
         setPriceStdWeekend("90.000");
@@ -245,7 +245,6 @@ export default function RoomAdmin() {
       return isImax ? "180k / 220k" : "90k / 120k";
     }
     if (type === "couple") {
-      if (isImax) return "—";
       if (cpWd || cpWe) {
         return `${formatShorthand(cpWd, "0")} / ${formatShorthand(cpWe, "0")}`;
       }
@@ -348,7 +347,6 @@ export default function RoomAdmin() {
       return isImax ? "180.000 đ / 220.000 đ" : "90.000 đ / 120.000 đ";
     }
     if (type === "couple" || type === "sweetbox") {
-      if (isImax) return "—";
       if (cpWd || cpWe) return `${cpWd || "0"} đ / ${cpWe || "0"} đ`;
       return "130.000 đ / 160.000 đ";
     }
@@ -373,7 +371,6 @@ export default function RoomAdmin() {
       return isImax ? "220.000 đ" : "120.000 đ";
     }
     if (type === "couple" || type === "sweetbox") {
-      if (isImax) return "—";
       if (cpWe) return `${cpWe} đ`;
       return "160.000 đ";
     }
@@ -862,7 +859,7 @@ export default function RoomAdmin() {
                 </div>
 
                 <div className="rm-field" style={{ marginTop: "12px", borderTop: "1px solid #2c2c2e", paddingTop: "12px" }}>
-                  <label className="rm-label" style={{ color: "#ffd60a", fontWeight: "bold" }}>Bảng Giá Vé Ghế (Có thể điều chỉnh):</label>
+                  <label className="rm-label" style={{ color: "#ffd60a", fontWeight: "bold" }}>Bảng Giá Vé Ghế:</label>
                   
                   <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "8px", fontSize: "0.8rem", color: "#aeaeb2", marginTop: "8px", alignItems: "center" }}>
                     <div></div>
@@ -917,7 +914,6 @@ export default function RoomAdmin() {
                         value={priceCoupleWeekday}
                         onChange={(e) => setPriceCoupleWeekday(e.target.value)}
                         placeholder="130.000"
-                        disabled={roomForm.roomType?.toUpperCase().includes("IMAX")}
                       />
                     </div>
                     <div>
@@ -927,7 +923,6 @@ export default function RoomAdmin() {
                         value={priceCoupleWeekend}
                         onChange={(e) => setPriceCoupleWeekend(e.target.value)}
                         placeholder="160.000"
-                        disabled={roomForm.roomType?.toUpperCase().includes("IMAX")}
                       />
                     </div>
                   </div>

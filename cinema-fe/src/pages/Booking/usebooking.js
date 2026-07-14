@@ -511,24 +511,99 @@ export function isSeatAvailable(seat, availableSeats) {
   });
 }
 
-export function getSeatPrice(seat, selectedShowtime) {
+export function getSeatPrice(seat, selectedShowtime, rooms = []) {
   const basePrice = Number(getShowtimeBasePrice(selectedShowtime));
 
+  const roomId = getShowtimeRoomId(selectedShowtime);
+  
+  // 1. Try to find the room in rooms array
+  let room = Array.isArray(rooms) ? rooms.find((r) => String(getRoomId(r)) === String(roomId)) : null;
+  
+  // 2. Try to fallback to nested room on selectedShowtime
+  if (!room && selectedShowtime) {
+    room = selectedShowtime.room || selectedShowtime.Room;
+  }
+
   const type = String(getSeatType(seat)).toLowerCase();
+  const isVip = type.includes("vip");
+  const isCouple = type.includes("sweetbox") || type.includes("couple") || type.includes("đôi");
 
-  if (
-    type.includes("sweetbox") ||
-    type.includes("couple") ||
-    type.includes("đôi")
-  ) {
-    return basePrice + 40000;
+  let finalPrice = null;
+
+  // We can get cinemaId and roomName either from the resolved room, or directly from the showtime!
+  let cId = "";
+  let rName = "";
+
+  if (room) {
+    cId = getRoomCinemaId(room);
+    rName = getRoomName(room);
   }
 
-  if (type.includes("vip")) {
-    return basePrice + 20000;
+  // Fallback to showtime direct attributes if room properties weren't fully resolved
+  if (!cId && selectedShowtime) {
+    cId = selectedShowtime.cinemaId ??
+          selectedShowtime.CinemaId ??
+          selectedShowtime.room?.cinemaId ??
+          selectedShowtime.room?.CinemaId ??
+          selectedShowtime.Room?.cinemaId ??
+          selectedShowtime.Room?.CinemaId ??
+          selectedShowtime.room?.cinema?.cinemaId ??
+          selectedShowtime.Room?.Cinema?.CinemaId ??
+          "";
   }
 
-  return basePrice;
+  if (!rName && selectedShowtime) {
+    rName = selectedShowtime.roomName ??
+            selectedShowtime.RoomName ??
+            selectedShowtime.room?.roomName ??
+            selectedShowtime.Room?.roomName ??
+            selectedShowtime.room?.RoomName ??
+            selectedShowtime.Room?.RoomName ??
+            "";
+  }
+
+  if (cId && rName) {
+    const dateStr = getShowtimeDate(selectedShowtime);
+    let isWeekend = false;
+    if (dateStr) {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDay();
+        // Saturday (6) and Sunday (0) are weekend days
+        isWeekend = day === 0 || day === 6;
+      }
+    }
+
+    let priceKey = "";
+    if (isCouple) {
+      priceKey = isWeekend ? `room_price_cp_we_c${cId}_r${rName}` : `room_price_cp_wd_c${cId}_r${rName}`;
+    } else if (isVip) {
+      priceKey = isWeekend ? `room_price_vip_we_c${cId}_r${rName}` : `room_price_vip_wd_c${cId}_r${rName}`;
+    } else {
+      priceKey = isWeekend ? `room_price_std_we_c${cId}_r${rName}` : `room_price_std_wd_c${cId}_r${rName}`;
+    }
+
+    const storedPriceStr = localStorage.getItem(priceKey);
+    if (storedPriceStr) {
+      const cleaned = storedPriceStr.replace(/\./g, "").trim();
+      const parsed = Number(cleaned);
+      if (!isNaN(parsed) && parsed > 0) {
+        finalPrice = parsed;
+      }
+    }
+  }
+
+  if (finalPrice === null) {
+    if (isCouple) {
+      return basePrice + 40000;
+    }
+    if (isVip) {
+      return basePrice + 20000;
+    }
+    return basePrice;
+  }
+
+  return finalPrice;
 }
 
 export function groupSeatsByRow(seats) {
@@ -562,6 +637,7 @@ export function buildBookingPayload({
   seat,
   selectedShowtime,
   selectedCombos = [],
+  rooms = [],
 }) {
   const payload = {
     userId: Number(userId),
@@ -569,22 +645,22 @@ export function buildBookingPayload({
     seatId: Number(getSeatId(seat)),
     seatIds: [Number(getSeatId(seat))],
     SeatIds: [Number(getSeatId(seat))],
-    totalPrice: Number(getSeatPrice(seat, selectedShowtime)),
+    totalPrice: Number(getSeatPrice(seat, selectedShowtime, rooms)),
     status: "Paid",
     paymentStatus: "Paid",
   };
 
   if (selectedCombos.length > 0) {
     const list = selectedCombos.map((combo) => {
-      const foodId = Number(combo.foodId ?? combo.comboId ?? combo.id);
-
-      return {
-        foodId,
-        comboId: foodId,
-        quantity: Number(combo.quantity),
-      };
+      // Phân biệt rõ Food vs Combo, chỉ gửi 1 trong 2 để tránh lỗi 400 "FoodOrComboNotBoth"
+      const id = Number(combo._resolvedId ?? combo.comboId ?? combo.foodId ?? combo.id);
+      if (combo._isCombo) {
+        return { comboId: id, quantity: Number(combo.quantity) };
+      }
+      return { foodId: id, quantity: Number(combo.quantity) };
     });
 
+    payload.orderItems = list; // khớp với BookingCreateRequest.OrderItems
     payload.bookingFoods = list;
     payload.foods = list;
     payload.bookingCombos = list;
@@ -592,6 +668,61 @@ export function buildBookingPayload({
   }
 
   return payload;
+}
+
+/* =========================
+   ROBUST BOOKING ID EXTRACTOR
+========================= */
+
+export function extractBookingId(data) {
+  if (data === null || data === undefined) return null;
+  
+  if (typeof data === "number") return data;
+  if (typeof data === "string" && !isNaN(Number(data)) && data.trim() !== "") {
+    return Number(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.length > 0 ? extractBookingId(data[0]) : null;
+  }
+  if (Array.isArray(data?.$values)) {
+    return data.$values.length > 0 ? extractBookingId(data.$values[0]) : null;
+  }
+  if (Array.isArray(data?.data)) {
+    return data.data.length > 0 ? extractBookingId(data.data[0]) : null;
+  }
+  
+  if (data?.value !== null && data?.value !== undefined) {
+    return extractBookingId(data.value);
+  }
+  
+  // Handle bookingIds (plural) - array of IDs returned by API
+  if (Array.isArray(data?.bookingIds) && data.bookingIds.length > 0) {
+    return extractBookingId(data.bookingIds[0]);
+  }
+  if (Array.isArray(data?.BookingIds) && data.BookingIds.length > 0) {
+    return extractBookingId(data.BookingIds[0]);
+  }
+  
+  const idVal =
+    data?.bookingId ??
+    data?.BookingId ??
+    data?.bookingID ??
+    data?.BookingID ??
+    data?.id ??
+    data?.Id ??
+    data?.booking?.bookingId ??
+    data?.booking?.BookingId ??
+    data?.booking?.bookingID ??
+    data?.booking?.BookingID ??
+    data?.booking?.id ??
+    data?.booking?.Id;
+    
+  if (idVal !== null && idVal !== undefined) {
+    return extractBookingId(idVal);
+  }
+  
+  return null;
 }
 
 /* =========================
@@ -1002,14 +1133,6 @@ export function useBooking() {
   const selectedCombos = useMemo(() => {
     return combos
       .map((combo) => {
-        const id =
-          combo.foodId ??
-          combo.FoodId ??
-          combo.comboId ??
-          combo.id ??
-          combo.Id ??
-          combo.ComboId;
-
         const name =
           combo.name ??
           combo.Name ??
@@ -1019,10 +1142,19 @@ export function useBooking() {
           combo.ComboName ??
           "Combo";
 
+        // Phân biệt rõ: nếu data gốc có trường comboId/ComboId → là Combo
+        // Nếu data gốc có foodId/FoodId hoặc không có trường combo → là Food
+        const rawComboId = combo.comboId ?? combo.ComboId ?? null;
+        const rawFoodId = combo.foodId ?? combo.FoodId ?? null;
+        // Nếu API trả về từ /Foods, sẽ có foodId hoặc chỉ có `id` 
+        // Nếu API trả về từ /Combos, sẽ có comboId
+        const isCombo = rawComboId != null && rawFoodId == null;
+        const id = rawComboId ?? rawFoodId ?? combo.id ?? combo.Id;
+
         return {
           ...combo,
-          foodId: id,
-          comboId: id,
+          _resolvedId: id,
+          _isCombo: isCombo,
           name,
           quantity: comboQuantities[id] || 0,
         };
@@ -1032,10 +1164,10 @@ export function useBooking() {
 
   const totalAmount = useMemo(() => {
     return selectedSeats.reduce(
-      (sum, seat) => sum + getSeatPrice(seat, selectedShowtime),
+      (sum, seat) => sum + getSeatPrice(seat, selectedShowtime, rooms),
       0
     );
-  }, [selectedSeats, selectedShowtime]);
+  }, [selectedSeats, selectedShowtime, rooms]);
 
   const totalCombosAmount = useMemo(() => {
     return selectedCombos.reduce(
@@ -1102,25 +1234,30 @@ export function useBooking() {
             seat,
             selectedShowtime,
             selectedCombos: combosForPayload,
+            rooms,
           });
 
           payload.totalPrice = Number(payload.totalPrice) + Number(extraPrice);
 
           const data = await createBooking(payload);
-
+          console.log("CREATE BOOKING RESPONSE FOR SEAT:", seat, data);
+          console.log("DEBUG RESPONSE STRING:", JSON.stringify(data));
           return data;
         })
       );
 
       const bookedIds = bookingResults.map((data) => {
-        return (
-          data?.bookingId ??
-          data?.BookingId ??
-          data?.id ??
-          data?.Id ??
-          `BK${Math.floor(Math.random() * 90000)}`
-        );
-      });
+        const id = extractBookingId(data);
+        if (id === null || isNaN(Number(id))) {
+          console.error("Không trích xuất được bookingId từ phản hồi API:", JSON.stringify(data));
+        }
+        return id;
+      }).filter(id => id !== null && !isNaN(Number(id))).map(Number);
+
+      if (bookedIds.length === 0) {
+        throw new Error("Đặt vé thất bại: Không nhận được mã đặt vé hợp lệ từ máy chủ.");
+      }
+
 
       // Giải phóng thông tin giữ ghế cục bộ
       holdKeysRef.current = {};

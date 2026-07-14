@@ -2,9 +2,9 @@ import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../
 
 const API_URL = getApiUrl();
 
-// GET /api/Invoices/MyHistory (Giả lập api lấy lịch sử giao dịch hóa đơn của user đăng nhập)
-export async function getBookingHistory() {
-  const response = await fetch(`${API_URL}/Invoices`, {
+export async function getBookingHistory(userId) {
+  if (!userId) return [];
+  const response = await fetch(`${API_URL}/Bookings/ByUser/${userId}`, {
     headers: getAuthHeaders(),
   });
   const data = await readResponse(response);

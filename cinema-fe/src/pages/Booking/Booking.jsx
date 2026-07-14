@@ -225,7 +225,7 @@ export default function Booking() {
                 }
                 setSelectedSeats(nextSelected);
               }}
-              title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime) * 2).toLocaleString("vi-VN")}đ)`}
+              title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ)`}
             >
               {selected ? (
                 <span className="selected-checkmark">✓</span>
@@ -261,7 +261,7 @@ export default function Booking() {
           className={seatClass}
           disabled={!available}
           onClick={() => handleSeatClick(seat)}
-          title={`${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(seat, selectedShowtime).toLocaleString("vi-VN")}đ)`}
+          title={`${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(seat, selectedShowtime, rooms).toLocaleString("vi-VN")}đ)`}
         >
           {selected ? (
             <span className="selected-checkmark">✓</span>
@@ -401,21 +401,21 @@ export default function Booking() {
                   <div className="legend-item">
                     <div className="seat-node legend-box standard"></div>
                     <span>
-                      Ghế thường / {Number(getShowtimeBasePrice(selectedShowtime)).toLocaleString("vi-VN")}đ
+                      Ghế thường / {Number(getSeatPrice({ seatType: "standard" }, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ
                     </span>
                   </div>
 
                   <div className="legend-item">
                     <div className="seat-node legend-box vip"></div>
                     <span>
-                      Ghế VIP / {(Number(getShowtimeBasePrice(selectedShowtime)) + 20000).toLocaleString("vi-VN")}đ
+                      Ghế VIP / {Number(getSeatPrice({ seatType: "vip" }, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ
                     </span>
                   </div>
 
                   <div className="legend-item">
                     <div className="seat-node legend-box couple"></div>
                     <span>
-                      Ghế Couple / {(Number(getShowtimeBasePrice(selectedShowtime)) + 40000).toLocaleString("vi-VN")}đ
+                      Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ
                     </span>
                   </div>
 
@@ -565,12 +565,6 @@ export default function Booking() {
                 </div>
               )}
 
-              {selectedSeats.length > 0 && (
-                <div className="bk-price-row">
-                  <span>Phí đặt vé</span>
-                  <strong>10.000đ</strong>
-                </div>
-              )}
             </div>
 
             <div className="summary-divider"></div>
@@ -580,7 +574,7 @@ export default function Booking() {
               <span>Tổng thanh toán</span>
               <h2 className="bk-total-price">
                 {selectedSeats.length > 0
-                  ? (finalTotalAmount + 10000).toLocaleString("vi-VN") + "đ"
+                  ? finalTotalAmount.toLocaleString("vi-VN") + "đ"
                   : "0đ"}
               </h2>
             </div>

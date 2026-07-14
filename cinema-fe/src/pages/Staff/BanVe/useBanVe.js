@@ -105,6 +105,61 @@ function compareSeatPosition(a, b) {
 }
 
 /* =========================
+   ROBUST BOOKING ID EXTRACTOR
+========================= */
+
+function extractBookingId(data) {
+  if (data === null || data === undefined) return null;
+  
+  if (typeof data === "number") return data;
+  if (typeof data === "string" && !isNaN(Number(data)) && data.trim() !== "") {
+    return Number(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.length > 0 ? extractBookingId(data[0]) : null;
+  }
+  if (Array.isArray(data?.$values)) {
+    return data.$values.length > 0 ? extractBookingId(data.$values[0]) : null;
+  }
+  if (Array.isArray(data?.data)) {
+    return data.data.length > 0 ? extractBookingId(data.data[0]) : null;
+  }
+  
+  if (data?.value !== null && data?.value !== undefined) {
+    return extractBookingId(data.value);
+  }
+  
+  // Handle bookingIds (plural) - array of IDs returned by API
+  if (Array.isArray(data?.bookingIds) && data.bookingIds.length > 0) {
+    return extractBookingId(data.bookingIds[0]);
+  }
+  if (Array.isArray(data?.BookingIds) && data.BookingIds.length > 0) {
+    return extractBookingId(data.BookingIds[0]);
+  }
+  
+  const idVal =
+    data?.bookingId ??
+    data?.BookingId ??
+    data?.bookingID ??
+    data?.BookingID ??
+    data?.id ??
+    data?.Id ??
+    data?.booking?.bookingId ??
+    data?.booking?.BookingId ??
+    data?.booking?.bookingID ??
+    data?.booking?.BookingID ??
+    data?.booking?.id ??
+    data?.booking?.Id;
+    
+  if (idVal !== null && idVal !== undefined) {
+    return extractBookingId(idVal);
+  }
+  
+  return null;
+}
+
+/* =========================
    MAIN HOOK
 ========================= */
 
@@ -487,18 +542,16 @@ export function useBanVe() {
           paymentStatus: "Paid",
         };
 
-        return await createBooking(payload);
+        const res = await createBooking(payload);
+        console.log("STAFF CREATE BOOKING RESPONSE:", res);
+        console.log("STAFF DEBUG RESPONSE STRING:", JSON.stringify(res));
+        return res;
       });
 
       const bookingResults = await Promise.all(bookingPromises);
       const bookedIds = bookingResults.map((data, idx) => {
-        return (
-          data?.bookingId ??
-          data?.BookingId ??
-          data?.id ??
-          data?.Id ??
-          `BK${Math.floor(Math.random() * 90000)}`
-        );
+        const id = extractBookingId(data);
+        return id !== null ? id : `BK${Math.floor(Math.random() * 90000)}`;
       });
 
       // Gọi API Payments sau khi tạo Booking thành công

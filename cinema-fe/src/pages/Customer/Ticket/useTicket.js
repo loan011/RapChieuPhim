@@ -79,7 +79,10 @@ export function useTicket() {
         const data = await getCustomerTickets(userId);
         let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
         console.log("=== RAW TICKETS DATA FROM BACKEND ===", list);
+        console.log("=== RAW TICKETS JSON ===", JSON.stringify(list));
         setRawList(list);
+
+        let allTickets = [];
         
         if (list.length === 0) {
           setTickets(loadTickets());
@@ -118,13 +121,27 @@ export function useTicket() {
             const seatLabel = t.seatNumber ?? t.SeatNumber ?? (seat ? `${seat.seatRow ?? seat.SeatRow ?? ""}${seat.seatNumber ?? seat.SeatNumber ?? ""}` : "") ?? t.seatCode ?? t.SeatCode ?? "";
             
             // Lấy mã vé
-            const ticketCode =
+            let ticketCode =
               t.ticketCode ??
               t.TicketCode ??
               t.code ??
               t.Code ??
-              (booking.tickets?.[0]?.ticketCode ?? booking.Tickets?.[0]?.TicketCode) ??
-              `BK${t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id}`;
+              (booking.tickets?.[0]?.ticketCode ?? booking.Tickets?.[0]?.TicketCode);
+
+            if (!ticketCode && allTickets.length > 0) {
+              const currentBId = t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id;
+              const matched = allTickets.find(tk => {
+                const bId = tk.bookingId ?? tk.BookingId;
+                return String(bId) === String(currentBId);
+              });
+              if (matched) {
+                ticketCode = matched.ticketCode ?? matched.TicketCode ?? matched.code ?? matched.Code;
+              }
+            }
+
+            if (!ticketCode) {
+              ticketCode = `BK${t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id}`;
+            }
               
             const itemPrice = Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
             
@@ -153,6 +170,8 @@ export function useTicket() {
               });
             }
 
+            const currentBId = t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id;
+
             if (existingGroup) {
               if (seatLabel && !existingGroup.seatsList.includes(seatLabel)) {
                 existingGroup.seatsList.push(seatLabel);
@@ -160,6 +179,9 @@ export function useTicket() {
               existingGroup.totalPriceSum += itemPrice;
               if (ticketCode && !existingGroup.ticketCodes.includes(ticketCode)) {
                 existingGroup.ticketCodes.push(ticketCode);
+              }
+              if (currentBId && !existingGroup.bookingIds.includes(currentBId)) {
+                existingGroup.bookingIds.push(currentBId);
               }
               
               parsedFoods.forEach(pf => {
@@ -176,6 +198,7 @@ export function useTicket() {
                 seatsList: seatLabel ? [seatLabel] : [],
                 totalPriceSum: itemPrice,
                 ticketCodes: ticketCode ? [ticketCode] : [],
+                bookingIds: currentBId ? [currentBId] : [],
                 foodsList: [...parsedFoods]
               });
             }
@@ -271,6 +294,8 @@ export function useTicket() {
                 price: t.totalPriceSum.toLocaleString("vi-VN") + "đ",
                 status: finalStatus,
                 foods: t.foodsList || [],
+                bookingIds: t.bookingIds || [],
+                rawBooking: t,
               };
             })
           );
