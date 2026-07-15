@@ -178,10 +178,10 @@
 
 /* ── Movie Card ── */
 .fm-card {
-  background: #fff;
+  background: #1c1c24;
   border-radius: 12px;
-  border: 1px solid #f0f0f0;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+  border: 1px solid #3a3a45;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   padding: 14px;
   display: flex;
   flex-direction: row; /* Horizontal alignment */
@@ -200,7 +200,7 @@
   height: 135px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: #2a2a35;
   flex-shrink: 0;
 }
 .fm-card-poster {
@@ -241,9 +241,9 @@
   margin-bottom: 6px;
 }
 .fm-card-title {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #111827;
+  color: #fff;
   margin: 0 0 4px 0;
   line-height: 1.25;
   overflow: hidden;
@@ -269,8 +269,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.76rem;
-  color: #4b5563;
+  font-size: 0.8rem;
+  color: #9ca3af;
 }
 .fm-detail-icon {
   color: #9ca3af;
@@ -302,25 +302,30 @@
   font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1.5px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
+  border: 1px solid #3a3a45;
+  background: transparent;
+  color: #d1d5db;
   transition: all 0.15s;
+}
+.fm-card-btn:hover {
+  background: #2a2a35;
+  border-color: #4b5563;
+  color: #fff;
 }
 .fm-card-btn--detail:hover {
   border-color: #6366f1;
   color: #6366f1;
-  background: #f5f3ff;
+  background: #1c1c24;
 }
 .fm-card-btn--edit:hover {
   border-color: #f97316;
   color: #f97316;
-  background: #fff7ed;
+  background: #1c1c24;
 }
 .fm-card-btn--delete-action:hover {
   border-color: #ef4444;
   color: #ef4444;
-  background: #fef2f2;
+  background: #1c1c24;
 }
 
 /* ── Pagination Footer ── */
@@ -423,29 +428,28 @@
   gap: 12px;
 }
 .fm-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #374151;
+  color: #d1d5db;
 }
 .fm-required {
   color: #ef4444;
 }
 .fm-input {
-  border: 1.5px solid #e5e7eb;
+  border: 1px solid #3a3a45;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 0.875rem;
-  color: #111827;
+  color: #fff;
+  background: #1c1c24;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   width: 100%;
   box-sizing: border-box;
-  background: #f9fafb;
 }
 .fm-input:focus {
-  border-color: #f97316;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
-  background: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 .fm-input--textarea {
   resize: vertical;
@@ -497,8 +501,8 @@
 .fm-form-poster-section {
   display: flex;
   gap: 16px;
-  background: #f9fafb;
-  border: 1.5px dashed #e5e7eb;
+  background: #2a2a35;
+  border: 1.5px dashed #4b5563;
   border-radius: 10px;
   padding: 14px;
   align-items: center;
@@ -508,12 +512,12 @@
   height: 120px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: #1c1c24;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #3a3a45;
 }
 .fm-form-preview-img {
   width: 100%;
@@ -534,7 +538,8 @@
 }
 .fm-input-file {
   padding: 5px 8px !important;
-  background: #fff !important;
+  background: transparent !important;
+  color: #d1d5db !important;
   cursor: pointer;
 }
 

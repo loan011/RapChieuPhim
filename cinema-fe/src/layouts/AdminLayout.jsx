@@ -14,6 +14,7 @@ import {
   MdTheaters,
   MdSearch,
   MdKeyboardArrowDown,
+  MdFastfood,
 } from "react-icons/md";
 import { useState } from "react";
 
@@ -24,6 +25,7 @@ const navItems = [
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",            label: "Suất Chiếu",             icon: <MdCalendarMonth /> },
   { to: "/admin/thong-bao",             label: "Thông Báo",              icon: <MdNotifications /> },
+  { to: "/admin/do-an",                 label: "Đồ Ăn & Combo",          icon: <MdFastfood /> },
 ];
 
 export default function AdminLayout() {

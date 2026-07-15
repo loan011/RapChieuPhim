@@ -26,6 +26,7 @@ import RapChieu from "./pages/Admin/Cinema/Cinema.jsx";
 import SuatChieu from "./pages/Admin/Rate/Rate.jsx";
 import Ghe from "./pages/Admin/Seat/Seat.jsx";
 import ThongBao from "./pages/Admin/Notice/Notice.jsx";
+import Food from "./pages/Admin/Food/Food.jsx";
 
 import StaffLayout from "./layouts/StaffLayout";
 import StaffDashboard from "./pages/Staff/Dashbord/Dashboard.jsx";
@@ -166,6 +167,7 @@ function App() {
           <Route path="rap-chieu" element={<Navigate to="/admin/phong-chieu" replace />} />
           <Route path="suat-chieu" element={<SuatChieu />} />
           <Route path="ghe" element={<Navigate to="/admin/phong-chieu" replace />} />
+          <Route path="do-an" element={<Food />} />
           <Route path="thong-bao" element={<ThongBao />} />
         </Route>
 

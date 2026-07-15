@@ -205,7 +205,14 @@ export function useTicket() {
           });
 
           setTickets(
-            groupedList.map((t) => {
+            groupedList
+              .filter(t => {
+                const booking = t.booking || t;
+                const statusVal = t.status ?? t.Status ?? booking.status ?? booking.Status ?? "";
+                const statusStr = String(statusVal).trim().toLowerCase();
+                return !(statusStr === "pending" || statusStr === "unpaid" || statusStr === "chưa thanh toán");
+              })
+              .map((t) => {
               const booking = t.booking || t;
               
               const statusVal = t.status ?? t.Status ?? booking.status ?? booking.Status ?? "";

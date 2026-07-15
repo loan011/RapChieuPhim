@@ -298,7 +298,6 @@ export default function Film() {
                     value={form.title}
                     onChange={handleChange}
                     className="fm-input"
-                    placeholder="Nhập tên phim"
                     required
                   />
                 </div>
@@ -313,14 +312,13 @@ export default function Film() {
                       value={form.genre}
                       onChange={handleChange}
                       className="fm-input"
-                      placeholder="VD: Hành động, Viễn tưởng"
                     />
                     <select
                       onChange={handleGenreSelect}
                       className="fm-input fm-genre-quick-select"
                       value=""
                     >
-                      <option value="" disabled>-- Chọn thêm thể loại nhanh --</option>
+                      <option value="" disabled>-- Chọn thể loại  --</option>
                       {categoryOptions.map((c) => (
                         <option key={c.id} value={c.name}>
                           {c.name}
@@ -339,7 +337,6 @@ export default function Film() {
                     value={form.director}
                     onChange={handleChange}
                     className="fm-input"
-                    placeholder="Nhập tên đạo diễn"
                   />
                 </div>
 
@@ -353,7 +350,6 @@ export default function Film() {
                       value={form.language}
                       onChange={handleChange}
                       className="fm-input"
-                      placeholder="VD: Tiếng Anh, Tiếng Việt"
                     />
                   </div>
                   <div className="fm-field">
@@ -364,7 +360,6 @@ export default function Film() {
                       value={form.subtitles}
                       onChange={handleChange}
                       className="fm-input"
-                      placeholder="VD: Phụ đề Tiếng Việt"
                     />
                   </div>
                 </div>
@@ -379,7 +374,6 @@ export default function Film() {
                       value={form.duration}
                       onChange={handleChange}
                       className="fm-input"
-                      placeholder="VD: 120"
                       min={1}
                     />
                   </div>
@@ -452,7 +446,7 @@ export default function Film() {
                   </div>
                   <div className="fm-form-poster-inputs">
                     <div className="fm-field">
-                      <label className="fm-label">Ảnh poster từ thiết bị</label>
+                      <label className="fm-label">Ảnh poster</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -468,7 +462,6 @@ export default function Film() {
                         value={form.posterUrl}
                         onChange={handleChange}
                         className="fm-input"
-                        placeholder="Ví dụ: /img/poster.jpg hoặc https://example.com/poster.jpg"
                       />
                     </div>
                   </div>
@@ -483,7 +476,6 @@ export default function Film() {
                     value={form.trailerUrl}
                     onChange={handleChange}
                     className="fm-input"
-                    placeholder="https://www.youtube.com/watch?v=..."
                   />
                 </div>
 
@@ -495,7 +487,6 @@ export default function Film() {
                     value={form.description}
                     onChange={handleChange}
                     className="fm-input fm-input--textarea"
-                    placeholder="Mô tả tóm tắt nội dung phim..."
                     rows={3}
                   />
                 </div>

@@ -6,6 +6,11 @@ import {
   getSeatLabel,
   getShowtimeHour,
   getMoviePoster,
+  getSeatPrice,
+  getCinemaNameById,
+  findRoomByShowtime,
+  getRoomName,
+  getSeatType,
 } from "../Booking/usebooking.js";
 import "../../styles/Payment.css";
 
@@ -40,11 +45,19 @@ export default function Payment() {
   const {
     totalAmount,
     movie,
+    selectedCinemaId,
     selectedDateIso,
     selectedShowtime,
     selectedSeats,
     selectedCombos,
+    rooms,
+    cinemas,
   } = bookingData;
+
+  const cinemaName = cinemas && selectedCinemaId ? getCinemaNameById(cinemas, selectedCinemaId) : "Rạp Chiếu Phim";
+  const room = rooms && selectedShowtime ? findRoomByShowtime(selectedShowtime, rooms) : null;
+  const roomName = room ? getRoomName(room) : "";
+  const displayCinema = roomName ? `${cinemaName} - ${roomName}` : cinemaName;
 
   return (
     <div className="payment-page-layout">
@@ -72,23 +85,62 @@ export default function Payment() {
               <h3>{getMovieTitle(movie)}</h3>
               <p className="movie-meta-item">📅 Ngày: <strong>{selectedDateIso}</strong></p>
               <p className="movie-meta-item">⏰ Suất chiếu: <strong>{selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}</strong></p>
-              <p className="movie-meta-item">📍 Rạp: <strong>Rạp Chiếu Phim</strong></p>
+              <p className="movie-meta-item">📍 Rạp: <strong>{displayCinema}</strong></p>
             </div>
           </div>
 
           <div className="payment-card ticket-detail-card">
             <h4>Chi tiết đơn hàng</h4>
-            <div className="detail-row">
+            <div className="detail-row" style={{ alignItems: 'flex-start' }}>
               <span>Ghế đã chọn:</span>
-              <strong>{selectedSeats.map(getSeatLabel).join(", ")}</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flex: 1, marginLeft: '16px' }}>
+                {(() => {
+                  const elements = [];
+                  for (let i = 0; i < selectedSeats.length; i++) {
+                    const seat = selectedSeats[i];
+                    const type = String(getSeatType(seat)).toLowerCase();
+                    const isCouple = type.includes("sweetbox") || type.includes("couple") || type.includes("đôi");
+                    
+                    if (isCouple) {
+                      const nextSeat = selectedSeats[i + 1];
+                      if (nextSeat) {
+                        const nextType = String(getSeatType(nextSeat)).toLowerCase();
+                        const nextIsCouple = nextType.includes("sweetbox") || nextType.includes("couple") || nextType.includes("đôi");
+                        
+                        if (nextIsCouple) {
+                          const price = rooms ? getSeatPrice(seat, selectedShowtime, rooms) * 2 : 0;
+                          elements.push(
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                              <strong>{getSeatLabel(seat)}, {getSeatLabel(nextSeat)}</strong>
+                              <span style={{ color: '#aaa', fontSize: '0.9rem', fontWeight: '500' }}>{price > 0 ? price.toLocaleString("vi-VN") + 'đ' : ''}</span>
+                            </div>
+                          );
+                          i++; // skip next
+                          continue;
+                        }
+                      }
+                    }
+                    
+                    const price = rooms ? getSeatPrice(seat, selectedShowtime, rooms) : 0;
+                    elements.push(
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                        <strong>{getSeatLabel(seat)}</strong>
+                        <span style={{ color: '#aaa', fontSize: '0.9rem', fontWeight: '500' }}>{price > 0 ? price.toLocaleString("vi-VN") + 'đ' : ''}</span>
+                      </div>
+                    );
+                  }
+                  return elements;
+                })()}
+              </div>
             </div>
             {selectedCombos && selectedCombos.length > 0 && (
-              <div className="detail-row combos-row">
+              <div className="detail-row combos-row" style={{ alignItems: 'flex-start', marginTop: '12px' }}>
                 <span>Bắp nước:</span>
-                <div className="combos-list-text">
+                <div className="combos-list-text" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, marginLeft: '16px' }}>
                   {selectedCombos.map((c, i) => (
-                    <div key={i} className="combo-item-text">
-                      {c.name} (x{c.quantity})
+                    <div key={i} className="combo-item-text" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                      <strong style={{ color: '#eee', fontWeight: '600' }}>{c.name} (x{c.quantity})</strong>
+                      <span style={{ color: '#aaa', fontSize: '0.9rem', fontWeight: '500' }}>{(c.price * c.quantity).toLocaleString("vi-VN")}đ</span>
                     </div>
                   ))}
                 </div>
@@ -217,120 +269,7 @@ export default function Payment() {
         </div>
       )}
 
-      {/* Modal báo thanh toán thành công */}
-      {showPaymentSuccess && (
-        <div className="payment-success-modal-overlay">
-          <div className="payment-success-modal-box" style={{ maxWidth: "480px", width: "100%", margin: "auto", padding: "28px 24px", background: "#181818", borderRadius: "20px", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 20px 50px rgba(0, 0, 0, 0.65)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div className="modal-success-icon-wrap" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <MdCheckCircle className="success-icon" style={{ fontSize: "3.5rem", color: "#22c55e" }} />
-            </div>
-
-            <h2 className="modal-title" style={{ fontSize: "1.35rem", fontWeight: "bold", color: "#22c55e", letterSpacing: "0.5px", marginTop: "12px", marginBottom: "6px" }}>
-              THANH TOÁN THÀNH CÔNG
-            </h2>
-
-            <p className="modal-desc" style={{ fontSize: "0.85rem", color: "#9ca3af", margin: "0 0 20px", textAlign: "center", lineHeight: "1.4" }}>
-              Vé xem phim của bạn đã được thanh toán và đăng ký thành công!
-            </p>
-
-            {/* Premium Ticket Card */}
-            <div className="ticket-invoice-receipt" style={{ width: "100%", background: "linear-gradient(135deg, #242424 0%, #1a1a1a 100%)", borderRadius: "16px", border: "1px solid rgba(255, 255, 255, 0.05)", boxShadow: "0 10px 25px rgba(0,0,0,0.2)", overflow: "hidden", position: "relative" }}>
-              
-              {/* Ticket Header */}
-              <div className="invoice-header" style={{ padding: "14px 20px", background: "rgba(255, 255, 255, 0.02)", borderBottom: "1px dashed rgba(255, 255, 255, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
-                <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: "700", color: "#f97316", letterSpacing: "1px" }}>
-                  VÉ XEM PHIM ĐIỆN TỬ
-                </h3>
-                <span className="invoice-id" style={{ fontSize: "0.8rem", color: "#38bdf8", fontWeight: "600" }}>
-                  Mã vé: {newTicketIds.join(", ")}
-                </span>
-              </div>
-
-              {/* Ticket Details */}
-              <div className="invoice-body-details" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "10px", textAlign: "left", fontSize: "0.88rem", color: "#d1d5db" }}>
-                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                  <span>🎬 Phim:</span>
-                  <strong style={{ color: "#ffffff" }}>{getMovieTitle(movie)}</strong>
-                </p>
-                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                  <span>📍 Rạp:</span>
-                  <strong style={{ color: "#ffffff" }}>Rạp Chiếu Phim</strong>
-                </p>
-                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                  <span>📅 Ngày chiếu:</span>
-                  <strong style={{ color: "#ffffff" }}>{selectedDateIso}</strong>
-                </p>
-                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                  <span>⏰ Suất chiếu:</span>
-                  <strong style={{ color: "#ffffff" }}>{selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}</strong>
-                </p>
-                <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                  <span>🎟 Ghế:</span>
-                  <strong style={{ color: "#ffffff" }}>{selectedSeats.map(getSeatLabel).join(", ")}</strong>
-                </p>
-                {selectedCombos && selectedCombos.length > 0 && (
-                  <p style={{ margin: 0, display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.03)", paddingBottom: "6px" }}>
-                    <span>🍿 Bắp nước:</span>
-                    <strong style={{ color: "#ffffff", textAlign: "right" }}>
-                      {selectedCombos.map((c) => `${c.name} (x${c.quantity})`).join(", ")}
-                    </strong>
-                  </p>
-                )}
-                <p style={{ margin: "8px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "1rem" }}>
-                  <span>💰 Tổng cộng:</span>
-                  <strong style={{ color: "#ef4444", fontSize: "1.15rem", fontWeight: "700" }}>
-                    {totalAmount.toLocaleString("vi-VN")}đ
-                  </strong>
-                </p>
-              </div>
-
-              {/* Decorative Ticket Dashed Line with Side Cutouts */}
-              <div style={{ position: "relative", borderTop: "2px dashed #181818", margin: "5px 0" }}>
-                <div style={{ position: "absolute", left: "-8px", top: "-9px", width: "16px", height: "16px", borderRadius: "50%", background: "#181818" }}></div>
-                <div style={{ position: "absolute", right: "-8px", top: "-9px", width: "16px", height: "16px", borderRadius: "50%", background: "#181818" }}></div>
-              </div>
-
-              {/* Ticket QR Section */}
-              <div className="invoice-qr-wrap" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "18px 20px" }}>
-                <div style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(newTicketIds.join(","))}`}
-                    alt="Ticket QR Code"
-                    style={{ width: "140px", height: "140px", objectFit: "contain", display: "block" }}
-                  />
-                </div>
-                <p style={{ fontSize: "0.78rem", color: "#9ca3af", margin: "4px 0 0", textAlign: "center", lineHeight: "1.3" }}>
-                  Quét mã này tại quầy bán vé hoặc máy soát vé để nhận vé giấy
-                </p>
-              </div>
-            </div>
-
-            {/* Auto-redirect countdown bar */}
-            <div style={{ width: "100%", marginTop: "20px", textAlign: "center" }}>
-              <p style={{ fontSize: "0.82rem", color: "#9ca3af", margin: "0 0 8px" }}>
-                ⏳ Đang chuyển sang <strong style={{ color: "#f97316" }}>Vé của tôi</strong> trong giây lát...
-              </p>
-              <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "4px", overflow: "hidden" }}>
-                <div
-                  style={{
-                    height: "100%",
-                    background: "linear-gradient(90deg, #f97316, #ea580c)",
-                    borderRadius: "4px",
-                    animation: "progressBar 2.5s linear forwards",
-                  }}
-                />
-              </div>
-            </div>
-
-            <style>{`
-              @keyframes progressBar {
-                from { width: 0%; }
-                to { width: 100%; }
-              }
-            `}</style>
-          </div>
-        </div>
-      )}
+      {/* (Modal báo thanh toán thành công đã bị gỡ bỏ để tự động chuyển trang trực tiếp) */}
       </div>
     </div>
   );

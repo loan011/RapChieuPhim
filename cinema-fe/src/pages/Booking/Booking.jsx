@@ -210,20 +210,11 @@ export default function Booking() {
               type="button"
               className={seatClass}
               disabled={!available}
-              onClick={() => {
+              onClick={async () => {
                 if (!available) return;
-                let nextSelected = [...selectedSeats];
-                const has1 = nextSelected.some(s => String(getSeatId(s)) === String(seatId1));
-                const has2 = nextSelected.some(s => String(getSeatId(s)) === String(seatId2));
-
-                if (has1 || has2) {
-                  // Toggle off
-                  nextSelected = nextSelected.filter(s => String(getSeatId(s)) !== String(seatId1) && String(getSeatId(s)) !== String(seatId2));
-                } else {
-                  // Toggle on both
-                  nextSelected.push(seat, nextSeat);
-                }
-                setSelectedSeats(nextSelected);
+                // Gọi tuần tự để đảm bảo state và API hoạt động chuẩn xác
+                await handleSeatClick(seat);
+                await handleSeatClick(nextSeat);
               }}
               title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ)`}
             >
@@ -415,15 +406,15 @@ export default function Booking() {
                   <div className="legend-item">
                     <div className="seat-node legend-box couple"></div>
                     <span>
-                      Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ
+                      Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ
                     </span>
                   </div>
 
                   <div className="legend-item">
                     <div className="seat-node legend-box taken">
-                      <span className="seat-lock-icon" style={{ fontSize: "10px" }}>🔒</span>
+                      <span className="seat-lock-icon" style={{ fontSize: "10px", opacity: 0.5 }}>✖</span>
                     </div>
-                    <span>Ghế bảo trì / Không bán</span>
+                    <span>Ghế đã đặt / Không bán</span>
                   </div>
                 </div>
 
@@ -679,14 +670,14 @@ export default function Booking() {
               {combos.map((item) => {
                 const itemId = item.comboId ?? item.foodId ?? item.id;
                 const quantity = comboQuantities[itemId] || 0;
+                const isComboItem = item._isCombo || (item.name || "").toLowerCase().includes("combo");
 
                 return (
                   <div
                     key={itemId}
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      flexDirection: "column",
                       padding: "12px",
                       border: "1px solid rgba(255,255,255,0.05)",
                       borderRadius: "12px",
@@ -697,85 +688,113 @@ export default function Booking() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        flex: 1,
+                        justifyContent: "space-between",
                       }}
                     >
-                      {renderComboImage(item.image, item.name)}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          flex: 1,
+                        }}
+                      >
+                        {renderComboImage(item.image, item.name)}
 
-                      <div>
-                        <h4
+                        <div>
+                          <h4
+                            style={{
+                              fontWeight: "700",
+                              color: "#fff",
+                              fontSize: "0.9rem",
+                              margin: 0,
+                            }}
+                          >
+                            {item.name}
+                          </h4>
+                          <p
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "rgba(255,255,255,0.5)",
+                              margin: "4px 0 0",
+                            }}
+                          >
+                            {item.description}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: "0.85rem",
+                              color: "#e50914",
+                              fontWeight: "700",
+                              margin: "4px 0 0",
+                            }}
+                          >
+                            {item.price.toLocaleString("vi-VN")}đ
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button
+                          type="button"
+                          onClick={() => updateComboQuantity(itemId, -1)}
+                          disabled={quantity <= 0}
                           style={{
-                            fontWeight: "700",
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "50%",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            background: quantity <= 0 ? "rgba(255,255,255,0.02)" : "#333",
                             color: "#fff",
-                            fontSize: "0.9rem",
-                            margin: 0,
+                            cursor: quantity <= 0 ? "not-allowed" : "pointer",
+                            fontWeight: "bold",
                           }}
                         >
-                          {item.name}
-                        </h4>
-                        <p
+                          -
+                        </button>
+
+                        <span style={{ minWidth: "20px", textAlign: "center", fontWeight: "700" }}>
+                          {quantity}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => updateComboQuantity(itemId, 1)}
                           style={{
-                            fontSize: "0.75rem",
-                            color: "rgba(255,255,255,0.5)",
-                            margin: "4px 0 0",
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "50%",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            background: "#333",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontWeight: "bold",
                           }}
                         >
-                          {item.description}
-                        </p>
-                        <p
-                          style={{
-                            fontSize: "0.85rem",
-                            color: "#e50914",
-                            fontWeight: "700",
-                            margin: "4px 0 0",
-                          }}
-                        >
-                          {item.price.toLocaleString("vi-VN")}đ
-                        </p>
+                          +
+                        </button>
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <button
-                        type="button"
-                        onClick={() => updateComboQuantity(itemId, quantity - 1)}
-                        disabled={quantity <= 0}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          background: quantity <= 0 ? "rgba(255,255,255,0.02)" : "#333",
-                          color: "#fff",
-                          cursor: quantity <= 0 ? "not-allowed" : "pointer",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        -
-                      </button>
-
-                      <span style={{ minWidth: "20px", textAlign: "center", fontWeight: "700" }}>
-                        {quantity}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => updateComboQuantity(itemId, quantity + 1)}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          background: "#333",
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
+                    {/* HIỂN THỊ CHỌN NƯỚC NẾU LÀ COMBO VÀ CÓ CHỌN SỐ LƯỢNG */}
+                    {isComboItem && quantity > 0 && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                        <p style={{ fontSize: '0.8rem', color: '#aaa', margin: '0 0 8px 0' }}>Tùy chọn nước ngọt cho Combo:</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                          {['Pepsi', '7up', 'Mirinda Cam', 'Trà Đào'].map(drink => (
+                            <label key={drink} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
+                              <input 
+                                type="radio" 
+                                name={`drink_${itemId}`} 
+                                defaultChecked={drink === 'Pepsi'} 
+                                style={{ accentColor: '#e50914', cursor: 'pointer', width: '14px', height: '14px' }} 
+                              />
+                              {drink}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -799,23 +818,41 @@ export default function Booking() {
                 </h3>
               </div>
 
-              <button
-                type="button"
-                onClick={handleConfirmBooking}
-                style={{
-                  background: "#e50914",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "12px 24px",
-                  fontWeight: "800",
-                  fontSize: "0.9rem",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 12px rgba(229, 9, 20, 0.4)",
-                }}
-              >
-                XÁC NHẬN & ĐẶT VÉ
-              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowComboModal(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "12px 24px",
+                    fontWeight: "700",
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  HỦY
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBooking}
+                  style={{
+                    background: "#e50914",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "12px 24px",
+                    fontWeight: "800",
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(229, 9, 20, 0.4)",
+                  }}
+                >
+                  XÁC NHẬN & ĐẶT VÉ
+                </button>
+              </div>
             </div>
           </div>
         </div>

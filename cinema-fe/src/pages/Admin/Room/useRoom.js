@@ -494,12 +494,25 @@ export function useRoom() {
     setFormError("");
   }
 
+  const capitalizeWords = (str) => {
+    if (!str) return str;
+    return str.split(' ').map(word => {
+      if (word.length === 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   function handleChange(e) {
     const { name, value } = e.target;
+    
+    let finalValue = name === "isActive" ? value === "true" : value;
+    if (name === "roomName") {
+      finalValue = capitalizeWords(finalValue);
+    }
 
     setForm((prev) => ({
       ...prev,
-      [name]: name === "isActive" ? value === "true" : value,
+      [name]: finalValue,
     }));
   }
 

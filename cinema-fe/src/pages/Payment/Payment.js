@@ -173,11 +173,7 @@ export function usePayment() {
 
   function handleCompleteQrPayment() {
     setShowQrModal(false);
-    setShowPaymentSuccess(true);
-    // Tự động chuyển sang trang Vé của tôi sau 2.5 giây
-    setTimeout(() => {
-      navigate("/customer/ve-cua-toi");
-    }, 2500);
+    navigate("/customer/ve-cua-toi");
   }
 
   function handleFinishBooking() {

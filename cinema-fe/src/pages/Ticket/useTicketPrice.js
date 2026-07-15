@@ -114,14 +114,15 @@ export function useTicketPrice() {
 
     if (cinemaShowtimes.length === 0) return defaults;
 
-    // Collect base prices by room format
+    // Collect prices by room format
     const pricesByFormat = {
-      "2D": [],
-      "3D": [],
-      "IMAX": [],
-      "4DX": []
+      "2D": { std: [], vip: [], cp: [], fallbackBase: [] },
+      "3D": { std: [], vip: [], cp: [], fallbackBase: [] },
+      "IMAX": { std: [], vip: [], cp: [], fallbackBase: [] },
+      "4DX": { std: [], vip: [], cp: [], fallbackBase: [] }
     };
 
+    // First, collect fallback base prices from showtimes
     cinemaShowtimes.forEach(st => {
       const room = rooms.find(r => String(r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id) === String(st?.roomId ?? st?.RoomId));
       const roomName = room ? (room?.roomName ?? room?.RoomName ?? "").toLowerCase() : "";
@@ -129,36 +130,75 @@ export function useTicketPrice() {
       
       if (basePrice <= 0) return;
 
-      if (roomName.includes("4dx")) {
-        pricesByFormat["4DX"].push(basePrice);
-      } else if (roomName.includes("imax")) {
-        pricesByFormat["IMAX"].push(basePrice);
-      } else if (roomName.includes("3d")) {
-        pricesByFormat["3D"].push(basePrice);
-      } else {
-        pricesByFormat["2D"].push(basePrice);
+      let format = "2D";
+      if (roomName.includes("4dx")) format = "4DX";
+      else if (roomName.includes("imax")) format = "IMAX";
+      else if (roomName.includes("3d")) format = "3D";
+      
+      pricesByFormat[format].fallbackBase.push(basePrice);
+    });
+
+    // Then, collect admin prices from localStorage for the active rooms
+    Array.from(cinemaRoomIds).forEach(roomIdStr => {
+      const room = rooms.find(r => String(r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id) === roomIdStr);
+      if (!room) return;
+
+      const roomNameLower = (room?.roomName ?? room?.RoomName ?? "").toLowerCase();
+      let format = "2D";
+      if (roomNameLower.includes("4dx")) format = "4DX";
+      else if (roomNameLower.includes("imax")) format = "IMAX";
+      else if (roomNameLower.includes("3d")) format = "3D";
+
+      const cId = room?.cinemaId ?? room?.CinemaId ?? "";
+      const rName = room?.roomName ?? room?.RoomName ?? "";
+      
+      const stdPriceStr = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
+      const vipPriceStr = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
+      const cpPriceStr = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
+
+      if (stdPriceStr) {
+        const val = Number(stdPriceStr.replace(/\./g, "").trim());
+        if (!isNaN(val) && val > 0) pricesByFormat[format].std.push(val);
+      }
+      if (vipPriceStr) {
+        const val = Number(vipPriceStr.replace(/\./g, "").trim());
+        if (!isNaN(val) && val > 0) pricesByFormat[format].vip.push(val);
+      }
+      if (cpPriceStr) {
+        const val = Number(cpPriceStr.replace(/\./g, "").trim());
+        if (!isNaN(val) && val > 0) pricesByFormat[format].cp.push(val);
       }
     });
 
     const getAvgPrice = (arr, fallback) => {
-      if (arr.length === 0) return fallback;
-      // Round to nearest 5000 VND
+      if (!arr || arr.length === 0) return fallback;
       const avg = arr.reduce((sum, p) => sum + p, 0) / arr.length;
-      return Math.round(avg / 5000) * 5000;
+      return Math.round(avg / 5000) * 5000; // Round to nearest 5k
     };
 
-    const avg2D = getAvgPrice(pricesByFormat["2D"], 75000);
-    const avg3D = getAvgPrice(pricesByFormat["3D"], 90000);
-    const avgIMAX = getAvgPrice(pricesByFormat["IMAX"], 100000);
-    const avg4DX = getAvgPrice(pricesByFormat["4DX"], 120000);
+    const getPricesForFormat = (formatKey, defaultBase) => {
+      const formatData = pricesByFormat[formatKey];
+      const baseAvg = getAvgPrice(formatData.fallbackBase, defaultBase);
+      
+      return {
+        std: getAvgPrice(formatData.std, baseAvg),
+        vip: getAvgPrice(formatData.vip, baseAvg + 25000), // Consistent fallback
+        cp: getAvgPrice(formatData.cp, baseAvg * 2 + 50000) // Consistent fallback
+      };
+    };
+
+    const p2D = getPricesForFormat("2D", 75000);
+    const p3D = getPricesForFormat("3D", 90000);
+    const pIMAX = getPricesForFormat("IMAX", 100000);
+    const p4DX = getPricesForFormat("4DX", 120000);
 
     return {
-      "2D": avg2D,
-      "IMAX 2D": avgIMAX,
-      "3D": avg3D,
-      "IMAX 3D": avgIMAX + 20000,
-      "4DX 2D": avg4DX,
-      "4DX 3D": avg4DX + 20000
+      "2D": p2D,
+      "IMAX 2D": pIMAX,
+      "3D": p3D,
+      "IMAX 3D": { std: pIMAX.std + 20000, vip: pIMAX.vip + 20000, cp: pIMAX.cp + 40000 },
+      "4DX 2D": p4DX,
+      "4DX 3D": { std: p4DX.std + 20000, vip: p4DX.vip + 20000, cp: p4DX.cp + 40000 }
     };
   }, [selectedCinemaId, showtimes, rooms]);
 

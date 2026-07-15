@@ -148,7 +148,7 @@ function TicketPrice() {
                       </td>
                       {activeColumns.map(col => (
                         <td key={col} className="td-price-val">
-                          {formatMoney(basePrices[col])}
+                          {formatMoney(basePrices[col]?.std)}
                         </td>
                       ))}
                     </tr>
@@ -166,7 +166,7 @@ function TicketPrice() {
                       </td>
                       {activeColumns.map(col => (
                         <td key={col} className="td-price-val">
-                          {formatMoney(calculateVipPrice(basePrices[col]))}
+                          {formatMoney(basePrices[col]?.vip)}
                         </td>
                       ))}
                     </tr>
@@ -184,7 +184,7 @@ function TicketPrice() {
                       </td>
                       {activeColumns.map(col => (
                         <td key={col} className="td-price-val">
-                          {formatMoney(calculateCouplePrice(basePrices[col]))}
+                          {formatMoney(basePrices[col]?.cp)}
                         </td>
                       ))}
                     </tr>

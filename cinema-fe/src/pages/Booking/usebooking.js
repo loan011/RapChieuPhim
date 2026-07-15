@@ -588,17 +588,17 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
       const cleaned = storedPriceStr.replace(/\./g, "").trim();
       const parsed = Number(cleaned);
       if (!isNaN(parsed) && parsed > 0) {
-        finalPrice = parsed;
+        finalPrice = isCouple ? parsed / 2 : parsed;
       }
     }
   }
 
   if (finalPrice === null) {
     if (isCouple) {
-      return basePrice + 40000;
+      return (basePrice * 2 + 50000) / 2;
     }
     if (isVip) {
-      return basePrice + 20000;
+      return basePrice + 25000;
     }
     return basePrice;
   }
@@ -646,8 +646,8 @@ export function buildBookingPayload({
     seatIds: [Number(getSeatId(seat))],
     SeatIds: [Number(getSeatId(seat))],
     totalPrice: Number(getSeatPrice(seat, selectedShowtime, rooms)),
-    status: "Paid",
-    paymentStatus: "Paid",
+    status: "Pending",
+    paymentStatus: "Pending",
   };
 
   if (selectedCombos.length > 0) {
@@ -1274,6 +1274,8 @@ export function useBooking() {
           selectedShowtime,
           selectedSeats,
           selectedCombos,
+          rooms,
+          cinemas,
         },
       });
     } catch (err) {

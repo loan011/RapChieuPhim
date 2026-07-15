@@ -314,12 +314,25 @@ export function useCinema() {
     setFormError("");
   }
 
+  const capitalizeWords = (str) => {
+    if (!str) return str;
+    return str.split(' ').map(word => {
+      if (word.length === 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   function handleChange(e) {
     const { name, value } = e.target;
+    
+    let finalValue = value;
+    if (["cinemaName", "address"].includes(name)) {
+      finalValue = capitalizeWords(finalValue);
+    }
 
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: finalValue,
     }));
   }
 
