@@ -1,15 +1,32 @@
 import { useEffect, useState, useMemo } from "react";
 import { getMovieList } from "../../Admin/Film/movieService";
-import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
+import { getShowtimeDetailList, createShowtime } from "../../Admin/Rate/showtimeService";
+import { getRoomList } from "../../Admin/Room/roomService";
 import { getSeatsByRoomId, getAvailableSeats, createBooking } from "../../Booking/bookingService";
-import { createBookingDates, getShowtimeId, getShowtimeRoomId, getShowtimeDate, getShowtimeHour, getSeatId, getSeatPrice } from "../../Booking/booking.js";
+import { getShowtimeId, getShowtimeRoomId, getShowtimeDate, getShowtimeHour, getSeatId, getSeatPrice } from "../../Booking/booking.js";
+
+function createStaffDateRange(pastDays = 30, futureDays = 7) {
+  const days = [];
+  const today = new Date();
+  for (let i = -pastDays; i <= futureDays; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const iso = date.toISOString().split("T")[0];
+    const label = i === 0
+      ? `Hôm nay, ${date.toLocaleDateString("vi-VN")}`
+      : date.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" });
+    days.push({ iso, label });
+  }
+  return days;
+}
 
 export function useBanVe() {
   const [movies, setMovies] = useState([]);
   const [allShowtimes, setAllShowtimes] = useState([]);
   
-  const dates = useMemo(() => createBookingDates(7), []);
-  const [selectedDateIso, setSelectedDateIso] = useState(dates[0]?.iso || "");
+  const dates = useMemo(() => createStaffDateRange(30, 7), []);
+  const todayIso = new Date().toISOString().split("T")[0];
+  const [selectedDateIso, setSelectedDateIso] = useState(todayIso);
 
   const staffCinemaId = useMemo(() => {
     try {
@@ -41,6 +58,59 @@ export function useBanVe() {
   const [error, setError] = useState("");
   const [successReceipt, setSuccessReceipt] = useState(null);
 
+  // ── Tạo suất chiếu mới ──
+  const [rooms, setRooms] = useState([]);
+  const [showAddShowtime, setShowAddShowtime] = useState(false);
+  const [addShowtimeForm, setAddShowtimeForm] = useState({
+    movieId: "", roomId: "", showDate: new Date().toISOString().split("T")[0],
+    startTime: "08:00", duration: 120, basePrice: 75000,
+  });
+  const [addShowtimeLoading, setAddShowtimeLoading] = useState(false);
+  const [addShowtimeError, setAddShowtimeError] = useState("");
+
+  useEffect(() => {
+    getRoomList().then(data => {
+      const list = Array.isArray(data) ? data : data?.$values || [];
+      setRooms(list);
+    }).catch(() => {});
+  }, []);
+
+  async function handleAddShowtime(e) {
+    e.preventDefault();
+    const { movieId, roomId, showDate, startTime, duration, basePrice } = addShowtimeForm;
+    if (!movieId) return setAddShowtimeError("Vui lòng chọn phim.");
+    if (!roomId) return setAddShowtimeError("Vui lòng chọn phòng chiếu.");
+    if (!showDate) return setAddShowtimeError("Vui lòng chọn ngày chiếu.");
+    setAddShowtimeError("");
+    setAddShowtimeLoading(true);
+    try {
+      const startDT = `${showDate}T${startTime}:00`;
+      // Tính endTime trong local time (không dùng toISOString() vì sẽ bị UTC)
+      const endDate = new Date(startDT);
+      endDate.setMinutes(endDate.getMinutes() + Number(duration));
+      const endHH = String(endDate.getHours()).padStart(2, "0");
+      const endMM = String(endDate.getMinutes()).padStart(2, "0");
+      const endTimeStr = `${endHH}:${endMM}`;
+      // Backend chỉ nhận HH:mm cho startTime và endTime
+      await createShowtime({
+        movieId: Number(movieId), roomId: Number(roomId),
+        showDate, startTime, endTime: endTimeStr,
+        basePrice: Number(basePrice), status: "Active",
+      });
+      // Reload showtimes and switch to the new date
+      const newList = await getShowtimeDetailList();
+      const arr = Array.isArray(newList) ? newList : newList?.$values || [];
+      setAllShowtimes(arr);
+      setSelectedDateIso(showDate);
+      setShowAddShowtime(false);
+      setAddShowtimeForm({ movieId: "", roomId: "", showDate: new Date().toISOString().split("T")[0], startTime: "08:00", duration: 120, basePrice: 75000 });
+    } catch (err) {
+      setAddShowtimeError(err.message || "Tạo suất chiếu thất bại.");
+    } finally {
+      setAddShowtimeLoading(false);
+    }
+  }
+
   // Load movies and all detailed showtimes on mount
   useEffect(() => {
     async function loadData() {
@@ -61,31 +131,16 @@ export function useBanVe() {
     loadData();
   }, []);
 
-  // Filter showtimes for the selected date, removing past showtimes if it is today
+  // Filter showtimes for the selected date (staff can sell for any time)
   const filteredShowtimes = useMemo(() => {
-    const now = new Date();
-    // UTC to GMT+7 (Vietnam time) adjustment
-    const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    const todayStr = vnTime.toISOString().split("T")[0];
-
-    const currentHour = String(now.getHours()).padStart(2, "0");
-    const currentMin = String(now.getMinutes()).padStart(2, "0");
-    const currentTimeStr = `${currentHour}:${currentMin}`;
-
     return allShowtimes.filter(s => {
       const dateStr = getShowtimeDate(s);
       if (dateStr !== selectedDateIso) return false;
 
-      // Filter by Staff's assigned cinema if they have one!
+      // Filter by Staff's assigned cinema if they have one
       const showtimeCinemaId = s.cinemaId || s.CinemaId || s.room?.cinemaId || s.room?.CinemaId || s.room?.cinema?.cinemaId;
       if (staffCinemaId && showtimeCinemaId && String(showtimeCinemaId) !== String(staffCinemaId)) {
         return false;
-      }
-
-      // If it is today, hide showtimes in the past
-      if (dateStr === todayStr) {
-        const timeStr = getShowtimeHour(s);
-        return timeStr >= currentTimeStr;
       }
 
       return true;
@@ -249,6 +304,7 @@ export function useBanVe() {
 
   return {
     movies,
+    rooms,
     dates,
     selectedDateIso,
     setSelectedDateIso,
@@ -280,5 +336,50 @@ export function useBanVe() {
     getShowtimeRoomId,
     getShowtimeId,
     getSeatId,
+    showAddShowtime, setShowAddShowtime,
+    addShowtimeForm, setAddShowtimeForm,
+    addShowtimeLoading, addShowtimeError,
+    handleAddShowtime,
+    formatMoney: (n) => Number(n || 0).toLocaleString("vi-VN"),
+    sortRows: (keys) => [...keys].sort(),
+    sortSeatsByPosition: (seats) =>
+      [...seats].sort((a, b) => {
+        const na = Number(a.seatNumber || a.number || a.seatCol || 0);
+        const nb = Number(b.seatNumber || b.number || b.seatCol || 0);
+        return na - nb;
+      }),
+    getSeatDisplayLabel: (seat, row) =>
+      `${row}${seat.seatNumber || seat.number || seat.seatCol || ""}`,
+    isSeatBooked: (seat) => {
+      const seatId = getSeatId(seat);
+      return !availableSeats.some(s => getSeatId(s) === seatId);
+    },
+    getSeatTypeLabel: (seat) => {
+      const t = (seat.seatType || seat.type || seat.SeatType || "").toLowerCase();
+      if (t === "vip") return "VIP";
+      if (t === "couple") return "Couple";
+      return "Thường";
+    },
+    getSeatClassName: (seat) => {
+      const seatId = getSeatId(seat);
+      const booked = !availableSeats.some(s => getSeatId(s) === seatId);
+      const selected = selectedSeats.some(s => getSeatId(s) === seatId);
+      const type = (seat.seatType || seat.type || seat.SeatType || "").toLowerCase();
+      let cls = "counter-seat";
+      if (booked) cls += " booked";
+      else if (selected) cls += " selected";
+      if (type === "vip") cls += " vip";
+      if (type === "couple") cls += " couple";
+      return cls;
+    },
+    getSelectedSeatsText: () =>
+      selectedSeats
+        .map(s => {
+          const row = s.rowName || s.seatRow || s.Row || "?";
+          return `${row}${s.seatNumber || s.number || s.seatCol || ""}`;
+        })
+        .join(", "),
+    getSelectedShowtimeBasePrice: () =>
+      selectedShowtime?.basePrice || selectedShowtime?.BasePrice || 0,
   };
 }

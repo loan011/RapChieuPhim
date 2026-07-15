@@ -116,14 +116,18 @@ export function useTicket() {
             const seat = booking.seat ?? booking.Seat;
             const seatLabel = t.seatNumber ?? t.SeatNumber ?? (seat ? `${seat.seatRow ?? seat.SeatRow ?? ""}${seat.seatNumber ?? seat.SeatNumber ?? ""}` : "") ?? t.seatCode ?? t.SeatCode ?? "";
             
-            // Lấy mã vé
+            // Lấy mã vé — ưu tiên ticketCode từ tickets[] được include trong booking
+            const includedTickets = t.tickets ?? t.Tickets ?? booking.tickets ?? booking.Tickets ?? [];
+            const firstTicket = Array.isArray(includedTickets) ? includedTickets[0] : null;
             const ticketCode =
+              firstTicket?.ticketCode ??
+              firstTicket?.TicketCode ??
               t.ticketCode ??
               t.TicketCode ??
               t.code ??
               t.Code ??
               (booking.tickets?.[0]?.ticketCode ?? booking.Tickets?.[0]?.TicketCode) ??
-              `BK${t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id}`;
+              `VE${firstTicket?.ticketId ?? firstTicket?.TicketId ?? t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id}`;
               
             const itemPrice = Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
             
@@ -221,10 +225,13 @@ export function useTicket() {
                 }
               }
 
-              const ticketCode = t.ticketCodes.join(", ");
+              // Lấy mã vé đầu tiên để hiển thị QR, giữ toàn bộ list để hiển thị text
+              const firstTicketCode = t.ticketCodes[0] || "";
+              const ticketCodeDisplay = t.ticketCodes.join(", ");
 
               return {
-                id: ticketCode,
+                id: ticketCodeDisplay,
+                qrCode: firstTicketCode,   // code thật để tạo QR
                 movie: t.movieTitle ?? t.MovieTitle ?? movie?.title ?? movie?.Title ?? "Phim chưa rõ",
                 poster:
                   t.moviePoster ??

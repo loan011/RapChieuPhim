@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import "../../../styles/Customer/CustomerPages.css";
 import {
   MdConfirmationNumber,
@@ -195,8 +196,12 @@ export default function Ticket() {
             <div className="ticket-detail-modal-body">
               <div className="ticket-detail-modal-qr-section">
                 <span className="room-entry-label">Mã vào khán phòng:</span>
-                <div className="detail-qr-code-wrapper">
-                  <MdQrCode2 className="detail-qr-code-icon" />
+                <div className="detail-qr-code-wrapper" style={{ background: "#fff", padding: 8, borderRadius: 8, display: "inline-flex" }}>
+                  <QRCodeSVG
+                    value={selectedTicket.qrCode || selectedTicket.id || "INVALID"}
+                    size={140}
+                    level="M"
+                  />
                 </div>
                 <span className="detail-ticket-code">{selectedTicket.id}</span>
               </div>

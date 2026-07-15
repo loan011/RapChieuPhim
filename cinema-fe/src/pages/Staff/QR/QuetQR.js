@@ -2,31 +2,30 @@ import { useState, useEffect } from "react";
 import { fetchTickets, fetchTicketById, validateTicket } from "./QuetQRService";
 
 function normalizeTicket(t) {
+  const booking  = t.booking  || t.Booking  || {};
+  const showTime = booking.showTime || booking.ShowTime || {};
+  const movie    = showTime.movie   || showTime.Movie   || {};
+  const room     = showTime.room    || showTime.Room    || {};
+  const cinema   = room.cinema      || room.Cinema      || {};
+  const seat     = booking.seat     || booking.Seat     || {};
+  const user     = booking.user     || booking.User     || {};
+
+  const startISO = showTime.startTime || showTime.StartTime || "";
+
   return {
-    id: t.ticketId ?? t.id,
-    code: t.ticketCode || t.code || `VE${t.ticketId ?? t.id}`,
-    customerName:
-      t.booking?.user?.fullName || t.booking?.User?.FullName || t.customerName || "—",
-    movieTitle:
-      t.booking?.showTime?.movie?.title ||
-      t.booking?.ShowTime?.Movie?.Title ||
-      t.movieTitle || "—",
-    roomName:
-      t.booking?.showTime?.room?.roomName ||
-      t.booking?.ShowTime?.Room?.RoomName ||
-      t.roomName || "—",
-    seatCode:
-      t.seat?.seatNumber || t.seatNumber || t.seatCode || "—",
-    cinemaName:
-      t.booking?.showTime?.room?.cinema?.cinemaName ||
-      t.booking?.ShowTime?.Room?.Cinema?.CinemaName ||
-      t.cinemaName || "—",
-    showDate:
-      (t.booking?.showTime?.startTime || t.booking?.ShowTime?.StartTime || "").split("T")[0] || "—",
-    showTime:
-      (t.booking?.showTime?.startTime || t.booking?.ShowTime?.StartTime || "").split("T")[1]?.slice(0, 5) || "—",
-    price: t.price || t.Price || 0,
-    status: t.status || "Active",
+    id:   t.ticketId ?? t.TicketId ?? t.id,
+    code: t.ticketCode || t.TicketCode || t.code || `VE${t.ticketId ?? t.id}`,
+    customerName: user.fullName || user.FullName || t.customerName || "—",
+    movieTitle:   movie.title   || movie.Title   || t.movieTitle   || "—",
+    roomName:     room.roomName || room.RoomName  || t.roomName     || "—",
+    cinemaName:   cinema.cinemaName || cinema.CinemaName || t.cinemaName || "—",
+    seatCode: seat.seatRow
+      ? `${seat.seatRow || seat.SeatRow || ""}${seat.seatNumber || seat.SeatNumber || ""}`
+      : (t.seatCode || t.SeatCode || seat.seatNumber || seat.SeatNumber || "—"),
+    showDate: startISO ? startISO.split("T")[0] : "—",
+    showTime: startISO ? (startISO.split("T")[1] || "").slice(0, 5) : "—",
+    price:  t.price || t.Price || booking.totalAmount || booking.TotalAmount || 0,
+    status: t.status || t.Status || "Active",
   };
 }
 

@@ -1,7 +1,8 @@
 import "./QuanLyVe.css";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useQuanLyVe } from "./QuanLyVe.js";
-import { MdConfirmationNumber, MdSearch, MdFilterList, MdAdd, MdEdit, MdDelete, MdClose } from "react-icons/md";
+import { MdConfirmationNumber, MdSearch, MdFilterList, MdAdd, MdEdit, MdDelete, MdClose, MdLocalActivity } from "react-icons/md";
 
 export default function StaffQuanLyVe() {
   const {
@@ -19,7 +20,6 @@ export default function StaffQuanLyVe() {
     formError,
     STATUS_OPTIONS,
     handleDelete,
-    openAddModal,
     openEditModal,
     closeModal,
     handleChange,
@@ -32,12 +32,12 @@ export default function StaffQuanLyVe() {
         <h4 className="font-bold text-2xl text-gray-805 flex items-center gap-2">
           <MdConfirmationNumber className="text-green-600" /> Quản Lý Vé
         </h4>
-        <button
-          className="bg-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 hover:shadow-lg hover:shadow-green-100 active:scale-98 transition-all duration-150 flex items-center gap-1.5"
-          onClick={openAddModal}
+        <Link
+          to="/staff/ban-ve"
+          className="bg-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 hover:shadow-lg hover:shadow-green-100 active:scale-98 transition-all duration-150 flex items-center gap-1.5 no-underline"
         >
-          <MdAdd className="text-lg" /> Thêm Vé Mới
-        </button>
+          <MdLocalActivity className="text-lg" /> Bán Vé Mới
+        </Link>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -101,7 +101,10 @@ export default function StaffQuanLyVe() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-10 text-gray-400">
-                      Không tìm thấy vé nào
+                      Không tìm thấy vé nào.{" "}
+                      <Link to="/staff/ban-ve" className="text-green-600 hover:underline font-semibold">
+                        Bán vé mới tại đây →
+                      </Link>
                     </td>
                   </tr>
                 ) : (

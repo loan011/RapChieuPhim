@@ -1,9 +1,21 @@
 import "./BanVe.css";
+import { useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useBanVe } from "./BanVe.js";
-import { MdMovie, MdChair, MdCheckCircle } from "react-icons/md";
+import { MdMovie, MdChair, MdCheckCircle, MdAdd, MdClose, MdCalendarToday } from "react-icons/md";
 
 export default function StaffBanVe() {
+  const todayRef = useRef(null);
+  const tabsBarRef = useRef(null);
+
+  useEffect(() => {
+    if (todayRef.current && tabsBarRef.current) {
+      todayRef.current.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+    }
+  }, []);
   const {
+    movies,
+    rooms,
     dates,
     selectedDateIso,
     setSelectedDateIso,
@@ -30,6 +42,10 @@ export default function StaffBanVe() {
     getShowtimeRoomId,
     getShowtimeId,
     getSeatId,
+    showAddShowtime, setShowAddShowtime,
+    addShowtimeForm, setAddShowtimeForm,
+    addShowtimeLoading, addShowtimeError,
+    handleAddShowtime,
     formatMoney,
     sortRows,
     sortSeatsByPosition,
@@ -110,9 +126,10 @@ export default function StaffBanVe() {
         </div>
       )}
 
-      <div className="date-tabs-bar">
+      <div className="date-tabs-bar" ref={tabsBarRef}>
         {dates.map((dateItem) => {
           const isActive = selectedDateIso === dateItem.iso;
+          const isToday = dateItem.iso === new Date().toISOString().split("T")[0];
           const [year, month, day] = dateItem.iso.split("-");
           const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
 
@@ -132,6 +149,7 @@ export default function StaffBanVe() {
           return (
             <button
               key={dateItem.iso}
+              ref={isToday ? todayRef : null}
               type="button"
               onClick={() => {
                 setSelectedDateIso(dateItem.iso);
@@ -157,9 +175,18 @@ export default function StaffBanVe() {
           {loading ? (
             <p className="staff-loading-text">Đang tải lịch chiếu...</p>
           ) : moviesWithShowtimes.length === 0 ? (
-            <p className="staff-empty-text">
-              Không có lịch chiếu phim nào trong ngày này.
-            </p>
+            <div className="staff-empty-showtime">
+              <p className="staff-empty-text">
+                Không có lịch chiếu phim nào trong ngày này.
+              </p>
+              <button
+                type="button"
+                className="staff-add-showtime-btn"
+                onClick={() => setShowAddShowtime(true)}
+              >
+                <MdAdd /> Tạo Suất Chiếu Mới
+              </button>
+            </div>
           ) : (
             <div className="movie-showtime-list">
               {moviesWithShowtimes.map((movie) => (
@@ -381,6 +408,127 @@ export default function StaffBanVe() {
           )}
         </div>
       </div>
+
+      {/* ── Modal Tạo Suất Chiếu Mới ── */}
+      {showAddShowtime && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+              <h5 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <MdCalendarToday className="text-green-600" /> Tạo Suất Chiếu Mới
+              </h5>
+              <button type="button" onClick={() => setShowAddShowtime(false)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none">
+                <MdClose />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddShowtime} className="p-6 space-y-4">
+              {/* Phim */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Phim <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  value={addShowtimeForm.movieId}
+                  onChange={e => setAddShowtimeForm(f => ({ ...f, movieId: e.target.value }))}
+                >
+                  <option value="">-- Chọn phim --</option>
+                  {movies.map(m => (
+                    <option key={m.id || m.movieId} value={m.id || m.movieId}>
+                      {m.title || m.Title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Phòng chiếu */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Phòng chiếu <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  value={addShowtimeForm.roomId}
+                  onChange={e => setAddShowtimeForm(f => ({ ...f, roomId: e.target.value }))}
+                >
+                  <option value="">-- Chọn phòng --</option>
+                  {rooms.map(r => (
+                    <option key={r.id || r.roomId} value={r.id || r.roomId}>
+                      {r.roomName || r.RoomName || r.name} {r.cinema?.cinemaName ? `(${r.cinema.cinemaName})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ngày & Giờ bắt đầu */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Ngày chiếu <span className="text-red-500">*</span>
+                  </label>
+                  <input type="date"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    value={addShowtimeForm.showDate}
+                    onChange={e => setAddShowtimeForm(f => ({ ...f, showDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Giờ bắt đầu <span className="text-red-500">*</span>
+                  </label>
+                  <input type="time"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    value={addShowtimeForm.startTime}
+                    onChange={e => setAddShowtimeForm(f => ({ ...f, startTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Thời lượng & Giá */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Thời lượng (phút)
+                  </label>
+                  <input type="number" min="30" max="360"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    value={addShowtimeForm.duration}
+                    onChange={e => setAddShowtimeForm(f => ({ ...f, duration: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Giá vé (đ)
+                  </label>
+                  <input type="number" min="0" step="5000"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    value={addShowtimeForm.basePrice}
+                    onChange={e => setAddShowtimeForm(f => ({ ...f, basePrice: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {addShowtimeError && (
+                <p className="text-red-500 text-xs font-semibold">{addShowtimeError}</p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setShowAddShowtime(false)}
+                  className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50">
+                  Hủy
+                </button>
+                <button type="submit" disabled={addShowtimeLoading}
+                  className="px-5 py-2 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
+                  {addShowtimeLoading ? "Đang tạo..." : "Tạo Suất Chiếu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

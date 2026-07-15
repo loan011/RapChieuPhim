@@ -218,12 +218,37 @@
   font-size: 14px;
 }
 
+.staff-empty-showtime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 0;
+}
+
 .staff-empty-text {
-  padding: 32px 0;
   color: #9ca3af;
   font-size: 14px;
   font-style: italic;
+  margin: 0;
 }
+
+.staff-add-showtime-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.staff-add-showtime-btn:hover { background: #15803d; }
+
 
 .movie-showtime-list {
   display: flex;
