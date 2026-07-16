@@ -269,7 +269,30 @@ export default function Payment() {
         </div>
       )}
 
-      {/* (Modal báo thanh toán thành công đã bị gỡ bỏ để tự động chuyển trang trực tiếp) */}
+      {/* Modal báo thanh toán thành công */}
+      {showPaymentSuccess && (
+        <div className="payment-success-modal-overlay" style={{ zIndex: 102 }}>
+          <div className="payment-success-modal-box" style={{ maxWidth: "400px", textAlign: "center", padding: "30px", animation: "popIn 0.3s ease-out forwards", background: "white", borderRadius: "20px", boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}>
+            <div style={{ fontSize: "5rem", color: "#22c55e", marginBottom: "16px" }}>
+              <MdCheckCircle />
+            </div>
+            <h2 className="modal-title" style={{ fontSize: "1.5rem", color: "#22c55e", marginBottom: "12px", fontWeight: "bold" }}>
+              THANH TOÁN THÀNH CÔNG!
+            </h2>
+            <p className="modal-desc" style={{ fontSize: "0.95rem", color: "#4b5563", marginBottom: "24px" }}>
+              Cảm ơn bạn đã đặt vé. Hệ thống đang chuyển hướng đến trang Vé Của Tôi...
+            </p>
+            <button
+              type="button"
+              className="pay-now-btn"
+              style={{ width: "100%", background: "#22c55e", border: "none", padding: "14px", borderRadius: "12px", color: "white", fontWeight: "bold", cursor: "pointer" }}
+              onClick={handleFinishBooking}
+            >
+              Xem vé ngay
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -82,7 +82,7 @@ export default function Dashboard() {
 
       {/* TABS */}
       <div className="dashboard-tabs">
-        {['Tổng quan', 'Phim', 'Rạp', 'Đồ ăn & Combo', 'Doanh thu', 'Báo cáo'].map(tab => (
+        {['Tổng quan', 'Phim', 'Đồ ăn & Combo'].map(tab => (
           <div 
             key={tab} 
             className={`dashboard-tab ${activeTab === tab ? 'active' : ''}`}

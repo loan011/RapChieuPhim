@@ -173,7 +173,15 @@ export function usePayment() {
 
   function handleCompleteQrPayment() {
     setShowQrModal(false);
-    navigate("/customer/ve-cua-toi");
+    setShowPaymentSuccess(true);
+    
+    // Tự động chuyển trang sau 3 giây
+    setTimeout(() => {
+      // Kiểm tra tránh lỗi memory leak nếu component bị unmount trước
+      if (window.location.pathname.includes('/thanh-toan')) {
+        navigate("/customer/ve-cua-toi");
+      }
+    }, 3000);
   }
 
   function handleFinishBooking() {

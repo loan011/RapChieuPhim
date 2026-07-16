@@ -396,7 +396,7 @@ export function getShowtimeBasePrice(showtime) {
     showtime?.TicketPrice ||
     showtime?.price ||
     showtime?.Price ||
-    75000
+    70000
   );
 }
 
@@ -512,6 +512,11 @@ export function isSeatAvailable(seat, availableSeats) {
 }
 
 export function getSeatPrice(seat, selectedShowtime, rooms = []) {
+  const explicitPrice = Number(seat?.price ?? seat?.Price);
+  if (!isNaN(explicitPrice) && explicitPrice > 0) {
+    return explicitPrice;
+  }
+
   const basePrice = Number(getShowtimeBasePrice(selectedShowtime));
 
   const roomId = getShowtimeRoomId(selectedShowtime);
@@ -562,18 +567,17 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
             "";
   }
 
-  if (cId && rName) {
-    const dateStr = getShowtimeDate(selectedShowtime);
-    let isWeekend = false;
-    if (dateStr) {
-      const d = new Date(dateStr);
-      if (!isNaN(d.getTime())) {
-        const day = d.getDay();
-        // Saturday (6) and Sunday (0) are weekend days
-        isWeekend = day === 0 || day === 6;
-      }
+  let isWeekend = false;
+  const dateStr = getShowtimeDate(selectedShowtime);
+  if (dateStr) {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const day = d.getDay();
+      isWeekend = day === 0 || day === 6;
     }
+  }
 
+  if (cId && rName) {
     let priceKey = "";
     if (isCouple) {
       priceKey = isWeekend ? `room_price_cp_we_c${cId}_r${rName}` : `room_price_cp_wd_c${cId}_r${rName}`;
@@ -595,12 +599,12 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
 
   if (finalPrice === null) {
     if (isCouple) {
-      return (basePrice * 2 + 50000) / 2;
+      return isWeekend ? 80000 : 65000;
     }
     if (isVip) {
-      return basePrice + 25000;
+      return isWeekend ? 120000 : 90000;
     }
-    return basePrice;
+    return isWeekend ? 90000 : 70000;
   }
 
   return finalPrice;

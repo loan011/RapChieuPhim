@@ -313,10 +313,7 @@ export function useFood() {
   });
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const currentItems = filteredItems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const currentItems = filteredItems;
 
   // Computed Stats for Dashboard
   const isMonth = timeFilter === 'month';

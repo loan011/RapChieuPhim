@@ -297,9 +297,6 @@ export default function Booking() {
           <Link to="/showtimes">Lịch chiếu</Link>
           <Link to="/">Phim</Link>
           <Link to="/ticket-price">Giá vé</Link>
-          <a href="#news">Ưu đãi</a>
-          <a href="#member">Thành viên</a>
-          <a href="#food">Food & Drink</a>
         </nav>
       </header>
 

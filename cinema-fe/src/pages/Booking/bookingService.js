@@ -261,22 +261,8 @@ export async function releaseSeat(holdKey) {
 }
 
 export async function getCombos() {
-  let foods = [];
-  let combos = [];
-
-  try {
-    const foodsData = await tryGet([
-      `${API_URL}/Foods/Available`,
-      `${API_URL}/Foods`,
-    ]);
-    foods = normalizeArray(foodsData);
-  } catch (e) {
-    console.warn("Could not fetch Foods", e);
-  }
-
-  try {
-    // Dùng fetch trực tiếp để tránh kích hoạt handle401() toàn cục nếu endpoint yêu cầu Admin
-    const fetchSafe = async (url) => {
+  const fetchSafe = async (url) => {
+    try {
       let res = await fetch(url, { method: "GET", headers: getAuthHeaders() });
       if (res.status === 401 || res.status === 403) {
         res = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json" } });
@@ -286,20 +272,19 @@ export async function getCombos() {
         const data = text ? JSON.parse(text) : [];
         return data?.data || data?.result || data;
       }
-      return null;
-    };
+    } catch (e) {
+      console.warn("fetchSafe error", url, e);
+    }
+    return null;
+  };
 
-    let combosData = await fetchSafe(`${API_URL}/Combos/Available`);
-    if (!combosData) {
-      combosData = await fetchSafe(`${API_URL}/Combos`);
-    }
-    
-    if (combosData) {
-      combos = normalizeArray(combosData);
-    }
-  } catch (e) {
-    console.warn("Could not fetch Combos safely", e);
-  }
+  const [foodsData, combosData] = await Promise.all([
+    fetchSafe(`${API_URL}/Foods/Available`),
+    fetchSafe(`${API_URL}/Combos/Available`)
+  ]);
+
+  const foods = foodsData ? normalizeArray(foodsData) : [];
+  const combos = combosData ? normalizeArray(combosData) : [];
 
   return [...combos, ...foods];
 }

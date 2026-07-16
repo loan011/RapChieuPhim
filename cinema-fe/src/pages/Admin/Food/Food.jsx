@@ -124,7 +124,8 @@ export default function Food() {
             </div>
           </div>
 
-          <table className="fd-table">
+          <div style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '5px' }} className="fd-table-wrapper">
+            <table className="fd-table">
             <thead>
               <tr>
                 <th style={{ width: 50 }}>STT</th>
@@ -145,7 +146,7 @@ export default function Food() {
               ) : (
                 items.map((item, index) => (
                   <tr key={`${item.itemType}-${item.id}`}>
-                    <td>{(currentPage - 1) * 10 + index + 1}</td>
+                    <td>{index + 1}</td>
                     <td>
                       <div className="fd-td-name">
                         {item.imageUrl ? (
@@ -183,10 +184,10 @@ export default function Food() {
                       </div>
                     </td>
                     <td className="fd-actions">
-                      <button className="fd-btn-more" onClick={(e) => { e.stopPropagation(); toggleDropdown(item.id); }}>
+                      <button className="fd-btn-more" onClick={(e) => { e.stopPropagation(); toggleDropdown(index); }}>
                         <MdMoreVert size={20} />
                       </button>
-                      {activeDropdown === item.id && (
+                      {activeDropdown === index && (
                         <div className="fd-dropdown">
                           <button onClick={() => openImportModal(item)}><MdAdd size={16} className="mr-1" /> Nhập kho</button>
                           <button onClick={() => openEditModal(item)}><MdEdit size={16} className="mr-1" /> Chỉnh sửa</button>
@@ -198,25 +199,15 @@ export default function Food() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="fd-pagination">
-              <div className="fd-page-info">
-                Hiển thị {(currentPage - 1) * 10 + 1} đến {Math.min(currentPage * 10, items.length)} trong {items.length} món
-              </div>
-              <div className="fd-page-controls">
-                <button className="fd-page-btn" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>&lt;</button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button key={i} className={`fd-page-btn ${currentPage === i + 1 ? 'active' : ''}`} onClick={() => handlePageChange(i + 1)}>
-                    {i + 1}
-                  </button>
-                ))}
-                <button className="fd-page-btn" disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}>&gt;</button>
-              </div>
+          <div className="fd-pagination" style={{ justifyContent: 'flex-start' }}>
+            <div className="fd-page-info">
+              Đã hiển thị tất cả {items.length} món
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right Side: Sidebar Widgets */}

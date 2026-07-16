@@ -143,7 +143,9 @@ export function useTicket() {
               ticketCode = `BK${t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id}`;
             }
               
-            const itemPrice = Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
+            const seatObj = booking.seat ?? booking.Seat ?? t.seat ?? t.Seat;
+            const explicitSeatPrice = Number(seatObj?.price ?? seatObj?.Price ?? 0);
+            const itemPrice = explicitSeatPrice > 0 ? explicitSeatPrice : Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
             
             const rawFoods = 
               t.bookingFoods ?? t.BookingFoods ?? 
@@ -298,7 +300,7 @@ export function useTicket() {
                 cinema: t.cinemaName ?? t.CinemaName ?? cinema?.cinemaName ?? cinema?.CinemaName ?? cinema?.name ?? cinema?.Name ?? "Rạp chiếu phim",
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,
-                price: t.totalPriceSum.toLocaleString("vi-VN") + "đ",
+                price: (t.totalPriceSum + (t.foodsList || []).reduce((sum, f) => sum + ((f.price || 0) * (f.quantity || 0)), 0)).toLocaleString("vi-VN") + "đ",
                 status: finalStatus,
                 foods: t.foodsList || [],
                 bookingIds: t.bookingIds || [],
