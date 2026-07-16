@@ -28,9 +28,22 @@ export function useQuetQR() {
     setStatusMessage(null);
     setTicketDetails(null);
 
+    let cleanCode = code.trim();
+    // Tự động bóc tách mã vé nếu quét ra link web dạng /ticket-info/TICxxxxx
+    if (cleanCode.includes("/ticket-info/")) {
+      const parts = cleanCode.split("/ticket-info/");
+      cleanCode = parts[parts.length - 1];
+    } else if (cleanCode.includes("data=VE:")) {
+      const match = cleanCode.match(/data=VE:([^|&]+)/);
+      if (match) cleanCode = match[1];
+    } else if (cleanCode.startsWith("VE:")) {
+      const match = cleanCode.match(/VE:([^|]+)/);
+      if (match) cleanCode = match[1];
+    }
+
     const found = tickets.find(t => {
       const c = t.code || t.ticketCode || `VE${t.id}`;
-      return c.toLowerCase() === code.trim().toLowerCase();
+      return c.toLowerCase() === cleanCode.toLowerCase();
     });
 
     if (found) {

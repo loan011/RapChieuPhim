@@ -9,6 +9,7 @@ import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
 import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
 import Booking from "./pages/Booking/Booking.jsx";
 import Payment from "./pages/Payment/Payment.jsx";
+import TicketInfo from "./pages/Ticket/TicketInfo.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -44,6 +45,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/ticket-info/:ticketCode" element={<TicketInfo />} />
 
         {/* Customer routes */}
         <Route

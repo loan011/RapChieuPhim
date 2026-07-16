@@ -665,9 +665,9 @@ export default function Booking() {
               }}
             >
               {combos.map((item) => {
-                const itemId = item.comboId ?? item.foodId ?? item.id;
+                const itemId = item.id;
                 const quantity = comboQuantities[itemId] || 0;
-                const isComboItem = item._isCombo || (item.name || "").toLowerCase().includes("combo");
+                const isComboItem = item._isCombo;
 
                 return (
                   <div

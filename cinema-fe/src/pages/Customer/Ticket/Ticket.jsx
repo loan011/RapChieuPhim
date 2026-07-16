@@ -161,7 +161,7 @@ export default function Ticket() {
                         {ticket.status === "upcoming" && (
                           <div className="ticket-qr" title="Mã QR vé" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px" }}>
                             <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(ticket.id)}`}
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`${window.location.origin}/ticket-info/${ticket.id}`)}`}
                               alt="Ticket QR Code"
                               style={{ width: "40px", height: "40px", objectFit: "contain" }}
                             />
@@ -201,7 +201,7 @@ export default function Ticket() {
                 <span className="room-entry-label">Mã vào khán phòng:</span>
                 <div className="detail-qr-code-wrapper" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(selectedTicket.id)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`${window.location.origin}/ticket-info/${selectedTicket.id}`)}`}
                     alt="Ticket QR Code"
                     style={{ width: "150px", height: "150px", objectFit: "contain", display: "block" }}
                   />

@@ -1,4 +1,4 @@
-﻿import "./QuetQR.css";
+import "./QuetQR.css";
 import { useQuetQR } from "./useQuetQR.js";
 import { MdQrCodeScanner, MdCameraAlt, MdCheckCircle, MdError, MdWarning, MdArrowForward } from "react-icons/md";
 
@@ -119,6 +119,20 @@ export default function StaffQuetQR() {
                   
                   <div>Chi phí vé:</div>
                   <div className="font-bold text-gray-800 text-right">{(ticketDetails.price || ticketDetails.amount || 0).toLocaleString("vi-VN")} đ</div>
+
+                  {ticketDetails.foods && ticketDetails.foods.length > 0 && (
+                    <>
+                      <div className="col-span-2 border-t border-dashed border-gray-200 my-2"></div>
+                      <div>Đồ ăn & Nước uống:</div>
+                      <div className="text-right" style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
+                        {ticketDetails.foods.map((food, idx) => (
+                          <div key={idx} className="font-semibold text-gray-800">
+                            {food.name} <span className="text-gray-400 font-normal">(x{food.quantity})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

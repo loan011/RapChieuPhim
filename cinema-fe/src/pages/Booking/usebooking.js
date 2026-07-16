@@ -884,14 +884,13 @@ export function useBooking() {
         const data = await getCombos();
 
         const normalized = data.map((item, index) => {
-          const id =
-            item?.foodId ??
-            item?.FoodId ??
-            item?.comboId ??
-            item?.ComboId ??
-            item?.id ??
-            item?.Id ??
-            index;
+          const rawComboId = item?.comboId ?? item?.ComboId ?? null;
+          const rawFoodId = item?.foodId ?? item?.FoodId ?? null;
+          const isCombo = rawComboId !== null && rawFoodId === null;
+          const baseId = rawComboId ?? rawFoodId ?? item?.id ?? item?.Id ?? index;
+          
+          // Tránh trùng React key (ví dụ Combo ID 6 và Food ID 6)
+          const uniqueId = isCombo ? `combo-${baseId}` : `food-${baseId}`;
 
           const name =
             item?.foodName ??
@@ -915,9 +914,11 @@ export function useBooking() {
             "";
 
           return {
-            id,
-            comboId: id,
-            foodId: id,
+            id: uniqueId,
+            _resolvedId: baseId,
+            _isCombo: isCombo,
+            comboId: isCombo ? baseId : null,
+            foodId: !isCombo ? baseId : null,
             name,
             price,
             description,
@@ -1146,21 +1147,10 @@ export function useBooking() {
           combo.ComboName ??
           "Combo";
 
-        // Phân biệt rõ: nếu data gốc có trường comboId/ComboId → là Combo
-        // Nếu data gốc có foodId/FoodId hoặc không có trường combo → là Food
-        const rawComboId = combo.comboId ?? combo.ComboId ?? null;
-        const rawFoodId = combo.foodId ?? combo.FoodId ?? null;
-        // Nếu API trả về từ /Foods, sẽ có foodId hoặc chỉ có `id` 
-        // Nếu API trả về từ /Combos, sẽ có comboId
-        const isCombo = rawComboId != null && rawFoodId == null;
-        const id = rawComboId ?? rawFoodId ?? combo.id ?? combo.Id;
-
         return {
           ...combo,
-          _resolvedId: id,
-          _isCombo: isCombo,
           name,
-          quantity: comboQuantities[id] || 0,
+          quantity: comboQuantities[combo.id] || 0,
         };
       })
       .filter((combo) => combo.quantity > 0);
