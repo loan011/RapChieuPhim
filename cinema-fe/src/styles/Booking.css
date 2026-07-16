@@ -270,38 +270,38 @@
 
 /* Seat Types color */
 .seat-node.standard {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .seat-node.standard:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.25);
   border-color: white;
   color: white;
 }
 
 .seat-node.vip {
-  background: rgba(223, 10, 93, 0.1);
-  border: 1.5px solid rgba(223, 10, 93, 0.4);
-  color: #f87171;
+  background: rgba(223, 10, 93, 0.15);
+  border: 1.5px solid rgba(223, 10, 93, 0.6);
+  color: #fca5a5;
 }
 
 .seat-node.vip:hover {
-  background: rgba(223, 10, 93, 0.2);
+  background: rgba(223, 10, 93, 0.3);
   border-color: #ef4444;
   color: white;
 }
 
 .seat-node.sweetbox {
-  background: rgba(236, 72, 153, 0.1);
-  border: 1.5px solid rgba(236, 72, 153, 0.45);
-  color: #f472b6;
+  background: rgba(236, 72, 153, 0.15);
+  border: 1.5px solid rgba(236, 72, 153, 0.6);
+  color: #f9a8d4;
   border-radius: 8px 8px 0 0; /* curved top */
 }
 
 .seat-node.sweetbox:hover {
-  background: rgba(236, 72, 153, 0.25);
+  background: rgba(236, 72, 153, 0.3);
   border-color: #ec4899;
   color: white;
 }
@@ -325,10 +325,10 @@
 
 /* Selected state style */
 .seat-node.selected {
-  background: #22c55e !important;
-  border-color: #22c55e !important;
+  background: #df0a5d !important;
+  border-color: #df0a5d !important;
   color: white !important;
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 12px rgba(223, 10, 93, 0.5);
   transform: scale(1.08);
 }
 
