@@ -20,8 +20,10 @@ export default function StaffQuetQR() {
   const [facingMode, setFacingMode] = useState("user"); // Mặc định cam trước (user) theo yêu cầu
   const html5QrCodeRef = useRef(null);
 
-  // Dọn dẹp camera stream khi chuyển trang / đóng component
+  // Tự động mở camera quét khi tải trang
   useEffect(() => {
+    startScanner();
+
     return () => {
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop().catch(err => console.error("Error stopping scanner on unmount:", err));
@@ -167,13 +169,6 @@ export default function StaffQuetQR() {
               </>
             )}
           </div>
- 
-          <button
-            onClick={handleSimulateScan}
-            className="mt-6 bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all hover:shadow-lg hover:shadow-green-100 flex items-center gap-1.5"
-          >
-            <MdQrCodeScanner className="text-lg" /> Mô phỏng Quét vé ngẫu nhiên
-          </button>
         </div>
 
         {/* Search and Details */}
