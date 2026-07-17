@@ -40,11 +40,18 @@ export default function StaffQuetQR() {
         html5QrCodeRef.current = html5QrCode;
         
         const config = { 
-          fps: 15
+          fps: 30, // Tăng lên 30 FPS để quét siêu mượt và nhạy
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // Sử dụng bộ giải mã phần cứng Native của Chrome giúp quét tức thì
+          }
         };
         
         await html5QrCode.start(
-          { facingMode: "user" },
+          { 
+            facingMode: "user",
+            width: { min: 640, ideal: 1280, max: 1920 }, // Yêu cầu độ phân giải HD để QR sắc nét, dễ bắt mã
+            height: { min: 480, ideal: 720, max: 1080 }
+          },
           config,
           (decodedText) => {
             // Khi quét thành công QR
