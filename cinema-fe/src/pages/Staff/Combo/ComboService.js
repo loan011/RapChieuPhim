@@ -40,10 +40,24 @@ export async function getCombosList() {
 }
 export async function sellCombo(payload) {
   // Simulate API POST request
-  return {
+  const orderId = Math.floor(Math.random() * 90000) + 10000;
+  const newOrder = {
     success: true,
-    id: `CB${Math.floor(Math.random() * 90000) + 10000}`,
-    ...payload,
-    time: new Date().toLocaleString("vi-VN")
+    id: `CB${orderId}`,
+    orderId: orderId,
+    customerName: payload.customerName,
+    items: payload.items,
+    totalAmount: payload.totalAmount,
+    time: new Date().toLocaleString("vi-VN"),
+    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD
+    createdAt: new Date().toISOString()
   };
+
+  // Save to localStorage so Daily Revenue dashboard can access it
+  const localOrdersStr = localStorage.getItem("simulated_orders") || "[]";
+  const localOrders = JSON.parse(localOrdersStr);
+  localOrders.push(newOrder);
+  localStorage.setItem("simulated_orders", JSON.stringify(localOrders));
+
+  return newOrder;
 }

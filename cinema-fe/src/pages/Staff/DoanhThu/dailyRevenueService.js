@@ -111,6 +111,40 @@ export async function getDailyRevenue(date) {
     bills.push(bill);
   }
 
+  // 5. Load and merge simulated combo orders from localStorage
+  const user = getUser();
+  const localOrdersStr = localStorage.getItem("simulated_orders") || "[]";
+  const localOrders = JSON.parse(localOrdersStr);
+  const matchingLocalOrders = localOrders.filter(o => o.date === date);
+
+  for (const localOrder of matchingLocalOrders) {
+    const bill = {
+      paymentId: localOrder.orderId + 1000000, // Unique simulated paymentId
+      billCode: localOrder.id,
+      paymentDate: localOrder.createdAt,
+      customerName: localOrder.customerName || "Khách mua combo",
+      customerEmail: "N/A",
+      staffName: user?.fullName || user?.FullName || "Nhân viên T&M",
+      paymentMethod: "Tiền mặt",
+      discountAmt: 0,
+      totalAmount: localOrder.totalAmount || 0,
+      tickets: [],
+      ticketSubtotal: 0,
+      concessions: (localOrder.items || []).map(item => ({
+        name: item.name || "N/A",
+        quantity: item.quantity || 0,
+        unitPrice: item.price || 0,
+        subtotal: (item.price * item.quantity) || 0
+      })),
+      concessionSubtotal: localOrder.totalAmount || 0
+    };
+
+    totalConcessionRevenue += localOrder.totalAmount || 0;
+    totalOverallRevenue += localOrder.totalAmount || 0;
+
+    bills.push(bill);
+  }
+
   return {
     date: date,
     totalTicketRevenue,
