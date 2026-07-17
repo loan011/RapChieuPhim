@@ -40,7 +40,7 @@ export default function StaffQuetQR() {
         html5QrCodeRef.current = html5QrCode;
         
         const config = { 
-          fps: 20
+          fps: 15
         };
         
         await html5QrCode.start(
@@ -158,13 +158,17 @@ export default function StaffQuetQR() {
                 <h6 className="font-bold text-gray-800 text-sm mb-3.5 pb-2 border-b border-gray-200/50 flex justify-between items-center">
                   <span>Thông Tin Vé: {ticketDetails.ticketCode || ticketDetails.code || `VE${ticketDetails.ticketId || ticketDetails.id}`}</span>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wider ${
-                    ticketDetails.status === "Used" || ticketDetails.status === "Đã thanh toán"
+                    ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng"
                       ? "bg-red-100 text-red-800"
-                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
+                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã thanh toán" || ticketDetails.status === "Đã đặt"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}>
-                    {ticketDetails.status === "Used" ? "Đã sử dụng" : ticketDetails.status === "Active" ? "Đang hoạt động" : ticketDetails.status}
+                    {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng"
+                      ? "Đã sử dụng"
+                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt" || ticketDetails.status === "Đã thanh toán"
+                      ? "Đang hoạt động"
+                      : ticketDetails.status}
                   </span>
                 </h6>
 

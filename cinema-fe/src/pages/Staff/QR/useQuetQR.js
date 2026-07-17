@@ -59,7 +59,12 @@ export function useQuetQR() {
         const ticketId = found.ticketId || found.id;
         const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
         
-        if (autoCheckIn && !isAlreadyUsed) {
+        if (isAlreadyUsed) {
+          setStatusMessage({
+            type: "error",
+            text: `CẢNH BÁO: Vé ${found.ticketCode || `VE${ticketId}`} đã được check-in sử dụng trước đó! Không hợp lệ.`
+          });
+        } else if (autoCheckIn) {
           try {
             await validateTicket(ticketId, {
               ...found,
@@ -79,11 +84,6 @@ export function useQuetQR() {
               text: err.message || "Tự động check-in vé thất bại."
             });
           }
-        } else if (isAlreadyUsed) {
-          setStatusMessage({
-            type: "error",
-            text: `CẢNH BÁO: Vé ${found.ticketCode || `VE${ticketId}`} này đã được sử dụng (check-in) từ trước đó!`
-          });
         }
       } else {
         setStatusMessage({
