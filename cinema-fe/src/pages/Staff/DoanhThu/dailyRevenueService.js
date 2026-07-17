@@ -145,6 +145,9 @@ export async function getDailyRevenue(date) {
     bills.push(bill);
   }
 
+  // Sort bills by paymentDate descending (newest first)
+  bills.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
   return {
     date: date,
     totalTicketRevenue,
