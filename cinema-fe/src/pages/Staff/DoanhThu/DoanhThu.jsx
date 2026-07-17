@@ -226,17 +226,23 @@ export default function DoanhThu() {
             {/* BẢNG TỔNG QUAN & NÚT GỬI BÁO CÁO */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-50 text-green-600 rounded-2xl text-2xl">
+                <div className={`p-3 rounded-2xl text-2xl ${date === new Date().toLocaleDateString("en-CA") ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                   <MdCheckCircle />
                 </div>
                 <div>
                   <h5 className="font-bold text-gray-800 text-base">Xác Nhận & Gửi Doanh Thu</h5>
-                  <p className="text-xs text-gray-500 mt-0.5">Báo cáo sẽ tổng hợp doanh thu vé, đồ ăn và gửi trực tiếp tới hòm thư của Admin quản lý.</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {date === new Date().toLocaleDateString("en-CA")
+                      ? "Báo cáo sẽ tổng hợp doanh thu vé, đồ ăn và gửi trực tiếp tới hòm thư của Admin quản lý."
+                      : "Chỉ cho phép gửi báo cáo doanh thu của ngày hiện tại (hôm nay)."}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={handleOpenSendModal}
-                className="w-full md:w-auto bg-green-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 hover:shadow-lg hover:shadow-green-100 active:scale-98 transition-all duration-150 flex items-center justify-center gap-2"
+                disabled={date !== new Date().toLocaleDateString("en-CA")}
+                className="w-full md:w-auto bg-green-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 hover:shadow-lg hover:shadow-green-100 active:scale-98 transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none"
+                title={date !== new Date().toLocaleDateString("en-CA") ? "Chỉ có thể gửi báo cáo cho ngày hôm nay" : ""}
               >
                 <MdSend className="text-base" /> Gửi báo cáo cho Admin
               </button>
