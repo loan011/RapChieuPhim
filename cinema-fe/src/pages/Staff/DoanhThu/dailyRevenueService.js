@@ -30,15 +30,9 @@ export async function getDailyRevenue(date) {
       p.paymentStatus.toLowerCase() === "paid"
     );
 
-    // If payment is pending but has a booking, check if the booking status is Paid (e.g. staff counter bookings)
-    if (!isSuccess && p.bookingId) {
-      const associatedBooking = (bookings || []).find(b => b.bookingId === p.bookingId);
-      if (associatedBooking && (
-        (associatedBooking.paymentStatus && associatedBooking.paymentStatus.toLowerCase() === "paid") ||
-        (associatedBooking.status && associatedBooking.status.toLowerCase() === "paid")
-      )) {
-        isSuccess = true;
-      }
+    // If payment is pending but created by staff at the counter, treat it as successful
+    if (!isSuccess && p.staffId) {
+      isSuccess = true;
     }
 
     if (!isSuccess) return false;
