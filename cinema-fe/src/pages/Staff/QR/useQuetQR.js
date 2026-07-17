@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchTickets, validateTicket } from "./QuetQRService";
+import { fetchTickets, validateTicket, fetchTicketByCode } from "./QuetQRService";
 
 export function useQuetQR() {
   const [ticketCode, setTicketCode] = useState("");
@@ -41,45 +41,60 @@ export function useQuetQR() {
       if (match) cleanCode = match[1];
     }
 
-    const found = tickets.find(t => {
-      const c = t.ticketCode || t.code || `VE${t.ticketId || t.id}`;
-      return c.toLowerCase() === cleanCode.toLowerCase();
-    });
+    try {
+      // 1. Tìm trực tiếp từ API bằng mã vé để đảm bảo tính thời gian thực và độ chính xác 100%
+      let found = await fetchTicketByCode(cleanCode);
 
-    if (found) {
-      setTicketDetails(found);
-      
-      const ticketId = found.ticketId || found.id;
-      const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
-      
-      if (autoCheckIn && !isAlreadyUsed) {
-        try {
-          await validateTicket(ticketId, {
-            ...found,
-            status: "Đã thanh toán" // API will translate this to "Used"
-          });
-          
-          setStatusMessage({
-            type: "success",
-            text: `Vé ${found.ticketCode || `VE${ticketId}`} đã tự động check-in thành công! Chào mừng khách vào phòng.`
-          });
-          
-          setTicketDetails(prev => prev ? { ...prev, status: "Used" } : null);
-          await loadAllTickets();
-        } catch (err) {
-          setStatusMessage({
-            type: "error",
-            text: err.message || "Tự động check-in vé thất bại."
-          });
-        }
+      // 2. Dự phòng: Tìm cục bộ nếu API trả về lỗi hoặc null
+      if (!found) {
+        found = tickets.find(t => {
+          const c = t.ticketCode || t.code || `VE${t.ticketId || t.id}`;
+          return c.toLowerCase() === cleanCode.toLowerCase();
+        });
       }
-    } else {
+
+      if (found) {
+        setTicketDetails(found);
+        
+        const ticketId = found.ticketId || found.id;
+        const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
+        
+        if (autoCheckIn && !isAlreadyUsed) {
+          try {
+            await validateTicket(ticketId, {
+              ...found,
+              status: "Đã thanh toán" // API will translate this to "Used"
+            });
+            
+            setStatusMessage({
+              type: "success",
+              text: `Vé ${found.ticketCode || `VE${ticketId}`} đã tự động check-in thành công! Chào mừng khách vào phòng.`
+            });
+            
+            setTicketDetails(prev => prev ? { ...prev, status: "Used" } : null);
+            await loadAllTickets();
+          } catch (err) {
+            setStatusMessage({
+              type: "error",
+              text: err.message || "Tự động check-in vé thất bại."
+            });
+          }
+        }
+      } else {
+        setStatusMessage({
+          type: "error",
+          text: "Không tìm thấy vé trong hệ thống. Vui lòng kiểm tra lại mã vé!"
+        });
+      }
+    } catch (err) {
+      console.error("Error in handleFindTicket:", err);
       setStatusMessage({
         type: "error",
-        text: "Không tìm thấy vé trong hệ thống. Vui lòng kiểm tra lại mã vé!"
+        text: "Có lỗi xảy ra khi tìm kiếm vé. Vui lòng thử lại!"
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handleCheckIn() {
@@ -88,7 +103,7 @@ export function useQuetQR() {
     setLoading(true);
     setStatusMessage(null);
     try {
-      const ticketId = ticketDetails.id || ticketDetails.ticketId;
+      const ticketId = ticketDetails.ticketId || ticketDetails.id;
       
       await validateTicket(ticketId, {
         ...ticketDetails,
@@ -97,7 +112,7 @@ export function useQuetQR() {
 
       setStatusMessage({
         type: "success",
-        text: `Vé ${ticketDetails.code || `VE${ticketDetails.id}`} đã được check-in thành công! Chào mừng khách vào phòng.`
+        text: `Vé ${ticketDetails.ticketCode || `VE${ticketId}`} đã được check-in thành công! Chào mừng khách vào phòng.`
       });
 
       setTicketDetails(prev => ({ ...prev, status: "Used" }));
