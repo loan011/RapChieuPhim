@@ -1,6 +1,96 @@
 import "./BanVe.css";
+import { useState } from "react";
 import { useBanVe } from "./useBanVe.js";
-import { MdMovie, MdChair, MdCheckCircle } from "react-icons/md";
+import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning } from "react-icons/md";
+
+/* ── QR Payment Modal with confirmation checkbox ── */
+function QrPaymentModal({ paymentQrCode, totalAmount, paymentTicketIds, formatMoney, onCancel, onConfirm }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [verifying, setVerifying] = useState(false);
+
+  async function handleConfirmClick() {
+    if (!confirmed) {
+      setErrorMsg("Vui lòng tích xác nhận trước khi hoàn tất giao dịch.");
+      return;
+    }
+
+    setErrorMsg("");
+    setVerifying(true);
+    try {
+      const success = await onConfirm();
+      if (success === false) {
+        // API trả về chưa nhận tiền
+        setErrorMsg("Giao dịch chưa thành công! Hệ thống chưa nhận được tiền chuyển khoản. Vui lòng yêu cầu khách hàng thực hiện lại.");
+        setConfirmed(false);
+      }
+      // Nếu success = true → onConfirm tự đóng modal, không cần làm gì thêm
+    } catch (err) {
+      setErrorMsg("Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  return (
+    <div className="bv-modal-overlay">
+      <div className="bv-modal-box" style={{ maxWidth: "460px" }}>
+        <h2 className="bv-modal-title" style={{ color: "#f97316" }}>QUÉT MÃ THANH TOÁN QR</h2>
+        <p className="bv-modal-desc">
+          Vui lòng hướng dẫn khách hàng quét mã QR dưới đây để thực hiện thanh toán chuyển khoản tại quầy.
+        </p>
+
+        {/* QR Code */}
+        <div className="bv-qr-wrapper">
+          <img
+            src={paymentQrCode.startsWith("data:image") || paymentQrCode.startsWith("http")
+              ? paymentQrCode
+              : `data:image/png;base64,${paymentQrCode}`}
+            alt="Payment QR Code"
+            className="bv-qr-img"
+          />
+        </div>
+
+        {/* Payment info */}
+        <div className="bv-qr-info">
+          <p>💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{formatMoney(totalAmount)}đ</strong></p>
+          <p>📝 Nội dung: <strong>Thanh toan ve {paymentTicketIds.join(" ")}</strong></p>
+        </div>
+
+        {/* Confirmation checkbox */}
+        <label className="bv-qr-confirm-label" onClick={() => { if (!verifying) { setConfirmed(c => !c); setErrorMsg(""); } }}>
+          <div className={`bv-qr-checkbox ${confirmed ? "checked" : ""}`}>
+            {confirmed && <MdCheckCircle />}
+          </div>
+          <span>Tôi xác nhận khách hàng đã <strong>chuyển khoản thành công</strong></span>
+        </label>
+
+        {/* Error message */}
+        {errorMsg && (
+          <div className="bv-qr-error">
+            <MdWarning className="bv-qr-error-icon" />
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="bv-modal-actions">
+          <button type="button" onClick={onCancel} disabled={verifying} className="bv-modal-btn bv-modal-btn-cancel">
+            HỦY GIAO DỊCH
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmClick}
+            disabled={verifying}
+            className={`bv-modal-btn ${confirmed && !verifying ? "bv-modal-btn-confirm" : "bv-modal-btn-pending"}`}
+          >
+            {verifying ? "⏳ ĐANG KIỂM TRA..." : confirmed ? "✓ HOÀN TẤT GIAO DỊCH" : "XÁC NHẬN ĐÃ NHẬN TIỀN"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function StaffBanVe() {
   const {
@@ -46,179 +136,150 @@ export default function StaffBanVe() {
     paymentTicketIds,
     handleCompleteStaffQrPayment,
     handleCancelStaffQrPayment,
+
+    // Payment Method
+    paymentMethod,
+    setPaymentMethod,
+
+    // Foods States & Handlers
+    foodMenu,
+    selectedFoods,
+    setSelectedFoods,
+    showFoodModal,
+    setShowFoodModal,
+    foodSearchQuery,
+    setFoodSearchQuery,
+    foodFilterType,
+    setFoodFilterType,
+    filteredFoodMenu,
+    selectedFoodsList,
+    foodTotalAmount,
+    handleFoodQuantityChange,
   } = useBanVe();
 
   return (
-    <div className="staff-banve-container">
-      <h4 className="staff-banve-title">
-        <MdMovie className="staff-banve-title-icon" />
-        Bán Vé Tại Quầy
-      </h4>
+    <div className="bv-root">
+      {/* ───── HEADER ───── */}
+      <div className="bv-header">
+        <div className="bv-header-left">
+          <MdMovie className="bv-header-icon" />
+          <h4 className="bv-header-title">Bán Vé Tại Quầy</h4>
+        </div>
 
+        {/* Date tabs */}
+        <div className="bv-date-tabs">
+          {dates.map((dateItem) => {
+            const isActive = selectedDateIso === dateItem.iso;
+            const [year, month, day] = dateItem.iso.split("-");
+            const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+            const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+            const weekday = daysOfWeek[dateObj.getDay()];
+            return (
+              <button
+                key={dateItem.iso}
+                type="button"
+                onClick={() => {
+                  setSelectedDateIso(dateItem.iso);
+                  setSelectedShowtime(null);
+                  setSelectedMovie(null);
+                }}
+                className={`bv-date-btn ${isActive ? "active" : ""}`}
+              >
+                <span className="bv-date-day">{day}/{month}</span>
+                <span className="bv-date-wd">{weekday}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ───── ERROR ALERT ───── */}
       {error && (
-        <div className="staff-alert-error">
+        <div className="bv-alert-error">
           <span>⚠️</span>
           <span>{error}</span>
         </div>
       )}
 
+      {/* ───── SUCCESS RECEIPT ───── */}
       {successReceipt && (
-        <div className="receipt-success-card">
-          <div className="receipt-success-icon">
-            <MdCheckCircle />
-          </div>
+        <div className="bv-receipt-card">
+          <div className="bv-receipt-icon"><MdCheckCircle /></div>
+          <div className="bv-receipt-body">
+            <h5>Thanh Toán &amp; Xuất Vé Thành Công!</h5>
+            <span className="bv-paid-badge">✓ Đã thanh toán thành công</span>
 
-          <div className="receipt-success-content">
-            <h5>Thanh Toán & Xuất Vé Thành Công!</h5>
-
-            <div className="receipt-info-grid">
-              <div>
-                <strong>Mã hóa đơn:</strong> {successReceipt.ticketCode}
-              </div>
-
-              <div>
-                <strong>Khách hàng:</strong> {successReceipt.customerName}{" "}
-                {successReceipt.customerPhone
-                  ? `(${successReceipt.customerPhone})`
-                  : ""}
-              </div>
-
-              <div>
-                <strong>Phim:</strong> {successReceipt.movieTitle}
-              </div>
-
-              <div>
-                <strong>Phòng chiếu:</strong> {successReceipt.roomName}
-              </div>
-
-              <div>
-                <strong>Suất chiếu:</strong> {successReceipt.showtimeTime} -{" "}
-                {successReceipt.showtimeDate}
-              </div>
-
-              <div>
-                <strong>Ghế đã mua:</strong> {successReceipt.seats}
-              </div>
-
-              <div className="receipt-total-row">
-                <span>Tổng tiền đã thu:</span>
+            <div className="bv-receipt-grid">
+              <div><strong>Mã hóa đơn:</strong> {successReceipt.ticketCode}</div>
+              <div><strong>Khách hàng:</strong> {successReceipt.customerName}{successReceipt.customerPhone ? ` (${successReceipt.customerPhone})` : ""}</div>
+              <div><strong>Phim:</strong> {successReceipt.movieTitle}</div>
+              <div><strong>Suất chiếu:</strong> {successReceipt.showtimeDate} {successReceipt.showtimeTime}</div>
+              <div><strong>Phòng:</strong> {successReceipt.roomName}</div>
+              <div><strong>Ghế:</strong> {successReceipt.seats}</div>
+              {successReceipt.foodsText && (
+                <div className="bv-receipt-full"><strong>Đồ ăn:</strong> {successReceipt.foodsText}</div>
+              )}
+              <div><strong>Thanh toán:</strong> {successReceipt.paymentMethod}</div>
+              <div><strong>Ngày xuất:</strong> {successReceipt.dateBooked}</div>
+              <div className="bv-receipt-full bv-receipt-total">
+                <span>Tổng tiền:</span>
                 <strong>{formatMoney(successReceipt.totalAmount)} đ</strong>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSuccessReceipt(null)}
-              className="receipt-continue-btn"
-            >
-              Tiếp tục bán vé
+            <button type="button" onClick={() => setSuccessReceipt(null)} className="bv-continue-btn">
+              ＋ Bán vé tiếp theo
             </button>
           </div>
         </div>
       )}
 
-      <div className="date-tabs-bar">
-        {dates.map((dateItem) => {
-          const isActive = selectedDateIso === dateItem.iso;
-          const [year, month, day] = dateItem.iso.split("-");
-          const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
+      {/* ───── 3-COLUMN LAYOUT ───── */}
+      <div className="bv-layout">
 
-          const daysOfWeek = [
-            "CN",
-            "Thứ 2",
-            "Thứ 3",
-            "Thứ 4",
-            "Thứ 5",
-            "Thứ 6",
-            "Thứ 7",
-          ];
-
-          const weekday = daysOfWeek[dateObj.getDay()];
-          const dateDisplay = `${day}/${month}`;
-
-          return (
-            <button
-              key={dateItem.iso}
-              type="button"
-              onClick={() => {
-                setSelectedDateIso(dateItem.iso);
-                setSelectedShowtime(null);
-                setSelectedMovie(null);
-              }}
-              className={`date-tab-btn ${isActive ? "active" : ""}`}
-            >
-              <span className="date-tab-day">{dateDisplay}</span>
-              <span className="date-tab-weekday">{weekday}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="staff-banve-layout">
-        <div className="showtime-panel">
-          <h5 className="staff-panel-title">
-            <span></span>
+        {/* COL 1: Lịch chiếu */}
+        <aside className="bv-col-schedule">
+          <div className="bv-panel-title">
+            <span className="bv-title-bar"></span>
             Lịch Chiếu Phim
-          </h5>
+          </div>
 
           {loading ? (
-            <p className="staff-loading-text">Đang tải lịch chiếu...</p>
+            <p className="bv-text-muted">Đang tải lịch chiếu...</p>
           ) : moviesWithShowtimes.length === 0 ? (
-            <p className="staff-empty-text">
-              Không có lịch chiếu phim nào trong ngày này.
-            </p>
+            <p className="bv-text-muted bv-text-italic">Không có lịch chiếu hôm nay.</p>
           ) : (
-            <div className="movie-showtime-list">
+            <div className="bv-movie-list">
               {moviesWithShowtimes.map((movie) => (
-                <div
-                  key={movie.id || movie.movieId || movie.MovieId || movie.title}
-                  className="movie-showtime-item"
-                >
-                  <div className="movie-showtime-info">
+                <div key={movie.id || movie.movieId || movie.title} className="bv-movie-card">
+                  {/* Poster + info */}
+                  <div className="bv-movie-meta">
                     {movie.posterUrl && (
-                      <img
-                        src={movie.posterUrl}
-                        alt={movie.title || ""}
-                        className="movie-showtime-poster"
-                      />
+                      <img src={movie.posterUrl} alt={movie.title || ""} className="bv-movie-poster" />
                     )}
-
-                    <div className="movie-showtime-text">
-                      <span className="movie-age-badge">
-                        {movie.ageRating}
-                      </span>
-
-                      <h6>{movie.title}</h6>
-
-                      <p>{movie.duration}</p>
+                    <div className="bv-movie-info">
+                      <span className="bv-age-badge">{movie.ageRating}</span>
+                      <h6 className="bv-movie-title">{movie.title}</h6>
+                      <p className="bv-movie-duration">{movie.duration}</p>
                     </div>
                   </div>
 
-                  <div className="counter-showtime-grid">
+                  {/* Showtimes */}
+                  <div className="bv-showtime-grid">
                     {movie.showtimes.map((showtime) => {
                       const hour = getShowtimeHour(showtime);
-
                       const isSelected =
                         selectedShowtime &&
-                        String(getShowtimeId(selectedShowtime)) ===
-                          String(getShowtimeId(showtime));
-
+                        String(getShowtimeId(selectedShowtime)) === String(getShowtimeId(showtime));
                       return (
                         <button
-                          key={
-                            getShowtimeId(showtime) ||
-                            showtime.id ||
-                            showtime.showtimeId ||
-                            showtime.ShowtimeId
-                          }
+                          key={getShowtimeId(showtime) || showtime.id}
                           type="button"
                           onClick={() => {
                             setSelectedShowtime(showtime);
                             setSelectedMovie(movie);
                           }}
-                          className={`counter-showtime-btn ${
-                            isSelected ? "active" : ""
-                          }`}
+                          className={`bv-showtime-btn ${isSelected ? "active" : ""}`}
                         >
                           {hour}
                         </button>
@@ -229,216 +290,335 @@ export default function StaffBanVe() {
               ))}
             </div>
           )}
-        </div>
+        </aside>
 
-        <div className="seat-panel">
-          <h5 className="staff-panel-title">
-            <span></span>
+        {/* COL 2: Sơ đồ ghế */}
+        <main className="bv-col-seats">
+          <div className="bv-panel-title">
+            <span className="bv-title-bar"></span>
             Sơ Đồ Ghế
-          </h5>
+            {selectedShowtime && (
+              <span className="bv-showtime-badge">
+                {selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`}
+                {" · "}
+                {getShowtimeHour(selectedShowtime)}
+              </span>
+            )}
+          </div>
 
           {!selectedShowtime ? (
-            <div className="seat-empty-state">
-              <MdChair className="seat-empty-icon" />
-              <p>Vui lòng chọn suất chiếu từ danh sách phim bên cạnh.</p>
+            <div className="bv-seat-empty">
+              <MdChair className="bv-seat-empty-icon" />
+              <p>Vui lòng chọn suất chiếu từ danh sách bên trái.</p>
             </div>
           ) : loadingSeats ? (
-            <div className="seat-loading-state">
-              <span className="seat-loading-spinner"></span>
+            <div className="bv-seat-loading">
+              <span className="bv-seat-spinner"></span>
               Đang tải sơ đồ ghế...
             </div>
           ) : (
-            <>
-              <div className="counter-seat-map">
-                <div className="counter-screen">MÀN HÌNH</div>
+            <div className="bv-seatmap">
+              <div className="bv-screen">MÀN HÌNH</div>
 
-                <div className="counter-seat-rows">
-                  {sortRows(rowKeys).map((row) => (
-                    <div key={row} className="counter-seat-row">
-                      <span className="counter-row-letter">{row}</span>
+              <div className="bv-seat-rows">
+                {sortRows(rowKeys).map((row) => (
+                  <div key={row} className="bv-seat-row">
+                    <span className="bv-row-letter">{row}</span>
+                    <div className="bv-seat-cols">
+                      {(() => {
+                        const sorted = sortSeatsByPosition(groupedSeats[row] || []);
+                        const rendered = [];
+                        for (let i = 0; i < sorted.length; i++) {
+                          const seat = sorted[i];
+                          const seatClassName = getSeatClassName(seat);
+                          const isCouple = seatClassName.includes("seat-couple");
 
-                      <div className="counter-seat-cols">
-                        {sortSeatsByPosition(groupedSeats[row] || []).map(
-                          (seat) => {
-                            const seatId = getSeatId(seat);
-                            const label = getSeatDisplayLabel(seat, row);
-                            const booked = isSeatBooked(seat);
-                            const seatTypeLabel = getSeatTypeLabel(seat);
-                            const price = getSeatPrice(seat, selectedShowtime);
+                          if (isCouple && i < sorted.length - 1) {
+                            const nextSeat = sorted[i + 1];
+                            const nextClassName = getSeatClassName(nextSeat);
+                            const isNextCouple = nextClassName.includes("seat-couple");
 
-                            return (
-                              <button
-                                key={seatId}
-                                type="button"
-                                disabled={booked}
-                                onClick={() => handleSeatClick(seat)}
-                                className={getSeatClassName(seat)}
-                                title={`${label} (${seatTypeLabel} - ${formatMoney(
-                                  price
-                                )} đ)`}
-                              >
-                                {label}
-                              </button>
-                            );
+                            if (isNextCouple) {
+                              const seatId1 = getSeatId(seat);
+                              const seatId2 = getSeatId(nextSeat);
+                              const label1 = getSeatDisplayLabel(seat, row);
+                              const label2 = getSeatDisplayLabel(nextSeat, row);
+                              const booked1 = isSeatBooked(seat);
+                              const booked2 = isSeatBooked(nextSeat);
+                              rendered.push(
+                                <div key={`${seatId1}_${seatId2}_pair`} className="bv-couple-pair">
+                                  <button
+                                    type="button"
+                                    disabled={booked1}
+                                    onClick={() => handleSeatClick(seat)}
+                                    className={seatClassName + " seat-couple-left"}
+                                    title={`${label1} (Couple - ${formatMoney(getSeatPrice(seat, selectedShowtime))} đ)`}
+                                  >
+                                    {label1}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={booked2}
+                                    onClick={() => handleSeatClick(nextSeat)}
+                                    className={nextClassName + " seat-couple-right"}
+                                    title={`${label2} (Couple - ${formatMoney(getSeatPrice(nextSeat, selectedShowtime))} đ)`}
+                                  >
+                                    {label2}
+                                  </button>
+                                </div>
+                              );
+                              i++;
+                              continue;
+                            }
                           }
-                        )}
-                      </div>
 
-                      <span className="counter-row-letter">{row}</span>
+                          const seatId = getSeatId(seat);
+                          const label = getSeatDisplayLabel(seat, row);
+                          const booked = isSeatBooked(seat);
+                          const seatTypeLabel = getSeatTypeLabel(seat);
+                          const price = getSeatPrice(seat, selectedShowtime);
+                          rendered.push(
+                            <button
+                              key={seatId}
+                              type="button"
+                              disabled={booked}
+                              onClick={() => handleSeatClick(seat)}
+                              className={seatClassName}
+                              title={`${label} (${seatTypeLabel} - ${formatMoney(price)} đ)`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        }
+                        return rendered;
+                      })()}
                     </div>
-                  ))}
-                </div>
-
-                <div className="counter-seat-legend">
-                  <div className="counter-legend-item">
-                    <span className="counter-legend-box legend-standard"></span>
-                    Thường
+                    <span className="bv-row-letter">{row}</span>
                   </div>
-
-                  <div className="counter-legend-item">
-                    <span className="counter-legend-box legend-vip"></span>
-                    VIP
-                  </div>
-
-                  <div className="counter-legend-item">
-                    <span className="counter-legend-box legend-couple"></span>
-                    Couple
-                  </div>
-
-                  <div className="counter-legend-item">
-                    <span className="counter-legend-box legend-selected"></span>
-                    Đang chọn
-                  </div>
-
-                  <div className="counter-legend-item counter-legend-disabled">
-                    <span className="counter-legend-box legend-taken"></span>
-                    Đã bán
-                  </div>
-                </div>
+                ))}
               </div>
 
-              <form onSubmit={handleSellTickets} className="sell-ticket-form">
-                <div className="customer-form-fields">
-                  <div className="counter-form-group">
-                    <label>
-                      Tên Khách Hàng <span>*</span>
-                    </label>
-
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nhập tên khách hàng"
-                      value={customer.name}
-                      onChange={(event) =>
-                        setCustomer({ ...customer, name: event.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="counter-form-group">
-                    <label>Số Điện Thoại</label>
-
-                    <input
-                      type="text"
-                      placeholder="Nhập số điện thoại"
-                      value={customer.phone}
-                      onChange={(event) =>
-                        setCustomer({ ...customer, phone: event.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="counter-payment-summary">
-                  <div className="counter-payment-info">
-                    <div>
-                      Ghế đã chọn: <strong>{getSelectedSeatsText()}</strong>
-                    </div>
-
-                    <div>
-                      Phòng chiếu:{" "}
-                      <strong>
-                        {selectedShowtime.roomName ||
-                          selectedShowtime.RoomName ||
-                          `Phòng ${getShowtimeRoomId(selectedShowtime)}`}
-                      </strong>
-                    </div>
-
-                    <div>
-                      Giá vé cơ bản:{" "}
-                      <strong>{formatMoney(getSelectedShowtimeBasePrice())} đ</strong>
-                    </div>
-                  </div>
-
-                  <div className="counter-total-row">
-                    <span>Tổng tiền:</span>
-                    <strong>{formatMoney(totalAmount)} đ</strong>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={selectedSeats.length === 0 || loading}
-                    className="counter-submit-btn"
-                  >
-                    {loading ? "Đang xử lý..." : "XUẤT VÉ & THANH TOÁN"}
-                  </button>
-                </div>
-              </form>
-            </>
+              {/* Legend */}
+              <div className="bv-legend">
+                <div className="bv-legend-item"><span className="bv-legend-box legend-standard"></span>Thường</div>
+                <div className="bv-legend-item"><span className="bv-legend-box legend-vip"></span>VIP</div>
+                <div className="bv-legend-item"><span className="bv-legend-box legend-couple"></span>Couple</div>
+                <div className="bv-legend-item"><span className="bv-legend-box legend-selected"></span>Đang chọn</div>
+                <div className="bv-legend-item bv-legend-dim"><span className="bv-legend-box legend-taken"></span>Đã bán</div>
+              </div>
+            </div>
           )}
-        </div>
-      </div>
-      {showQrModal && (
-        <div className="payment-success-modal-overlay" style={{ zIndex: 101 }}>
-          <div className="payment-success-modal-box" style={{ maxWidth: "450px", textAlign: "center", padding: "28px" }}>
-            <h2 className="modal-title" style={{ fontSize: "1.5rem", color: "#f97316", marginBottom: "8px", fontWeight: "900" }}>
-              QUÉT MÃ THANH TOÁN QR
-            </h2>
-            <p className="modal-desc" style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 20px" }}>
-              Vui lòng hướng dẫn khách hàng quét mã QR dưới đây để thực hiện thanh toán chuyển khoản tại quầy.
-            </p>
+        </main>
 
-            <div style={{ background: "#ffffff", padding: "16px", borderRadius: "16px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", marginBottom: "20px" }}>
-              {paymentQrCode.startsWith("data:image") || paymentQrCode.startsWith("http") ? (
-                <img 
-                  src={paymentQrCode} 
-                  alt="Payment QR Code" 
-                  style={{ width: "240px", height: "240px", objectFit: "contain", display: "block" }} 
-                />
+        {/* COL 3: Panel thanh toán */}
+        <aside className="bv-col-payment">
+          <form onSubmit={handleSellTickets} className="bv-payment-panel">
+            {/* Tiêu đề */}
+            <div className="bv-panel-title">
+              <span className="bv-title-bar"></span>
+              Thông Tin Đơn Hàng
+            </div>
+
+            {/* Tóm tắt đơn */}
+            <div className="bv-order-summary">
+              <div className="bv-order-row">
+                <span>Ghế đã chọn</span>
+                <strong>{getSelectedSeatsText() || "Chưa chọn"}</strong>
+              </div>
+              <div className="bv-order-row">
+                <span>Phòng chiếu</span>
+                <strong>
+                  {selectedShowtime
+                    ? (selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`)
+                    : "—"}
+                </strong>
+              </div>
+              <div className="bv-order-row">
+                <span>Giá vé cơ bản</span>
+                <strong>{formatMoney(getSelectedShowtimeBasePrice())} đ</strong>
+              </div>
+            </div>
+
+            {/* Đồ ăn */}
+            <div className="bv-food-section">
+              <div className="bv-food-header">
+                <div className="bv-food-label">
+                  <MdRestaurant className="bv-food-icon" />
+                  Đồ ăn &amp; Nước uống
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFoodModal(true)}
+                  className="bv-food-add-btn"
+                >
+                  {selectedFoodsList.length > 0 ? "✏️ Sửa" : "＋ Thêm"}
+                </button>
+              </div>
+              {selectedFoodsList.length === 0 ? (
+                <p className="bv-food-empty">Chưa chọn đồ ăn / nước uống</p>
               ) : (
-                <img 
-                  src={`data:image/png;base64,${paymentQrCode}`} 
-                  alt="Payment QR Code" 
-                  style={{ width: "240px", height: "240px", objectFit: "contain", display: "block" }} 
-                />
+                <div className="bv-food-list">
+                  {selectedFoodsList.map(item => (
+                    <div key={`${item.id}_${item.type}`} className="bv-food-row">
+                      <span>🍿 {item.name} <strong>×{item.quantity}</strong></span>
+                      <span>{formatMoney(item.price * item.quantity)} đ</span>
+                    </div>
+                  ))}
+                  <div className="bv-food-subtotal">
+                    <span>Tổng đồ ăn</span>
+                    <span>+{formatMoney(foodTotalAmount)} đ</span>
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="ticket-invoice-receipt" style={{ textAlign: "left", marginBottom: "24px", padding: "16px", background: "#f9fafb", borderRadius: "12px", border: "1px solid #e5e7eb", color: "#374151" }}>
-              <p style={{ margin: "0 0 8px", fontSize: "0.9rem" }}>
-                💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{formatMoney(totalAmount)}đ</strong>
-              </p>
-              <p style={{ margin: "0", fontSize: "0.85rem" }}>
-                📝 Nội dung chuyển khoản: <strong style={{ wordBreak: "break-all" }}>Thanh toan ve {paymentTicketIds.join(", ")}</strong>
-              </p>
+            {/* Phương thức thanh toán */}
+            <div className="bv-pay-method-section">
+              <label className="bv-section-label">Hình thức thanh toán</label>
+              <div className="bv-pay-method-btns">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("Cash")}
+                  className={`bv-method-btn ${paymentMethod === "Cash" ? "active" : ""}`}
+                >
+                  💵 Tiền mặt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("QR")}
+                  className={`bv-method-btn ${paymentMethod === "QR" ? "active" : ""}`}
+                >
+                  📱 Quét QR
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: "flex", gap: "12px" }}>
+            {/* Tổng tiền */}
+            <div className="bv-total-row">
+              <span>Tổng tiền</span>
+              <strong>{formatMoney(totalAmount)} đ</strong>
+            </div>
+
+            {/* Nút xuất vé */}
+            <button
+              type="submit"
+              disabled={selectedSeats.length === 0 || loading}
+              className="bv-submit-btn"
+            >
+              {loading ? "Đang xử lý..." : "🎟 XUẤT VÉ & THANH TOÁN"}
+            </button>
+          </form>
+        </aside>
+      </div>
+
+      {/* ───── QR MODAL ───── */}
+      {showQrModal && (
+        <QrPaymentModal
+          paymentQrCode={paymentQrCode}
+          totalAmount={totalAmount}
+          paymentTicketIds={paymentTicketIds}
+          formatMoney={formatMoney}
+          onCancel={handleCancelStaffQrPayment}
+          onConfirm={handleCompleteStaffQrPayment}
+        />
+      )}
+
+      {/* ───── FOOD MODAL ───── */}
+      {showFoodModal && (
+        <div className="bv-modal-overlay">
+          <div className="bv-modal-box bv-food-modal">
+            {/* Header */}
+            <div className="bv-food-modal-header">
+              <h3>🍿 Chọn Đồ Ăn &amp; Nước Uống</h3>
               <button
                 type="button"
-                className="modal-finish-close-btn"
-                style={{ flex: 1, background: "#9ca3af", margin: 0, padding: "12px 0" }}
-                onClick={handleCancelStaffQrPayment}
+                onClick={() => { setShowFoodModal(false); setFoodSearchQuery(""); setFoodFilterType("all"); }}
+                className="bv-modal-close"
               >
-                HỦY GIAO DỊCH
+                <MdClose />
               </button>
+            </div>
+
+            {/* Search */}
+            <div className="bv-food-search-wrap">
+              <MdSearch className="bv-search-icon" />
+              <input
+                type="text"
+                value={foodSearchQuery}
+                onChange={e => setFoodSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm đồ ăn, nước uống..."
+                className="bv-food-search"
+              />
+              {foodSearchQuery && (
+                <button type="button" onClick={() => setFoodSearchQuery("")} className="bv-search-clear">
+                  <MdClose />
+                </button>
+              )}
+            </div>
+
+            {/* Filter tabs */}
+            <div className="bv-food-tabs">
+              {[
+                { id: "all", label: "Tất cả" },
+                { id: "combo", label: "Combo" },
+                { id: "drink", label: "Nước uống" },
+                { id: "food", label: "Đồ ăn" },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFoodFilterType(tab.id)}
+                  className={`bv-food-tab ${foodFilterType === tab.id ? "active" : ""}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Menu items */}
+            <div className="bv-food-items">
+              {filteredFoodMenu.length === 0 ? (
+                <div className="bv-food-no-result">Không tìm thấy kết quả phù hợp.</div>
+              ) : (
+                filteredFoodMenu.map(item => {
+                  const qty = selectedFoods[`${item.id}_${item.type}`] || 0;
+                  return (
+                    <div key={`${item.id}_${item.type}`} className={`bv-food-item ${qty > 0 ? "selected" : ""}`}>
+                      <span className="bv-food-thumb">
+                        {item.image && (item.image.startsWith("http") || item.image.startsWith("/")) ? (
+                          <img src={item.image} alt={item.name} />
+                        ) : (
+                          item.image || "🍿"
+                        )}
+                      </span>
+                      <div className="bv-food-item-info">
+                        <h6>{item.name}</h6>
+                        <p>{item.description}</p>
+                        <span className="bv-food-price">{formatMoney(item.price)} đ</span>
+                      </div>
+                      <div className="bv-qty-control">
+                        <button type="button" onClick={() => handleFoodQuantityChange(item, -1)} className="bv-qty-btn">−</button>
+                        <span className="bv-qty-num">{qty}</span>
+                        <button type="button" onClick={() => handleFoodQuantityChange(item, 1)} className="bv-qty-btn">＋</button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Bottom */}
+            <div className="bv-food-modal-footer">
+              <div>
+                <p className="bv-food-count">Đã chọn {selectedFoodsList.reduce((s, i) => s + i.quantity, 0)} phần</p>
+                <p className="bv-food-total">+{formatMoney(foodTotalAmount)} đ</p>
+              </div>
               <button
                 type="button"
-                className="modal-finish-close-btn"
-                style={{ flex: 2, background: "#22c55e", margin: 0, padding: "12px 0" }}
-                onClick={handleCompleteStaffQrPayment}
+                onClick={() => { setShowFoodModal(false); setFoodSearchQuery(""); setFoodFilterType("all"); }}
+                className="bv-food-confirm-btn"
               >
-                XÁC NHẬN ĐÃ NHẬN TIỀN
+                Xác nhận
               </button>
             </div>
           </div>
