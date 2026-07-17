@@ -25,10 +25,22 @@ export async function getDailyRevenue(date) {
 
   // Filter payments for the selected date and successful status
   const filteredPayments = (payments || []).filter(p => {
-    const isSuccess = p.paymentStatus && (
+    let isSuccess = p.paymentStatus && (
       p.paymentStatus.toLowerCase() === "success" || 
       p.paymentStatus.toLowerCase() === "paid"
     );
+
+    // If payment is pending but has a booking, check if the booking status is Paid (e.g. staff counter bookings)
+    if (!isSuccess && p.bookingId) {
+      const associatedBooking = (bookings || []).find(b => b.bookingId === p.bookingId);
+      if (associatedBooking && (
+        (associatedBooking.paymentStatus && associatedBooking.paymentStatus.toLowerCase() === "paid") ||
+        (associatedBooking.status && associatedBooking.status.toLowerCase() === "paid")
+      )) {
+        isSuccess = true;
+      }
+    }
+
     if (!isSuccess) return false;
 
     const pDate = p.createdAt ? p.createdAt.split('T')[0] : "";
