@@ -76,7 +76,7 @@ export function useQuetQR() {
               text: `Vé ${found.ticketCode || `VE${ticketId}`} đã tự động check-in thành công! Chào mừng khách vào phòng.`
             });
             
-            setTicketDetails(prev => prev ? { ...prev, status: "Used" } : null);
+            setTicketDetails(prev => prev ? { ...prev, status: "Used", checkedInJustNow: true } : null);
             await loadAllTickets();
           } catch (err) {
             setStatusMessage({
@@ -120,7 +120,7 @@ export function useQuetQR() {
         text: `Vé ${ticketDetails.ticketCode || `VE${ticketId}`} đã được check-in thành công! Chào mừng khách vào phòng.`
       });
 
-      setTicketDetails(prev => ({ ...prev, status: "Used" }));
+      setTicketDetails(prev => ({ ...prev, status: "Used", checkedInJustNow: true }));
       await loadAllTickets();
 
     } catch (err) {
