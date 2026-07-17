@@ -159,7 +159,7 @@ export default function StaffQuetQR() {
             {/* Switch camera button */}
             <button
               onClick={toggleCameraFacing}
-              className="absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
+              className="btn-toggle-cam absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
             >
               <MdCameraAlt /> {facingMode === "user" ? "Đổi Cam Sau" : "Đổi Cam Trước"}
             </button>

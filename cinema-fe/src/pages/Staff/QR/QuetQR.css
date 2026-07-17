@@ -16,3 +16,13 @@
   width: 100% !important;
   height: 100% !important;
 }
+
+/* Fix text and icon color to be fully white and legible */
+.btn-toggle-cam {
+  color: #ffffff !important;
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+.btn-toggle-cam:hover {
+  background-color: #000000 !important;
+}
