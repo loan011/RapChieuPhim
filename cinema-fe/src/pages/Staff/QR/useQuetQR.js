@@ -22,7 +22,7 @@ export function useQuetQR() {
     }
   }
 
-  async function handleFindTicket(code) {
+  async function handleFindTicket(code, autoCheckIn = false) {
     if (!code.trim()) return;
     setLoading(true);
     setStatusMessage(null);
@@ -42,12 +42,37 @@ export function useQuetQR() {
     }
 
     const found = tickets.find(t => {
-      const c = t.code || t.ticketCode || `VE${t.id}`;
+      const c = t.ticketCode || t.code || `VE${t.ticketId || t.id}`;
       return c.toLowerCase() === cleanCode.toLowerCase();
     });
 
     if (found) {
       setTicketDetails(found);
+      
+      const ticketId = found.ticketId || found.id;
+      const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
+      
+      if (autoCheckIn && !isAlreadyUsed) {
+        try {
+          await validateTicket(ticketId, {
+            ...found,
+            status: "Đã thanh toán" // API will translate this to "Used"
+          });
+          
+          setStatusMessage({
+            type: "success",
+            text: `Vé ${found.ticketCode || `VE${ticketId}`} đã tự động check-in thành công! Chào mừng khách vào phòng.`
+          });
+          
+          setTicketDetails(prev => prev ? { ...prev, status: "Used" } : null);
+          await loadAllTickets();
+        } catch (err) {
+          setStatusMessage({
+            type: "error",
+            text: err.message || "Tự động check-in vé thất bại."
+          });
+        }
+      }
     } else {
       setStatusMessage({
         type: "error",

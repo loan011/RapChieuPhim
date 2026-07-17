@@ -56,8 +56,22 @@ export default function StaffQuetQR() {
             lastScanTimeRef.current = now;
 
             console.log("QR Code Scanned:", decodedText);
-            setTicketCode(decodedText);
-            handleFindTicket(decodedText);
+            
+            // Tự động bóc tách mã vé sạch sẽ
+            let cleanCode = decodedText.trim();
+            if (cleanCode.includes("/ticket-info/")) {
+              const parts = cleanCode.split("/ticket-info/");
+              cleanCode = parts[parts.length - 1];
+            } else if (cleanCode.includes("data=VE:")) {
+              const match = cleanCode.match(/data=VE:([^|&]+)/);
+              if (match) cleanCode = match[1];
+            } else if (cleanCode.startsWith("VE:")) {
+              const match = cleanCode.match(/VE:([^|]+)/);
+              if (match) cleanCode = match[1];
+            }
+
+            setTicketCode(cleanCode); // Hiển thị mã vé sạch trên ô nhập liệu
+            handleFindTicket(cleanCode, true); // Gọi tìm kiếm và TỰ ĐỘNG check-in!
           },
           (errorMessage) => {
             // Quét từng khung hình
@@ -98,8 +112,22 @@ export default function StaffQuetQR() {
             lastScanTimeRef.current = now;
 
             console.log("QR Code Scanned:", decodedText);
-            setTicketCode(decodedText);
-            handleFindTicket(decodedText);
+            
+            // Tự động bóc tách mã vé sạch sẽ
+            let cleanCode = decodedText.trim();
+            if (cleanCode.includes("/ticket-info/")) {
+              const parts = cleanCode.split("/ticket-info/");
+              cleanCode = parts[parts.length - 1];
+            } else if (cleanCode.includes("data=VE:")) {
+              const match = cleanCode.match(/data=VE:([^|&]+)/);
+              if (match) cleanCode = match[1];
+            } else if (cleanCode.startsWith("VE:")) {
+              const match = cleanCode.match(/VE:([^|]+)/);
+              if (match) cleanCode = match[1];
+            }
+
+            setTicketCode(cleanCode); // Hiển thị mã vé sạch trên ô nhập liệu
+            handleFindTicket(cleanCode, true); // Gọi tìm kiếm và TỰ ĐỘNG check-in!
           },
           (errorMessage) => {}
         );
@@ -182,7 +210,7 @@ export default function StaffQuetQR() {
             {ticketDetails && (
               <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/40">
                 <h6 className="font-bold text-gray-800 text-sm mb-3.5 pb-2 border-b border-gray-200/50 flex justify-between items-center">
-                  <span>Thông Tin Vé: {ticketDetails.code || `VE${ticketDetails.id}`}</span>
+                  <span>Thông Tin Vé: {ticketDetails.ticketCode || ticketDetails.code || `VE${ticketDetails.ticketId || ticketDetails.id}`}</span>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wider ${
                     ticketDetails.status === "Used" || ticketDetails.status === "Đã thanh toán"
                       ? "bg-green-100 text-green-805"
