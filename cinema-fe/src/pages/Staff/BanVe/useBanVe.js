@@ -1,12 +1,15 @@
 import { useEffect, useState, useMemo } from "react";
 import { getMovieList } from "../../Admin/Film/movieService";
 import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
+import { getTicketList, updateTicket } from "../../Admin/Ticket/ticketService";
 import {
   getSeatsByRoomId,
   getAvailableSeats,
   createBooking,
+  cancelBooking,
 } from "../../Booking/bookingService";
-import { createPayment } from "../../Payment/PaymentService";
+import { createPayment, updatePaymentStatus, checkPaymentStatus } from "../../Payment/PaymentService";
+import { getCombosAndFoodsList } from "./BanVeService";
 import {
   createBookingDates,
   getShowtimeId,
@@ -200,12 +203,21 @@ export function useBanVe() {
   const [paymentQrCode, setPaymentQrCode] = useState("");
   const [paymentTicketIds, setPaymentTicketIds] = useState([]);
   const [tempReceipt, setTempReceipt] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [currentPaymentId, setCurrentPaymentId] = useState(null);
 
   const [customer, setCustomer] = useState({
-    name: "",
+    name: "Khách vãng lai",
     phone: "",
     email: "",
   });
+
+  // Food & Combo States
+  const [foodMenu, setFoodMenu] = useState([]);
+  const [selectedFoods, setSelectedFoods] = useState({});
+  const [showFoodModal, setShowFoodModal] = useState(false);
+  const [foodSearchQuery, setFoodSearchQuery] = useState("");
+  const [foodFilterType, setFoodFilterType] = useState("all");
 
   const [loading, setLoading] = useState(false);
   const [loadingSeats, setLoadingSeats] = useState(false);
@@ -213,7 +225,7 @@ export function useBanVe() {
   const [successReceipt, setSuccessReceipt] = useState(null);
 
   /* =========================
-     LOAD MOVIES + SHOWTIMES
+     LOAD MOVIES + SHOWTIMES + FOODS
   ========================= */
 
   useEffect(() => {
@@ -222,18 +234,21 @@ export function useBanVe() {
         setLoading(true);
         setError("");
 
-        const [movieList, showtimeList] = await Promise.all([
+        const [movieList, showtimeList, foodList] = await Promise.all([
           getMovieList(),
           getShowtimeDetailList(),
+          getCombosAndFoodsList(),
         ]);
 
         setMovies(Array.isArray(movieList) ? movieList : []);
         setAllShowtimes(Array.isArray(showtimeList) ? showtimeList : []);
+        setFoodMenu(Array.isArray(foodList) ? foodList : []);
       } catch (err) {
-        console.error("Lỗi tải danh sách suất chiếu:", err);
-        setError("Không thể tải danh sách suất chiếu.");
+        console.error("Lỗi tải danh sách suất chiếu/đồ ăn:", err);
+        setError("Không thể tải danh sách suất chiếu hoặc đồ ăn.");
         setMovies([]);
         setAllShowtimes([]);
+        setFoodMenu([]);
       } finally {
         setLoading(false);
       }
@@ -241,6 +256,48 @@ export function useBanVe() {
 
     loadData();
   }, []);
+
+  // Polling for Sepay QR Payment Success
+  useEffect(() => {
+    if (!showQrModal || !paymentTicketIds || paymentTicketIds.length === 0) return;
+
+    const firstBookingId = paymentTicketIds[0];
+    let intervalId = setInterval(async () => {
+      try {
+        console.log(`Polling payment status for booking ID: ${firstBookingId}...`);
+        const isPaid = await checkPaymentStatus(firstBookingId);
+        
+        if (isPaid) {
+          console.log(`Payment confirmed automatically for booking ${firstBookingId}! Transitioning to success receipt.`);
+          clearInterval(intervalId);
+          
+          // Force activate tickets to Active in DB
+          await forceActivateTickets(paymentTicketIds);
+          
+          // Complete checkout on frontend
+          setSuccessReceipt(tempReceipt);
+          setShowQrModal(false);
+          setPaymentQrCode("");
+          setCurrentPaymentId(null);
+          setPaymentTicketIds([]);
+          setSelectedSeats([]);
+          setSelectedFoods({});
+          setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
+          
+          // Reload seat map
+          const showtimeId = getShowtimeId(selectedShowtime);
+          const list = await getAvailableSeats(showtimeId);
+          setAvailableSeats(Array.isArray(list) ? list : []);
+        }
+      } catch (pollErr) {
+        console.warn("Error polling payment status:", pollErr);
+      }
+    }, 2500); // Poll every 2.5 seconds
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [showQrModal, paymentTicketIds, tempReceipt, selectedShowtime]);
 
   /* =========================
      FILTER SHOWTIMES
@@ -460,25 +517,63 @@ export function useBanVe() {
     });
   }
 
+  function findCouplePair(seat) {
+    const type = getSeatTypeRaw(seat);
+    if (!type.includes("couple") && !type.includes("sweetbox") && !type.includes("đôi")) {
+      return null;
+    }
+
+    const row = extractSeatRow(seat);
+    const rowSeats = groupedSeats[row] || [];
+    const sortedRowSeats = [...rowSeats].sort((a, b) => {
+      return extractSeatNumber(a) - extractSeatNumber(b);
+    });
+
+    const coupleSeats = sortedRowSeats.filter(s => {
+      const t = getSeatTypeRaw(s);
+      return t.includes("couple") || t.includes("sweetbox") || t.includes("đôi");
+    });
+
+    const index = coupleSeats.findIndex(s => getSeatId(s) === getSeatId(seat));
+    if (index === -1) return null;
+
+    if (index % 2 === 0) {
+      return coupleSeats[index + 1] || null;
+    } else {
+      return coupleSeats[index - 1] || null;
+    }
+  }
+
   function handleSeatClick(seat) {
     if (isSeatBooked(seat)) return;
 
     const seatId = getSeatId(seat);
+    const pair = findCouplePair(seat);
 
     const isSelected = selectedSeats.some(
       (selectedSeat) => String(getSeatId(selectedSeat)) === String(seatId)
     );
 
     if (isSelected) {
-      setSelectedSeats((prev) =>
-        prev.filter(
+      setSelectedSeats((prev) => {
+        let filtered = prev.filter(
           (selectedSeat) => String(getSeatId(selectedSeat)) !== String(seatId)
-        )
-      );
+        );
+        if (pair) {
+          filtered = filtered.filter(
+            (selectedSeat) => String(getSeatId(selectedSeat)) !== String(getSeatId(pair))
+          );
+        }
+        return filtered.sort(compareSeatPosition);
+      });
     } else {
-      setSelectedSeats((prev) =>
-        [...prev, seat].sort(compareSeatPosition)
-      );
+      setSelectedSeats((prev) => {
+        const added = [...prev, seat];
+        if (pair && !isSeatBooked(pair) && !added.some(s => getSeatId(s) === getSeatId(pair))) {
+          added.push(pair);
+        }
+        return added.sort(compareSeatPosition);
+      });
     }
   }
 
@@ -486,12 +581,54 @@ export function useBanVe() {
     return getSeatPrice(seat, selectedShowtime);
   }
 
+  function handleFoodQuantityChange(item, delta) {
+    const key = `${item.id}_${item.type}`;
+    setSelectedFoods((prev) => {
+      const current = prev[key] || 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [key]: next };
+    });
+  }
+
+  const filteredFoodMenu = useMemo(() => {
+    return foodMenu.filter((item) => {
+      if (foodFilterType !== "all" && item.category !== foodFilterType) {
+        return false;
+      }
+      if (foodSearchQuery.trim() !== "") {
+        const q = foodSearchQuery.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [foodMenu, foodFilterType, foodSearchQuery]);
+
+  const selectedFoodsList = useMemo(() => {
+    return foodMenu
+      .filter((item) => (selectedFoods[`${item.id}_${item.type}`] || 0) > 0)
+      .map((item) => ({
+        ...item,
+        quantity: selectedFoods[`${item.id}_${item.type}`],
+      }));
+  }, [foodMenu, selectedFoods]);
+
+  const foodTotalAmount = useMemo(() => {
+    return selectedFoodsList.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+  }, [selectedFoodsList]);
+
   const totalAmount = useMemo(() => {
-    return selectedSeats.reduce(
+    const seatsPrice = selectedSeats.reduce(
       (sum, seat) => sum + Number(calculateSeatPrice(seat)),
       0
     );
-  }, [selectedSeats, selectedShowtime]);
+    return seatsPrice + foodTotalAmount;
+  }, [selectedSeats, selectedShowtime, foodTotalAmount]);
 
   /* =========================
      SELL TICKET
@@ -510,10 +647,7 @@ export function useBanVe() {
       return;
     }
 
-    if (!customer.name.trim()) {
-      alert("Vui lòng nhập tên khách hàng!");
-      return;
-    }
+
 
     try {
       setLoading(true);
@@ -554,6 +688,57 @@ export function useBanVe() {
         return id !== null ? id : `BK${Math.floor(Math.random() * 90000)}`;
       });
 
+      // NẾU CHỌN THANH TOÁN TIỀN MẶT
+      if (paymentMethod === "Cash") {
+        try {
+          const paymentPayload = {
+            bookingId: Number(bookedIds[0]),
+            bookingIds: bookedIds.map(Number),
+            amount: Number(totalAmount),
+            paymentMethod: "Cash",
+            description: `Thanh toan tien mat tai quay cho booking ${bookedIds.join(", ")}`,
+          };
+          await createPayment(paymentPayload);
+        } catch (payErr) {
+          console.warn("Cash Payment creation failed:", payErr);
+        }
+
+        // Force activate tickets to Active state immediately
+        await forceActivateTickets(bookedIds);
+
+        setSuccessReceipt({
+          movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
+          showtimeDate: getShowtimeDate(selectedShowtime),
+          showtimeTime: getShowtimeHour(selectedShowtime),
+          roomName:
+            selectedShowtime.roomName ||
+            selectedShowtime.RoomName ||
+            `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
+          seats: selectedSeats.map((seat) => getSeatCode(seat)).join(", "),
+          foodsText: selectedFoodsList.map(item => `${item.name} x${item.quantity}`).join(", "),
+          customerName: customer.name || "Khách vãng lai",
+          customerPhone: customer.phone || "",
+          totalAmount,
+          dateBooked: new Date().toLocaleString("vi-VN"),
+          ticketCode: bookedIds.join(", "),
+          paymentMethod: "Tiền mặt",
+        });
+
+        setSelectedSeats([]);
+        setSelectedFoods({});
+        setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
+        
+        // Tải lại danh sách ghế trống
+        const showtimeId = getShowtimeId(selectedShowtime);
+        getAvailableSeats(showtimeId)
+          .then((list) => {
+            setAvailableSeats(Array.isArray(list) ? list : []);
+          })
+          .catch((e) => console.error(e));
+
+        return;
+      }
+
       // Gọi API Payments sau khi tạo Booking thành công
       let qrCodeUrlToUse = "";
       try {
@@ -568,6 +753,9 @@ export function useBanVe() {
         console.log("SENDING STAFF PAYMENTS PAYLOAD:", paymentPayload);
         const paymentResult = await createPayment(paymentPayload);
         console.log("STAFF PAYMENTS RESPONSE:", paymentResult);
+        
+        const pId = paymentResult?.paymentId ?? paymentResult?.PaymentId ?? paymentResult?.id ?? paymentResult?.Id;
+        setCurrentPaymentId(pId);
 
         // 1. Hỗ trợ VNPay / MoMo redirect URL
         const redirectUrl =
@@ -609,14 +797,10 @@ export function useBanVe() {
         console.warn("Payments API failed in staff flow, using fallback QR:", payErr);
       }
 
-      // NẾU KHÔNG CÓ QR TỪ BE HOẶC API LỖI, TỰ ĐỘNG TẠO MÃ VIETQR MOCK ĐỂ LUÔN HIỂN THỊ
-      if (!qrCodeUrlToUse) {
-        const defaultBank = "MB";
-        const defaultAccount = "190220042001";
-        const addInfo = encodeURIComponent(`Thanh toan ve ${bookedIds.join(" ")}`);
-        qrCodeUrlToUse = `https://img.vietqr.io/image/${defaultBank}-${defaultAccount}-compact2.png?amount=${totalAmount}&addInfo=${addInfo}`;
-        console.log("GENERATED STAFF FALLBACK VIETQR:", qrCodeUrlToUse);
-      }
+      // ALWAYS USE USER'S TPBANK DETAILS FOR SEPAY AUTOMATIC DETECTION
+      const addInfo = encodeURIComponent(`Thanh toan ve ${bookedIds.join(" ")}`);
+      qrCodeUrlToUse = `https://img.vietqr.io/image/TPB-15145686888-compact.png?amount=${totalAmount}&addInfo=${addInfo}&accountName=Nguyen%20Quang%20Vinh`;
+      console.log("GENERATED STAFF VIETQR FOR SEPAY:", qrCodeUrlToUse);
 
       setTempReceipt({
         movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
@@ -627,11 +811,13 @@ export function useBanVe() {
           selectedShowtime.RoomName ||
           `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
         seats: selectedSeats.map((seat) => getSeatCode(seat)).join(", "),
-        customerName: customer.name,
-        customerPhone: customer.phone,
+        foodsText: selectedFoodsList.map(item => `${item.name} x${item.quantity}`).join(", "),
+        customerName: customer.name || "Khách vãng lai",
+        customerPhone: customer.phone || "",
         totalAmount,
         dateBooked: new Date().toLocaleString("vi-VN"),
         ticketCode: bookedIds.join(", "),
+        paymentMethod: "Quét QR ngân hàng",
       });
 
       setPaymentQrCode(qrCodeUrlToUse);
@@ -647,12 +833,71 @@ export function useBanVe() {
     }
   }
 
-  function handleCompleteStaffQrPayment() {
+  async function handleCompleteStaffQrPayment() {
+    // Kiểm tra thanh toán thực sự đã thành công chưa qua API
+    try {
+      if (paymentTicketIds && paymentTicketIds.length > 0) {
+        const firstId = paymentTicketIds[0];
+        const isPaid = await checkPaymentStatus(firstId);
+        if (!isPaid) {
+          // Chưa nhận được tiền → báo lỗi, KHÔNG hoàn tất
+          return false;
+        }
+      }
+    } catch (checkErr) {
+      console.warn("Could not verify payment status:", checkErr);
+      // Nếu API check lỗi, cũng không cho qua
+      return false;
+    }
+
+    // Đã xác nhận thanh toán thành công → cập nhật trạng thái
+    try {
+      if (currentPaymentId) {
+        await updatePaymentStatus(currentPaymentId, "Success", "Xác nhận bởi nhân viên tại quầy");
+      }
+    } catch (payErr) {
+      console.warn("Failed to update QR payment status in backend:", payErr);
+    }
+
+    // Force activate tickets to Active state immediately
+    if (paymentTicketIds && paymentTicketIds.length > 0) {
+      await forceActivateTickets(paymentTicketIds);
+    }
+
     setSuccessReceipt(tempReceipt);
     setShowQrModal(false);
     setPaymentQrCode("");
+    setCurrentPaymentId(null);
     setSelectedSeats([]);
-    setCustomer({ name: "", phone: "", email: "" });
+    setSelectedFoods({});
+    setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
+    const showtimeId = getShowtimeId(selectedShowtime);
+    getAvailableSeats(showtimeId)
+      .then((list) => {
+        setAvailableSeats(Array.isArray(list) ? list : []);
+      })
+      .catch((e) => console.error(e));
+
+    return true;
+  }
+
+  async function handleCancelStaffQrPayment() {
+    try {
+      if (paymentTicketIds && paymentTicketIds.length > 0) {
+        await Promise.all(
+          paymentTicketIds.map((id) => cancelBooking(id))
+        );
+        console.log("Cancelled all pending bookings:", paymentTicketIds);
+      }
+    } catch (err) {
+      console.error("Failed to cancel bookings on QR modal cancel:", err);
+    }
+
+    setShowQrModal(false);
+    setPaymentQrCode("");
+    setCurrentPaymentId(null);
+    setPaymentTicketIds([]);
+
     const showtimeId = getShowtimeId(selectedShowtime);
     getAvailableSeats(showtimeId)
       .then((list) => {
@@ -661,15 +906,27 @@ export function useBanVe() {
       .catch((e) => console.error(e));
   }
 
-  function handleCancelStaffQrPayment() {
-    setShowQrModal(false);
-    setPaymentQrCode("");
-    const showtimeId = getShowtimeId(selectedShowtime);
-    getAvailableSeats(showtimeId)
-      .then((list) => {
-        setAvailableSeats(Array.isArray(list) ? list : []);
-      })
-      .catch((e) => console.error(e));
+  async function forceActivateTickets(bookedIds) {
+    if (!bookedIds || bookedIds.length === 0) return;
+    try {
+      const ticketsList = await getTicketList();
+      const normalizedTickets = Array.isArray(ticketsList) ? ticketsList : (ticketsList?.$values || []);
+      const matchIds = bookedIds.map(Number);
+      const myTickets = normalizedTickets.filter(t => {
+        const bId = Number(t.bookingId ?? t.BookingId ?? 0);
+        return matchIds.includes(bId);
+      });
+
+      for (const ticket of myTickets) {
+        const ticketId = ticket.ticketId ?? ticket.TicketId;
+        if (ticketId) {
+          await updateTicket(ticketId, { status: "Active" });
+          console.log(`Force activated ticket ${ticketId} to Active`);
+        }
+      }
+    } catch (err) {
+      console.error("Force activating tickets failed:", err);
+    }
   }
 
   /* =========================
@@ -830,5 +1087,24 @@ export function useBanVe() {
     paymentTicketIds,
     handleCompleteStaffQrPayment,
     handleCancelStaffQrPayment,
+
+    // Payment Method
+    paymentMethod,
+    setPaymentMethod,
+
+    // Foods States & Handlers
+    foodMenu,
+    selectedFoods,
+    setSelectedFoods,
+    showFoodModal,
+    setShowFoodModal,
+    foodSearchQuery,
+    setFoodSearchQuery,
+    foodFilterType,
+    setFoodFilterType,
+    filteredFoodMenu,
+    selectedFoodsList,
+    foodTotalAmount,
+    handleFoodQuantityChange,
   };
 }

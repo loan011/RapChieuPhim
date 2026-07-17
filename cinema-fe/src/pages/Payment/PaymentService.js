@@ -76,3 +76,19 @@ export async function checkPaymentStatus(bookingId) {
   }
   return false;
 }
+
+export async function updatePaymentStatus(paymentId, status, notes = "") {
+  const response = await fetch(`${API_URL}/Payments/${paymentId}/Status`, {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status, notes }),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage?.(data) || "Cập nhật trạng thái thanh toán thất bại!");
+  }
+  return data;
+}
