@@ -49,8 +49,8 @@ export default function StaffQuetQR() {
         await html5QrCode.start(
           { 
             facingMode: "user",
-            width: { min: 640, ideal: 1280, max: 1920 }, // Yêu cầu độ phân giải HD để QR sắc nét, dễ bắt mã
-            height: { min: 480, ideal: 720, max: 1080 }
+            width: { ideal: 1280 }, // Sử dụng soft constraints (ideal) để tự động fallback nếu cam không đạt HD
+            height: { ideal: 720 }
           },
           config,
           (decodedText) => {
