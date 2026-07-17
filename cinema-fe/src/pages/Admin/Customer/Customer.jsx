@@ -27,28 +27,25 @@ import {
   VIP_THRESHOLD,
 } from "./useCustomer.js";
 
-const PAGE_SIZE = 10;
+
 
 function formatCurrency(value) {
   return `${Number(value).toLocaleString("vi-VN")}đ`;
 }
 
 /* ── Donut Chart: VIP vs Thường vs Mới ── */
-function GroupDonut({ vip, usual, newbie }) {
-  const total = vip + usual + newbie || 1;
+function GroupDonut({ vip, usual }) {
+  const total = vip + usual || 1;
   const r = 32;
   const c = 2 * Math.PI * r;
   const pVip    = (vip    / total) * 100;
   const pUsual  = (usual  / total) * 100;
-  const pNewbie = (newbie / total) * 100;
 
   const dashVip    = `${(pVip    * c) / 100} ${c}`;
   const dashUsual  = `${(pUsual  * c) / 100} ${c}`;
-  const dashNewbie = `${(pNewbie * c) / 100} ${c}`;
 
   const offVip    = 0;
   const offUsual  = -((pVip    * c) / 100);
-  const offNewbie = -(((pVip + pUsual) * c) / 100);
 
   return (
     <svg width="120" height="120" viewBox="0 0 100 100" className="cu-chart-svg">
@@ -61,12 +58,8 @@ function GroupDonut({ vip, usual, newbie }) {
         <circle cx="50" cy="50" r={r} fill="transparent" stroke="#3b82f6" strokeWidth="10"
           strokeDasharray={dashUsual} strokeDashoffset={offUsual} strokeLinecap="round" />
       )}
-      {pNewbie > 0 && (
-        <circle cx="50" cy="50" r={r} fill="transparent" stroke="#22c55e" strokeWidth="10"
-          strokeDasharray={dashNewbie} strokeDashoffset={offNewbie} strokeLinecap="round" />
-      )}
       <text x="50" y="54" textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a" transform="rotate(90 50 50)">
-        {vip + usual + newbie}
+        {vip + usual}
       </text>
     </svg>
   );
@@ -94,21 +87,13 @@ export default function Customer() {
     handleDelete,
   } = useCustomer();
 
-  const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage   = Math.min(page, totalPages);
-  const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="cu-wrapper">
       {/* ── Header ── */}
       <div className="cu-header">
         <h4 className="cu-title">Khách Hàng Hệ Thống</h4>
-        <button className="cu-btn-add" onClick={openAddModal}>
-          + Thêm khách hàng
-        </button>
       </div>
 
       {/* ── Stats Cards ── */}
@@ -146,16 +131,7 @@ export default function Customer() {
           </div>
         </div>
 
-        <div className="cu-stat-card">
-          <div className="cu-stat-icon-wrap" style={{ backgroundColor: "#f0fdf4", color: "#22c55e" }}>
-            <MdPeople size={24} />
-          </div>
-          <div className="cu-stat-info">
-            <span className="cu-stat-label">Khách mới</span>
-            <span className="cu-stat-value">{stats.newbie.toLocaleString("vi-VN")}</span>
-            <span className="cu-stat-desc">Chưa có giao dịch</span>
-          </div>
-        </div>
+
 
         <div className="cu-stat-card">
           <div className="cu-stat-icon-wrap" style={{ backgroundColor: "#fdf2f8", color: "#ec4899" }}>
@@ -183,19 +159,18 @@ export default function Customer() {
                 className="cu-search-input"
                 placeholder="Tìm theo tên, SĐT, email..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                onChange={(e) => { setSearch(e.target.value); }}
               />
             </div>
 
             <select
               className="cu-filter-select"
               value={filterGroup}
-              onChange={(e) => { setFilterGroup(e.target.value); setPage(1); }}
+              onChange={(e) => { setFilterGroup(e.target.value); }}
             >
               <option value="">Nhóm: Tất cả</option>
               <option value="VIP">VIP</option>
               <option value="Thường">Thường</option>
-              <option value="Mới">Mới</option>
             </select>
 
             <button className="cu-btn-reset" onClick={resetFilters} title="Đặt lại bộ lọc">
@@ -220,18 +195,17 @@ export default function Customer() {
                     <th>Điểm tích lũy</th>
                     <th>Tổng chi tiêu</th>
                     <th>Ngày đăng ký</th>
-                    <th style={{ width: 100, textAlign: "center" }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.length === 0 ? (
+                  {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan="9" style={{ textAlign: "center", padding: "30px 10px", color: "#94a3b8", fontStyle: "italic" }}>
+                      <td colSpan="8" style={{ textAlign: "center", padding: "30px 10px", color: "#94a3b8", fontStyle: "italic" }}>
                         Không tìm thấy khách hàng nào phù hợp
                       </td>
                     </tr>
                   ) : (
-                    pageItems.map((c, index) => {
+                    filtered.map((c, index) => {
                       const id    = getCustomerId(c);
                       const group = getCustomerGroup(c, spendMap);
                       const spend = getCustomerSpend(c, spendMap);
@@ -241,7 +215,7 @@ export default function Customer() {
 
                       return (
                         <tr key={id || index}>
-                          <td>{(safePage - 1) * PAGE_SIZE + index + 1}</td>
+                          <td>{index + 1}</td>
                           <td>
                             <div className="cu-user-info">
                               <img src={avatarUrl} alt="Avatar" className="cu-user-avatar" />
@@ -261,31 +235,7 @@ export default function Customer() {
                             {formatCurrency(spend)}
                           </td>
                           <td>{getCustomerCreatedAt(c)}</td>
-                          <td>
-                            <div className="cu-actions">
-                              <button
-                                className="cu-action-btn cu-action-btn--view"
-                                title="Xem chi tiết"
-                                onClick={() => setSelectedUser(c)}
-                              >
-                                <MdVisibility size={18} />
-                              </button>
-                              <button
-                                className="cu-action-btn cu-action-btn--edit"
-                                title="Chỉnh sửa"
-                                onClick={() => openEditModal(c)}
-                              >
-                                <MdEdit size={18} />
-                              </button>
-                              <button
-                                className="cu-action-btn cu-action-btn--delete"
-                                title="Xóa"
-                                onClick={() => handleDelete(id)}
-                              >
-                                <MdDelete size={18} />
-                              </button>
-                            </div>
-                          </td>
+
                         </tr>
                       );
                     })
@@ -295,28 +245,6 @@ export default function Customer() {
             </div>
           )}
 
-          {/* Pagination */}
-          {!loading && !error && filtered.length > 0 && (
-            <div className="cu-pagination-footer">
-              <span className="cu-footer-info">
-                Hiển thị {Math.min((safePage - 1) * PAGE_SIZE + 1, filtered.length)} –{" "}
-                {Math.min(safePage * PAGE_SIZE, filtered.length)} của {filtered.length} khách hàng
-              </span>
-              <div className="cu-pagination">
-                <button className="cu-page-btn" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Trước</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    className={`cu-page-btn${p === safePage ? " cu-page-btn--active" : ""}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button className="cu-page-btn" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>Sau</button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right: Widgets */}
@@ -325,7 +253,7 @@ export default function Customer() {
           <div className="cu-widget-card">
             <h6 className="cu-widget-title">Phân nhóm khách hàng</h6>
             <div className="cu-chart-container">
-              <GroupDonut vip={stats.vip} usual={stats.usual} newbie={stats.newbie} />
+              <GroupDonut vip={stats.vip} usual={stats.usual} />
               <div className="cu-chart-legends">
                 <div className="cu-legend-item">
                   <span className="cu-legend-label">
@@ -339,19 +267,10 @@ export default function Customer() {
                 <div className="cu-legend-item">
                   <span className="cu-legend-label">
                     <span className="cu-legend-dot" style={{ backgroundColor: "#3b82f6" }} />
-                    Thường (đã mua)
+                    Thường
                   </span>
                   <span className="cu-legend-val">
                     {stats.usual} ({stats.total > 0 ? ((stats.usual / stats.total) * 100).toFixed(1) : 0}%)
-                  </span>
-                </div>
-                <div className="cu-legend-item">
-                  <span className="cu-legend-label">
-                    <span className="cu-legend-dot" style={{ backgroundColor: "#22c55e" }} />
-                    Mới (chưa mua)
-                  </span>
-                  <span className="cu-legend-val">
-                    {stats.newbie} ({stats.total > 0 ? ((stats.newbie / stats.total) * 100).toFixed(1) : 0}%)
                   </span>
                 </div>
               </div>
@@ -384,17 +303,7 @@ export default function Customer() {
                   </span>
                 </div>
               </div>
-              <div className="cu-activity-item">
-                <div className="cu-activity-icon" style={{ backgroundColor: "#f0fdf4", color: "#22c55e" }}>
-                  <MdPeople size={16} />
-                </div>
-                <div className="cu-activity-content">
-                  <span className="cu-activity-title">Khách hàng mới</span>
-                  <span className="cu-activity-desc">
-                    Đã đăng ký tài khoản nhưng chưa thực hiện bất kỳ giao dịch nào.
-                  </span>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

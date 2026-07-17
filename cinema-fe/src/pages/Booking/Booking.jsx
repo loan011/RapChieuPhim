@@ -420,7 +420,7 @@ export default function Booking() {
                   <div className="cinema-screen-curved"></div>
                   <p className="screen-label">MÀN HÌNH</p>
                 </div>
-
+                
                 {/* 3. Seat Grid Matrix */}
                 <div className="seats-map-matrix bk-matrix-box">
                   {sortRows(rowsKeys).map((row) => (

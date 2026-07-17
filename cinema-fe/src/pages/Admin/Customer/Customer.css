@@ -196,6 +196,8 @@
 .cu-table-responsive {
   width: 100%;
   overflow-x: auto;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
 }
 .cu-table {
   width: 100%;
@@ -209,6 +211,9 @@
   font-weight: 600;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .cu-table td {
   padding: 12px;

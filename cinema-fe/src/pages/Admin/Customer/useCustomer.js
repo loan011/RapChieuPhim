@@ -97,8 +97,7 @@ export function getCustomerSpend(c, spendMap = {}) {
 export function getCustomerGroup(c, spendMap = {}) {
   const spend = getCustomerSpend(c, spendMap);
   if (spend >= VIP_THRESHOLD) return "VIP";
-  if (spend > 0) return "Thường";
-  return "Mới";
+  return "Thường";
 }
 
 export function getGroupStyle(group) {
@@ -286,10 +285,9 @@ export function useCustomer() {
     const total  = list.length;
     const vip    = list.filter((c) => getCustomerGroup(c, spendMap) === "VIP").length;
     const usual  = list.filter((c) => getCustomerGroup(c, spendMap) === "Thường").length;
-    const newbie = list.filter((c) => getCustomerGroup(c, spendMap) === "Mới").length;
     const totalSpend = Object.values(spendMap).reduce((s, v) => s + v, 0);
 
-    return { total, vip, usual, newbie, totalSpend };
+    return { total, vip, usual, totalSpend };
   }, [list, spendMap]);
 
   return {
