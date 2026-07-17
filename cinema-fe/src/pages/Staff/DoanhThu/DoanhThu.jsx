@@ -13,7 +13,8 @@ import {
   MdInfoOutline,
   MdCheckCircle,
   MdFastfood,
-  MdPerson
+  MdPerson,
+  MdSearch
 } from "react-icons/md";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
 import "./DoanhThu.css";
@@ -40,6 +41,13 @@ export default function DoanhThu() {
   // Trạng thái hóa đơn chi tiết được chọn
   const [selectedBill, setSelectedBill] = useState(null);
 
+  // Tìm kiếm theo mã hóa đơn
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredBills = reportData?.bills?.filter(bill =>
+    bill.billCode.toLowerCase().includes(searchQuery.toLowerCase().trim())
+  ) || [];
+
   // Gọi API lấy dữ liệu mỗi khi date thay đổi
   useEffect(() => {
     fetchData();
@@ -49,6 +57,7 @@ export default function DoanhThu() {
     try {
       setLoading(true);
       setError("");
+      setSearchQuery(""); // Reset search query when switching date
       const data = await getDailyRevenue(date);
       setReportData(data);
     } catch (err) {
@@ -250,10 +259,24 @@ export default function DoanhThu() {
 
             {/* DANH SÁCH CHI TIẾT CÁC HÓA ĐƠN TRONG NGÀY */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h5 className="font-bold text-lg text-gray-800 mb-4 pb-2 border-b border-gray-50 flex items-center gap-2">
-                <span className="w-1.5 h-5 bg-green-600 rounded-full"></span>
-                Chi Tiết Các Hóa Đơn ({reportData.bills.length})
-              </h5>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-2 border-b border-gray-50">
+                <h5 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-5 bg-green-600 rounded-full"></span>
+                  Chi Tiết Các Hóa Đơn ({searchQuery ? `${filteredBills.length} / ${reportData.bills.length}` : reportData.bills.length})
+                </h5>
+                <div className="relative w-full sm:w-64">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-lg">
+                    <MdSearch />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Tìm mã hóa đơn (BILL.../CB...)"
+                    className="w-full pl-9 pr-4 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
 
               <div className="overflow-x-auto rounded-xl border border-gray-100">
                 <table className="w-full text-sm border-collapse">
@@ -271,14 +294,16 @@ export default function DoanhThu() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {reportData.bills.length === 0 ? (
+                    {filteredBills.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="text-center py-12 text-gray-400 font-medium">
-                          Chưa có giao dịch thành công nào trong ngày {date}
+                          {searchQuery
+                            ? `Không tìm thấy hóa đơn nào khớp với từ khóa "${searchQuery}"`
+                            : `Chưa có giao dịch thành công nào trong ngày ${date}`}
                         </td>
                       </tr>
                     ) : (
-                      reportData.bills.map((bill) => (
+                      filteredBills.map((bill) => (
                         <tr key={bill.paymentId} className="hover:bg-gray-50/50 transition-colors">
                           {/* Mã HĐ */}
                           <td className="px-4 py-3.5 font-bold text-gray-800">{bill.billCode}</td>
