@@ -28,6 +28,14 @@ export default function DoanhThu() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendTime, setSendTime] = useState("");
+
+  function handleOpenSendModal() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setSendTime(timeStr);
+    setShowSendModal(true);
+  }
 
   // Trạng thái hóa đơn chi tiết được chọn
   const [selectedBill, setSelectedBill] = useState(null);
@@ -78,7 +86,8 @@ export default function DoanhThu() {
       setSending(true);
       await sendDailyRevenueReport({
         date: date,
-        notes: notes
+        notes: notes,
+        sendTime: sendTime
       });
       alert(`Đã gửi báo cáo doanh thu ngày ${date} cho Admin thành công!`);
       setShowSendModal(false);
@@ -226,7 +235,7 @@ export default function DoanhThu() {
                 </div>
               </div>
               <button
-                onClick={() => setShowSendModal(true)}
+                onClick={handleOpenSendModal}
                 className="w-full md:w-auto bg-green-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 hover:shadow-lg hover:shadow-green-100 active:scale-98 transition-all duration-150 flex items-center justify-center gap-2"
               >
                 <MdSend className="text-base" /> Gửi báo cáo cho Admin
@@ -382,6 +391,10 @@ export default function DoanhThu() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Ngày báo cáo:</span>
                     <span className="font-bold text-gray-805">{date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Giờ báo cáo:</span>
+                    <span className="font-bold text-gray-800">{sendTime}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Tổng doanh thu:</span>

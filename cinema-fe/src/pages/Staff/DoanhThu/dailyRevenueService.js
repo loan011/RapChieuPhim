@@ -151,6 +151,7 @@ export async function sendDailyRevenueReport(payload) {
 
   // Format rich and detailed Vietnamese summary
   const summary = `Báo cáo doanh thu ngày ${payload.date}:\n` +
+                  `- Giờ gửi báo cáo: ${payload.sendTime || 'N/A'}\n` +
                   `- Doanh thu vé: ${revenueData.totalTicketRevenue?.toLocaleString('vi-VN')}đ (${totalBookings} vé)\n` +
                   `- Doanh thu bắp nước: ${revenueData.totalConcessionRevenue?.toLocaleString('vi-VN')}đ (${totalOrders} đơn)\n` +
                   `- Giảm giá: ${revenueData.totalDiscount?.toLocaleString('vi-VN')}đ\n` +
