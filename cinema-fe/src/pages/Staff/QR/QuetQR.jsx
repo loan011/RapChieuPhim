@@ -40,8 +40,7 @@ export default function StaffQuetQR() {
         html5QrCodeRef.current = html5QrCode;
         
         const config = { 
-          fps: 10, 
-          qrbox: { width: 220, height: 220 } 
+          fps: 15
         };
         
         await html5QrCode.start(
@@ -86,7 +85,7 @@ export default function StaffQuetQR() {
       try {
         const html5QrCode = new Html5Qrcode("reader");
         html5QrCodeRef.current = html5QrCode;
-        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+        const config = { fps: 15 };
         await html5QrCode.start(
           { facingMode: nextFacing },
           config,
