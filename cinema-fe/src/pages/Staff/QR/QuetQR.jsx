@@ -119,7 +119,13 @@ export default function StaffQuetQR() {
               <h5 className="font-bold text-gray-800 text-base mb-4 border-b border-gray-50 pb-2">
                 Nhập Mã Vé Thủ Công
               </h5>
-              <div className="flex gap-3">
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleFindTicket(ticketCode);
+                }}
+                className="flex gap-3"
+              >
                 <input
                   type="text"
                   placeholder="Nhập mã vé (VD: VE1 hoặc code từ hóa đơn)"
@@ -128,12 +134,12 @@ export default function StaffQuetQR() {
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
                 />
                 <button
-                  onClick={() => handleFindTicket(ticketCode)}
+                  type="submit"
                   className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all flex items-center gap-1"
                 >
                   Tìm Kiếm <MdArrowForward />
                 </button>
-              </div>
+              </form>
             </div>
 
             {statusMessage && (
