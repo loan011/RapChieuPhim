@@ -17,7 +17,6 @@ export default function StaffQuetQR() {
     handleSimulateScan,
   } = useQuetQR();
 
-  const [facingMode, setFacingMode] = useState("user"); // Mặc định cam trước (user) theo yêu cầu
   const html5QrCodeRef = useRef(null);
   const lastScanTimeRef = useRef(0);
   const lastScanCodeRef = useRef("");
@@ -45,7 +44,7 @@ export default function StaffQuetQR() {
         };
         
         await html5QrCode.start(
-          { facingMode: facingMode },
+          { facingMode: "user" },
           config,
           (decodedText) => {
             // Khi quét thành công QR
@@ -88,62 +87,7 @@ export default function StaffQuetQR() {
     }, 100);
   }
 
-  async function toggleCameraFacing() {
-    const nextFacing = facingMode === "user" ? "environment" : "user";
-    setFacingMode(nextFacing);
-    
-    // Tắt cam hiện tại trước khi đổi
-    if (html5QrCodeRef.current) {
-      await html5QrCodeRef.current.stop();
-      html5QrCodeRef.current = null;
-    }
-    
-    // Khởi động lại với chiều cam mới
-    setTimeout(async () => {
-      try {
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCodeRef.current = html5QrCode;
-        const config = { fps: 15 };
-        await html5QrCode.start(
-          { facingMode: nextFacing },
-          config,
-          (decodedText) => {
-            const now = Date.now();
-            if (decodedText === lastScanCodeRef.current && now - lastScanTimeRef.current < 3000) {
-              return;
-            }
-            lastScanCodeRef.current = decodedText;
-            lastScanTimeRef.current = now;
 
-            console.log("QR Code Scanned:", decodedText);
-            
-            // Tự động bóc tách mã vé sạch sẽ
-            let cleanCode = decodedText.trim();
-            if (cleanCode.includes("/ticket-info/")) {
-              const parts = cleanCode.split("/ticket-info/");
-              cleanCode = parts[parts.length - 1];
-            } else if (cleanCode.includes("data=VE:")) {
-              const match = cleanCode.match(/data=VE:([^|&]+)/);
-              if (match) cleanCode = match[1];
-            } else if (cleanCode.startsWith("VE:")) {
-              const match = cleanCode.match(/VE:([^|]+)/);
-              if (match) cleanCode = match[1];
-            }
-
-            setTicketCode(cleanCode); // Hiển thị mã vé sạch trên ô nhập liệu
-            handleFindTicket(cleanCode, true); // Gọi tìm kiếm và TỰ ĐỘNG check-in!
-          },
-          (errorMessage) => {}
-        );
-      } catch (err) {
-        console.error("Camera startup error after switch:", err);
-        setStatusMessage({
-          type: "error",
-          text: `Đổi chiều camera thất bại: ${err.message || err}`
-        });
-      }
-    }, 100);
-  }
 
   return (
     <div className="staff-qr-container">
@@ -164,13 +108,7 @@ export default function StaffQuetQR() {
             {/* Laser line effect */}
             <div className="absolute left-0 right-0 h-0.5 bg-green-500 top-1/2 -translate-y-1/2 animate-pulse shadow-[0_0_10px_#22c55e] pointer-events-none z-10"></div>
             
-            {/* Switch camera button */}
-            <button
-              onClick={toggleCameraFacing}
-              className="absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
-            >
-              <MdCameraAlt /> {facingMode === "user" ? "Đổi Cam Sau" : "Đổi Cam Trước"}
-            </button>
+
           </div>
         </div>
 
