@@ -24,6 +24,21 @@ const TABS = [
   { key: "cancelled", label: "Đã hủy" },
 ];
 
+const getQrDataText = (ticket) => {
+  if (!ticket) return "";
+  const seatInfo = Array.isArray(ticket.seats) ? ticket.seats.join(", ") : (ticket.seats || "N/A");
+  const foodInfo = ticket.foods && ticket.foods.length > 0 
+    ? ticket.foods.map(f => `${f.name}x${f.quantity}`).join(",")
+    : "";
+  const showtimeInfo = `${ticket.date || "N/A"} ${ticket.time || "N/A"}`;
+  
+  let text = `VE:${ticket.id}|PHIM:${ticket.movie}|SUAT:${showtimeInfo}|GHE:${seatInfo}|GIA:${ticket.price}|TRANG_THAI:Active`;
+  if (foodInfo) {
+    text += `|DO_AN:${foodInfo}`;
+  }
+  return text;
+};
+
 export default function Ticket() {
   const {
     activeTab,
@@ -161,7 +176,7 @@ export default function Ticket() {
                         {ticket.status === "upcoming" && (
                           <div className="ticket-qr" title="Mã QR vé" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px" }}>
                             <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`${window.location.origin}/ticket-info/${ticket.id}`)}`}
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getQrDataText(ticket))}`}
                               alt="Ticket QR Code"
                               style={{ width: "40px", height: "40px", objectFit: "contain" }}
                             />
@@ -201,7 +216,7 @@ export default function Ticket() {
                 <span className="room-entry-label">Mã vào khán phòng:</span>
                 <div className="detail-qr-code-wrapper" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`${window.location.origin}/ticket-info/${selectedTicket.id}`)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrDataText(selectedTicket))}`}
                     alt="Ticket QR Code"
                     style={{ width: "150px", height: "150px", objectFit: "contain", display: "block" }}
                   />
