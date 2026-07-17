@@ -179,6 +179,8 @@
 .pe-table-responsive {
   width: 100%;
   overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
 }
 .pe-table {
   width: 100%;
@@ -188,6 +190,9 @@
 }
 .pe-table th {
   background: #fcfcfd;
+  position: sticky;
+  top: 0;
+  z-index: 10;
   border-bottom: 1px solid #f3f4f6;
   color: #4b5563;
   font-weight: 600;

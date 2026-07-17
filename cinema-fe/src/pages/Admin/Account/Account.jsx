@@ -36,7 +36,7 @@ export default function TaiKhoan() {
               <input
                 type="text"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
+                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
                 value={profileForm.name}
                 onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                 disabled={loading}
@@ -48,7 +48,7 @@ export default function TaiKhoan() {
                 type="email"
                 required
                 disabled
-                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-500 cursor-not-allowed"
+                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-300 font-medium cursor-not-allowed"
                 value={profileForm.email}
               />
             </div>
@@ -57,7 +57,7 @@ export default function TaiKhoan() {
               <input
                 type="text"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
+                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
                 value={profileForm.phone}
                 onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                 disabled={loading}
@@ -67,7 +67,7 @@ export default function TaiKhoan() {
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vai Trò</label>
               <input 
                 type="text" 
-                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-500 cursor-not-allowed" 
+                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-300 font-medium cursor-not-allowed" 
                 value="Quản trị viên" 
                 disabled 
               />
@@ -94,7 +94,7 @@ export default function TaiKhoan() {
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.currentPassword}
                 onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
               />
@@ -104,7 +104,7 @@ export default function TaiKhoan() {
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.newPassword}
                 onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
               />
@@ -114,7 +114,7 @@ export default function TaiKhoan() {
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.confirmPassword}
                 onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
               />

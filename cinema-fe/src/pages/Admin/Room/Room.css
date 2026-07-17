@@ -173,7 +173,7 @@
 .rm-table-card {
   background: #161619;
   border-radius: 18px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   margin-bottom: 32px;
   border: 1px solid #2c2c2e;

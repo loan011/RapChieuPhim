@@ -81,9 +81,11 @@ export function getCustomerCreatedAt(c) {
 ───────────────────────────────────────────────────────── */
 
 /**
- * Tính tổng chi tiêu từ spendMap (computed outside, passed in)
+ * Tính tổng chi tiêu từ backend API (totalSpent) hoặc spendMap
  */
 export function getCustomerSpend(c, spendMap = {}) {
+  if (c?.totalSpent !== undefined) return c.totalSpent;
+  if (c?.TotalSpent !== undefined) return c.TotalSpent;
   const id = String(getCustomerId(c));
   return spendMap[id] ?? 0;
 }

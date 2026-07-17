@@ -322,8 +322,8 @@ export default function RoomAdmin() {
     setFilterRoom(idStr);
   }
 
-  // Calculate layout (mock if empty)
-  const activeLayout = seatMapLayout.length > 0 ? seatMapLayout : mockSeatLayout;
+  // Calculate layout
+  const activeLayout = seatMapLayout;
 
   const activeRoom = rooms.find(r => String(getRoomId(r)) === selectedRoomId);
   const activeRoomType = activeRoom?.roomType ?? activeRoom?.RoomType ?? "2D";
@@ -411,10 +411,6 @@ export default function RoomAdmin() {
           <p className="rm-stat-label-new">Đang Sử Dụng</p>
           <p className="rm-stat-value-new">{activeCount}</p>
         </div>
-        <div className="rm-stat-card-new gray">
-          <p className="rm-stat-label-new">Đang Dọn Dẹp</p>
-          <p className="rm-stat-value-new">{cleaningCount}</p>
-        </div>
         <div className="rm-stat-card-new purple">
           <p className="rm-stat-label-new">Bảo Trì</p>
           <p className="rm-stat-value-new">{maintenanceCount}</p>
@@ -455,7 +451,6 @@ export default function RoomAdmin() {
           <thead>
             <tr>
               <th className="rm-th">Tên phòng</th>
-              <th className="rm-th">Chi nhánh</th>
               <th className="rm-th">Sức chứa</th>
               <th className="rm-th">Loại hình</th>
               <th className="rm-th">Giá Thường</th>
@@ -505,7 +500,6 @@ export default function RoomAdmin() {
                         <span>{room?.roomName ?? room?.RoomName ?? "Phòng"}</span>
                       </div>
                     </td>
-                    <td className="rm-td">{cinemaName}</td>
                     <td className="rm-td">{totalSeats} Ghế</td>
                     <td className="rm-td">
                       <span className={badgeClass}>{roomType}</span>
@@ -601,9 +595,10 @@ export default function RoomAdmin() {
 
             {/* Seats Layout Matrix */}
             <div className="rm-grid-matrix">
-              {activeLayout.map((row) => {
-                return (
-                  <div className="rm-matrix-row" key={row.rowName}>
+              {activeLayout.length > 0 ? (
+                activeLayout.map((row) => {
+                  return (
+                    <div className="rm-matrix-row" key={row.rowName}>
                     <span className="rm-row-label">{row.rowName}</span>
                     <div className="rm-row-seats-flex">
                       {groupRowSeats(row.seats).map((item, idx) => {
@@ -667,8 +662,13 @@ export default function RoomAdmin() {
                     </div>
                     <span className="rm-row-label">{row.rowName}</span>
                   </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div style={{ color: "#aeaeb2", padding: "40px 0", fontSize: "0.9rem", textAlign: "center" }}>
+                  Chưa có dữ liệu ghế cho phòng này.
+                </div>
+              )}
             </div>
           </div>
 
@@ -781,23 +781,25 @@ export default function RoomAdmin() {
               {roomFormError && <p className="rm-form-error">{roomFormError}</p>}
 
               <form onSubmit={handleCustomRoomSubmit} className="rm-form">
-                <div className="rm-field">
-                  <label className="rm-label">Chi Nhánh <span className="rm-required">*</span></label>
-                  <select
-                    name="cinemaId"
-                    value={roomForm.cinemaId}
-                    onChange={handleRoomChange}
-                    className="rm-input"
-                    required
-                  >
-                    <option value="">-- Chọn chi nhánh --</option>
-                    {cinemaOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {!isEditingRoom && (
+                  <div className="rm-field">
+                    <label className="rm-label">Chi Nhánh <span className="rm-required">*</span></label>
+                    <select
+                      name="cinemaId"
+                      value={roomForm.cinemaId}
+                      onChange={handleRoomChange}
+                      className="rm-input"
+                      required
+                    >
+                      <option value="">-- Chọn chi nhánh --</option>
+                      {cinemaOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="rm-field">
                   <label className="rm-label">Tên Phòng Chiếu <span className="rm-required">*</span></label>
@@ -809,6 +811,7 @@ export default function RoomAdmin() {
                     className="rm-input"
                     placeholder="Nhập tên phòng chiếu"
                     required
+                    disabled={isEditingRoom}
                   />
                 </div>
 
@@ -820,6 +823,7 @@ export default function RoomAdmin() {
                       value={roomForm.roomType}
                       onChange={handleRoomChange}
                       className="rm-input"
+                      disabled={isEditingRoom}
                     >
                       {roomTypeOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -838,6 +842,7 @@ export default function RoomAdmin() {
                       className="rm-input"
                       min={1}
                       required
+                      disabled={isEditingRoom}
                     />
                   </div>
                 </div>
@@ -954,80 +959,89 @@ export default function RoomAdmin() {
               {seatFormError && <p className="rm-form-error">{seatFormError}</p>}
 
               <form onSubmit={handleSeatSubmit} className="rm-form">
-                <div className="rm-field">
-                  <label className="rm-label">Phòng Chiếu <span className="rm-required">*</span></label>
-                  <select
-                    name="roomId"
-                    value={seatForm.roomId}
-                    onChange={handleSeatChange}
-                    className="rm-input"
-                    required
-                    disabled
-                  >
-                    {rooms.map((room) => (
-                      <option key={getRoomId(room)} value={getRoomId(room)}>
-                        {getRoomFullName(room, cinemas)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="rm-field-row">
+                {editSeatId === null && (
                   <div className="rm-field">
-                    <label className="rm-label">Hàng Ghế <span className="rm-required">*</span></label>
+                    <label className="rm-label">Phòng Chiếu <span className="rm-required">*</span></label>
                     <select
-                      name="seatRow"
-                      value={seatForm.seatRow}
+                      name="roomId"
+                      value={seatForm.roomId}
                       onChange={handleSeatChange}
                       className="rm-input"
                       required
+                      disabled
                     >
-                      <option value="">-- Hàng --</option>
-                      {SEAT_ROW_OPTIONS.map((row) => (
-                        <option key={row.value} value={row.value}>
-                          {row.label}
+                      {rooms.map((room) => (
+                        <option key={getRoomId(room)} value={getRoomId(room)}>
+                          {getRoomFullName(room, cinemas)}
                         </option>
                       ))}
                     </select>
                   </div>
+                )}
 
+                {editSeatId === null && (
+                  <div className="rm-field-row">
+                    <div className="rm-field">
+                      <label className="rm-label">Hàng Ghế <span className="rm-required">*</span></label>
+                      <select
+                        name="seatRow"
+                        value={seatForm.seatRow}
+                        onChange={handleSeatChange}
+                        className="rm-input"
+                        required
+                        disabled={editSeatId !== null}
+                      >
+                        <option value="">-- Hàng --</option>
+                        {SEAT_ROW_OPTIONS.map((row) => (
+                          <option key={row.value} value={row.value}>
+                            {row.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="rm-field">
+                      <label className="rm-label">Số Ghế <span className="rm-required">*</span></label>
+                      <select
+                        name="seatNumber"
+                        value={String(seatForm.seatNumber)}
+                        onChange={handleSeatChange}
+                        className="rm-input"
+                        required
+                        disabled={editSeatId !== null}
+                      >
+                        <option value="">-- Số --</option>
+                        {SEAT_NUMBER_OPTIONS.map((number) => (
+                          <option key={number.value} value={number.value}>
+                            {number.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {editSeatId === null && (
                   <div className="rm-field">
-                    <label className="rm-label">Số Ghế <span className="rm-required">*</span></label>
+                    <label className="rm-label">Loại Ghế</label>
                     <select
-                      name="seatNumber"
-                      value={String(seatForm.seatNumber)}
+                      name="seatType"
+                      value={seatForm.seatType}
                       onChange={handleSeatChange}
                       className="rm-input"
-                      required
+                      disabled={editSeatId !== null}
                     >
-                      <option value="">-- Số --</option>
-                      {SEAT_NUMBER_OPTIONS.map((number) => (
-                        <option key={number.value} value={number.value}>
-                          {number.label}
+                      {SEAT_TYPE_OPTIONS.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
                         </option>
                       ))}
                     </select>
+                    <div className="text-xs text-green-500 font-semibold mt-1.5">
+                      Giá áp dụng: {getSeatPrice(seatForm.seatType, activeRoomType)}
+                    </div>
                   </div>
-                </div>
-
-                <div className="rm-field">
-                  <label className="rm-label">Loại Ghế</label>
-                  <select
-                    name="seatType"
-                    value={seatForm.seatType}
-                    onChange={handleSeatChange}
-                    className="rm-input"
-                  >
-                    {SEAT_TYPE_OPTIONS.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="text-xs text-green-500 font-semibold mt-1.5">
-                    Giá áp dụng: {getSeatPrice(seatForm.seatType, activeRoomType)}
-                  </div>
-                </div>
+                )}
 
                 <div className="rm-field">
                   <label className="rm-label">Trạng Thái hoạt động</label>
@@ -1037,7 +1051,7 @@ export default function RoomAdmin() {
                     onChange={handleSeatChange}
                     className="rm-input"
                   >
-                    {SEAT_STATUS_OPTIONS.map((st) => (
+                    {SEAT_STATUS_OPTIONS.filter(st => editSeatId !== null || st.value === "true").map((st) => (
                       <option key={st.value} value={st.value}>
                         {st.label}
                       </option>

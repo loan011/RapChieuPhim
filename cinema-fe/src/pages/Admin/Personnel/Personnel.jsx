@@ -216,14 +216,14 @@ export default function Personnel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.length === 0 ? (
+                  {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="pe-table-empty">
                         Không có nhân viên nào phù hợp.
                       </td>
                     </tr>
                   ) : (
-                    pageItems.map((employee, idx) => {
+                    filtered.map((employee, idx) => {
                       const id = getEmployeeId(employee);
                       const name = getEmployeeName(employee);
                       const email = getEmployeeEmail(employee);
@@ -232,14 +232,12 @@ export default function Personnel() {
                       const status = getEmployeeStatus(employee);
                       const badgeStyle = getStatusBadgeStyle(status);
                       const cinemaId = getStaffCinemaId(employee);
-                      const cinema = cinemas?.find(
-                        (c) => String(c.cinemaId || c.id) === String(cinemaId)
+                      const cinema = cinemaOptions.find(
+                        (c) => String(c.id) === String(cinemaId)
                       );
-                      const cinemaName = cinema
-                        ? cinema.cinemaName || cinema.CinemaName
-                        : "Tất cả chi nhánh";
+                      const cinemaName = cinema ? cinema.name : "Tất cả chi nhánh";
 
-                      const globalIndex = idx + 1 + (safePage - 1) * PAGE_SIZE;
+                      const globalIndex = idx + 1;
                       const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
                         name
                       )}&background=f0f4ff&color=6366f1&size=34&font-size=0.45&bold=true`;
@@ -274,12 +272,7 @@ export default function Personnel() {
                           </td>
                           <td>
                             <div className="pe-row-actions">
-                              <button
-                                className="pe-row-btn pe-row-btn--detail"
-                                onClick={() => openEditModal(employee)}
-                              >
-                                <IconView size={14} /> Chi tiết
-                              </button>
+
                               <button
                                 className="pe-row-btn pe-row-btn--edit"
                                 onClick={() => openEditModal(employee)}
@@ -302,45 +295,7 @@ export default function Personnel() {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* ── Pagination ── */}
-          {filtered.length > 0 && (
-            <div className="pe-footer">
-              <span className="pe-footer-info">
-                Hiển thị {Math.min((safePage - 1) * PAGE_SIZE + 1, filtered.length)}–
-                {Math.min(safePage * PAGE_SIZE, filtered.length)} của {filtered.length} nhân viên
-              </span>
-              <div className="pe-pagination">
-                <button
-                  className="pe-page-btn"
-                  disabled={safePage === 1}
-                  onClick={() => setPage(safePage - 1)}
-                >
-                  Trước
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    className={`pe-page-btn${
-                      p === safePage ? " pe-page-btn--active" : ""
-                    }`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  className="pe-page-btn"
-                  disabled={safePage === totalPages}
-                  onClick={() => setPage(safePage + 1)}
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+          </div>        </>
       )}
 
       {/* ── Modal Add / Edit ── */}
@@ -447,9 +402,9 @@ export default function Personnel() {
                       className="pe-input"
                     >
                       <option value="">Tất cả các rạp (Hệ thống)</option>
-                      {cinemas.map((c) => (
-                        <option key={c.cinemaId || c.id} value={c.cinemaId || c.id}>
-                          {c.cinemaName || c.CinemaName}
+                      {cinemaOptions.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
                         </option>
                       ))}
                     </select>

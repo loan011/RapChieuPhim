@@ -527,6 +527,17 @@ export function useRoom() {
       return;
     }
 
+    const isDuplicate = rooms.some(r => 
+        String(r.cinemaId) === String(form.cinemaId) && 
+        r.roomName?.trim().toLowerCase() === form.roomName?.trim().toLowerCase() &&
+        String(r.roomId) !== String(editId)
+    );
+
+    if (isDuplicate) {
+      setFormError(`Tên phòng "${form.roomName}" đã tồn tại trong rạp này. Vui lòng chọn tên khác.`);
+      return;
+    }
+
     try {
       setSubmitting(true);
 

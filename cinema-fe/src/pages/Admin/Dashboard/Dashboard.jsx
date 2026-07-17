@@ -299,74 +299,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BOTTOM SECTION - ONLY FOR TỔNG QUAN */}
-      {activeTab === 'Tổng quan' && (
-        <div className="dashboard-bottom-grid">
-          {/* Line Chart */}
-          <div className="bottom-chart-card">
-            <h6 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#111827' }}>Doanh thu theo ngày</h6>
-            <div style={{ width: '100%', height: '220px' }}>
-              {chartData && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData.revenueByTime}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="timeLabel" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                    <YAxis tickLine={false} axisLine={false} tickFormatter={val => (val / 1000000) + 'M'} tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                    <RechartsTooltip formatter={(val) => formatMoney(val) + 'đ'} />
-                    <Line type="monotone" name="Vé" dataKey="ticketRevenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" name="Đồ ăn" dataKey="foodRevenue" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4, fill: '#f59e0b' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
 
-          {/* Small Table */}
-          <div className="bottom-chart-card">
-            <h6 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#111827' }}>Doanh thu theo suất của từng phim</h6>
-            <table className="movie-perf-table" style={{ fontSize: '0.8rem' }}>
-              <thead>
-                <tr>
-                  <th>Phim (Suất)</th>
-                  <th>Doanh thu (đ)</th>
-                  <th>Tỷ lệ lấp đầy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(chartData?.topShowtimes || []).map((s, idx) => (
-                  <tr key={idx}>
-                    <td style={{ padding: '10px 4px' }}>{s.movieTitle}<br/><span style={{fontSize:'10px', color:'#9ca3af'}}>{s.showtimeLabel}</span></td>
-                    <td style={{ padding: '10px 4px', fontWeight: 600 }}>{formatMoney(s.revenue)}</td>
-                    <td style={{ padding: '10px 4px' }}>{s.occupancy}%</td>
-                  </tr>
-                ))}
-                {(!chartData?.topShowtimes || chartData?.topShowtimes.length === 0) && (
-                  <tr><td colSpan="3" style={{textAlign:'center', padding:'20px', color:'#9ca3af'}}>Chưa có dữ liệu</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Bar Chart */}
-          <div className="bottom-chart-card">
-            <h6 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: '#111827' }}>Doanh thu theo thời gian</h6>
-            <div style={{ width: '100%', height: '220px' }}>
-              {chartData && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData.revenueByTime}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="timeLabel" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                    <YAxis tickLine={false} axisLine={false} tickFormatter={val => (val / 1000000) + 'M'} tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                    <RechartsTooltip formatter={(val) => formatMoney(val) + 'đ'} />
-                    <Bar dataKey="ticketRevenue" name="Vé" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="foodRevenue" name="Đồ ăn" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

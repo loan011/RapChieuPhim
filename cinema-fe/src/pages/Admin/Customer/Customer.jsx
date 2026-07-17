@@ -131,20 +131,6 @@ export default function Customer() {
           </div>
         </div>
 
-
-
-        <div className="cu-stat-card">
-          <div className="cu-stat-icon-wrap" style={{ backgroundColor: "#fdf2f8", color: "#ec4899" }}>
-            <MdAttachMoney size={24} />
-          </div>
-          <div className="cu-stat-info">
-            <span className="cu-stat-label">Tổng doanh thu từ KH</span>
-            <span className="cu-stat-value" style={{ fontSize: "1.05rem" }}>
-              {formatCurrency(stats.totalSpend)}
-            </span>
-            <span className="cu-stat-desc">Tất cả khách hàng</span>
-          </div>
-        </div>
       </div>
 
       {/* ── Main Grid ── */}
@@ -192,7 +178,6 @@ export default function Customer() {
                     <th>SĐT</th>
                     <th>Email</th>
                     <th>Nhóm</th>
-                    <th>Điểm tích lũy</th>
                     <th>Tổng chi tiêu</th>
                     <th>Ngày đăng ký</th>
                   </tr>
@@ -230,7 +215,6 @@ export default function Customer() {
                               {group}
                             </span>
                           </td>
-                          <td style={{ textAlign: "right" }}>{getCustomerPoint(c).toLocaleString("vi-VN")}</td>
                           <td className="cu-spend-txt" style={{ color: spend >= VIP_THRESHOLD ? "#a855f7" : undefined }}>
                             {formatCurrency(spend)}
                           </td>

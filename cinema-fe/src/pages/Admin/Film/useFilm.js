@@ -605,6 +605,13 @@ export function useFilm() {
       }
     }
 
+    if (form.releaseDate && form.endDate) {
+      if (new Date(form.endDate) <= new Date(form.releaseDate)) {
+        setFormError("Ngày kết thúc phải sau ngày khởi chiếu.");
+        return;
+      }
+    }
+
     let finalStatus = form.status;
     if (form.releaseDate) {
       const releaseDt = new Date(form.releaseDate);
