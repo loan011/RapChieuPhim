@@ -38,6 +38,8 @@ export async function readResponse(response) {
 }
 
 export function getErrorMessage(data, defaultMessage) {
+  // Nếu data là chuỗi thần thôi
+  if (typeof data === "string" && data.length > 0) return data;
   // ASP.NET Core validation errors (ProblemDetails)
   if (data?.errors) {
     const msgs = Object.values(data.errors).flat();
@@ -50,6 +52,8 @@ export function getErrorMessage(data, defaultMessage) {
     data?.Title ||
     data?.error ||
     data?.Error ||
+    data?.detail ||
+    data?.Detail ||
     defaultMessage
   );
 }

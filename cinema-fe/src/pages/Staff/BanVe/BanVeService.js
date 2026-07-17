@@ -5,8 +5,6 @@ import {
   getAuthHeaders,
 } from "../../../services/apiHelper";
 
-import { generateMockSeats } from "../../Booking/booking.js";
-
 const API_URL = getApiUrl();
 
 function normalizeArray(data) {
@@ -74,13 +72,7 @@ export async function getSeatsByRoomId(roomId) {
     throw new Error(getErrorMessage(data, "Lấy sơ đồ ghế thất bại!"));
   }
 
-  const seats = normalizeArray(data);
-
-  if (seats.length === 0) {
-    return generateMockSeats(roomId);
-  }
-
-  return seats;
+  return normalizeArray(data);
 }
 
 export async function getAvailableSeats(showtimeId) {
@@ -116,6 +108,15 @@ export async function createBooking(payload) {
   }
 
   return data?.data || data;
+}
+
+export async function getPricingList() {
+  const response = await fetch(`${API_URL}/TicketPricing/Active`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) return [];
+  return normalizeArray(data);
 }
 
 export async function getRoomList() {

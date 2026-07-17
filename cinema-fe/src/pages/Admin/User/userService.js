@@ -115,10 +115,21 @@ export async function updateProfile(user) {
 
 // POST /api/Users/ChangePassword
 export async function changePassword(payload) {
+  // Gửi cả 2 dạng tên field (camelCase và PascalCase) để tương thích với backend ASP.NET Core
+  const body = {
+    currentPassword: payload.currentPassword,
+    CurrentPassword: payload.currentPassword,
+    oldPassword: payload.currentPassword,
+    OldPassword: payload.currentPassword,
+    newPassword: payload.newPassword,
+    NewPassword: payload.newPassword,
+    confirmPassword: payload.confirmPassword,
+    ConfirmPassword: payload.confirmPassword,
+  };
   const response = await fetch(`${API_URL}/Users/ChangePassword`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   const data = await readResponse(response);
   if (!response.ok) throw new Error(getErrorMessage(data, "Đổi mật khẩu thất bại!"));

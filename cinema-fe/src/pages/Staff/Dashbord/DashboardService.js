@@ -111,3 +111,53 @@ export async function getMovieRevenueStats() {
 
   return { movieStats, cinemaStats, totalRevenue, totalTickets };
 }
+
+export async function getDailyRevenueStats() {
+  const data = await apiGet("/Tickets", "Lấy dữ liệu vé thất bại!");
+  const tickets = norm(data);
+
+  const activeTickets = tickets.filter(t => {
+    const s = (t.status || "").toLowerCase();
+    return s !== "cancelled" && s !== "đã hủy" && s !== "canceled";
+  });
+
+  const map = {};
+  const dayMovieMap = {};
+
+  activeTickets.forEach(t => {
+    const raw = t.issuedAt || t.booking?.bookingDate || t.booking?.BookingDate || "";
+    const date = raw.split("T")[0];
+    if (!date || date === "undefined" || date === "") return;
+
+    const price = t.price || t.Price || 0;
+    const movie =
+      t.booking?.showTime?.movie?.title ||
+      t.booking?.ShowTime?.Movie?.Title ||
+      t.movieTitle || t.MovieTitle || "Chưa xác định";
+
+    if (!map[date]) map[date] = { revenue: 0, tickets: 0 };
+    map[date].revenue += price;
+    map[date].tickets += 1;
+
+    if (!dayMovieMap[date]) dayMovieMap[date] = {};
+    if (!dayMovieMap[date][movie]) dayMovieMap[date][movie] = { name: movie, revenue: 0, tickets: 0 };
+    dayMovieMap[date][movie].revenue += price;
+    dayMovieMap[date][movie].tickets += 1;
+  });
+
+  const today = new Date();
+  const result = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    result.push({
+      date: dateStr,
+      label: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
+      revenue: map[dateStr]?.revenue || 0,
+      tickets: map[dateStr]?.tickets || 0,
+      movies: Object.values(dayMovieMap[dateStr] || {}).sort((a, b) => b.revenue - a.revenue),
+    });
+  }
+  return result;
+}

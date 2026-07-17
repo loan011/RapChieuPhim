@@ -132,9 +132,10 @@ export default function StaffHoSo() {
             </div>
             <button 
               type="submit" 
-              className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-amber-100 active:scale-98 transition-all duration-150 flex items-center gap-1"
+              disabled={loading}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-amber-100 active:scale-98 transition-all duration-150 flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <MdRefresh /> Đổi Mật Khẩu
+              <MdRefresh /> {loading ? "Đang xử lý..." : "Đổi Mật Khẩu"}
             </button>
           </form>
         </div>

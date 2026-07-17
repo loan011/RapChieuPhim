@@ -12,6 +12,8 @@ export function getLocalBookedTickets() {
   }
 }
 
+const MOCK_TICKETS = [];
+
 export function loadTickets() {
   const localTickets = getLocalBookedTickets();
   return [...localTickets, ...MOCK_TICKETS];
@@ -232,6 +234,7 @@ export function useTicket() {
               return {
                 id: ticketCodeDisplay,
                 qrCode: firstTicketCode,   // code thật để tạo QR
+                ticketCodes: t.ticketCodes, // mảng mã từng vé riêng
                 movie: t.movieTitle ?? t.MovieTitle ?? movie?.title ?? movie?.Title ?? "Phim chưa rõ",
                 poster:
                   t.moviePoster ??

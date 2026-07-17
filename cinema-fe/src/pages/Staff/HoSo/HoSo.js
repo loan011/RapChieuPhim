@@ -65,9 +65,14 @@ export function useHoSo() {
       alert("Mật khẩu xác nhận không khớp!");
       return;
     }
+    if (pwForm.newPassword.length < 6) {
+      alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+      return;
+    }
     try {
       setLoading(true);
       setError("");
+      console.log("[HoSo] Đang gửi yêu cầu đổi mật khẩu...");
       await updatePassword({
         currentPassword: pwForm.currentPassword,
         newPassword: pwForm.newPassword,
@@ -80,7 +85,10 @@ export function useHoSo() {
         confirmPassword: "",
       });
     } catch (err) {
-      alert(err.message || "Đổi mật khẩu thất bại!");
+      console.error("[HoSo] Lỗi đổi mật khẩu:", err);
+      const msg = err.message || "Đổi mật khẩu thất bại!";
+      setError(msg);
+      alert(msg);
     } finally {
       setLoading(false);
     }

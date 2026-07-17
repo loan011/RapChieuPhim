@@ -2,7 +2,7 @@ import "./Dashboard.css";
 import { useDashboard } from "./Dashboard.js";
 import {
   MdMovie, MdConfirmationNumber, MdTrendingUp,
-  MdTheaters, MdEventSeat, MdBarChart,
+  MdTheaters, MdEventSeat, MdBarChart, MdDateRange,
 } from "react-icons/md";
 
 const MOVIE_COLORS = [
@@ -22,10 +22,64 @@ function ProgressBar({ percent, colorClass = "bg-emerald-500" }) {
   );
 }
 
+const CHART_H = 120;
+
+function DailyRevenueChart({ data, selectedDate, onSelectDate, formatMoney }) {
+  const max = Math.max(...data.map(d => d.revenue), 1);
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex items-end gap-1" style={{ minWidth: `${data.length * 32}px` }}>
+        {data.map((d) => {
+          const barH = d.revenue > 0 ? Math.max((d.revenue / max) * CHART_H, 4) : 2;
+          const isSelected = d.date === selectedDate;
+          return (
+            <div
+              key={d.date}
+              className="flex-1 flex flex-col items-center min-w-[28px] cursor-pointer"
+              onClick={() => onSelectDate(d.date)}
+            >
+              <div className="relative w-full flex justify-center" style={{ height: `${CHART_H}px` }}>
+                <div className="w-full flex items-end h-full group">
+                  <div
+                    className={`relative w-full rounded-t-sm transition-all duration-300 ${
+                      isSelected
+                        ? "bg-amber-400 hover:bg-amber-300"
+                        : d.revenue > 0
+                        ? "bg-emerald-500 hover:bg-emerald-400"
+                        : "bg-gray-100 hover:bg-gray-200"
+                    }`}
+                    style={{ height: `${barH}px`, outline: isSelected ? "2px solid #fbbf24" : "none", outlineOffset: "2px" }}
+                  >
+                    <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1.5 whitespace-nowrap z-20 shadow-lg text-center">
+                      <div className="font-semibold">{d.date}</div>
+                      <div>{formatMoney(d.revenue)} đ</div>
+                      <div>{d.tickets} vé</div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{ fontSize: "9px", color: isSelected ? "#d97706" : "#9ca3af" }}
+                className="mt-1 text-center font-medium"
+              >
+                {d.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function StaffDashboard() {
   const {
     stats, recentTickets, movieStats, cinemaStats,
-    totalRevenue, totalTickets, loading, error, formatMoney,
+    totalRevenue, totalTickets,
+    dailyRevenue, selectedDate, setSelectedDate, selectedDayData,
+    loading, error, formatMoney,
   } = useDashboard();
 
   const cards = [
@@ -57,6 +111,132 @@ export default function StaffDashboard() {
 
       {loading && <p className="text-gray-500 text-sm mb-4">Đang tải dữ liệu...</p>}
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      {/* Daily Revenue Report */}
+      {!loading && (() => {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const isToday = selectedDate === todayStr;
+
+        const prevDay = () => {
+          const d = new Date(selectedDate);
+          d.setDate(d.getDate() - 1);
+          setSelectedDate(d.toISOString().split("T")[0]);
+        };
+        const nextDay = () => {
+          if (isToday) return;
+          const d = new Date(selectedDate);
+          d.setDate(d.getDate() + 1);
+          const next = d.toISOString().split("T")[0];
+          if (next <= todayStr) setSelectedDate(next);
+        };
+
+        const idx = dailyRevenue.findIndex(d => d.date === selectedDate);
+        const chartData = idx >= 0
+          ? dailyRevenue.slice(Math.max(0, idx - 13), idx + 1)
+          : dailyRevenue.slice(-14);
+
+        const dd = selectedDate.slice(8, 10);
+        const mm = selectedDate.slice(5, 7);
+        const yyyy = selectedDate.slice(0, 4);
+        const dayMovies = selectedDayData.movies || [];
+
+        return (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-150/80 p-5 mb-6">
+            {/* Header + navigation */}
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <h5 className="font-semibold text-gray-700 text-base flex items-center gap-2">
+                <MdDateRange className="text-emerald-600 text-xl" /> Doanh Thu Theo Ngày
+              </h5>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={prevDay}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-lg font-bold transition-colors"
+                >‹</button>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={todayStr}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 font-medium focus:outline-none focus:border-emerald-400"
+                />
+                <button
+                  onClick={nextDay}
+                  disabled={isToday}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-lg font-bold transition-colors ${
+                    isToday ? "bg-gray-50 text-gray-300 cursor-not-allowed" : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+                  }`}
+                >›</button>
+              </div>
+            </div>
+
+            {/* Day stats */}
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="bg-emerald-50 rounded-xl p-4">
+                <div className="text-xs text-emerald-600 font-medium mb-1">Doanh Thu Ngày {dd}/{mm}/{yyyy}</div>
+                <div className="text-2xl font-bold text-emerald-700">
+                  {selectedDayData.revenue > 0 ? `${formatMoney(selectedDayData.revenue)} đ` : "—"}
+                </div>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-4">
+                <div className="text-xs text-amber-600 font-medium mb-1">Vé Bán Ra</div>
+                <div className="text-2xl font-bold text-amber-700">
+                  {selectedDayData.tickets > 0 ? `${selectedDayData.tickets} vé` : "—"}
+                </div>
+              </div>
+            </div>
+
+            {/* Movie breakdown */}
+            {dayMovies.length > 0 ? (
+              <div className="mb-5">
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Theo Phìm</p>
+                <div className="space-y-2">
+                  {dayMovies.map((m, i) => {
+                    const pct = selectedDayData.revenue > 0 ? Math.round((m.revenue / selectedDayData.revenue) * 100) : 0;
+                    const color = MOVIE_COLORS[i % MOVIE_COLORS.length];
+                    return (
+                      <div key={m.name}>
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span className="font-medium text-gray-700 truncate max-w-[200px]">{m.name}</span>
+                          <div className="flex items-center gap-3 shrink-0 ml-3">
+                            <span className="text-gray-500 text-xs">{m.tickets} vé</span>
+                            <span className="font-bold text-gray-700">{formatMoney(m.revenue)} đ</span>
+                            <span className={`text-white text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{pct}%</span>
+                          </div>
+                        </div>
+                        <ProgressBar percent={pct} colorClass={color} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm mb-5">Không có vé bán trong ngày này.</p>
+            )}
+
+            {/* Mini chart - 14 days context */}
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">14 Ngày Gần Đây</p>
+              {chartData.length > 0 && (
+                <DailyRevenueChart
+                  data={chartData}
+                  selectedDate={selectedDate}
+                  onSelectDate={setSelectedDate}
+                  formatMoney={formatMoney}
+                />
+              )}
+              <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500" /> Có doanh thu
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-amber-400" /> Đang chọn
+                </span>
+                <span className="text-gray-300 italic">Click cột để chọn ngày</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Movie revenue stats */}
       {!loading && movieStats.length > 0 && (

@@ -16,7 +16,7 @@ const navItems = [
   { to: "/staff/dashboard", label: "Dashboard", icon: <MdDashboard /> },
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
   { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
-  { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },
+  { to: "/staff/combo", label: "Đồ ăn", icon: <MdFastfood /> },
   { to: "/staff/quet-qr", label: "Quét QR", icon: <MdQrCodeScanner /> },
   { to: "/staff/ho-so", label: "Hồ sơ", icon: <MdPersonOutline /> },
 ];

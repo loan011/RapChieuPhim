@@ -1,8 +1,10 @@
 import "./QuanLyVe.css";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { useQuanLyVe } from "./QuanLyVe.js";
-import { MdConfirmationNumber, MdSearch, MdFilterList, MdAdd, MdEdit, MdDelete, MdClose, MdLocalActivity } from "react-icons/md";
+import { MdConfirmationNumber, MdSearch, MdFilterList, MdAdd, MdEdit, MdDelete, MdClose, MdLocalActivity, MdQrCode } from "react-icons/md";
 
 export default function StaffQuanLyVe() {
   const {
@@ -25,6 +27,8 @@ export default function StaffQuanLyVe() {
     handleChange,
     handleSubmitForm,
   } = useQuanLyVe();
+
+  const [qrTicket, setQrTicket] = useState(null);
 
   return (
     <div className="staff-quanlyve-container">
@@ -131,6 +135,13 @@ export default function StaffQuanLyVe() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex gap-3">
+                          <button
+                            className="text-blue-500 hover:text-blue-700 font-semibold text-xs flex items-center gap-0.5"
+                            onClick={() => setQrTicket(t)}
+                            title="Xem QR code"
+                          >
+                            <MdQrCode /> QR
+                          </button>
                           <button
                             className="text-green-600 hover:text-green-800 hover:underline font-semibold text-xs flex items-center gap-0.5"
                             onClick={() => openEditModal(t)}
@@ -288,6 +299,52 @@ export default function StaffQuanLyVe() {
           </div>,
           document.body
         )}
+
+      {/* QR Code Modal */}
+      {qrTicket && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setQrTicket(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-4 mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full">
+              <h5 className="font-bold text-gray-800 flex items-center gap-2">
+                <MdQrCode className="text-blue-500" /> Mã QR Vé
+              </h5>
+              <button onClick={() => setQrTicket(null)} className="text-gray-400 hover:text-gray-700 text-2xl">
+                <MdClose />
+              </button>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border-2 border-gray-100 shadow-inner">
+              <QRCodeSVG
+                value={qrTicket.code || qrTicket.ticketCode || `VE${qrTicket.id}`}
+                size={220}
+                level="M"
+              />
+            </div>
+
+            <div className="text-center">
+              <div className="font-mono font-black text-xl text-gray-800 tracking-widest mb-1">
+                {qrTicket.code || qrTicket.ticketCode || `VE${qrTicket.id}`}
+              </div>
+              <div className="text-sm text-gray-500">{qrTicket.movieTitle}</div>
+              <div className="text-sm text-gray-500">Ghế: <span className="font-semibold text-gray-700">{qrTicket.seatCode}</span></div>
+              <div className="text-sm font-bold text-green-700 mt-1">
+                {(qrTicket.price || 0).toLocaleString("vi-VN")} đ
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400 text-center">
+              Khách hàng xuất trình mã này để vào rạp
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

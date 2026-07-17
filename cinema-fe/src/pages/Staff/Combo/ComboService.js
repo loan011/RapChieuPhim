@@ -20,29 +20,31 @@ export async function getCombosList() {
   const combosData = await readResponse(combosRes).catch(() => []);
   const foodsData = await readResponse(foodsRes).catch(() => []);
 
-  const combos = normalizeArray(combosData).map(c => ({
-    id: c.comboId,
-    type: "combo",
-    name: c.comboName,
-    description: c.description || "",
-    price: c.price,
-    image: c.imageUrl || "🍿",
-  }));
-
   const foods = normalizeArray(foodsData).map(f => ({
     id: f.foodId,
     type: "food",
     name: f.foodName,
     description: f.category || "",
     price: f.price,
+    quantity: f.quantity ?? f.Quantity ?? 0,
     image: f.imageUrl || "🥤",
+  }));
+
+  const combos = normalizeArray(combosData).map(c => ({
+    id: c.comboId,
+    type: "combo",
+    name: c.comboName,
+    description: c.description || "",
+    price: c.price,
+    quantity: c.quantity ?? c.Quantity ?? 0,
+    image: c.imageUrl || "🍿",
   }));
 
   return [...combos, ...foods];
 }
 
 // POST /api/Orders
-export async function sellCombo({ customerName, items, totalAmount }) {
+export async function sellCombo({ customerName, ticketId, items, totalAmount }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.userId || user?.UserId || 0;
 
@@ -59,6 +61,7 @@ export async function sellCombo({ customerName, items, totalAmount }) {
     headers: getAuthHeaders(),
     body: JSON.stringify({
       userId,
+      ticketId: ticketId || null,
       totalAmount,
       orderType: "Combo",
       status: "Completed",

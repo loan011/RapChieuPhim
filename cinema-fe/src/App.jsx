@@ -39,6 +39,7 @@ import StaffBanVe from "./pages/Staff/BanVe/BanVe.jsx";
 import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe.jsx";
 import StaffCombo from "./pages/Staff/Combo/Combo.jsx";
 import StaffQuetQR from "./pages/Staff/QR/QuetQR.jsx";
+import TestQR from "./pages/Staff/QR/TestQR.jsx";
 import StaffHoSo from "./pages/Staff/HoSo/HoSo.jsx";
 
 function App() {
@@ -147,6 +148,7 @@ function App() {
           <Route path="quan-ly-ve" element={<StaffQuanLyVe />} />
           <Route path="combo" element={<StaffCombo />} />
           <Route path="quet-qr" element={<StaffQuetQR />} />
+          <Route path="test-qr" element={<TestQR />} />
           <Route path="ho-so" element={<StaffHoSo />} />
         </Route>
 

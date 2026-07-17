@@ -2,8 +2,9 @@ import { useEffect, useState, useMemo } from "react";
 import { getMovieList } from "../../Admin/Film/movieService";
 import { getShowtimeDetailList, createShowtime } from "../../Admin/Rate/showtimeService";
 import { getRoomList } from "../../Admin/Room/roomService";
-import { getSeatsByRoomId, getAvailableSeats, createBooking } from "../../Booking/bookingService";
+import { getSeatsByRoomId, getAvailableSeats, createBooking, getPricingList } from "./BanVeService";
 import { getShowtimeId, getShowtimeRoomId, getShowtimeDate, getShowtimeHour, getSeatId, getSeatPrice } from "../../Booking/booking.js";
+import { getCombosList } from "../Combo/ComboService";
 
 function createStaffDateRange(pastDays = 30, futureDays = 7) {
   const days = [];
@@ -53,6 +54,12 @@ export function useBanVe() {
   
   const [customer, setCustomer] = useState({ name: "", phone: "", email: "" });
   
+  // Food step
+  const [foodStep, setFoodStep] = useState(0); // 0=seats, 1=food, 2=confirm
+  const [availableFoods, setAvailableFoods] = useState([]);
+  const [selectedFoods, setSelectedFoods] = useState({}); // { "food-id": qty }
+  const [pricingList, setPricingList] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +74,22 @@ export function useBanVe() {
   });
   const [addShowtimeLoading, setAddShowtimeLoading] = useState(false);
   const [addShowtimeError, setAddShowtimeError] = useState("");
+
+  // Load available foods
+  useEffect(() => {
+    getCombosList().then(list => setAvailableFoods(list)).catch(() => {});
+  }, []);
+
+  // Load ticket pricing
+  useEffect(() => {
+    getPricingList().then(list => setPricingList(list)).catch(() => {});
+  }, []);
+
+  // Reset food step when showtime changes
+  useEffect(() => {
+    setFoodStep(0);
+    setSelectedFoods({});
+  }, [selectedShowtime]);
 
   useEffect(() => {
     getRoomList().then(data => {
@@ -199,7 +222,8 @@ export function useBanVe() {
         ]);
 
         setAllSeats(seatsList);
-        setAvailableSeats(availList);
+        // Nếu API không trả về danh sách available → coi tất cả ghế đều có thể chọn
+        setAvailableSeats(availList.length > 0 ? availList : seatsList);
         setSelectedSeats([]);
       } catch (err) {
         console.error("Error loading seats:", err);
@@ -241,16 +265,60 @@ export function useBanVe() {
   }
 
   function calculateSeatPrice(seat) {
-    return getSeatPrice(seat, selectedShowtime);
+    if (pricingList.length === 0) return getSeatPrice(seat, selectedShowtime);
+
+    const rawType = (seat.seatType || seat.SeatType || seat.type || "Standard").toLowerCase();
+    let seatType = "Standard";
+    if (rawType.includes("vip")) seatType = "VIP";
+    else if (rawType.includes("couple") || rawType.includes("sweetbox")) seatType = "Couple";
+
+    const d = new Date(); // ngày đặt vé (hôm nay), giống backend
+    const dow = d.getDay();
+    const dayType = (dow === 0 || dow === 6) ? "Weekend" : "Weekday";
+
+    const roomType = selectedShowtime?.roomType || selectedShowtime?.room?.roomType ||
+      selectedShowtime?.Room?.RoomType || "3D";
+
+    const pricing = pricingList.find(p =>
+      p.roomType === roomType &&
+      p.seatType === seatType &&
+      p.dayType === dayType
+    );
+
+    return pricing ? Number(pricing.price) : getSeatPrice(seat, selectedShowtime);
   }
 
   const totalAmount = selectedSeats.reduce((sum, seat) => sum + calculateSeatPrice(seat), 0);
+
+  const totalFoodAmount = Object.entries(selectedFoods).reduce((sum, [key, qty]) => {
+    const food = availableFoods.find(f => `${f.type}-${f.id}` === key);
+    return sum + (food ? food.price * qty : 0);
+  }, 0);
+
+  const grandTotal = totalAmount + totalFoodAmount;
+
+  const selectedFoodItems = Object.entries(selectedFoods)
+    .filter(([, qty]) => qty > 0)
+    .map(([key, qty]) => {
+      const food = availableFoods.find(f => `${f.type}-${f.id}` === key);
+      return food ? { ...food, quantity: qty } : null;
+    })
+    .filter(Boolean);
+
+  function changeFoodQty(food, delta) {
+    const key = `${food.type}-${food.id}`;
+    setSelectedFoods(prev => {
+      const cur = prev[key] || 0;
+      const next = Math.max(0, cur + delta);
+      if (next === 0) { const { [key]: _, ...rest } = prev; return rest; }
+      return { ...prev, [key]: next };
+    });
+  }
 
   async function handleSellTickets(e) {
     e.preventDefault();
     if (!selectedShowtime) return alert("Vui lòng chọn suất chiếu!");
     if (selectedSeats.length === 0) return alert("Vui lòng chọn ít nhất một ghế!");
-    if (!customer.name.trim()) return alert("Vui lòng nhập tên khách hàng!");
 
     try {
       setLoading(true);
@@ -260,38 +328,45 @@ export function useBanVe() {
       const user = userStr ? JSON.parse(userStr) : {};
       const staffUserId = user.userId || user.id || 1;
 
-      const showtimeId = getShowtimeId(selectedShowtime);
+      const showtimeId = Number(getShowtimeId(selectedShowtime));
+      const seatIds = selectedSeats.map(s => Number(getSeatId(s)));
 
-      const bookingPromises = selectedSeats.map(async (seat) => {
-        const payload = {
-          userId: Number(staffUserId),
-          showtimeId: Number(showtimeId),
-          seatId: Number(getSeatId(seat)),
-          totalPrice: Number(calculateSeatPrice(seat)),
-          status: "Paid",
-          paymentStatus: "Paid"
-        };
-        return await createBooking(payload);
-      });
+      // Đồ ăn kèm theo (nếu có)
+      const orderItems = selectedFoodItems.map(f => ({
+        foodId:  f.type === "food"  ? f.id : null,
+        comboId: f.type === "combo" ? f.id : null,
+        quantity: f.quantity,
+      }));
 
-      await Promise.all(bookingPromises);
+      const payload = {
+        showTimeId:   showtimeId,
+        seatIds:      seatIds,
+        bookingType:  "Counter",
+        targetUserId: staffUserId,
+        ...(orderItems.length > 0 && { orderItems }),
+      };
+
+      const result = await createBooking(payload);
 
       setSuccessReceipt({
-        movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
-        showtimeDate: getShowtimeDate(selectedShowtime),
-        showtimeTime: getShowtimeHour(selectedShowtime),
-        roomName: selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
-        seats: selectedSeats.map(s => `${s.rowName || s.seatRow || s.Row || "A"}${s.seatNumber || s.number || s.seatCol || ""}`).join(", "),
-        customerName: customer.name,
-        customerPhone: customer.phone,
-        totalAmount: totalAmount,
-        dateBooked: new Date().toLocaleString("vi-VN"),
-        ticketCode: `BK${Math.floor(Math.random() * 900000) + 100000}`
+        movieTitle:    selectedMovie?.title || selectedMovie?.Title || "Phim",
+        showtimeDate:  getShowtimeDate(selectedShowtime),
+        showtimeTime:  getShowtimeHour(selectedShowtime),
+        roomName:      selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
+        seats:         selectedSeats.map(s => `${s.rowName || s.seatRow || s.Row || "A"}${s.seatNumber || s.number || s.seatCol || ""}`).join(", "),
+        customerName:  "",
+        customerPhone: "",
+        totalAmount:   grandTotal,
+        foodItems:     selectedFoodItems,
+        dateBooked:    new Date().toLocaleString("vi-VN"),
+        ticketCode:    result?.ticketCode || result?.bookingCode || `BK${Math.floor(Math.random() * 900000) + 100000}`,
       });
 
       setSelectedSeats([]);
+      setSelectedFoods({});
+      setFoodStep(0);
       setCustomer({ name: "", phone: "", email: "" });
-      
+
       const availList = await getAvailableSeats(showtimeId);
       setAvailableSeats(availList);
 
@@ -330,6 +405,14 @@ export function useBanVe() {
     handleSeatClick,
     getSeatPrice: calculateSeatPrice,
     totalAmount,
+    totalFoodAmount,
+    grandTotal,
+    selectedFoodItems,
+    availableFoods,
+    selectedFoods,
+    changeFoodQty,
+    foodStep,
+    setFoodStep,
     handleSellTickets,
     getShowtimeHour,
     getShowtimeDate,
@@ -348,8 +431,12 @@ export function useBanVe() {
         const nb = Number(b.seatNumber || b.number || b.seatCol || 0);
         return na - nb;
       }),
-    getSeatDisplayLabel: (seat, row) =>
-      `${row}${seat.seatNumber || seat.number || seat.seatCol || ""}`,
+    getSeatDisplayLabel: (seat, row) => {
+      // Real API seat: seatRow='A', seatNumber='1' (sequential)
+      // Display as 'A1', 'B2', etc. using seatRow + seatNumber
+      const num = seat.seatNumber || seat.SeatNumber || seat.number || "";
+      return `${row}${num}`;
+    },
     isSeatBooked: (seat) => {
       const seatId = getSeatId(seat);
       return !availableSeats.some(s => getSeatId(s) === seatId);
@@ -365,12 +452,12 @@ export function useBanVe() {
       const booked = !availableSeats.some(s => getSeatId(s) === seatId);
       const selected = selectedSeats.some(s => getSeatId(s) === seatId);
       const type = (seat.seatType || seat.type || seat.SeatType || "").toLowerCase();
-      let cls = "counter-seat";
-      if (booked) cls += " booked";
-      else if (selected) cls += " selected";
-      if (type === "vip") cls += " vip";
-      if (type === "couple") cls += " couple";
-      return cls;
+      const base = "counter-seat-btn";
+      if (booked)   return `${base} seat-taken`;
+      if (selected) return `${base} seat-selected`;
+      if (type === "vip") return `${base} seat-vip`;
+      if (type === "couple" || type === "sweetbox") return `${base} seat-couple`;
+      return `${base} seat-standard`;
     },
     getSelectedSeatsText: () =>
       selectedSeats

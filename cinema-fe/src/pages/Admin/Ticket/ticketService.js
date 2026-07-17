@@ -47,7 +47,7 @@ export async function updateTicket(id, ticket) {
   const response = await fetch(`${API_URL}/Tickets/${id}/Status`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ status: backendStatus }),
+    body: JSON.stringify({ Status: backendStatus }),
   });
   const data = await readResponse(response);
   if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật vé thất bại!"));

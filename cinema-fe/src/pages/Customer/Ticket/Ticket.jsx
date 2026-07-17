@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import "../../../styles/Customer/CustomerPages.css";
@@ -17,6 +17,7 @@ import {
   getTicketStatusLabel,
   handlePosterError,
 } from "./Ticket.js";
+import { fetchOrdersByTicket } from "./customerTicketService.js";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -36,6 +37,16 @@ export default function Ticket() {
   } = useTicket();
 
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketOrders, setTicketOrders] = useState([]);
+
+  useEffect(() => {
+    if (!selectedTicket) { setTicketOrders([]); return; }
+    const ticketId = selectedTicket.ticketCodes?.[0]
+      ? parseInt((selectedTicket.ticketCodes[0]).replace(/^ve/i, ""))
+      : null;
+    if (!ticketId) return;
+    fetchOrdersByTicket(ticketId).then(setTicketOrders).catch(() => setTicketOrders([]));
+  }, [selectedTicket]);
 
   return (
     <div className="cust-page">
@@ -196,14 +207,24 @@ export default function Ticket() {
             <div className="ticket-detail-modal-body">
               <div className="ticket-detail-modal-qr-section">
                 <span className="room-entry-label">Mã vào khán phòng:</span>
-                <div className="detail-qr-code-wrapper" style={{ background: "#fff", padding: 8, borderRadius: 8, display: "inline-flex" }}>
-                  <QRCodeSVG
-                    value={selectedTicket.qrCode || selectedTicket.id || "INVALID"}
-                    size={140}
-                    level="M"
-                  />
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "center" }}>
+                  {(selectedTicket.ticketCodes?.length > 0
+                    ? selectedTicket.ticketCodes
+                    : [selectedTicket.qrCode || selectedTicket.id]
+                  ).map((code, idx) => (
+                    <div key={code || idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                      {selectedTicket.seats?.[idx] && (
+                        <span style={{ fontSize: "11px", fontWeight: "700", color: "#374151" }}>
+                          Ghế {selectedTicket.seats[idx]}
+                        </span>
+                      )}
+                      <div style={{ background: "#fff", padding: 8, borderRadius: 8, display: "inline-flex", boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}>
+                        <QRCodeSVG value={code || "INVALID"} size={120} level="M" />
+                      </div>
+                      <span className="detail-ticket-code" style={{ fontSize: "11px" }}>{code}</span>
+                    </div>
+                  ))}
                 </div>
-                <span className="detail-ticket-code">{selectedTicket.id}</span>
               </div>
 
               <div className="ticket-detail-modal-info-list">
@@ -236,7 +257,16 @@ export default function Ticket() {
                 </div>
                 <div className="detail-info-row">
                   <span className="info-label">Đồ ăn và Thức uống:</span>
-                  <span className="info-value">Không có</span>
+                  <span className="info-value">
+                    {ticketOrders.length === 0
+                      ? "Không có"
+                      : ticketOrders.map((item, idx) => (
+                          <span key={idx} style={{ display: "block" }}>
+                            {item.name} x{item.quantity} — {(item.price * item.quantity).toLocaleString("vi-VN")}đ
+                          </span>
+                        ))
+                    }
+                  </span>
                 </div>
                 <div className="detail-info-row total">
                   <span className="info-label">Tổng cộng:</span>

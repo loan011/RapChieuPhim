@@ -546,13 +546,21 @@ export function groupSeatsByRow(seats) {
 ========================= */
 
 export function buildBookingPayload({ userId, showtimeId, seat, selectedShowtime }) {
+  const sId   = Number(getSeatId(seat));
+  const uId   = Number(userId);
+  const stId  = Number(showtimeId);
+  const price = Number(getSeatPrice(seat, selectedShowtime));
+  const bookingDate = new Date().toISOString();
   return {
-    userId: Number(userId),
-    showtimeId: Number(showtimeId),
-    seatId: Number(getSeatId(seat)),
-    totalPrice: Number(getSeatPrice(seat, selectedShowtime)),
-    status: "Paid",
-    paymentStatus: "Paid",
+    userId:     uId,
+    showTimeId: stId,
+    seatId:     sId,
+    bookingDate,
+    ticketPrice:  price,
+    discountAmt:  0,
+    totalAmount:  price,
+    bookingType: "Online",
+    status:      "Paid",
   };
 }
 

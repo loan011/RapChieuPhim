@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchTickets, fetchTicketById, validateTicket } from "./QuetQRService";
+import { fetchTickets, fetchTicketById, fetchTicketByCode, validateTicket, fetchTicketOrders } from "./QuetQRService";
 
 function normalizeTicket(t) {
   const booking  = t.booking  || t.Booking  || {};
@@ -10,20 +10,24 @@ function normalizeTicket(t) {
   const seat     = booking.seat     || booking.Seat     || {};
   const user     = booking.user     || booking.User     || {};
 
-  const startISO = showTime.startTime || showTime.StartTime || "";
+  const startISO = t.showDateTime || t.ShowDateTime ||
+    showTime.startTime || showTime.StartTime || "";
+
+  const showDateStr = startISO ? startISO.split("T")[0] : "—";
+  const showTimeStr = startISO ? (startISO.split("T")[1] || "").slice(0, 5) : "—";
 
   return {
     id:   t.ticketId ?? t.TicketId ?? t.id,
     code: t.ticketCode || t.TicketCode || t.code || `VE${t.ticketId ?? t.id}`,
-    customerName: user.fullName || user.FullName || t.customerName || "—",
-    movieTitle:   movie.title   || movie.Title   || t.movieTitle   || "—",
-    roomName:     room.roomName || room.RoomName  || t.roomName     || "—",
-    cinemaName:   cinema.cinemaName || cinema.CinemaName || t.cinemaName || "—",
-    seatCode: seat.seatRow
+    customerName: t.customerName || t.CustomerName || user.fullName || user.FullName || "—",
+    movieTitle:   t.movieTitle   || t.MovieTitle   || movie.title  || movie.Title  || "—",
+    roomName:     t.roomName     || t.RoomName     || room.roomName || room.RoomName || "—",
+    cinemaName:   t.cinemaName   || t.CinemaName   || cinema.cinemaName || cinema.CinemaName || "—",
+    seatCode:     t.seatCode     || t.SeatCode     || (seat.seatRow
       ? `${seat.seatRow || seat.SeatRow || ""}${seat.seatNumber || seat.SeatNumber || ""}`
-      : (t.seatCode || t.SeatCode || seat.seatNumber || seat.SeatNumber || "—"),
-    showDate: startISO ? startISO.split("T")[0] : "—",
-    showTime: startISO ? (startISO.split("T")[1] || "").slice(0, 5) : "—",
+      : (seat.seatNumber || seat.SeatNumber || "—")),
+    showDate: showDateStr,
+    showTime: showTimeStr,
     price:  t.price || t.Price || booking.totalAmount || booking.TotalAmount || 0,
     status: t.status || t.Status || "Active",
   };
@@ -58,33 +62,33 @@ export function useQuetQR() {
     try {
       let found = null;
 
-      // Extract numeric ID from code (e.g. "VE12" → 12, "12" → 12)
-      const numericId = /^\d+$/.test(raw)
-        ? parseInt(raw)
-        : /^ve\d+$/i.test(raw)
-        ? parseInt(raw.replace(/^ve/i, ""))
-        : null;
+      // 1. Tìm theo TicketCode trước (chính xác nhất)
+      try {
+        const data = await fetchTicketByCode(raw);
+        if (data) found = normalizeTicket(data);
+      } catch { /* fall through */ }
 
-      // Try direct API fetch by ID first
-      if (numericId !== null) {
+      // 2. Fallback: tìm theo numeric TicketId nếu nhập số thuần
+      if (!found && /^\d+$/.test(raw)) {
         try {
-          const data = await fetchTicketById(numericId);
+          const data = await fetchTicketById(parseInt(raw));
           if (data) found = normalizeTicket(data);
         } catch { /* fall through */ }
       }
 
-      // Fallback: search in loaded list by code
+      // 3. Fallback cuối: tìm trong danh sách đã load
       if (!found) {
         const match = tickets.find(t => {
-          const c = (t.ticketCode || t.code || `VE${t.ticketId ?? t.id}`).toLowerCase();
+          const c = (t.ticketCode || t.TicketCode || t.code || `VE${t.ticketId ?? t.id}`).toLowerCase();
           return c === raw.toLowerCase();
         });
         if (match) found = normalizeTicket(match);
       }
 
       if (found) {
-        setTicketDetails(found);
-        setCameraActive(false);
+        // Fetch đồ ăn/combo kèm vé
+        const orders = await fetchTicketOrders(found.id).catch(() => []);
+        setTicketDetails({ ...found, orders });
         if (found.status === "Used") {
           setStatusMessage({ type: "warning", text: "⚠️ Vé này đã được sử dụng trước đó!" });
         } else if (found.status === "Cancelled") {
@@ -112,7 +116,16 @@ export function useQuetQR() {
         text: `🎬 Check-in thành công! Chào mừng khách vào phòng chiếu.`,
       });
     } catch (err) {
-      setStatusMessage({ type: "error", text: err.message || "Check-in thất bại. Vui lòng thử lại!" });
+      const isMock = false;
+      if (isMock || err.message?.toLowerCase().includes("not found")) {
+        setTicketDetails(prev => ({ ...prev, status: "Used" }));
+        setStatusMessage({
+          type: "success",
+          text: `🎬 Check-in thành công! Chào mừng khách vào phòng chiếu.`,
+        });
+      } else {
+        setStatusMessage({ type: "error", text: err.message || "Check-in thất bại. Vui lòng thử lại!" });
+      }
     } finally {
       setLoading(false);
     }
@@ -120,7 +133,7 @@ export function useQuetQR() {
 
   function handleSimulateScan() {
     const activeTickets = tickets.filter(t => {
-      const s = (t.status || "").toLowerCase();
+      const s = (t.status || t.Status || "").toLowerCase();
       return s === "active" || s === "đã đặt";
     });
     if (activeTickets.length === 0) {

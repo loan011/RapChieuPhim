@@ -30,7 +30,14 @@ async function apiPost(url, body) {
     body: JSON.stringify(body),
   });
 
-  return readResponse(response);
+  const data = await readResponse(response);
+  if (!response.ok) {
+    const msg = data?.message || data?.Message || data?.title || data?.errors
+      ? Object.values(data.errors || {}).flat().join(" ")
+      : `HTTP ${response.status}`;
+    throw new Error(typeof msg === "string" ? msg : `HTTP ${response.status}`);
+  }
+  return data;
 }
 
 async function apiDelete(url, body) {
@@ -160,37 +167,25 @@ export async function getSeatsByRoomId(roomId) {
 
   const data = await tryGet([
     `${API_URL}/Seats/ByRoom/${roomId}`,
-    `${API_URL}/Seat/ByRoom/${roomId}`,
-    `${API_URL}/Seats/Room/${roomId}`,
-    `${API_URL}/Seat/Room/${roomId}`,
-    `${API_URL}/api/Seats/ByRoom/${roomId}`,
-    `${API_URL}/api/Seat/ByRoom/${roomId}`,
-    `${API_URL}/Seats?roomId=${roomId}`,
-    `${API_URL}/Seat?roomId=${roomId}`,
+    `${API_URL}/Seats/Layout/${roomId}`,
   ]);
 
-  const seats = Array.isArray(data) ? data : data?.data || data?.items || [];
-  if (seats.length === 0) {
+  const raw = Array.isArray(data) ? data : data?.$values || data?.value || data?.data || data?.items || [];
+  if (raw.length === 0) {
     return generateMockSeats(roomId);
   }
-  return seats;
+  return raw;
 }
 
 export async function getAvailableSeats(showtimeId) {
   if (!showtimeId) return [];
 
   const data = await tryGet([
-    `${API_URL}/Bookings/AvailableSeats/${showtimeId}`,
-    `${API_URL}/Booking/AvailableSeats/${showtimeId}`,
     `${API_URL}/Seats/Available/${showtimeId}`,
-    `${API_URL}/Seat/Available/${showtimeId}`,
-    `${API_URL}/api/Bookings/AvailableSeats/${showtimeId}`,
-    `${API_URL}/api/Seats/Available/${showtimeId}`,
-    `${API_URL}/Bookings/GetAvailableSeats?showtimeId=${showtimeId}`,
-    `${API_URL}/Booking/GetAvailableSeats?showtimeId=${showtimeId}`,
+    `${API_URL}/Bookings/AvailableSeats/${showtimeId}`,
   ]);
 
-  return Array.isArray(data) ? data : data?.data || data?.items || [];
+  return Array.isArray(data) ? data : data?.$values || data?.data || data?.items || [];
 }
 
 export async function createBooking(payload) {

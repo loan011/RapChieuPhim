@@ -1,27 +1,15 @@
 import "./Combo.css";
 import { useState } from "react";
 import { useCombo } from "./Combo.js";
-import { MdFastfood, MdAdd, MdRemove, MdShoppingCart, MdReceipt, MdCheckCircle, MdClose, MdAddCircleOutline, MdDeleteOutline } from "react-icons/md";
+import { MdFastfood, MdAdd, MdRemove, MdAddCircleOutline, MdDeleteOutline, MdClose } from "react-icons/md";
 
 export default function StaffCombo() {
   const {
     combos,
-    quantities,
-    loading,
-    success,
-    setSuccess,
-    handleQuantityChange,
-    selectedItems,
-    totalAmount,
-    handleSell,
-    showAddCombo,
-    setShowAddCombo,
-    addingCombo,
-    handleAddCombo,
-    showAddFood,
-    setShowAddFood,
-    addingFood,
-    handleAddFood,
+    showAddCombo, setShowAddCombo,
+    addingCombo, handleAddCombo,
+    showAddFood, setShowAddFood,
+    addingFood, handleAddFood,
     handleDeleteItem,
   } = useCombo();
 
@@ -30,152 +18,129 @@ export default function StaffCombo() {
   const [comboFoodQtys, setComboFoodQtys] = useState({});
   const availableFoods = combos.filter(item => item.type === "food");
 
+  const outOfStock = combos.filter(f => (f.quantity ?? 0) <= 0).length;
+  const lowStock = combos.filter(f => (f.quantity ?? 0) > 0 && (f.quantity ?? 0) <= 10).length;
+
   return (
     <>
     <div className="staff-combo-container">
       <h4 className="font-bold text-2xl text-gray-805 mb-6 flex items-center gap-2">
-        <MdFastfood className="text-green-600" /> Bán Combo & Thức Ăn Kèm
+        <MdFastfood className="text-green-600" /> Đồ Ăn & Tồn Kho
       </h4>
 
-      {success && (
-        <div className="mb-6 p-6 bg-green-50 border border-green-200 text-green-800 rounded-2xl flex flex-col md:flex-row gap-6 items-start shadow-sm">
-          <div className="text-4xl text-green-600 pt-1 shrink-0">
-            <MdCheckCircle />
-          </div>
-          <div className="flex-1">
-            <h5 className="font-bold text-lg text-green-900 mb-2">Đơn Hàng Combo Thành Công!</h5>
-            <div className="text-sm bg-white/50 p-4 rounded-xl border border-green-100 max-w-xl">
-              <div className="flex justify-between border-b border-green-150 pb-2 mb-2">
-                <strong>Mã đơn hàng: {success.id}</strong>
-                <span>{success.time}</span>
-              </div>
+      {/* Thống kê nhanh */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+          <div className="text-2xl font-bold text-gray-800">{combos.length}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Tổng mặt hàng</div>
+        </div>
+        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-center">
+          <div className="text-2xl font-bold text-amber-700">{lowStock}</div>
+          <div className="text-xs text-amber-600 mt-0.5">Sắp hết (≤ 10)</div>
+        </div>
+        <div className="bg-red-50 rounded-xl p-4 border border-red-100 text-center">
+          <div className="text-2xl font-bold text-red-600">{outOfStock}</div>
+          <div className="text-xs text-red-500 mt-0.5">Hết hàng</div>
+        </div>
+      </div>
 
-              <div className="space-y-1.5 border-b border-green-150 pb-3 mb-2">
-                {success.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between">
-                    <span>{item.name} x {item.quantity}</span>
-                    <span>{(item.price * item.quantity).toLocaleString("vi-VN")} đ</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between items-center text-base font-extrabold text-green-955">
-                <span>Tổng tiền:</span>
-                <span>{success.totalAmount.toLocaleString("vi-VN")} đ</span>
-              </div>
-            </div>
+      {/* Danh sách tồn kho */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-4 mb-4 flex-wrap gap-y-2">
+          <h5 className="font-bold text-gray-800 text-base flex items-center gap-2">
+            <span className="w-1.5 h-5 bg-green-600 rounded-full" />
+            Danh Sách Tồn Kho
+          </h5>
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => setSuccess(null)}
-              className="mt-4 bg-green-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors"
+              onClick={() => { setFoodForm({ foodName: "", category: "Đồ ăn", price: "", quantity: "", imageUrl: "" }); setShowAddFood(true); }}
+              className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors"
             >
-              Tiếp tục bán combo
+              <MdAddCircleOutline /> Thêm Đồ Ăn
+            </button>
+            <button
+              onClick={() => { setFoodForm({ foodName: "", category: "Đồ uống", price: "", quantity: "", imageUrl: "" }); setShowAddFood(true); }}
+              className="flex items-center gap-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <MdAddCircleOutline /> Thêm Đồ Uống
+            </button>
+            <button
+              onClick={() => { setComboForm({ comboName: "", price: "", description: "", quantity: "100", imageUrl: "" }); setComboFoodQtys({}); setShowAddCombo(true); }}
+              className="flex items-center gap-1 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <MdAddCircleOutline /> Thêm Combo
             </button>
           </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Combo List */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h5 className="font-bold text-gray-800 text-base mb-4 flex items-center justify-between gap-2 border-b border-gray-50 pb-2">
-              <span className="flex items-center gap-2"><span className="w-1.5 h-5 bg-green-600 rounded-full"></span>Danh Sách Combo & Đồ Ăn</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setFoodForm({ foodName: "", category: "Đồ ăn", price: "", quantity: "", imageUrl: "" }); setShowAddFood(true); }}
-                  className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <MdAddCircleOutline className="text-base" /> Thêm Đồ Ăn
-                </button>
-                <button
-                  onClick={() => { setFoodForm({ foodName: "", category: "Đồ uống", price: "", quantity: "", imageUrl: "" }); setShowAddFood(true); }}
-                  className="flex items-center gap-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <MdAddCircleOutline className="text-base" /> Thêm Đồ Uống
-                </button>
-                <button
-                  onClick={() => { setComboForm({ comboName: "", price: "", description: "", quantity: "100", imageUrl: "" }); setComboFoodQtys({}); setShowAddCombo(true); }}
-                  className="flex items-center gap-1 text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <MdAddCircleOutline className="text-base" /> Thêm Combo
-                </button>
-
-              </div>
-            </h5>
-            <div className="divide-y divide-gray-100">
-              {combos.map(item => (
-                <div key={item.id} className="py-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl bg-gray-50 p-2.5 rounded-xl border border-gray-100 w-14 h-14 flex items-center justify-center select-none">{item.image}</span>
-                    <div>
-                      <h6 className="font-semibold text-gray-800 text-sm">{item.name}</h6>
-                      <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
-                      <span className="text-sm font-bold text-green-650 inline-block mt-1">{item.price.toLocaleString("vi-VN")} đ</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleQuantityChange(item.id, -1)}
-                      className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-all"
-                    >
-                      <MdRemove />
-                    </button>
-                    <span className="w-6 text-center font-bold text-sm text-gray-800">{quantities[item.id] || 0}</span>
-                    <button
-                      onClick={() => handleQuantityChange(item.id, 1)}
-                      className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-all"
-                    >
-                      <MdAdd />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteItem(item.id, item.type)}
-                      className="w-8 h-8 rounded-lg border border-red-100 hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 active:scale-95 transition-all ml-1"
-                      title="Xóa món"
-                    >
-                      <MdDeleteOutline />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {combos.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-16">Chưa có mặt hàng nào.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
+                  <th className="pb-3 text-left font-semibold w-12"></th>
+                  <th className="pb-3 text-left font-semibold">Tên món</th>
+                  <th className="pb-3 text-left font-semibold">Loại</th>
+                  <th className="pb-3 text-right font-semibold pr-6">Giá bán</th>
+                  <th className="pb-3 text-center font-semibold w-36">Còn lại</th>
+                  <th className="pb-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {combos.map(item => {
+                  const qty = item.quantity ?? 0;
+                  return (
+                    <tr key={`${item.type}-${item.id}`} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="py-3 pr-2">
+                        <span className="text-2xl bg-gray-50 rounded-xl w-10 h-10 flex items-center justify-center border border-gray-100 select-none">
+                          {item.image}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <div className="font-semibold text-gray-800">{item.name}</div>
+                        {item.description && (
+                          <div className="text-xs text-gray-400 mt-0.5">{item.description}</div>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          item.type === "combo" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {item.type === "combo" ? "Combo" : item.description || "Đồ ăn"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right pr-6 font-bold text-gray-800">
+                        {item.price.toLocaleString("vi-VN")} đ
+                      </td>
+                      <td className="py-3 text-center">
+                        <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full font-bold text-sm min-w-[4rem] ${
+                          qty <= 0
+                            ? "bg-red-100 text-red-700"
+                            : qty <= 10
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {qty <= 0 ? "Hết hàng" : qty}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <button
+                          onClick={() => handleDeleteItem(item.id, item.type)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                          title="Xóa"
+                        >
+                          <MdDeleteOutline className="text-base" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        {/* Cart & Billing details */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between h-fit">
-          <div>
-            <h5 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2 border-b border-gray-50 pb-2">
-              <MdShoppingCart className="text-green-600" />
-              Chi Tiết Đơn Hàng
-            </h5>
-            {selectedItems.length === 0 ? (
-              <p className="text-gray-400 text-sm italic py-8 text-center">Chưa có món nào được chọn.</p>
-            ) : (
-              <div className="space-y-3 mb-6">
-                {selectedItems.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700 font-medium">{item.name} <span className="text-gray-400 font-normal">x{quantities[item.id]}</span></span>
-                    <span className="text-gray-800 font-semibold">{(item.price * quantities[item.id]).toLocaleString("vi-VN")} đ</span>
-                  </div>
-                ))}
-                <div className="border-t border-gray-100 pt-3 mt-3 flex justify-between items-center">
-                  <span className="font-bold text-gray-850">Tổng cộng:</span>
-                  <span className="font-extrabold text-lg text-green-700">{totalAmount.toLocaleString("vi-VN")} đ</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSell} className="space-y-4 border-t border-gray-50 pt-4">
-
-            <button
-              type="submit"
-              disabled={selectedItems.length === 0 || loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <MdReceipt /> {loading ? "Đang xử lý..." : "THANH TOÁN"}
-            </button>
-          </form>
-        </div>
+        )}
       </div>
     </div>
 

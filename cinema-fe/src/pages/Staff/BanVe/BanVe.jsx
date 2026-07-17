@@ -1,12 +1,13 @@
 import "./BanVe.css";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useBanVe } from "./BanVe.js";
-import { MdMovie, MdChair, MdCheckCircle, MdAdd, MdClose, MdCalendarToday } from "react-icons/md";
+import { MdMovie, MdChair, MdCheckCircle, MdAdd, MdClose, MdCalendarToday, MdFastfood, MdArrowForward, MdRemove, MdPayments, MdQrCode } from "react-icons/md";
 
 export default function StaffBanVe() {
   const todayRef = useRef(null);
   const tabsBarRef = useRef(null);
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // "cash" | "qr"
 
   useEffect(() => {
     if (todayRef.current && tabsBarRef.current) {
@@ -37,6 +38,14 @@ export default function StaffBanVe() {
     handleSeatClick,
     getSeatPrice,
     totalAmount,
+    totalFoodAmount,
+    grandTotal,
+    selectedFoodItems,
+    availableFoods,
+    selectedFoods,
+    changeFoodQty,
+    foodStep,
+    setFoodStep,
     handleSellTickets,
     getShowtimeHour,
     getShowtimeRoomId,
@@ -109,6 +118,13 @@ export default function StaffBanVe() {
                 <strong>Ghế đã mua:</strong> {successReceipt.seats}
               </div>
 
+              {successReceipt.foodItems?.length > 0 && (
+                <div>
+                  <strong>Đồ ăn:</strong>{" "}
+                  {successReceipt.foodItems.map(f => `${f.name} x${f.quantity}`).join(", ")}
+                </div>
+              )}
+
               <div className="receipt-total-row">
                 <span>Tổng tiền đã thu:</span>
                 <strong>{formatMoney(successReceipt.totalAmount)} đ</strong>
@@ -179,13 +195,7 @@ export default function StaffBanVe() {
               <p className="staff-empty-text">
                 Không có lịch chiếu phim nào trong ngày này.
               </p>
-              <button
-                type="button"
-                className="staff-add-showtime-btn"
-                onClick={() => setShowAddShowtime(true)}
-              >
-                <MdAdd /> Tạo Suất Chiếu Mới
-              </button>
+
             </div>
           ) : (
             <div className="movie-showtime-list">
@@ -338,37 +348,112 @@ export default function StaffBanVe() {
               </div>
 
               <form onSubmit={handleSellTickets} className="sell-ticket-form">
-                <div className="customer-form-fields">
-                  <div className="counter-form-group">
-                    <label>
-                      Tên Khách Hàng <span>*</span>
-                    </label>
 
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nhập tên khách hàng"
-                      value={customer.name}
-                      onChange={(event) =>
-                        setCustomer({ ...customer, name: event.target.value })
-                      }
-                    />
+                {/* Step indicator */}
+                {selectedSeats.length > 0 && (
+                  <div className="flex items-center gap-1 mb-4 text-xs font-semibold">
+                    {[["1","Ghế"],["2","Đồ ăn"],["3","Xác nhận"]].map(([n, label], i) => (
+                      <div key={n} className="flex items-center gap-1">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          foodStep >= i ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"
+                        }`}>{n}</span>
+                        <span className={foodStep >= i ? "text-green-700" : "text-gray-400"}>{label}</span>
+                        {i < 2 && <span className="text-gray-300 mx-0.5">›</span>}
+                      </div>
+                    ))}
                   </div>
+                )}
 
-                  <div className="counter-form-group">
-                    <label>Số Điện Thoại</label>
-
-                    <input
-                      type="text"
-                      placeholder="Nhập số điện thoại"
-                      value={customer.phone}
-                      onChange={(event) =>
-                        setCustomer({ ...customer, phone: event.target.value })
-                      }
-                    />
+                {/* BƯỚC 1: Ghế đã chọn → nút tiếp theo */}
+                {selectedSeats.length > 0 && foodStep === 0 && (
+                  <div className="space-y-3">
+                    <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1.5">
+                      <div>Ghế: <strong>{getSelectedSeatsText()}</strong></div>
+                      <div>Vé: <strong>{formatMoney(totalAmount)} đ</strong></div>
+                    </div>
+                    <button type="button"
+                      onClick={() => setFoodStep(1)}
+                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                    >
+                      <MdFastfood /> Chọn Đồ Ăn <MdArrowForward />
+                    </button>
+                    <button type="button"
+                      onClick={() => setFoodStep(2)}
+                      className="w-full text-center text-sm text-gray-500 hover:text-gray-700 underline py-1"
+                    >
+                      Bỏ qua, không mua đồ ăn
+                    </button>
                   </div>
-                </div>
+                )}
 
+                {/* BƯỚC 2: Chọn đồ ăn */}
+                {foodStep === 1 && (
+                  <div>
+                    <h6 className="font-semibold text-gray-700 text-sm mb-3 flex items-center gap-1.5">
+                      <MdFastfood className="text-green-600" /> Chọn Đồ Ăn & Combo
+                    </h6>
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 mb-3">
+                      {availableFoods.length === 0 && (
+                        <p className="text-gray-400 text-xs text-center py-4">Không có đồ ăn nào.</p>
+                      )}
+                      {availableFoods.map(food => {
+                        const key = `${food.type}-${food.id}`;
+                        const qty = selectedFoods[key] || 0;
+                        const outOfStock = (food.quantity ?? 0) <= 0;
+                        return (
+                          <div key={key} className={`flex items-center justify-between gap-2 p-2 rounded-xl border ${outOfStock ? "opacity-50 bg-gray-50" : "bg-white border-gray-100"}`}>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="text-xl">{food.image}</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-gray-800 truncate">{food.name}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-xs text-green-700 font-bold">{formatMoney(food.price)} đ</span>
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                                    outOfStock ? "bg-red-100 text-red-600"
+                                    : food.quantity <= 10 ? "bg-amber-100 text-amber-700"
+                                    : "bg-emerald-100 text-emerald-700"
+                                  }`}>
+                                    {outOfStock ? "Hết" : `Còn: ${food.quantity}`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button type="button" onClick={() => changeFoodQty(food, -1)} disabled={qty === 0}
+                                className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50">
+                                <MdRemove className="text-sm" />
+                              </button>
+                              <span className="w-5 text-center text-xs font-bold">{qty}</span>
+                              <button type="button" onClick={() => changeFoodQty(food, 1)} disabled={outOfStock || qty >= (food.quantity || 0)}
+                                className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-50">
+                                <MdAdd className="text-sm" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {totalFoodAmount > 0 && (
+                      <div className="text-xs text-right text-green-700 font-bold mb-2">
+                        Đồ ăn: {formatMoney(totalFoodAmount)} đ
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setFoodStep(2); }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1">
+                        Xác nhận <MdArrowForward />
+                      </button>
+                      <button type="button" onClick={() => { setFoodStep(2); }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm">
+                        Bỏ qua
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* BƯỚC 3: Xác nhận */}
+                {(foodStep === 2 || (selectedSeats.length === 0)) && (
+                  <div>
                 <div className="counter-payment-summary">
                   <div className="counter-payment-info">
                     <div>
@@ -385,14 +470,50 @@ export default function StaffBanVe() {
                     </div>
 
                     <div>
-                      Giá vé cơ bản:{" "}
-                      <strong>{formatMoney(getSelectedShowtimeBasePrice())} đ</strong>
+                      Tiền vé:{" "}
+                      <strong>{formatMoney(totalAmount)} đ</strong>
                     </div>
+
+                    {totalFoodAmount > 0 && (
+                      <div>
+                        Đồ ăn:{" "}
+                        <strong>{formatMoney(totalFoodAmount)} đ</strong>
+                      </div>
+                    )}
                   </div>
 
                   <div className="counter-total-row">
                     <span>Tổng tiền:</span>
-                    <strong>{formatMoney(totalAmount)} đ</strong>
+                    <strong>{formatMoney(grandTotal)} đ</strong>
+                  </div>
+
+                  {/* Phương thức thanh toán */}
+                  <div className="mt-3 mb-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phương thức thanh toán</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("cash")}
+                        className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 text-sm font-semibold transition-all ${
+                          paymentMethod === "cash"
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-200 bg-white text-gray-500 hover:border-green-300"
+                        }`}
+                      >
+                        <MdPayments className="text-xl" />
+                        Tiền mặt
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        title="Sắp ra mắt"
+                        className="flex flex-col items-center gap-1 py-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-300 text-sm font-semibold cursor-not-allowed relative"
+                      >
+                        <MdQrCode className="text-xl" />
+                        QR ngân hàng
+                        <span className="absolute -top-1.5 -right-1.5 text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full font-bold">Sắp có</span>
+                      </button>
+                    </div>
                   </div>
 
                   <button
@@ -400,135 +521,16 @@ export default function StaffBanVe() {
                     disabled={selectedSeats.length === 0 || loading}
                     className="counter-submit-btn"
                   >
-                    {loading ? "Đang xử lý..." : "XUẤT VÉ & THANH TOÁN"}
+                    {loading ? "Đang xử lý..." : "💵 XUẤT VÉ & THU TIỀN MẶT"}
                   </button>
                 </div>
+                  </div>
+                )}
               </form>
             </>
           )}
         </div>
       </div>
-
-      {/* ── Modal Tạo Suất Chiếu Mới ── */}
-      {showAddShowtime && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-              <h5 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                <MdCalendarToday className="text-green-600" /> Tạo Suất Chiếu Mới
-              </h5>
-              <button type="button" onClick={() => setShowAddShowtime(false)}
-                className="text-gray-400 hover:text-gray-700 text-2xl leading-none">
-                <MdClose />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddShowtime} className="p-6 space-y-4">
-              {/* Phim */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Phim <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  value={addShowtimeForm.movieId}
-                  onChange={e => setAddShowtimeForm(f => ({ ...f, movieId: e.target.value }))}
-                >
-                  <option value="">-- Chọn phim --</option>
-                  {movies.map(m => (
-                    <option key={m.id || m.movieId} value={m.id || m.movieId}>
-                      {m.title || m.Title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Phòng chiếu */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Phòng chiếu <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  value={addShowtimeForm.roomId}
-                  onChange={e => setAddShowtimeForm(f => ({ ...f, roomId: e.target.value }))}
-                >
-                  <option value="">-- Chọn phòng --</option>
-                  {rooms.map(r => (
-                    <option key={r.id || r.roomId} value={r.id || r.roomId}>
-                      {r.roomName || r.RoomName || r.name} {r.cinema?.cinemaName ? `(${r.cinema.cinemaName})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Ngày & Giờ bắt đầu */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Ngày chiếu <span className="text-red-500">*</span>
-                  </label>
-                  <input type="date"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                    value={addShowtimeForm.showDate}
-                    onChange={e => setAddShowtimeForm(f => ({ ...f, showDate: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Giờ bắt đầu <span className="text-red-500">*</span>
-                  </label>
-                  <input type="time"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                    value={addShowtimeForm.startTime}
-                    onChange={e => setAddShowtimeForm(f => ({ ...f, startTime: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Thời lượng & Giá */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Thời lượng (phút)
-                  </label>
-                  <input type="number" min="30" max="360"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                    value={addShowtimeForm.duration}
-                    onChange={e => setAddShowtimeForm(f => ({ ...f, duration: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Giá vé (đ)
-                  </label>
-                  <input type="number" min="0" step="5000"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                    value={addShowtimeForm.basePrice}
-                    onChange={e => setAddShowtimeForm(f => ({ ...f, basePrice: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {addShowtimeError && (
-                <p className="text-red-500 text-xs font-semibold">{addShowtimeError}</p>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowAddShowtime(false)}
-                  className="px-4 py-2 text-sm font-semibold rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50">
-                  Hủy
-                </button>
-                <button type="submit" disabled={addShowtimeLoading}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
-                  {addShowtimeLoading ? "Đang tạo..." : "Tạo Suất Chiếu"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
