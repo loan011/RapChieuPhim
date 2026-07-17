@@ -11,6 +11,7 @@ export default function StaffQuetQR() {
     ticketDetails,
     loading,
     statusMessage,
+    setStatusMessage,
     handleFindTicket,
     handleCheckIn,
     handleSimulateScan,
@@ -79,7 +80,10 @@ export default function StaffQuetQR() {
         );
       } catch (err) {
         console.error("Camera startup error:", err);
-        alert("Không thể khởi động camera. Vui lòng kiểm tra quyền truy cập camera!");
+        setStatusMessage({
+          type: "error",
+          text: "Không thể khởi động camera. Vui lòng kiểm tra và cấp quyền truy cập camera ở góc trái thanh địa chỉ trình duyệt (biểu tượng camera/khóa), hoặc đảm bảo camera không bị chiếm dụng bởi tab/ứng dụng khác."
+        });
       }
     }, 100);
   }
@@ -133,6 +137,10 @@ export default function StaffQuetQR() {
         );
       } catch (err) {
         console.error("Camera startup error after switch:", err);
+        setStatusMessage({
+          type: "error",
+          text: `Đổi chiều camera thất bại: ${err.message || err}`
+        });
       }
     }, 100);
   }
@@ -159,7 +167,7 @@ export default function StaffQuetQR() {
             {/* Switch camera button */}
             <button
               onClick={toggleCameraFacing}
-              className="btn-toggle-cam absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
+              className="absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
             >
               <MdCameraAlt /> {facingMode === "user" ? "Đổi Cam Sau" : "Đổi Cam Trước"}
             </button>

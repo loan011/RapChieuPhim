@@ -146,6 +146,7 @@ export function useQuetQR() {
     ticketDetails,
     loading,
     statusMessage,
+    setStatusMessage,
     handleFindTicket,
     handleCheckIn,
     handleSimulateScan,
