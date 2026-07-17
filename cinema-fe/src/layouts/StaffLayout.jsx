@@ -9,6 +9,7 @@ import {
   MdMenu,
   MdLogout,
   MdLocalActivity,
+  MdBarChart,
 } from "react-icons/md";
 import { useState } from "react";
 
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
   { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },
   { to: "/staff/quet-qr", label: "Quét QR", icon: <MdQrCodeScanner /> },
+  { to: "/staff/doanh-thu", label: "Doanh thu ngày", icon: <MdBarChart /> },
   { to: "/staff/ho-so", label: "Hồ sơ", icon: <MdPersonOutline /> },
 ];
 

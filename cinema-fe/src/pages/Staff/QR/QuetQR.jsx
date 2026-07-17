@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import "./QuetQR.css";
 import { useQuetQR } from "./useQuetQR.js";
 import { MdQrCodeScanner, MdCameraAlt, MdCheckCircle, MdError, MdWarning, MdArrowForward } from "react-icons/md";
@@ -9,43 +11,105 @@ export default function StaffQuetQR() {
     ticketDetails,
     loading,
     statusMessage,
+    setStatusMessage,
     handleFindTicket,
     handleCheckIn,
     handleSimulateScan,
   } = useQuetQR();
+
+  const html5QrCodeRef = useRef(null);
+  const lastScanTimeRef = useRef(0);
+  const lastScanCodeRef = useRef("");
+
+  // Tự động mở camera quét khi tải trang
+  useEffect(() => {
+    startScanner();
+
+    return () => {
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(err => console.error("Error stopping scanner on unmount:", err));
+      }
+    };
+  }, []);
+
+  async function startScanner() {
+    // Đợi phần tử DOM #reader được gắn vào cây DOM
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCodeRef.current = html5QrCode;
+        
+        const config = { 
+          fps: 15
+        };
+        
+        await html5QrCode.start(
+          { facingMode: "user" },
+          config,
+          (decodedText) => {
+            // Khi quét thành công QR
+            const now = Date.now();
+            if (decodedText === lastScanCodeRef.current && now - lastScanTimeRef.current < 3000) {
+              return; // Cooldown 3 giây cho cùng 1 mã QR
+            }
+            lastScanCodeRef.current = decodedText;
+            lastScanTimeRef.current = now;
+
+            console.log("QR Code Scanned:", decodedText);
+            
+            // Tự động bóc tách mã vé sạch sẽ
+            let cleanCode = decodedText.trim();
+            if (cleanCode.includes("/ticket-info/")) {
+              const parts = cleanCode.split("/ticket-info/");
+              cleanCode = parts[parts.length - 1];
+            } else if (cleanCode.includes("data=VE:")) {
+              const match = cleanCode.match(/data=VE:([^|&]+)/);
+              if (match) cleanCode = match[1];
+            } else if (cleanCode.startsWith("VE:")) {
+              const match = cleanCode.match(/VE:([^|]+)/);
+              if (match) cleanCode = match[1];
+            }
+
+            setTicketCode(cleanCode); // Hiển thị mã vé sạch trên ô nhập liệu
+            handleFindTicket(cleanCode, true); // Gọi tìm kiếm và TỰ ĐỘNG check-in!
+          },
+          (errorMessage) => {
+            // Quét từng khung hình
+          }
+        );
+      } catch (err) {
+        console.error("Camera startup error:", err);
+        setStatusMessage({
+          type: "error",
+          text: "Không thể khởi động camera. Vui lòng kiểm tra và cấp quyền truy cập camera ở góc trái thanh địa chỉ trình duyệt (biểu tượng camera/khóa), hoặc đảm bảo camera không bị chiếm dụng bởi tab/ứng dụng khác."
+        });
+      }
+    }, 100);
+  }
+
+
 
   return (
     <div className="staff-qr-container">
       <h4 className="font-bold text-2xl text-gray-805 mb-6 flex items-center gap-2">
         <MdQrCodeScanner className="text-green-600" /> Quét QR Vé Vào Cổng
       </h4>
-
+ 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Scanner Simulation */}
+        {/* Scanner Component */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center">
           <h5 className="font-bold text-gray-800 text-base mb-4 self-start border-b border-gray-50 pb-2 w-full">
             Trình Quét QR Camera
           </h5>
           
-          <div className="relative w-full max-w-sm aspect-square bg-gray-900 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-850 shadow-inner group">
-            {/* Camera View Overlay */}
-            <div className="absolute inset-0 border-[3px] border-green-500 m-8 rounded-xl opacity-30 animate-pulse pointer-events-none"></div>
-            {/* Laser Line */}
-            <div className="absolute left-0 right-0 h-0.5 bg-green-500 top-1/2 -translate-y-1/2 animate-bounce shadow-[0_0_10px_#22c55e] pointer-events-none"></div>
+          <div className="relative w-full max-w-sm aspect-square bg-gray-50 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-gray-200 shadow-inner group">
+            <div id="reader" style={{ width: "100%", height: "100%" }}></div>
             
-            <div className="text-center text-gray-400 p-6 flex flex-col items-center">
-              <MdCameraAlt className="text-5xl mb-3 text-green-500/80" />
-              <p className="text-sm font-medium text-gray-300">Camera Đang Chờ Quét</p>
-              <p className="text-xs text-gray-500 mt-2 px-6">Đặt mã QR code của vé điện tử trước camera điện thoại hoặc máy quét tại cổng soát vé</p>
-            </div>
-          </div>
+            {/* Laser line effect */}
+            <div className="absolute left-0 right-0 h-0.5 bg-green-500 top-1/2 -translate-y-1/2 animate-pulse shadow-[0_0_10px_#22c55e] pointer-events-none z-10"></div>
+            
 
-          <button
-            onClick={handleSimulateScan}
-            className="mt-6 bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all hover:shadow-lg hover:shadow-green-100 flex items-center gap-1.5"
-          >
-            <MdQrCodeScanner className="text-lg" /> Mô phỏng Quét vé ngẫu nhiên
-          </button>
+          </div>
         </div>
 
         {/* Search and Details */}
@@ -55,7 +119,13 @@ export default function StaffQuetQR() {
               <h5 className="font-bold text-gray-800 text-base mb-4 border-b border-gray-50 pb-2">
                 Nhập Mã Vé Thủ Công
               </h5>
-              <div className="flex gap-3">
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  handleFindTicket(ticketCode);
+                }}
+                className="flex gap-3"
+              >
                 <input
                   type="text"
                   placeholder="Nhập mã vé (VD: VE1 hoặc code từ hóa đơn)"
@@ -64,12 +134,12 @@ export default function StaffQuetQR() {
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
                 />
                 <button
-                  onClick={() => handleFindTicket(ticketCode)}
+                  type="submit"
                   className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all flex items-center gap-1"
                 >
                   Tìm Kiếm <MdArrowForward />
                 </button>
-              </div>
+              </form>
             </div>
 
             {statusMessage && (
@@ -92,15 +162,21 @@ export default function StaffQuetQR() {
             {ticketDetails && (
               <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/40">
                 <h6 className="font-bold text-gray-800 text-sm mb-3.5 pb-2 border-b border-gray-200/50 flex justify-between items-center">
-                  <span>Thông Tin Vé: {ticketDetails.code || `VE${ticketDetails.id}`}</span>
+                  <span>Thông Tin Vé: {ticketDetails.ticketCode || ticketDetails.code || `VE${ticketDetails.ticketId || ticketDetails.id}`}</span>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wider ${
-                    ticketDetails.status === "Used" || ticketDetails.status === "Đã thanh toán"
-                      ? "bg-green-100 text-green-805"
-                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
+                    ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng"
+                      ? (ticketDetails.checkedInJustNow
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800")
+                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã thanh toán" || ticketDetails.status === "Đã đặt"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}>
-                    {ticketDetails.status === "Used" ? "Đã sử dụng" : ticketDetails.status === "Active" ? "Đang hoạt động" : ticketDetails.status}
+                    {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng"
+                      ? "ĐÃ CHECK IN"
+                      : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt" || ticketDetails.status === "Đã thanh toán"
+                      ? "Đang hoạt động"
+                      : ticketDetails.status}
                   </span>
                 </h6>
 
@@ -140,9 +216,9 @@ export default function StaffQuetQR() {
 
           {ticketDetails && (
             <div className="pt-6 border-t border-gray-100 mt-6">
-              {ticketDetails.status === "Used" ? (
+              {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng" ? (
                 <div className="w-full text-center bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 border border-gray-200">
-                  <MdCheckCircle /> VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ
+                  <MdCheckCircle /> {ticketDetails.checkedInJustNow ? "VÉ ĐÃ ĐƯỢC CHECK-IN" : "VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ"}
                 </div>
               ) : (
                 <button
