@@ -167,7 +167,7 @@ export default function StaffQuetQR() {
                       : "bg-gray-100 text-gray-800"
                   }`}>
                     {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng"
-                      ? "Đã sử dụng"
+                      ? "ĐÃ CHECK IN"
                       : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt" || ticketDetails.status === "Đã thanh toán"
                       ? "Đang hoạt động"
                       : ticketDetails.status}
@@ -210,9 +210,9 @@ export default function StaffQuetQR() {
 
           {ticketDetails && (
             <div className="pt-6 border-t border-gray-100 mt-6">
-              {ticketDetails.status === "Used" ? (
+              {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng" ? (
                 <div className="w-full text-center bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 border border-gray-200">
-                  <MdCheckCircle /> VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ
+                  <MdCheckCircle /> {ticketDetails.checkedInJustNow ? "VÉ ĐÃ ĐƯỢC CHECK-IN" : "VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ"}
                 </div>
               ) : (
                 <button
