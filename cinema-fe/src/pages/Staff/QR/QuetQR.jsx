@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import "./QuetQR.css";
 import { useQuetQR } from "./useQuetQR.js";
 import { MdQrCodeScanner, MdCameraAlt, MdCheckCircle, MdError, MdWarning, MdArrowForward } from "react-icons/md";
@@ -14,32 +16,158 @@ export default function StaffQuetQR() {
     handleSimulateScan,
   } = useQuetQR();
 
+  const [cameraActive, setCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState("user"); // Mặc định cam trước (user) theo yêu cầu
+  const html5QrCodeRef = useRef(null);
+
+  // Dọn dẹp camera stream khi chuyển trang / đóng component
+  useEffect(() => {
+    return () => {
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(err => console.error("Error stopping scanner on unmount:", err));
+      }
+    };
+  }, []);
+
+  async function startScanner() {
+    setCameraActive(true);
+    // Đợi phần tử DOM #reader được gắn vào cây DOM
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCodeRef.current = html5QrCode;
+        
+        const config = { 
+          fps: 10, 
+          qrbox: { width: 220, height: 220 } 
+        };
+        
+        await html5QrCode.start(
+          { facingMode: facingMode },
+          config,
+          (decodedText) => {
+            // Khi quét thành công QR
+            console.log("QR Code Scanned:", decodedText);
+            setTicketCode(decodedText);
+            handleFindTicket(decodedText);
+            stopScanner();
+          },
+          (errorMessage) => {
+            // Log lỗi quét từng khung hình (không có QR) - ẩn đi để tránh rác console
+          }
+        );
+      } catch (err) {
+        console.error("Camera startup error:", err);
+        alert("Không thể khởi động camera. Vui lòng kiểm tra quyền truy cập camera!");
+        setCameraActive(false);
+      }
+    }, 100);
+  }
+
+  function stopScanner() {
+    if (html5QrCodeRef.current) {
+      html5QrCodeRef.current.stop()
+        .then(() => {
+          html5QrCodeRef.current = null;
+          setCameraActive(false);
+        })
+        .catch((err) => {
+          console.error("Failed to stop scanner:", err);
+          setCameraActive(false);
+        });
+    } else {
+      setCameraActive(false);
+    }
+  }
+
+  async function toggleCameraFacing() {
+    const nextFacing = facingMode === "user" ? "environment" : "user";
+    setFacingMode(nextFacing);
+    
+    // Tắt cam hiện tại trước khi đổi
+    if (html5QrCodeRef.current) {
+      await html5QrCodeRef.current.stop();
+      html5QrCodeRef.current = null;
+    }
+    
+    // Khởi động lại với chiều cam mới
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCodeRef.current = html5QrCode;
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+        await html5QrCode.start(
+          { facingMode: nextFacing },
+          config,
+          (decodedText) => {
+            console.log("QR Code Scanned:", decodedText);
+            setTicketCode(decodedText);
+            handleFindTicket(decodedText);
+            stopScanner();
+          },
+          (errorMessage) => {}
+        );
+      } catch (err) {
+        console.error("Camera startup error after switch:", err);
+        setCameraActive(false);
+      }
+    }, 100);
+  }
+
   return (
     <div className="staff-qr-container">
       <h4 className="font-bold text-2xl text-gray-805 mb-6 flex items-center gap-2">
         <MdQrCodeScanner className="text-green-600" /> Quét QR Vé Vào Cổng
       </h4>
-
+ 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Scanner Simulation */}
+        {/* Scanner Component */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center">
           <h5 className="font-bold text-gray-800 text-base mb-4 self-start border-b border-gray-50 pb-2 w-full">
             Trình Quét QR Camera
           </h5>
           
-          <div className="relative w-full max-w-sm aspect-square bg-gray-900 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-850 shadow-inner group">
-            {/* Camera View Overlay */}
-            <div className="absolute inset-0 border-[3px] border-green-500 m-8 rounded-xl opacity-30 animate-pulse pointer-events-none"></div>
-            {/* Laser Line */}
-            <div className="absolute left-0 right-0 h-0.5 bg-green-500 top-1/2 -translate-y-1/2 animate-bounce shadow-[0_0_10px_#22c55e] pointer-events-none"></div>
+          <div className="relative w-full max-w-sm aspect-square bg-gray-900 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-gray-850 shadow-inner group">
+            {cameraActive ? (
+              <div id="reader" style={{ width: "100%", height: "100%" }}></div>
+            ) : (
+              <div className="text-center text-gray-400 p-6 flex flex-col items-center">
+                <MdCameraAlt className="text-5xl mb-3 text-green-500/80" />
+                <p className="text-sm font-medium text-gray-300">Camera Đang Tắt</p>
+                <p className="text-xs text-gray-500 mt-2 px-6 mb-4">Nhấn nút bên dưới để cấp quyền và mở camera quét mã QR</p>
+                <button
+                  onClick={startScanner}
+                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+                >
+                  BẬT CAMERA QUÉT QR (CAM TRƯỚC)
+                </button>
+              </div>
+            )}
             
-            <div className="text-center text-gray-400 p-6 flex flex-col items-center">
-              <MdCameraAlt className="text-5xl mb-3 text-green-500/80" />
-              <p className="text-sm font-medium text-gray-300">Camera Đang Chờ Quét</p>
-              <p className="text-xs text-gray-500 mt-2 px-6">Đặt mã QR code của vé điện tử trước camera điện thoại hoặc máy quét tại cổng soát vé</p>
-            </div>
+            {cameraActive && (
+              <>
+                {/* Laser line effect */}
+                <div className="absolute left-0 right-0 h-0.5 bg-green-500 top-1/2 -translate-y-1/2 animate-pulse shadow-[0_0_10px_#22c55e] pointer-events-none z-10"></div>
+                
+                {/* Switch camera button */}
+                <button
+                  onClick={toggleCameraFacing}
+                  className="absolute bottom-3 right-3 bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 flex items-center gap-1 cursor-pointer"
+                >
+                  <MdCameraAlt /> {facingMode === "user" ? "Đổi Cam Sau" : "Đổi Cam Trước"}
+                </button>
+                
+                {/* Close camera button */}
+                <button
+                  onClick={stopScanner}
+                  className="absolute bottom-3 left-3 bg-red-600 hover:bg-red-750 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all z-20 cursor-pointer"
+                >
+                  Tắt Camera
+                </button>
+              </>
+            )}
           </div>
-
+ 
           <button
             onClick={handleSimulateScan}
             className="mt-6 bg-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all hover:shadow-lg hover:shadow-green-100 flex items-center gap-1.5"
