@@ -6,39 +6,33 @@ const EMPTY_FORM = {
   name: "",
   capacity: "",
   type: "",
-  status: "Active",
+  status: "",
 };
 
 export default function PhongChieu() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
+  // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
+  const [editId, setEditId] = useState(null); // null = thêm mới, có giá trị = sửa
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [formError, setFormError] = useState(null);
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  function unwrapList(data) {
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.$values)) return data.$values;
-    return [];
-  }
-
   async function fetchData() {
     try {
       setLoading(true);
-      setError("");
-
+      setError(null);
       const data = await getRoomList();
-      setList(unwrapList(data));
+      setList(data ?? []);
     } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu phòng chiếu.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -47,27 +41,19 @@ export default function PhongChieu() {
   function openAddModal() {
     setEditId(null);
     setForm(EMPTY_FORM);
-    setFormError("");
+    setFormError(null);
     setShowModal(true);
   }
 
   function openEditModal(room) {
-    const id = room.id ?? room.roomId ?? room.RoomId;
-
-    setEditId(id);
+    setEditId(room.id);
     setForm({
-      name: room.name ?? room.roomName ?? room.RoomName ?? "",
-      capacity: room.capacity ?? room.totalSeats ?? room.TotalSeats ?? "",
-      type: room.type ?? room.roomType ?? room.RoomType ?? "",
-      status:
-        room.status ??
-        room.Status ??
-        (room.isActive === true || room.IsActive === true
-          ? "Active"
-          : "Inactive"),
+      name: room.name ?? "",
+      capacity: room.capacity ?? "",
+      type: room.type ?? "",
+      status: room.status ?? "",
     });
-
-    setFormError("");
+    setFormError(null);
     setShowModal(true);
   }
 
@@ -75,58 +61,49 @@ export default function PhongChieu() {
     setShowModal(false);
     setEditId(null);
     setForm(EMPTY_FORM);
-    setFormError("");
+    setFormError(null);
   }
 
   function handleChange(e) {
     const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setFormError("");
+    setFormError(null);
 
+    // Validate
     if (!form.name.trim()) {
       setFormError("Vui lòng nhập tên phòng chiếu.");
       return;
     }
-
-    if (!form.capacity || Number(form.capacity) <= 0) {
+    if (!form.capacity || isNaN(Number(form.capacity)) || Number(form.capacity) <= 0) {
       setFormError("Vui lòng nhập sức chứa hợp lệ.");
       return;
     }
 
-    if (!form.type) {
-      setFormError("Vui lòng chọn loại phòng.");
-      return;
-    }
-
     const payload = {
-      roomName: form.name.trim(),
-      roomType: form.type,
-      totalSeats: Number(form.capacity),
-      isActive: form.status !== "Inactive",
-      cinemaId: 1,
+      ...form,
+      capacity: Number(form.capacity),
     };
 
     try {
       setSubmitting(true);
-
       if (editId !== null) {
+        // Cập nhật
         await updateRoom(editId, payload);
+        setList((prev) =>
+          prev.map((r) => (r.id === editId ? { ...r, ...payload } : r))
+        );
       } else {
-        await createRoom(payload);
+        // Thêm mới
+        const created = await createRoom(payload);
+        setList((prev) => [...prev, created]);
       }
-
-      await fetchData();
       closeModal();
     } catch (err) {
-      setFormError(err.message || "Lưu phòng chiếu thất bại.");
+      setFormError(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -134,121 +111,76 @@ export default function PhongChieu() {
 
   async function handleDelete(id) {
     if (!confirm("Bạn có chắc muốn xóa phòng chiếu này?")) return;
-
     try {
       await deleteRoom(id);
-
-      setList((prev) =>
-        prev.filter((room) => {
-          const roomId = room.id ?? room.roomId ?? room.RoomId;
-          return roomId !== id;
-        })
-      );
+      setList((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      alert(err.message || "Xóa phòng chiếu thất bại.");
+      alert(err.message);
     }
-  }
-
-  function getStatusLabel(room) {
-    const status = room.status ?? room.Status;
-    const isActive = room.isActive ?? room.IsActive;
-
-    if (status === "Maintenance") return "Bảo trì";
-    if (status === "Inactive" || isActive === false) return "Ngừng hoạt động";
-    return "Hoạt động";
-  }
-
-  function getStatusClass(room) {
-    const status = room.status ?? room.Status;
-    const isActive = room.isActive ?? room.IsActive;
-
-    if (status === "Maintenance") return "status-maintenance";
-    if (status === "Inactive" || isActive === false) return "status-inactive";
-    return "status-active";
   }
 
   return (
     <div>
-      <div className="room-header">
-        <h4>Quản Lý Phòng Chiếu</h4>
-
-        <button type="button" className="room-add-btn" onClick={openAddModal}>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h4 className="font-bold text-xl">Quản Lý Phòng Chiếu</h4>
+        <button
+          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+          onClick={openAddModal}
+        >
           + Thêm
         </button>
       </div>
 
-      <div className="room-card">
-        {loading && <p className="room-muted">Đang tải...</p>}
-        {error && <p className="room-error">{error}</p>}
+      {/* Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {!loading && !error && (
-          <div className="room-table-wrap">
-            <table className="admin-table room-table">
-              <thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th>#</th>
-                  <th>Tên Phòng</th>
-                  <th>Sức Chứa</th>
-                  <th>Loại Phòng</th>
-                  <th>Trạng Thái</th>
-                  <th>Thao Tác</th>
+                  <th className="px-3 py-2 text-left">#</th>
+                  <th className="px-3 py-2 text-left">Tên Phòng</th>
+                  <th className="px-3 py-2 text-left">Sức Chứa</th>
+                  <th className="px-3 py-2 text-left">Loại Phòng</th>
+                  <th className="px-3 py-2 text-left">Trạng Thái</th>
+                  <th className="px-3 py-2 text-left">Thao Tác</th>
                 </tr>
               </thead>
-
               <tbody>
                 {list.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="room-empty">
+                    <td colSpan={6} className="text-center py-6 text-gray-400">
                       Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
-                  list.map((room, index) => {
-                    const id = room.id ?? room.roomId ?? room.RoomId;
-                    const name =
-                      room.name ?? room.roomName ?? room.RoomName ?? "—";
-                    const capacity =
-                      room.capacity ?? room.totalSeats ?? room.TotalSeats ?? "—";
-                    const type =
-                      room.type ?? room.roomType ?? room.RoomType ?? "—";
-
-                    return (
-                      <tr key={id ?? index}>
-                        <td>{index + 1}</td>
-
-                        <td className="room-name">{name}</td>
-
-                        <td>{capacity}</td>
-
-                        <td>{type}</td>
-
-                        <td>
-                          <span className={`room-status ${getStatusClass(room)}`}>
-                            {getStatusLabel(room)}
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="room-actions">
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(room)}
-                            >
-                              Sửa
-                            </button>
-
-                            <button
-                              type="button"
-                              className="delete"
-                              onClick={() => handleDelete(id)}
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  list.map((r, i) => (
+                    <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-3 py-2">{i + 1}</td>
+                      <td className="px-3 py-2">{r.name}</td>
+                      <td className="px-3 py-2">{r.capacity}</td>
+                      <td className="px-3 py-2">{r.type}</td>
+                      <td className="px-3 py-2">{r.status}</td>
+                      <td className="px-3 py-2 flex gap-2">
+                        <button
+                          className="text-blue-600 hover:underline text-xs"
+                          onClick={() => openEditModal(r)}
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          className="text-red-500 hover:underline text-xs"
+                          onClick={() => handleDelete(r.id)}
+                        >
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -256,19 +188,23 @@ export default function PhongChieu() {
         )}
       </div>
 
+      {/* Modal Thêm / Sửa */}
       {showModal && (
-        <div className="room-modal-overlay">
-          <div className="room-modal">
-            <h5>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h5 className="font-bold text-lg mb-4">
               {editId !== null ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
             </h5>
 
-            {formError && <p className="room-form-error">{formError}</p>}
+            {formError && (
+              <p className="text-red-500 text-sm mb-3">{formError}</p>
+            )}
 
-            <form onSubmit={handleSubmit} className="room-form">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Tên phòng */}
               <div>
-                <label>
-                  Tên Phòng <span>*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên Phòng <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -276,30 +212,37 @@ export default function PhongChieu() {
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Nhập tên phòng chiếu"
-                  autoComplete="off"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
+              {/* Sức chứa */}
               <div>
-                <label>
-                  Sức Chứa <span>*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sức Chứa <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   name="capacity"
                   value={form.capacity}
                   onChange={handleChange}
-                  placeholder="Nhập sức chứa"
+                  placeholder="Nhập sức chứa (số ghế)"
                   min={1}
-                  autoComplete="off"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
 
+              {/* Loại phòng */}
               <div>
-                <label>
-                  Loại Phòng <span>*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Loại Phòng
                 </label>
-                <select name="type" value={form.type} onChange={handleChange}>
+                <select
+                  name="type"
+                  value={form.type}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
                   <option value="">-- Chọn loại phòng --</option>
                   <option value="2D">2D</option>
                   <option value="3D">3D</option>
@@ -308,21 +251,39 @@ export default function PhongChieu() {
                 </select>
               </div>
 
+              {/* Trạng thái */}
               <div>
-                <label>Trạng Thái</label>
-                <select name="status" value={form.status} onChange={handleChange}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng Thái
+                </label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="">-- Chọn trạng thái --</option>
                   <option value="Active">Hoạt động</option>
                   <option value="Inactive">Ngừng hoạt động</option>
                   <option value="Maintenance">Bảo trì</option>
                 </select>
               </div>
 
-              <div className="room-modal-actions">
-                <button type="button" className="cancel" onClick={closeModal}>
+              {/* Nút hành động */}
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
+                  disabled={submitting}
+                >
                   Hủy
                 </button>
-
-                <button type="submit" className="save" disabled={submitting}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                  disabled={submitting}
+                >
                   {submitting
                     ? "Đang xử lý..."
                     : editId !== null

@@ -1,121 +1,492 @@
 import "./Personnel.css";
-import { useEffect, useState } from "react";
-import { getEmployeeList, deleteEmployee } from "./employeeService";
+import { createPortal } from "react-dom";
+import * as IconsMd from "react-icons/md";
+import {
+  usePersonnel,
+  EMPLOYEE_POSITION_OPTIONS,
+  EMPLOYEE_STATUS_OPTIONS,
+  getEmployeeId,
+  getEmployeeName,
+  getEmployeeEmail,
+  getEmployeePhone,
+  getEmployeePosition,
+  getEmployeeStatus,
+  getStaffCinemaId,
+  PAGE_SIZE,
+} from "./usePersonnel.js";
 
-export default function NhanVien() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filterPos, setFilterPos] = useState("");
+const {
+  MdPeople: IconPeople,
+  MdPerson: IconPerson,
+  MdAccessTime: IconClock,
+  MdPersonRemove: IconRemove,
+  MdSearch: IconSearch,
+  MdAdd: IconAdd,
+  MdVisibility: IconView,
+  MdEdit: IconEdit,
+  MdDelete: IconDelete,
+} = IconsMd;
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const data = await getEmployeeList();
-      setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+// Helper to style table badges based on employee status
+function getStatusBadgeStyle(status) {
+  switch (status) {
+    case "Đang làm việc":
+      return { bg: "#e6f9f0", color: "#16a34a", label: "Đang làm việc" };
+    case "Tạm nghỉ":
+      return { bg: "#fff3e0", color: "#e67e00", label: "Tạm nghỉ" };
+    case "Nghỉ việc":
+      return { bg: "#fef2f2", color: "#dc2626", label: "Nghỉ việc" };
+    default:
+      return { bg: "#f3f4f6", color: "#6b7280", label: status || "—" };
   }
+}
 
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa nhân viên này?")) return;
-    try {
-      await deleteEmployee(id);
-      setList((prev) => prev.filter((e) => e.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
+export default function Personnel() {
+  const {
+    cinemas,
+    loading,
+    error,
 
-  const positions = ["Thu ngân", "Bảo vệ", "Nhân viên chiếu phim", "Quản lý"];
+    /* filters */
+    search,
+    setSearch,
+    filterPos,
+    setFilterPos,
+    filterCinemaId,
+    setFilterCinemaId,
+    filterStatus,
+    setFilterStatus,
+    cinemaOptions,
+    filtered,
 
-  const filtered = list.filter((e) => {
-    const matchSearch =
-      e.name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.email?.toLowerCase().includes(search.toLowerCase());
-    const matchPos = filterPos ? e.position === filterPos : true;
-    return matchSearch && matchPos;
-  });
+    /* pagination */
+    page,
+    setPage,
+    pageItems,
+    totalPages,
+    safePage,
+
+    /* Stats */
+    totalCount,
+    activeCount,
+    temporaryCount,
+    resignedCount,
+
+    /* Modal / Form */
+    showModal,
+    editId,
+    form,
+    submitting,
+    formError,
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = usePersonnel();
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Nhân Viên</h4>
-        <button
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={() => alert("TODO: Mở form thêm nhân viên")}
-        >
-          + Thêm
+    <div className="pe-wrapper">
+      {/* ── Header ── */}
+      <div className="pe-header">
+        <h4 className="pe-title">Quản Lý Nhân Viên</h4>
+        <button className="pe-btn-add" onClick={openAddModal}>
+          <IconAdd size={18} /> Thêm nhân viên
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-        <div className="flex flex-wrap gap-2 mb-4">
+      {/* ── Stats row (4 cards) ── */}
+      <div className="pe-stats-row">
+        <StatCard
+          icon={<IconPeople size={26} />}
+          iconBg="#f0f4ff"
+          iconColor="#6366f1"
+          label="Tổng nhân viên"
+          value={`${totalCount} nhân viên`}
+        />
+        <StatCard
+          icon={<IconPerson size={26} />}
+          iconBg="#e6f9f0"
+          iconColor="#16a34a"
+          label="Đang làm việc"
+          value={`${activeCount} nhân viên`}
+        />
+        <StatCard
+          icon={<IconClock size={26} />}
+          iconBg="#fff3e0"
+          iconColor="#e67e00"
+          label="Tạm nghỉ"
+          value={`${temporaryCount} nhân viên`}
+        />
+        <StatCard
+          icon={<IconRemove size={26} />}
+          iconBg="#fef2f2"
+          iconColor="#dc2626"
+          label="Nghỉ việc"
+          value={`${resignedCount} nhân viên`}
+        />
+      </div>
+
+      {/* ── Filters bar ── */}
+      <div className="pe-filter-bar">
+        <div className="pe-search-wrap">
+          <IconSearch size={18} className="pe-search-icon" />
           <input
             type="text"
-            placeholder="Tìm kiếm..."
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-40"
+            className="pe-search-input"
+            placeholder="Tìm kiếm nhân viên..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
-          <select
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm"
-            value={filterPos}
-            onChange={(e) => setFilterPos(e.target.value)}
-          >
-            <option value="">Tất cả vị trí</option>
-            {positions.map((p) => <option key={p}>{p}</option>)}
-          </select>
         </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <select
+          className="pe-filter-select"
+          value={filterCinemaId}
+          onChange={(e) => {
+            setFilterCinemaId(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả chi nhánh</option>
+          {cinemaOptions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Họ Tên</th>
-                  <th className="px-3 py-2 text-left">Email</th>
-                  <th className="px-3 py-2 text-left">Điện Thoại</th>
-                  <th className="px-3 py-2 text-left">Vị Trí</th>
-                  <th className="px-3 py-2 text-left">Trạng Thái</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-6 text-gray-400">Không có dữ liệu</td></tr>
-                ) : (
-                  filtered.map((e, i) => (
-                    <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{e.name}</td>
-                      <td className="px-3 py-2">{e.email}</td>
-                      <td className="px-3 py-2">{e.phone}</td>
-                      <td className="px-3 py-2">{e.position}</td>
-                      <td className="px-3 py-2">{e.status}</td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button className="text-blue-600 hover:underline text-xs" onClick={() => alert(`TODO: Sửa nhân viên id=${e.id}`)}>Sửa</button>
-                        <button className="text-red-500 hover:underline text-xs" onClick={() => handleDelete(e.id)}>Xóa</button>
+        <select
+          className="pe-filter-select"
+          value={filterPos}
+          onChange={(e) => {
+            setFilterPos(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả vị trí</option>
+          {EMPLOYEE_POSITION_OPTIONS.map((pos) => (
+            <option key={pos.value} value={pos.value}>
+              {pos.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="pe-filter-select"
+          value={filterStatus}
+          onChange={(e) => {
+            setFilterStatus(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả trạng thái</option>
+          {EMPLOYEE_STATUS_OPTIONS.map((st) => (
+            <option key={st.value} value={st.value}>
+              {st.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── Loading / Error ── */}
+      {loading && <p className="pe-msg">Đang tải danh sách nhân viên...</p>}
+      {error && <p className="pe-msg pe-msg--error">{error}</p>}
+
+      {/* ── Table view matching the mockup ── */}
+      {!loading && !error && (
+        <>
+          <div className="pe-table-card">
+            <div className="pe-table-responsive">
+              <table className="pe-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "50px" }}>#</th>
+                    <th>Nhân viên</th>
+                    <th>Vị trí</th>
+                    <th>Chi nhánh</th>
+                    <th>SĐT</th>
+                    <th>Email</th>
+                    <th>Trạng thái</th>
+                    <th style={{ width: "200px", textAlign: "center" }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="pe-table-empty">
+                        Không có nhân viên nào phù hợp.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    filtered.map((employee, idx) => {
+                      const id = getEmployeeId(employee);
+                      const name = getEmployeeName(employee);
+                      const email = getEmployeeEmail(employee);
+                      const phone = getEmployeePhone(employee);
+                      const position = getEmployeePosition(employee);
+                      const status = getEmployeeStatus(employee);
+                      const badgeStyle = getStatusBadgeStyle(status);
+                      const cinemaId = getStaffCinemaId(employee);
+                      const cinema = cinemaOptions.find(
+                        (c) => String(c.id) === String(cinemaId)
+                      );
+                      const cinemaName = cinema ? cinema.name : "Tất cả chi nhánh";
+
+                      const globalIndex = idx + 1;
+                      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        name
+                      )}&background=f0f4ff&color=6366f1&size=34&font-size=0.45&bold=true`;
+
+                      return (
+                        <tr key={id || idx}>
+                          <td className="pe-col-idx">{globalIndex}</td>
+                          <td>
+                            <div className="pe-user-cell">
+                              <img
+                                src={avatarUrl}
+                                alt={name}
+                                className="pe-user-avatar"
+                              />
+                              <span className="pe-user-name">{name}</span>
+                            </div>
+                          </td>
+                          <td className="pe-user-pos">{position}</td>
+                          <td className="pe-user-cinema">{cinemaName}</td>
+                          <td className="pe-user-phone">{phone || "—"}</td>
+                          <td className="pe-user-email">{email}</td>
+                          <td>
+                            <span
+                              className="pe-status-badge"
+                              style={{
+                                background: badgeStyle.bg,
+                                color: badgeStyle.color,
+                              }}
+                            >
+                              {badgeStyle.label}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="pe-row-actions">
+
+                              <button
+                                className="pe-row-btn pe-row-btn--edit"
+                                onClick={() => openEditModal(employee)}
+                              >
+                                <IconEdit size={14} /> Sửa
+                              </button>
+                              <button
+                                className="pe-row-btn pe-row-btn--delete"
+                                onClick={() => handleDelete(id)}
+                                title="Xóa nhân viên"
+                              >
+                                <IconDelete size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>        </>
+      )}
+
+      {/* ── Modal Add / Edit ── */}
+      {showModal &&
+        createPortal(
+          <div className="pe-modal-overlay">
+            <div className="pe-modal">
+              <h5 className="pe-modal-title">
+                {editId !== null ? "Cập Nhật Nhân Viên" : "Thêm Nhân Viên Mới"}
+              </h5>
+              {formError && <p className="pe-form-error">{formError}</p>}
+
+              <form onSubmit={handleSubmit} className="pe-form">
+                {/* Họ tên */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    Họ Tên <span className="pe-required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder="Nhập họ tên nhân viên"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    Email <span className="pe-required">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder="name@gmail.com"
+                    required
+                    disabled={editId !== null} // Email cannot be changed usually
+                  />
+                </div>
+
+                {/* Mật khẩu */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    {editId !== null
+                      ? "Mật Khẩu Mới (Để trống nếu giữ nguyên)"
+                      : "Mật Khẩu"}{" "}
+                    {editId === null && <span className="pe-required">*</span>}
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder={
+                      editId !== null
+                        ? "Nhập mật khẩu mới để thay đổi"
+                        : "Nhập mật khẩu tài khoản"
+                    }
+                    required={editId === null}
+                  />
+                </div>
+
+                {/* Điện thoại & Lương */}
+                <div className="pe-field-row">
+                  <div className="pe-field">
+                    <label className="pe-label">Điện Thoại</label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      className="pe-input"
+                      placeholder="VD: 0987654321"
+                    />
+                  </div>
+                  <div className="pe-field">
+                    <label className="pe-label">Mức Lương (VND)</label>
+                    <input
+                      type="number"
+                      name="salary"
+                      value={form.salary}
+                      onChange={handleChange}
+                      className="pe-input"
+                      placeholder="VD: 5000000"
+                    />
+                  </div>
+                </div>
+
+                {/* Chi nhánh & Vị trí */}
+                <div className="pe-field-row">
+                  <div className="pe-field">
+                    <label className="pe-label">Chi Nhánh Rạp</label>
+                    <select
+                      name="cinemaId"
+                      value={form.cinemaId}
+                      onChange={handleChange}
+                      className="pe-input"
+                    >
+                      <option value="">Tất cả các rạp (Hệ thống)</option>
+                      {cinemaOptions.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="pe-field">
+                    <label className="pe-label">Vị Trí công việc</label>
+                    <select
+                      name="position"
+                      value={form.position}
+                      onChange={handleChange}
+                      className="pe-input"
+                    >
+                      {EMPLOYEE_POSITION_OPTIONS.map((pos) => (
+                        <option key={pos.value} value={pos.value}>
+                          {pos.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Trạng thái */}
+                <div className="pe-field">
+                  <label className="pe-label">Trạng Thái làm việc</label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="pe-input"
+                  >
+                    {EMPLOYEE_STATUS_OPTIONS.map((st) => (
+                      <option key={st.value} value={st.value}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Actions */}
+                <div className="pe-modal-actions">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="pe-btn-cancel"
+                    disabled={submitting}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="pe-btn-submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Đang lưu..." : editId !== null ? "Cập Nhật" : "Thêm Nhân Viên"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STAT CARD SUB-COMPONENT (Pure UI)
+═══════════════════════════════════════════════════════════ */
+
+function StatCard({ icon, iconBg, iconColor, label, value }) {
+  return (
+    <div className="pe-stat-card">
+      <div
+        className="pe-stat-icon"
+        style={{ background: iconBg, color: iconColor }}
+      >
+        {icon}
+      </div>
+      <div className="pe-stat-body">
+        <p className="pe-stat-label">{label}</p>
+        <p className="pe-stat-value">{value}</p>
       </div>
     </div>
   );

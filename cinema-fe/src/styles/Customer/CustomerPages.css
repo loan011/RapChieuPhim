@@ -4,7 +4,7 @@
 /* ── Base page wrapper ── */
 .cust-page {
   min-height: calc(100vh - 70px);
-  background: linear-gradient(135deg, #0f0f1a 0%, #1a0a2e 40%, #16213e 100%);
+  background: linear-gradient(135deg, #15152a 0%, #24143f 40%, #1f2f54 100%);
   padding: 36px 24px;
   font-family: "Inter", sans-serif;
   position: relative;
@@ -80,8 +80,8 @@
 
 /* ── Glass card ── */
 .cust-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
@@ -696,4 +696,208 @@
   .ticket-card { flex-wrap: wrap; }
   .ticket-right { width: 100%; flex-direction: row; border-left: none; border-top: 1px dashed rgba(255,255,255,0.1); }
   .cust-tab { padding: 8px 12px; font-size: 0.8rem; }
+}
+.history-type-badge {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.25);
+  display: inline-block;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.history-right {
+  text-align: right;
+}
+
+/* ── Ticket Detail Modal ── */
+.ticket-detail-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.ticket-detail-modal-card {
+  width: 100%;
+  max-width: 580px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: cpFadeUp 0.3s ease;
+}
+
+.ticket-detail-modal-header {
+  background: #ff7e00; /* Galaxy Cinema Orange */
+  color: #fff;
+  padding: 20px 24px;
+  text-align: center;
+}
+
+.ticket-detail-modal-header h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  letter-spacing: 0.5px;
+}
+
+.ticket-detail-modal-header p {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.ticket-detail-modal-body {
+  padding: 24px;
+  color: #333;
+}
+
+.ticket-detail-modal-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.room-entry-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.detail-qr-code-wrapper {
+  background: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: inline-flex;
+}
+
+.detail-qr-code-icon {
+  font-size: 100px;
+  color: #000;
+}
+
+.detail-ticket-code {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  margin-top: 8px;
+  letter-spacing: 1px;
+}
+
+.ticket-detail-modal-info-list {
+  background: #fff;
+  border-radius: 6px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.detail-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed #eee;
+  font-size: 0.85rem;
+}
+
+.detail-info-row:last-child {
+  border-bottom: none;
+}
+
+.detail-info-row.total {
+  border-top: 2px solid #ff7e00;
+  margin-top: 8px;
+  padding-top: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.info-label {
+  color: #666;
+}
+
+.info-value {
+  color: #333;
+  text-align: right;
+}
+
+.info-value.font-bold {
+  font-weight: 700;
+}
+
+.info-value.total-price {
+  color: #ff7e00;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.ticket-detail-modal-close-btn {
+  width: 100%;
+  padding: 14px;
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  font-weight: 750;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
+}
+
+.ticket-detail-modal-close-btn:hover {
+  background: #d0d0d0;
+}
+
+.ticket-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.ticket-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Back to Homepage Button ── */
+.cust-header-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.back-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.back-arrow-btn:hover {
+  background: linear-gradient(135deg, #dc2626, #7c3aed);
+  border-color: transparent;
+  transform: scale(1.08);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
 }

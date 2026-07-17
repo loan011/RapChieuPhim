@@ -106,3 +106,21 @@ export async function updateProfile(user) {
   return data;
 }
 
+// PUT /api/Users/ChangePassword
+export async function changePassword(payload) {
+  const allowedPayload = {
+    currentPassword: payload.currentPassword ?? payload.CurrentPassword ?? "",
+    newPassword: payload.newPassword ?? payload.NewPassword ?? "",
+    confirmPassword: payload.confirmPassword ?? payload.ConfirmPassword ?? "",
+  };
+
+  const response = await fetch(`${API_URL}/Users/ChangePassword`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(allowedPayload),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Đổi mật khẩu thất bại!"));
+  return data;
+}
+

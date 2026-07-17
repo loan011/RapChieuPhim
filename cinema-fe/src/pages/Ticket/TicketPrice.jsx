@@ -1,230 +1,249 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-
 import "../../styles/TicketPrice.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
-import { getCinemaList } from "../Cinema/cinemaPageService";
+import { useTicketPrice } from "./useTicketPrice.js";
+import { getAreaId, getAreaName } from "../usehome.js";
+
+// Helper to format money (e.g. 75000 -> "75.000đ")
+function formatMoney(amount) {
+  if (isNaN(amount) || amount === null) return "";
+  return amount.toLocaleString("vi-VN") + "đ";
+}
 
 function TicketPrice() {
-  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const {
+    cinemas,
+    allAreas,
+    selectedAreaId,
+    setSelectedAreaId,
+    selectedCinemaId,
+    setSelectedCinemaId,
+    userEmail,
+    loading,
+    basePrices
+  } = useTicketPrice();
 
-  const userEmail =
-    localStorage.getItem("userEmail") ||
-    localStorage.getItem("email") ||
-    savedUser.email ||
-    savedUser.Email;
+  const [selectedFormat, setSelectedFormat] = useState("");
 
-  const [cinemas, setCinemas] = useState([]);
-  const [selectedCinemaId, setSelectedCinemaId] = useState("");
+  // Define columns based on selected format dropdown
+  const allFormats = ["2D", "IMAX 2D", "3D", "IMAX 3D", "4DX 2D", "4DX 3D"];
+  
+  const activeColumns = useMemo(() => {
+    if (!selectedFormat) return allFormats;
+    return allFormats.filter(f => f.toLowerCase().includes(selectedFormat.toLowerCase()));
+  }, [selectedFormat]);
 
-  useEffect(() => {
-    getCinemaList()
-      .then((raw) => {
-        const arr = Array.isArray(raw)
-          ? raw
-          : Array.isArray(raw?.data)
-          ? raw.data
-          : Array.isArray(raw?.$values)
-          ? raw.$values
-          : [];
-        setCinemas(arr);
-        if (arr.length > 0) {
-          const firstId = arr[0].id ?? arr[0].Id ?? arr[0].cinemaId ?? arr[0].CinemaId ?? "";
-          setSelectedCinemaId(String(firstId));
-        }
-      })
-      .catch(() => setCinemas([]));
-  }, []);
+  // Pricing premium calculations
+  const calculateVipPrice = (price) => {
+    return price + 25000;
+  };
+
+  const calculateCouplePrice = (price) => {
+    return price * 2 + 50000;
+  };
 
   return (
     <div className="ticket-price-page">
+      {/* Top Login Bar */}
       <div className="movie-top-login">
-        {userEmail ? (
-          <CustomerProfileDropdown />
-        ) : (
-          <>
-            <Link to="/login">Đăng nhập</Link>
-            <span style={{ margin: "0 6px" }}>|</span>
-            <Link to="/register">Đăng ký GB</Link>
-          </>
-        )}
+        <div className="top-login-content">
+          {userEmail ? (
+            <CustomerProfileDropdown />
+          ) : (
+            <div className="auth-links">
+              <Link to="/login">Đăng nhập</Link>
+              <span> | </span>
+              <Link to="/register">Đăng ký</Link>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Header Bar */}
       <header className="movie-header">
-        <div className="movie-logo">
-          <span>Cinemas</span>
-          <b>HCM</b>
+        <div className="movie-logo-container">
+          <Link to="/" className="movie-logo">
+            <span>Cinemas</span><b>HCM</b>
+          </Link>
         </div>
 
-        <select
-          className="movie-select"
-          value={selectedCinemaId}
-          onChange={(e) => setSelectedCinemaId(e.target.value)}
-        >
-          <option value="">Chọn rạp HCM</option>
-          {cinemas.map((c) => {
-            const id   = c.id ?? c.Id ?? c.cinemaId ?? c.CinemaId ?? "";
-            const name = c.name ?? c.Name ?? c.cinemaName ?? c.CinemaName ?? "Rạp không tên";
-            return (
-              <option key={id} value={String(id)}>
-                {name}
-              </option>
-            );
-          })}
-        </select>
-
-        <nav>
-          <Link to="/movies">PHIM</Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-
-          <Link className="active" to="/ticket-price">
-            GIÁ VÉ
-          </Link>
-
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+        <nav className="movie-nav">
+          <Link to="/showtimes">Lịch chiếu</Link>
+          <Link to="/">Phim</Link>
+          <Link className="active" to="/ticket-price">Giá vé</Link>
         </nav>
+
+
       </header>
 
-      <div className="ticket-price-card">
-        <section className="price-block">
-          <div className="price-logo price-logo-2d">2D</div>
+      {/* Main content body */}
+      <main className="ticket-main-content">
+        {/* Filter selectors row */}
+        <section className="ticket-filter-row">
+          <div className="ticket-filter-item">
+            <label>Chọn rạp</label>
+            <select
+              value={selectedCinemaId}
+              onChange={(e) => setSelectedCinemaId(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">Chọn rạp HCM</option>
+              {cinemas.map((c) => {
+                const id = c.id ?? c.Id ?? c.cinemaId ?? c.CinemaId ?? "";
+                const name = c.name ?? c.Name ?? c.cinemaName ?? c.CinemaName ?? "Rạp không tên";
+                return (
+                  <option key={id} value={String(id)}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
-          <div className="price-content">
-            <h1 className="price-title title-2d">BẢNG GIÁ VÉ 2D - HCM</h1>
-
-            <div className="price-table-box">
-              <div className="price-left-list">
-                <div className="sale-title">MAD SALE DAY</div>
-                <p>(Tặng 01 bắp cho thứ 2 đầu tiên mỗi tháng)</p>
-
-                <div className="beta-title">
-                  CinemasHCM <span>(cả tuần)</span>
-                </div>
-                <p>(Trước 10h & Sau 22h)</p>
-
-                <div className="happy-title">HAPPY DAY - THỨ 3</div>
-
-                <div className="row-name">Thứ 2, 4, 5, 6</div>
-                <div className="row-name">Thứ 7, CN</div>
-                <div className="row-name">🇻🇳 Ngày Lễ</div>
-              </div>
-
-              <div className="price-main-table">
-                <div className="table-header adult-header">NGƯỜI LỚN</div>
-
-                <div className="time-header">
-                  <span>10h - 18h</span>
-                  <span>18h - 22h</span>
-                </div>
-
-                <div className="big-price adult-price">40.000</div>
-
-                <div className="normal-row">
-                  <span></span>
-                  <span>45.000</span>
-                  <span></span>
-                </div>
-
-                <div className="normal-row">
-                  <span></span>
-                  <span>60.000</span>
-                  <span>65.000</span>
-                </div>
-
-                <div className="holiday-row">80.000</div>
-              </div>
-
-              <div className="price-student-table">
-                <div className="table-header student-header">
-                  HS - SV, TRẺ EM,
-                  <br />
-                  NGƯỜI CAO TUỔI
-                </div>
-
-                <div className="big-price student-price">40.000</div>
-              </div>
-            </div>
+          <div className="ticket-filter-item">
+            <label>Định dạng</label>
+            <select
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value)}
+            >
+              <option value="">Tất cả</option>
+              <option value="2D">2D</option>
+              <option value="3D">3D</option>
+              <option value="IMAX">IMAX</option>
+              <option value="4DX">4DX</option>
+            </select>
           </div>
         </section>
 
-        <section className="price-block">
-          <div className="price-logo price-logo-3d">3D</div>
+        {loading ? (
+          <div className="ticket-loading">Đang tải dữ liệu bảng giá...</div>
+        ) : (
+          <div className="ticket-grid-layout">
+            {/* Left Box: Price Table */}
+            <div className="ticket-table-container">
+              <h2 className="ticket-section-title">BẢNG GIÁ VÉ</h2>
+              
+              <div className="ticket-table-responsive">
+                <table className="price-table">
+                  <thead>
+                    <tr>
+                      <th className="th-left">LOẠI GHẾ</th>
+                      {activeColumns.map(col => (
+                        <th key={col}>{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Row 1: Ghế Thường */}
+                    <tr>
+                      <td className="td-seat-type">
+                        <div className="seat-cell">
+                          <span className="seat-cell-icon red-seat-icon">🛋️</span>
+                          <div className="seat-cell-text">
+                            <strong>GHẾ THƯỜNG</strong>
+                            <span>(Standard)</span>
+                          </div>
+                        </div>
+                      </td>
+                      {activeColumns.map(col => (
+                        <td key={col} className="td-price-val">
+                          {formatMoney(basePrices[col]?.std)}
+                        </td>
+                      ))}
+                    </tr>
 
-          <div className="price-content">
-            <h1 className="price-title title-3d">BẢNG GIÁ VÉ 3D - HCM</h1>
+                    {/* Row 2: Ghế VIP */}
+                    <tr>
+                      <td className="td-seat-type">
+                        <div className="seat-cell">
+                          <span className="seat-cell-icon yellow-seat-icon">🛋️</span>
+                          <div className="seat-cell-text">
+                            <strong>GHẾ VIP</strong>
+                            <span>(VIP)</span>
+                          </div>
+                        </div>
+                      </td>
+                      {activeColumns.map(col => (
+                        <td key={col} className="td-price-val">
+                          {formatMoney(basePrices[col]?.vip)}
+                        </td>
+                      ))}
+                    </tr>
 
-            <div className="price-table-box">
-              <div className="price-left-list">
-                <div className="sale-title">MAD SALE DAY</div>
-                <p>(Tặng 01 bắp cho thứ 2 đầu tiên mỗi tháng)</p>
-
-                <div className="beta-title">
-                  CinemasHCM <span>(cả tuần)</span>
-                </div>
-                <p>(Trước 10h & Sau 22h)</p>
-
-                <div className="happy-title">HAPPY DAY - THỨ 3</div>
-
-                <div className="row-name">Thứ 2, 4, 5, 6</div>
-                <div className="row-name">Thứ 7, CN</div>
-                <div className="row-name">🇻🇳 Ngày Lễ</div>
+                    {/* Row 3: Ghế Couple */}
+                    <tr>
+                      <td className="td-seat-type">
+                        <div className="seat-cell">
+                          <span className="seat-cell-icon pink-seat-icon">🛋️</span>
+                          <div className="seat-cell-text">
+                            <strong>GHẾ COUPLE</strong>
+                            <span>(Couple)</span>
+                          </div>
+                        </div>
+                      </td>
+                      {activeColumns.map(col => (
+                        <td key={col} className="td-price-val">
+                          {formatMoney(basePrices[col]?.cp)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
               </div>
+              
+              <p className="ticket-vat-note">* Giá vé đã bao gồm VAT.</p>
+            </div>
 
-              <div className="price-main-table">
-                <div className="table-header adult-header">NGƯỜI LỚN</div>
+            {/* Right Box: Notes & Golden Hours */}
+            <div className="ticket-sidebar">
+              {/* Box 1: Lưu ý */}
+              <section className="ticket-note-panel">
+                <h3>LƯU Ý</h3>
+                <ul className="ticket-note-list">
+                  <li>
+                    <span className="note-list-icon">ⓘ</span>
+                    <p>Giá vé có thể thay đổi tùy theo thời điểm, phim và chương trình khuyến mãi.</p>
+                  </li>
+                  <li>
+                    <span className="note-list-icon">🎟️</span>
+                    <p>Vui lòng kiểm tra giá vé khi đặt vé.</p>
+                  </li>
+                  <li>
+                    <span className="note-list-icon">👶</span>
+                    <p>Trẻ em dưới 1m được miễn phí vé.</p>
+                  </li>
+                  <li>
+                    <span className="note-list-icon">🚶</span>
+                    <p>Trẻ em từ 1m trở lên tính giá vé như người lớn.</p>
+                  </li>
+                </ul>
+              </section>
 
-                <div className="time-header">
-                  <span>10h - 18h</span>
-                  <span>18h - 22h</span>
+              {/* Box 2: Giờ vàng */}
+              <section className="ticket-gold-panel">
+                <div className="gold-title-row">
+                  <span className="gold-icon">⏰</span>
+                  <h3>GIỜ VÀNG</h3>
                 </div>
-
-                <div className="big-price adult-price">60.000</div>
-
-                <div className="normal-row">
-                  <span></span>
-                  <span>65.000</span>
-                  <span></span>
+                <p className="gold-desc">Ưu đãi giá vé đặc biệt trong khung giờ vàng.</p>
+                
+                <div className="gold-promo-box">
+                  <div className="gold-promo-text">
+                    <strong>Thứ 2 - Thứ 6</strong>
+                    <span>Trước 17:00</span>
+                  </div>
+                  <div className="gold-promo-badge">
+                    -20%
+                  </div>
                 </div>
-
-                <div className="normal-row">
-                  <span></span>
-                  <span>80.000</span>
-                  <span>85.000</span>
-                </div>
-
-                <div className="holiday-row">100.000</div>
-              </div>
-
-              <div className="price-student-table">
-                <div className="table-header student-header">
-                  HS - SV, TRẺ EM,
-                  <br />
-                  NGƯỜI CAO TUỔI
-                </div>
-
-                <div className="big-price student-price">60.000</div>
-              </div>
+                
+                <p className="gold-footer-note">Không áp dụng cho ngày lễ và suất chiếu đặc biệt.</p>
+              </section>
             </div>
           </div>
-        </section>
-
-        <div className="ticket-note">
-          <div>
-            <p>* Phụ thu 5.000 VNĐ với ghế VIP & ghế đôi.</p>
-            <p>* Phụ thu 10.000 VNĐ với khách hàng không phải thành viên.</p>
-            <p>* Vé HS-SV dành cho khách hàng dưới 22 tuổi hoặc đang là HSSV.</p>
-          </div>
-
-          <div>
-            <p>* Vé trẻ em dành cho trẻ em dưới 1m3.</p>
-            <p>* Vé người cao tuổi dành cho người trên 55 tuổi.</p>
-            <p>* Các suất chiếu đặc biệt không áp dụng giá ưu đãi.</p>
-          </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }

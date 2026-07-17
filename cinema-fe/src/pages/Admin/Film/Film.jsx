@@ -6,7 +6,7 @@ import {
   updateMovie,
   deleteMovie,
 } from "./movieService";
-import { getMovieCategories } from "../../Movies/Movies.js";
+import { getMovieCategories } from "../../Movies/useMovies.js";
 
 const STATUS_OPTIONS = [
   { value: "suất đang chiếu", label: "Đang chiếu" },

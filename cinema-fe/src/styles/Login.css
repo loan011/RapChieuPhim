@@ -2,7 +2,7 @@
 
 .auth-page {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2e080a 0%, #0d0606 60%, #000000 100%);
+  background: radial-gradient(circle at top, #36021e 0%, #13030b 60%, #0e020a 100%);
   padding: 80px 20px 40px;
   font-family: "Montserrat", Arial, sans-serif;
   display: flex;
@@ -21,7 +21,7 @@
   transform: translateX(-50%);
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(229, 9, 20, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(223, 10, 93, 0.08) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -31,16 +31,16 @@
   background: rgba(18, 18, 18, 0.75);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(229, 9, 20, 0.25);
+  border: 1px solid rgba(223, 10, 93, 0.25);
   border-radius: 24px;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(229, 9, 20, 0.1);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(223, 10, 93, 0.1);
   overflow: hidden;
   z-index: 1;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .auth-box-page:hover {
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 50px rgba(229, 9, 20, 0.15);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 50px rgba(223, 10, 93, 0.15);
 }
 
 .auth-tabs {
@@ -73,7 +73,7 @@
 }
 
 .auth-tabs .active {
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%);
   color: white !important;
   font-weight: 800;
   box-shadow: inset 0 -4px 10px rgba(0, 0, 0, 0.2);
@@ -115,9 +115,9 @@
 }
 
 .login-form input:focus {
-  border-color: rgba(229, 9, 20, 0.8);
+  border-color: rgba(223, 10, 93, 0.8);
   background: rgba(255, 255, 255, 0.07);
-  box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.15);
+  box-shadow: 0 0 0 4px rgba(223, 10, 93, 0.15);
 }
 
 .forgot {
@@ -131,7 +131,7 @@
 }
 
 .forgot:hover {
-  color: #e50914;
+  color: #df0a5d;
 }
 
 .blue-btn,
@@ -153,15 +153,15 @@
 }
 
 .blue-btn {
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
-  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.35);
+  background: linear-gradient(135deg, #df0a5d 0%, #a2003c 100%);
+  box-shadow: 0 6px 20px rgba(223, 10, 93, 0.35);
   font-weight: 800;
   letter-spacing: 0.5px;
 }
 
 .blue-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(229, 9, 20, 0.45);
+  box-shadow: 0 10px 25px rgba(223, 10, 93, 0.45);
   background: linear-gradient(135deg, #f01e2c 0%, #d3202c 100%);
 }
 
@@ -190,7 +190,7 @@
   height: 48px;
   background: rgba(18, 18, 18, 0.8);
   color: white;
-  border: 1.5px solid rgba(229, 9, 20, 0.4);
+  border: 1.5px solid rgba(223, 10, 93, 0.4);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -203,10 +203,10 @@
 }
 
 .back-home-btn:hover {
-  background: #e50914;
-  border-color: #e50914;
+  background: #df0a5d;
+  border-color: #df0a5d;
   transform: scale(1.1);
-  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.45);
+  box-shadow: 0 8px 24px rgba(223, 10, 93, 0.45);
 }
 
 .password-wrapper {
@@ -252,4 +252,10 @@
 
 .password-eye svg {
   font-size: 18px;
-}
+}
+.login-error-text {
+  color: red;
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}

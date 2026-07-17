@@ -1,358 +1,419 @@
 import "./Cinema.css";
-import { useEffect, useState } from "react";
-import { getCinemaList, createCinema, updateCinema, deleteCinema } from "./cinemaService";
+import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  MdStorefront,
+  MdPeople,
+  MdMeetingRoom,
+  MdPersonOutline,
+  MdGroup,
+  MdOndemandVideo,
+  MdLocationOn,
+  MdAdd,
+  MdVisibility,
+  MdEdit,
+} from "react-icons/md";
+import {
+  CINEMA_STATUS_OPTIONS,
+  useCinema,
+  getCinemaId,
+  getCinemaName,
+  getCinemaAddress,
+  getCinemaAreaName,
+  getCinemaPhone,
+  getCinemaEmail,
+  getCinemaStatus,
+  getAreaId,
+  getAreaName,
+  getStatusClass,
+  getStatusText,
+} from "./useCinema.js";
 
-const EMPTY_FORM = {
-  name: "",
-  address: "",
-  city: "",
-  phone: "",
-  email: "",
-  status: "",
-};
+const PAGE_SIZE = 15;
 
+// ─── helpers ──────────────────────────────────────────────
+function getStatusStyle(status) {
+  if (status === "Active")
+    return { bg: "#e6f9f0", color: "#16a34a", label: "Đang hoạt động" };
+  if (status === "Inactive")
+    return { bg: "#fff7e6", color: "#d97706", label: "Tạm dừng" };
+  return { bg: "#fce7f3", color: "#db2777", label: "Bảo trì" };
+}
+
+// ─── Main Component ────────────────────────────────────────
 export default function RapChieu() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
+  const {
+    areas,
+    loading,
+    error,
+    search,
+    setSearch,
+    showModal,
+    editId,
+    form,
+    submitting,
+    formError,
+    filtered,
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+    list,
+  } = useCinema();
 
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState(null);
+  const [page, setPage] = useState(1);
+  const navigate = useNavigate();
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice(0, page * PAGE_SIZE);
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getCinemaList();
-      setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function openAddModal() {
-    setEditId(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-    setShowModal(true);
-  }
-
-  function openEditModal(cinema) {
-    setEditId(cinema.id);
-    setForm({
-      name: cinema.name ?? "",
-      address: cinema.address ?? "",
-      city: cinema.city ?? "",
-      phone: cinema.phone ?? "",
-      email: cinema.email ?? "",
-      status: cinema.status ?? "",
-    });
-    setFormError(null);
-    setShowModal(true);
-  }
-
-  function closeModal() {
-    setShowModal(false);
-    setEditId(null);
-    setForm(EMPTY_FORM);
-    setFormError(null);
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!form.name.trim()) {
-      setFormError("Vui lòng nhập tên rạp chiếu.");
-      return;
-    }
-    if (!form.address.trim()) {
-      setFormError("Vui lòng nhập địa chỉ rạp.");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      if (editId !== null) {
-        await updateCinema(editId, form);
-        setList((prev) =>
-          prev.map((c) => (c.id === editId ? { ...c, ...form } : c))
-        );
-      } else {
-        const created = await createCinema(form);
-        setList((prev) => [...prev, created]);
+    const handleScroll = (e) => {
+      let target = e.target;
+      if (target === document) {
+        target = document.documentElement || document.body;
       }
-      closeModal();
-    } catch (err) {
-      setFormError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
+      if (!target) return;
 
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa rạp chiếu này?")) return;
-    try {
-      await deleteCinema(id);
-      setList((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        setPage((prev) => {
+          if (prev * PAGE_SIZE < filtered.length) {
+            return prev + 1;
+          }
+          return prev;
+        });
+      }
+    };
 
-  const filtered = list.filter((c) =>
-    c.name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.city?.toLowerCase().includes(search.toLowerCase()) ||
-    c.address?.toLowerCase().includes(search.toLowerCase())
+    // Use capture phase to intercept scrolls inside layout container
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [filtered.length]);
+
+  // Stats
+  const totalCinemas = list.length;
+  const totalStaff = list.reduce(
+    (acc, c) => acc + (c?.staffCount ?? c?.StaffCount ?? c?.employeeCount ?? 0),
+    0
+  );
+  const totalRooms = list.reduce(
+    (acc, c) => acc + (c?.roomCount ?? c?.RoomCount ?? c?.screeningRoomCount ?? 0),
+    0
   );
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Rạp Chiếu</h4>
-        <button
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={openAddModal}
-        >
-          + Thêm
+    <div className="cn-wrapper">
+      {/* ── Header row ── */}
+      <div className="cn-header">
+        <h4 className="cn-title">Quản Lí Chi Nhánh</h4>
+        <button className="cn-btn-add" onClick={openAddModal}>
+          <MdAdd size={18} />
+          Thêm chi nhánh
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-        {/* Search */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên, thành phố, địa chỉ..."
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm w-full max-w-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Tên Rạp</th>
-                  <th className="px-3 py-2 text-left">Địa Chỉ</th>
-                  <th className="px-3 py-2 text-left">Thành Phố</th>
-                  <th className="px-3 py-2 text-left">Điện Thoại</th>
-                  <th className="px-3 py-2 text-left">Email</th>
-                  <th className="px-3 py-2 text-left">Trạng Thái</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-6 text-gray-400">
-                      Không có dữ liệu
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((c, i) => (
-                    <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2 font-medium">{c.name}</td>
-                      <td className="px-3 py-2">{c.address}</td>
-                      <td className="px-3 py-2">{c.city}</td>
-                      <td className="px-3 py-2">{c.phone}</td>
-                      <td className="px-3 py-2">{c.email}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            c.status === "Active"
-                              ? "bg-green-100 text-green-700"
-                              : c.status === "Inactive"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {c.status === "Active"
-                            ? "Hoạt động"
-                            : c.status === "Inactive"
-                            ? "Ngừng HĐ"
-                            : c.status || "—"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button
-                          className="text-blue-600 hover:underline text-xs"
-                          onClick={() => openEditModal(c)}
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          className="text-red-500 hover:underline text-xs"
-                          onClick={() => handleDelete(c.id)}
-                        >
-                          Xóa
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* ── Stats ── */}
+      <div className="cn-stats-row">
+        <StatCard
+          icon={<MdStorefront size={32} />}
+          iconBg="#f0f4ff"
+          iconColor="#6366f1"
+          label="Tổng chi nhánh rạp"
+          value={`${totalCinemas} rạp`}
+        />
+        <StatCard
+          icon={<MdPeople size={32} />}
+          iconBg="#f0fdf4"
+          iconColor="#16a34a"
+          label="Tổng nhân viên"
+          value={`${totalStaff} nhân viên`}
+        />
+        <StatCard
+          icon={<MdOndemandVideo size={32} />}
+          iconBg="#fff7ed"
+          iconColor="#f97316"
+          label="Tổng phòng chiếu"
+          value={`${totalRooms} phòng`}
+        />
       </div>
 
-      {/* Modal Thêm / Sửa */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h5 className="font-bold text-lg mb-4">
-              {editId !== null ? "Cập Nhật Rạp Chiếu" : "Thêm Rạp Chiếu"}
-            </h5>
+      {/* ── Search ── */}
+      <div className="cn-search-row">
+        <input
+          type="text"
+          className="cn-search"
+          placeholder="Tìm kiếm theo tên, khu vực, địa chỉ..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        />
+      </div>
 
-            {formError && (
-              <p className="text-red-500 text-sm mb-3">{formError}</p>
-            )}
+      {/* ── Loading / Error ── */}
+      {loading && <p className="cn-msg">Đang tải dữ liệu...</p>}
+      {error && <p className="cn-msg cn-msg--error">{error}</p>}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Tên rạp */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên Rạp <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Nhập tên rạp chiếu"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
+      {/* ── Cards grid ── */}
+      {!loading && !error && (
+        <>
+          {pageItems.length === 0 ? (
+            <p className="cn-msg">Không có dữ liệu phù hợp.</p>
+          ) : (
+            <div className="cn-grid">
+              {pageItems.map((cinema, idx) => {
+                const id = getCinemaId(cinema);
+                const status = getCinemaStatus(cinema);
+                const style = getStatusStyle(status);
+                return (
+                  <BranchCard
+                    key={id ?? idx}
+                    cinema={cinema}
+                    statusStyle={style}
+                    onEdit={() => openEditModal(cinema)}
+                    onDelete={() => handleDelete(id)}
+                    onDetail={() => navigate(`/admin/phong-chieu?cinemaId=${id}`)}
+                  />
+                );
+              })}
+            </div>
+          )}
 
-              {/* Địa chỉ */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Địa Chỉ <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="Nhập địa chỉ rạp"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
+          {/* ── Scroll/Pagination Footer Info ── */}
+          <div className="cn-footer" style={{ justifyContent: "center", margin: "24px 0" }}>
+            <span className="cn-footer-info">
+              {pageItems.length < filtered.length ? (
+                `Đang hiển thị ${pageItems.length} trên ${filtered.length} chi nhánh (Cuộn xuống để xem thêm...)`
+              ) : (
+                `Đã hiển thị tất cả ${filtered.length} chi nhánh`
+              )}
+            </span>
+          </div>
+        </>
+      )}
 
-              {/* Thành phố */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thành Phố
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={form.city}
-                  onChange={handleChange}
-                  placeholder="Nhập tên thành phố"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
+      {/* ── Modal ── */}
+      {showModal &&
+        createPortal(
+          <div className="cn-modal-overlay">
+            <div className="cn-modal">
+              <h5 className="cn-modal-title">
+                {editId !== null ? "Cập Nhật Chi Nhánh" : "Thêm Chi Nhánh"}
+              </h5>
 
-              {/* Phone + Email - 2 cột */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Điện Thoại
+              {formError && <p className="cn-form-error">{formError}</p>}
+
+              <form onSubmit={handleSubmit} className="cn-form">
+                {/* Tên rạp */}
+                <div className="cn-field">
+                  <label className="cn-label">
+                    Tên Chi Nhánh <span className="cn-required">*</span>
                   </label>
                   <input
                     type="text"
-                    name="phone"
-                    value={form.phone}
+                    name="cinemaName"
+                    value={form.cinemaName}
                     onChange={handleChange}
-                    placeholder="Số điện thoại"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="Nhập tên chi nhánh"
+                    className="cn-input"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
+
+                {/* Địa chỉ */}
+                <div className="cn-field">
+                  <label className="cn-label">
+                    Địa Chỉ <span className="cn-required">*</span>
                   </label>
                   <input
-                    type="email"
-                    name="email"
-                    value={form.email}
+                    type="text"
+                    name="address"
+                    value={form.address}
                     onChange={handleChange}
-                    placeholder="Email liên hệ"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="Nhập địa chỉ"
+                    className="cn-input"
                   />
                 </div>
-              </div>
 
-              {/* Trạng thái */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Trạng Thái
-                </label>
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="">-- Chọn trạng thái --</option>
-                  <option value="Active">Hoạt động</option>
-                  <option value="Inactive">Ngừng hoạt động</option>
-                </select>
-              </div>
+                {/* Khu vực */}
+                <div className="cn-field">
+                  <label className="cn-label">
+                    Khu Vực <span className="cn-required">*</span>
+                  </label>
+                  <select
+                    name="areaId"
+                    value={form.areaId}
+                    onChange={handleChange}
+                    className="cn-input"
+                  >
+                    <option value="">-- Chọn khu vực --</option>
+                    {areas.map((area) => {
+                      const aId = getAreaId(area);
+                      return (
+                        <option key={aId} value={aId}>
+                          {getAreaName(area)}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
 
-              {/* Nút hành động */}
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
-                  disabled={submitting}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
-                  disabled={submitting}
-                >
-                  {submitting
-                    ? "Đang xử lý..."
-                    : editId !== null
-                    ? "Cập Nhật"
-                    : "Thêm Mới"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                {/* Phone + Email */}
+                <div className="cn-field-row">
+                  <div className="cn-field">
+                    <label className="cn-label">Điện Thoại</label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="Số điện thoại"
+                      className="cn-input"
+                    />
+                  </div>
+                  <div className="cn-field">
+                    <label className="cn-label">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      placeholder="Email liên hệ"
+                      className="cn-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Trạng thái */}
+                <div className="cn-field">
+                  <label className="cn-label">Trạng Thái</label>
+                  <select
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="cn-input"
+                  >
+                    {CINEMA_STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Actions */}
+                <div className="cn-modal-actions">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="cn-btn-cancel"
+                    disabled={submitting}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="cn-btn-submit"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? "Đang xử lý..."
+                      : editId !== null
+                      ? "Cập Nhật"
+                      : "Thêm Mới"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
+// ─── StatCard ─────────────────────────────────────────────
+function StatCard({ icon, iconBg, iconColor, label, value }) {
+  return (
+    <div className="cn-stat-card">
+      <div className="cn-stat-icon" style={{ background: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+      <div className="cn-stat-body">
+        <p className="cn-stat-label">{label}</p>
+        <p className="cn-stat-value">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── BranchCard ───────────────────────────────────────────
+function BranchCard({ cinema, statusStyle, onEdit, onDelete, onDetail }) {
+  const managerName =
+    cinema?.managerName ?? cinema?.ManagerName ?? cinema?.manager ?? "—";
+  const staffCount =
+    cinema?.staffCount ?? cinema?.StaffCount ?? cinema?.employeeCount ?? 0;
+  const roomCount =
+    cinema?.roomCount ?? cinema?.RoomCount ?? cinema?.screeningRoomCount ?? 0;
+
+  return (
+    <div className="cn-card">
+      {/* Name + Badge */}
+      <div className="cn-card-head" onClick={onDetail} style={{ cursor: "pointer" }}>
+        <h6 className="cn-card-name" style={{ transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#3b82f6"} onMouseOut={(e) => e.target.style.color = ""}>{getCinemaName(cinema)}</h6>
+        <span
+          className="cn-card-badge"
+          style={{ background: statusStyle.bg, color: statusStyle.color }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {statusStyle.label}
+        </span>
+      </div>
+
+      {/* Info rows */}
+      <div className="cn-card-info">
+        <InfoRow icon={<MdPersonOutline />} label="Quản lý:" value={managerName} />
+        <InfoRow icon={<MdGroup />} label="Nhân viên:" value={`${staffCount} nhân viên`} />
+        <InfoRow 
+          icon={<MdMeetingRoom />} 
+          label="Phòng chiếu:" 
+          value={`${roomCount} phòng chiếu`} 
+          className="cn-info-row-clickable"
+          onClick={onDetail}
+        />
+        <InfoRow
+          icon={<MdLocationOn />}
+          label="Địa chỉ:"
+          value={getCinemaAddress(cinema)}
+          multiline
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="cn-card-actions">
+        <button className="cn-card-btn cn-card-btn--detail" onClick={onDetail}>
+          <MdVisibility size={15} /> Chi tiết
+        </button>
+        <button className="cn-card-btn cn-card-btn--edit" onClick={onEdit}>
+          <MdEdit size={15} /> Sửa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── InfoRow ──────────────────────────────────────────────
+function InfoRow({ icon, label, value, multiline, onClick, className }) {
+  return (
+    <div 
+      className={`cn-info-row${multiline ? " cn-info-row--multiline" : ""}${className ? " " + className : ""}`}
+      onClick={onClick}
+    >
+      <span className="cn-info-icon">{icon}</span>
+      <span className="cn-info-label">{label}</span>
+      <span className="cn-info-value">{value || "—"}</span>
     </div>
   );
 }
