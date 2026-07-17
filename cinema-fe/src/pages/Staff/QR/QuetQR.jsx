@@ -158,7 +158,7 @@ export default function StaffQuetQR() {
             Trình Quét QR Camera
           </h5>
           
-          <div className="relative w-full max-w-sm aspect-square bg-gray-900 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-gray-850 shadow-inner group">
+          <div className="relative w-full max-w-sm aspect-square bg-gray-50 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-gray-200 shadow-inner group">
             <div id="reader" style={{ width: "100%", height: "100%" }}></div>
             
             {/* Laser line effect */}
