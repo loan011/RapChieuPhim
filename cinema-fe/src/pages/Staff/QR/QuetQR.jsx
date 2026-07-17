@@ -159,7 +159,7 @@ export default function StaffQuetQR() {
                   <span>Thông Tin Vé: {ticketDetails.ticketCode || ticketDetails.code || `VE${ticketDetails.ticketId || ticketDetails.id}`}</span>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wider ${
                     ticketDetails.status === "Used" || ticketDetails.status === "Đã thanh toán"
-                      ? "bg-green-100 text-green-805"
+                      ? "bg-red-100 text-red-800"
                       : ticketDetails.status === "Active" || ticketDetails.status === "Đã đặt"
                       ? "bg-yellow-100 text-yellow-800"
                       : "bg-red-100 text-red-800"

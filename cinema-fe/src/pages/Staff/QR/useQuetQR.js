@@ -79,6 +79,11 @@ export function useQuetQR() {
               text: err.message || "Tự động check-in vé thất bại."
             });
           }
+        } else if (isAlreadyUsed) {
+          setStatusMessage({
+            type: "error",
+            text: `CẢNH BÁO: Vé ${found.ticketCode || `VE${ticketId}`} này đã được sử dụng (check-in) từ trước đó!`
+          });
         }
       } else {
         setStatusMessage({
