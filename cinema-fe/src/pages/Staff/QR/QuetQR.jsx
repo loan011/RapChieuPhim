@@ -40,15 +40,16 @@ export default function StaffQuetQR() {
         html5QrCodeRef.current = html5QrCode;
         
         const config = { 
-          fps: 25
+          fps: 25,
+          videoConstraints: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          }
         };
         
         await html5QrCode.start(
-          { 
-            facingMode: "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
+          { facingMode: "user" },
           config,
           (decodedText) => {
             // Khi quét thành công QR
