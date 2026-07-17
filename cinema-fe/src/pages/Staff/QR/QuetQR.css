@@ -2,3 +2,17 @@
 .staff-qr-container {
   padding: 4px;
 }
+
+/* Force video to fill container to remove black bars */
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: inherit;
+}
+
+#reader {
+  border: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}
