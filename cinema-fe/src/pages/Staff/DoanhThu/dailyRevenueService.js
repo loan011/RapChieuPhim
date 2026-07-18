@@ -6,22 +6,36 @@ const API_URL = getApiUrl();
 export async function getDailyRevenue(date) {
   const headers = getAuthHeaders();
 
-  // Fetch all payments, bookings, and orders in parallel
-  const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
-    fetch(`${API_URL}/Payments`, { headers }),
-    fetch(`${API_URL}/Bookings`, { headers }),
-    fetch(`${API_URL}/Orders`, { headers })
-  ]);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
 
-  if (!paymentsRes.ok || !bookingsRes.ok || !ordersRes.ok) {
-    throw new Error("Lấy dữ liệu từ máy chủ thất bại!");
+  let payments = [];
+  let bookings = [];
+  let orders = [];
+
+  try {
+    // Fetch all payments, bookings, and orders in parallel
+    const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
+      fetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal })
+    ]);
+
+    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok) {
+      const [pData, bData, oData] = await Promise.all([
+        readResponse(paymentsRes),
+        readResponse(bookingsRes),
+        readResponse(ordersRes)
+      ]);
+      payments = pData || [];
+      bookings = bData || [];
+      orders = oData || [];
+    }
+  } catch (err) {
+    console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const [payments, bookings, orders] = await Promise.all([
-    readResponse(paymentsRes),
-    readResponse(bookingsRes),
-    readResponse(ordersRes)
-  ]);
 
   // Filter payments for the selected date and successful status
   const filteredPayments = (payments || []).filter(p => {

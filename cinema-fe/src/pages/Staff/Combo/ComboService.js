@@ -13,20 +13,36 @@ export async function getCombosList() {
   let combosData = [];
   let foodsData = [];
 
+  // 1. Fetch Combos
+  const combosController = new AbortController();
+  const combosTimeout = setTimeout(() => combosController.abort(), 3000);
   try {
-    const res = await fetch(`${API_URL}/Combos/Available`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/Combos/Available`, {
+      headers: getAuthHeaders(),
+      signal: combosController.signal
+    });
     const data = await readResponse(res);
     combosData = normalizeArray(data);
   } catch (err) {
     console.warn("Failed to load combos:", err);
+  } finally {
+    clearTimeout(combosTimeout);
   }
 
+  // 2. Fetch Foods
+  const foodsController = new AbortController();
+  const foodsTimeout = setTimeout(() => foodsController.abort(), 3000);
   try {
-    const res = await fetch(`${API_URL}/Foods/Available`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_URL}/Foods/Available`, {
+      headers: getAuthHeaders(),
+      signal: foodsController.signal
+    });
     const data = await readResponse(res);
     foodsData = normalizeArray(data);
   } catch (err) {
     console.warn("Failed to load foods:", err);
+  } finally {
+    clearTimeout(foodsTimeout);
   }
 
   const combos = combosData.map(c => ({
