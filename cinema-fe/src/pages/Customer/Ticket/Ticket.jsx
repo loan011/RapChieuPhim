@@ -24,12 +24,86 @@ const TABS = [
   { key: "cancelled", label: "Đã hủy" },
 ];
 
+const normalizeFoodsForDisplay = (foods) => {
+  const parseFoodString = (text) => {
+    const cleaned = String(text || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleaned) return null;
+
+    const quantityMatch = cleaned.match(/^(.+?)\s*(?:x|X|\*)\s*(\d+)$/i)
+      || cleaned.match(/^(.+?)\s*(?:-|:)\s*(\d+)$/)
+      || cleaned.match(/^(.+?)\s+(\d+)$/);
+
+    if (quantityMatch) {
+      return {
+        name: quantityMatch[1].trim() || "Đồ ăn kèm",
+        quantity: Number(quantityMatch[2]) || 1,
+      };
+    }
+
+    return { name: cleaned, quantity: 1 };
+  };
+
+  const mergeItems = (items) => {
+    const map = new Map();
+
+    items.forEach((item) => {
+      if (!item?.name) return;
+      const key = item.name.trim().toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { ...item, name: item.name.trim() });
+      } else {
+        map.get(key).quantity += Number(item.quantity || 1);
+        map.get(key).price += Number(item.price || 0);
+      }
+    });
+
+    return Array.from(map.values());
+  };
+
+  let items = [];
+
+  if (Array.isArray(foods)) {
+    items = foods.flatMap((food) => {
+      if (!food) return [];
+      if (typeof food === "string") {
+        return food
+          .split(/[|;,\n]+/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map(parseFoodString)
+          .filter(Boolean);
+      }
+
+      if (typeof food === "object") {
+        const candidate = food.food ?? food.Food ?? food;
+        const name = food.name || food.Name || food.foodName || food.FoodName || candidate?.name || candidate?.Name || candidate?.foodName || candidate?.FoodName || "Đồ ăn kèm";
+        const quantity = Number(food.quantity ?? food.Quantity ?? food.qty ?? food.Qty ?? candidate?.quantity ?? candidate?.Quantity ?? 1);
+        const price = Number(food.price ?? food.Price ?? food.unitPrice ?? food.UnitPrice ?? candidate?.price ?? candidate?.Price ?? candidate?.unitPrice ?? candidate?.UnitPrice ?? 0);
+        return [{ name, quantity: quantity > 0 ? quantity : 1, price }];
+      }
+
+      return [];
+    });
+  } else if (typeof foods === "string") {
+    items = foods
+      .split(/[|;,\n]+/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map(parseFoodString)
+      .filter(Boolean);
+  }
+
+  return mergeItems(items);
+};
+
 const getQrDataText = (ticket) => {
   if (!ticket) return "";
   const seatInfo = Array.isArray(ticket.seats) ? ticket.seats.join(", ") : (ticket.seats || "N/A");
-  const foodInfo = ticket.foods && ticket.foods.length > 0 
-    ? ticket.foods.map(f => `${f.name}x${f.quantity}`).join(",")
-    : "";
+  const foodItems = normalizeFoodsForDisplay(ticket.foods);
+  const foodInfo = foodItems.map((f) => `${f.name}x${f.quantity}`).join(",");
   const showtimeInfo = `${ticket.date || "N/A"} ${ticket.time || "N/A"}`;
   
   let text = `VE:${ticket.id}|PHIM:${ticket.movie}|SUAT:${showtimeInfo}|GHE:${seatInfo}|GIA:${ticket.price}|TRANG_THAI:Active`;
@@ -205,7 +279,7 @@ export default function Ticket() {
             <div className="ticket-detail-modal-header">
               <h2>CHÚC MỪNG BẠN!</h2>
               <p>
-                Việc mua vé online của bạn đã thành công. Galaxy Cinema xin chân
+                Việc mua vé online của bạn đã thành công. Cinema xin chân
                 thành cám ơn bạn đã chọn chúng tôi để phục vụ nhu cầu giải trí
                 của bạn. Bạn vui lòng xem thông tin đặt vé dưới đây.
               </p>
@@ -213,7 +287,7 @@ export default function Ticket() {
 
             <div className="ticket-detail-modal-body">
               <div className="ticket-detail-modal-qr-section" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                <span className="room-entry-label">Mã vào khán phòng:</span>
+                <span className="room-entry-label">Mã:</span>
                 <div className="detail-qr-code-wrapper" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrDataText(selectedTicket))}`}
@@ -242,30 +316,43 @@ export default function Ticket() {
                 <div className="detail-info-row">
                   <span className="info-label">Suất chiếu:</span>
                   <span className="info-value font-bold">
-                    {selectedTicket.date}, {selectedTicket.time}
+                    {selectedTicket.date} {selectedTicket.time}
                   </span>
                 </div>
                 <div className="detail-info-row">
                   <span className="info-label">Thông tin vé:</span>
                   <span className="info-value">
-                    {selectedTicket.seats.length} x Vé ({selectedTicket.price} -{" "}
+                    {selectedTicket.seats.length} x Vé ({selectedTicket.ticketPrice || selectedTicket.price} -{" "}
                     {selectedTicket.seats.join(", ")})
                   </span>
                 </div>
-                <div className="detail-info-row">
-                  <span className="info-label">Đồ ăn và Thức uống:</span>
-                  <span className="info-value" style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
-                    {selectedTicket.foods && selectedTicket.foods.length > 0 ? (
-                      selectedTicket.foods.map((food, idx) => (
-                        <div key={idx} style={{ fontSize: "0.85rem", color: "#374151" }}>
-                          {food.name} <span style={{ color: "#9ca3af" }}>(x{food.quantity})</span>
-                        </div>
-                      ))
-                    ) : (
-                      "Không có"
-                    )}
-                  </span>
-                </div>
+                {(() => {
+                  const foodItems = normalizeFoodsForDisplay(selectedTicket.foods);
+                  return (
+                    <div className="detail-info-row detail-info-row--foods">
+                      <span className="info-label detail-food-heading">Đồ ăn &amp; Thức uống:</span>
+                      <div className="detail-food-wrap">
+                        {foodItems.length > 0 ? (
+                          <div className="detail-food-list">
+                            {foodItems.map((food, idx) => (
+                              <div key={idx} className="detail-food-item">
+                                <span className="detail-food-name">{food.name}</span>
+                                <span className="detail-food-qty">x{food.quantity}</span>
+                                <span className="detail-food-price">
+                                  {food.price > 0
+                                    ? `${(food.price * food.quantity).toLocaleString("vi-VN")}đ`
+                                    : ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="info-value">Không có</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="detail-info-row total">
                   <span className="info-label">Tổng cộng:</span>
                   <span className="info-value total-price">{selectedTicket.price}</span>

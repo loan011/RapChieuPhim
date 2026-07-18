@@ -66,3 +66,20 @@ export async function getMovieDetailStats(movieId) {
     "Lấy thống kê chi tiết phim thất bại!"
   );
 }
+
+export async function getMovies() {
+  return apiGet(
+    "/Movies",
+    "Lấy danh sách phim thất bại!"
+  );
+}
+
+export async function getDashboardFoodSources() {
+  const [bookings, foods, combos] = await Promise.all([
+    apiGet("/Bookings", "Lấy danh sách đặt vé thất bại!").catch(() => []),
+    apiGet("/Foods", "Lấy danh sách đồ ăn thất bại!").catch(() => []),
+    apiGet("/Combos", "Lấy danh sách combo thất bại!").catch(() => []),
+  ]);
+
+  return { bookings, foods, combos };
+}

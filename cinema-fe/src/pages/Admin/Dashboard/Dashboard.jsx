@@ -173,7 +173,7 @@ export default function Dashboard() {
                         <img src={m.posterUrl || 'https://via.placeholder.com/50'} alt="poster" className="movie-poster-mock" />
                         <div>
                           <span className="movie-title">{m.movieTitle}</span>
-                          <span className="movie-date">Đang chiếu</span>
+                          <span className="movie-date">{m.movieStatus}</span>
                         </div>
                       </div>
                     </td>
@@ -261,7 +261,7 @@ export default function Dashboard() {
               <h6>Tỷ lệ doanh thu đồ ăn</h6>
               {foodPieData.length === 0 ? (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '180px', color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic', textAlign: 'center', padding: '0 20px' }}>
-                  Vui lòng khởi động lại (Restart) Backend Visual Studio để nạp dữ liệu thật!
+                  Không có giao dịch đồ ăn trong khoảng thời gian đã chọn.
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center' }}>

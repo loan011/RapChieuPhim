@@ -13,8 +13,94 @@ import {
   getRevenueChart,
   getMovieStats,
   getMovieDetailStats,
-  getCinemas
+  getCinemas,
+  getMovies,
+  getDashboardFoodSources
 } from "./dashboardService";
+import { getDailyRevenue } from "../../Staff/DoanhThu/dailyRevenueService";
+
+function buildFoodDistributionsFromBills(revenueData) {
+  const revenueByName = new Map();
+
+  (revenueData?.bills || []).forEach((bill) => {
+    (bill.concessions || []).forEach((item) => {
+      const name = String(item.name || "").trim();
+      if (!name || name === "N/A") return;
+      const revenue = Number(item.subtotal || (item.unitPrice * item.quantity) || 0);
+      revenueByName.set(name, (revenueByName.get(name) || 0) + revenue);
+    });
+  });
+
+  const total = Array.from(revenueByName.values()).reduce((sum, value) => sum + value, 0);
+  return Array.from(revenueByName, ([name, value]) => ({
+    name,
+    value,
+    percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
+  })).sort((a, b) => b.value - a.value);
+}
+
+function toList(value) {
+  if (Array.isArray(value)) return value;
+  return value?.$values || value?.data || value?.items || [];
+}
+
+function buildFoodDistributionsFromBookings(source, selectedDate) {
+  const foods = toList(source?.foods);
+  const combos = toList(source?.combos);
+  const revenueByName = new Map();
+
+  toList(source?.bookings).forEach((booking) => {
+    const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
+    if (["pending", "unpaid", "cancelled", "canceled"].some(value => status.includes(value))) return;
+
+    const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
+    if (selectedDate && rawDate && String(rawDate).split("T")[0] !== selectedDate) return;
+
+    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ?? booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
+    toList(rawItems).forEach((item) => {
+      const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
+      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
+      const catalogItem = foodId != null
+        ? foods.find(food => String(food.foodId ?? food.FoodId ?? food.id ?? food.Id) === String(foodId))
+        : combos.find(combo => String(combo.comboId ?? combo.ComboId ?? combo.id ?? combo.Id) === String(comboId));
+      const directName = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName;
+      const catalogName = catalogItem?.foodName ?? catalogItem?.FoodName ?? catalogItem?.comboName ?? catalogItem?.ComboName;
+      const name = directName && String(directName).toLowerCase() !== "string" ? directName : catalogName;
+      if (!name) return;
+      const quantity = Number(item.quantity ?? item.Quantity ?? 1);
+      const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? catalogItem?.price ?? catalogItem?.Price ?? 0);
+      revenueByName.set(name, (revenueByName.get(name) || 0) + (price * quantity));
+    });
+  });
+
+  const total = Array.from(revenueByName.values()).reduce((sum, value) => sum + value, 0);
+  return Array.from(revenueByName, ([name, value]) => ({
+    name,
+    value,
+    percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
+  })).sort((a, b) => b.value - a.value);
+}
+
+function getMovieStatus(movie) {
+  const endDateValue = movie?.endDate ?? movie?.EndDate ?? movie?.endTime ?? movie?.EndTime;
+  if (endDateValue) {
+    const endDate = new Date(endDateValue);
+    endDate.setHours(23, 59, 59, 999);
+    if (!Number.isNaN(endDate.getTime()) && endDate < new Date()) return "Đã chiếu";
+  }
+
+  const releaseDateValue = movie?.releaseDate ?? movie?.ReleaseDate ?? movie?.startDate ?? movie?.StartDate;
+  if (releaseDateValue) {
+    const releaseDate = new Date(releaseDateValue);
+    releaseDate.setHours(0, 0, 0, 0);
+    if (!Number.isNaN(releaseDate.getTime()) && releaseDate > new Date()) return "Sắp chiếu";
+  }
+
+  const rawStatus = String(movie?.status ?? movie?.Status ?? movie?.movieStatus ?? movie?.MovieStatus ?? "").toLowerCase();
+  if (rawStatus.includes("completed") || rawStatus.includes("đã chiếu") || rawStatus.includes("hết chiếu")) return "Đã chiếu";
+  if (rawStatus.includes("coming") || rawStatus.includes("sắp chiếu")) return "Sắp chiếu";
+  return "Đang chiếu";
+}
 
 export const DEFAULT_DASHBOARD_STATS = {
   totalMovies: 0,
@@ -98,12 +184,17 @@ export function useDashboard() {
       setLoading(true);
       setError("");
 
-      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp] = await Promise.all([
+      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp, moviesResp, dailyRevenueResp, foodSources] = await Promise.all([
         getDashboardStats(timeFilter, cinemaId),
         getRecentTickets(),
         getRevenueChart(timeFilter, cinemaId),
         getMovieStats(timeFilter, cinemaId),
-        getCinemas()
+        getCinemas(),
+        getMovies(),
+        /^\d{4}-\d{2}-\d{2}$/.test(timeFilter)
+          ? getDailyRevenue(timeFilter).catch(() => null)
+          : Promise.resolve(null),
+        getDashboardFoodSources()
       ]);
 
       setStats(normalizeDashboardStats(statsData));
@@ -112,16 +203,26 @@ export function useDashboard() {
       const cList = cinemasResp?.$values || cinemasResp || [];
       setCinemas(cList);
       
+      const apiFoodDistributions = chartDataResp?.foodDistributions?.$values || chartDataResp?.foodDistributions || chartDataResp?.FoodDistributions?.$values || chartDataResp?.FoodDistributions || [];
+      const bookingFoodDistributions = buildFoodDistributionsFromBookings(
+        foodSources,
+        /^\d{4}-\d{2}-\d{2}$/.test(timeFilter) ? timeFilter : ""
+      );
+      const fallbackFoodDistributions = buildFoodDistributionsFromBills(dailyRevenueResp);
+      const reliableFoodDistributions = bookingFoodDistributions.length > 0
+        ? bookingFoodDistributions
+        : (fallbackFoodDistributions.length > 0 ? fallbackFoodDistributions : apiFoodDistributions);
+
       // Handle Chart Data lowercasing
       setChartData({
         totalTicketRevenue: chartDataResp?.totalTicketRevenue || chartDataResp?.TotalTicketRevenue || 0,
         totalFoodRevenue: chartDataResp?.totalFoodRevenue || chartDataResp?.TotalFoodRevenue || 0,
         ticketRevenuePercentage: chartDataResp?.ticketRevenuePercentage || chartDataResp?.TicketRevenuePercentage || 0,
         foodRevenuePercentage: chartDataResp?.foodRevenuePercentage || chartDataResp?.FoodRevenuePercentage || 0,
-        foodDistributions: (chartDataResp?.foodDistributions?.$values || chartDataResp?.foodDistributions || chartDataResp?.FoodDistributions?.$values || chartDataResp?.FoodDistributions || []).map(f => ({
-          name: f.foodName || f.FoodName || "Chưa rõ",
-          value: f.revenue || f.Revenue || 0,
-          percent: f.percentage || f.Percentage || 0
+        foodDistributions: reliableFoodDistributions.map(f => ({
+          name: f.foodName || f.FoodName || f.name || "Chưa rõ",
+          value: f.revenue || f.Revenue || f.value || 0,
+          percent: f.percentage || f.Percentage || f.percent || 0
         })),
         topShowtimes: (chartDataResp?.topShowtimes?.$values || chartDataResp?.topShowtimes || chartDataResp?.TopShowtimes?.$values || chartDataResp?.TopShowtimes || []).map(s => ({
           movieTitle: s.movieTitle || s.MovieTitle,
@@ -137,10 +238,21 @@ export function useDashboard() {
         }))
       });
 
-      setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => ({
-        movieId: m.movieId || m.MovieId,
-        movieTitle: m.movieTitle || m.MovieTitle,
-        posterUrl: m.posterUrl || m.PosterUrl,
+      const movies = moviesResp?.$values || moviesResp?.data || moviesResp || [];
+      const moviesById = new Map(
+        movies.map(movie => [String(movie.movieId ?? movie.MovieId ?? movie.id ?? movie.Id), movie])
+      );
+
+      setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => {
+        const movieId = m.movieId ?? m.MovieId;
+        const movie = moviesById.get(String(movieId));
+        const movieStatus = movie ? getMovieStatus(movie) : "Đang chiếu";
+
+        return {
+        movieId,
+        movieTitle: movie?.title ?? movie?.Title ?? movie?.movieTitle ?? movie?.MovieTitle ?? m.movieTitle ?? m.MovieTitle,
+        posterUrl: movie?.posterUrl ?? movie?.PosterUrl ?? movie?.imageUrl ?? movie?.ImageUrl ?? m.posterUrl ?? m.PosterUrl,
+        movieStatus,
         totalRevenue: m.totalRevenue || m.TotalRevenue || 0,
         totalTicketsSold: m.totalTicketsSold || m.TotalTicketsSold || 0,
         revenueContributionPercentage: m.revenueContributionPercentage || m.RevenueContributionPercentage || 0,
@@ -150,7 +262,7 @@ export function useDashboard() {
           percentage: c.percentage || c.Percentage,
           ticketsSold: c.ticketsSold || c.TicketsSold
         }))
-      })).filter(m => m.movieTitle));
+      }}).filter(m => m.movieTitle && m.movieStatus !== "Đã chiếu"));
 
     } catch (err) {
       console.error("Dashboard error:", err);

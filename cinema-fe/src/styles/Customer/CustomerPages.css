@@ -808,9 +808,66 @@
 .detail-info-row {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px dashed #eee;
   font-size: 0.85rem;
+  gap: 12px;
+}
+
+.detail-info-row--foods {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.detail-food-heading {
+  width: 100%;
+}
+
+.detail-food-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.detail-food-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  align-items: stretch;
+}
+
+.detail-food-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px minmax(90px, auto);
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+  background: transparent;
+  width: 100%;
+}
+
+.detail-food-name {
+  color: #374151;
+  font-weight: 700;
+  text-align: left;
+}
+
+.detail-food-qty {
+  color: #9ca3af;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.detail-food-price {
+  color: #ff7e00;
+  font-weight: 800;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .detail-info-row:last-child {
@@ -827,11 +884,16 @@
 
 .info-label {
   color: #666;
+  flex-shrink: 0;
 }
 
 .info-value {
   color: #333;
   text-align: right;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .info-value.font-bold {

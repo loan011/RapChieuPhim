@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCustomerTickets } from "./customerTicketService.js";
+import { getCustomerTickets, getTicketFoodCatalogs } from "./customerTicketService.js";
 
 export function getLocalBookedTickets() {
   try {
@@ -46,6 +46,89 @@ export function handlePosterError(e) {
   e.target.style.background = "rgba(255,255,255,0.05)";
 }
 
+function normalizeFoodsList(rawFoods, catalogs = { foods: [], combos: [] }) {
+  const findCatalogItem = (item) => {
+    const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
+    const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
+
+    if (foodId != null) {
+      return catalogs.foods.find((food) =>
+        String(food.foodId ?? food.FoodId ?? food.id ?? food.Id) === String(foodId)
+      );
+    }
+    if (comboId != null) {
+      return catalogs.combos.find((combo) =>
+        String(combo.comboId ?? combo.ComboId ?? combo.id ?? combo.Id) === String(comboId)
+      );
+    }
+    return null;
+  };
+
+  const toArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") {
+      const nested = value.$values ?? value.values ?? value.items ?? value.data ?? value.results ?? value.foods ?? value.Foods;
+      if (Array.isArray(nested)) return nested;
+      return [value];
+    }
+    if (typeof value === "string") {
+      return value
+        .split(/[;,]/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+          const quantityMatch = part.match(/^(.*?)(?:\s*[xX]\s*(\d+))$/);
+          if (quantityMatch) {
+            return {
+              name: quantityMatch[1].trim() || "Đồ ăn kèm",
+              quantity: Number(quantityMatch[2]) || 1,
+              price: 0,
+            };
+          }
+          return {
+            name: part || "Đồ ăn kèm",
+            quantity: 1,
+            price: 0,
+          };
+        });
+    }
+    return [];
+  };
+
+  const foodItems = toArray(rawFoods);
+  const parsedFoods = [];
+
+  foodItems.forEach((item) => {
+    if (!item) return;
+
+    if (typeof item === "string") {
+      const qtyMatch = item.match(/^(.*?)(?:\s*[xX]\s*(\d+))$/);
+      parsedFoods.push({
+        name: qtyMatch ? (qtyMatch[1].trim() || "Đồ ăn kèm") : item.trim() || "Đồ ăn kèm",
+        quantity: qtyMatch ? (Number(qtyMatch[2]) || 1) : 1,
+        price: 0,
+      });
+      return;
+    }
+
+    const catalogItem = findCatalogItem(item);
+    const foodObj = item.food ?? item.Food ?? item.combo ?? item.Combo ?? item;
+    const directName = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName ?? foodObj?.foodName ?? foodObj?.FoodName ?? foodObj?.comboName ?? foodObj?.ComboName ?? foodObj?.name ?? foodObj?.Name ?? item.name ?? item.Name;
+    const catalogName = catalogItem?.foodName ?? catalogItem?.FoodName ?? catalogItem?.comboName ?? catalogItem?.ComboName ?? catalogItem?.name ?? catalogItem?.Name;
+    const name = String(directName || "").trim().toLowerCase() === "string"
+      ? (catalogName || "Đồ ăn kèm")
+      : (directName || catalogName || "Đồ ăn kèm");
+    const qty = Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 1);
+    const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? foodObj?.price ?? foodObj?.Price ?? catalogItem?.price ?? catalogItem?.Price ?? 0);
+
+    if (qty > 0) {
+      parsedFoods.push({ name, quantity: qty, price });
+    }
+  });
+
+  return parsedFoods;
+}
+
 export function useTicket() {
   const [activeTab, setActiveTab] = useState("all");
   const [tickets, setTickets] = useState([]);
@@ -76,7 +159,10 @@ export function useTicket() {
           return;
         }
 
-        const data = await getCustomerTickets(userId);
+        const [data, catalogs] = await Promise.all([
+          getCustomerTickets(userId),
+          getTicketFoodCatalogs(),
+        ]);
         let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
         console.log("=== RAW TICKETS DATA FROM BACKEND ===", list);
         console.log("=== RAW TICKETS JSON ===", JSON.stringify(list));
@@ -145,7 +231,7 @@ export function useTicket() {
               
             const seatObj = booking.seat ?? booking.Seat ?? t.seat ?? t.Seat;
             const explicitSeatPrice = Number(seatObj?.price ?? seatObj?.Price ?? 0);
-            const itemPrice = explicitSeatPrice > 0 ? explicitSeatPrice : Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
+            const rawBookingAmount = Number(t.totalAmount ?? t.TotalAmount ?? booking.totalAmount ?? booking.TotalAmount ?? booking.ticketPrice ?? booking.TicketPrice ?? t.price ?? t.Price ?? 0);
             
             const rawFoods = 
               t.bookingFoods ?? t.BookingFoods ?? 
@@ -158,19 +244,12 @@ export function useTicket() {
               booking.combos ?? booking.Combos ?? 
               [];
 
-            const parsedFoods = [];
-            if (Array.isArray(rawFoods)) {
-              rawFoods.forEach(f => {
-                const foodObj = f.food ?? f.Food ?? f;
-                const name = f.foodName ?? f.FoodName ?? foodObj.foodName ?? foodObj.FoodName ?? foodObj.name ?? foodObj.Name ?? f.name ?? f.Name ?? "Đồ ăn kèm";
-                const qty = Number(f.quantity ?? f.Quantity ?? 0);
-                const price = Number(f.price ?? f.Price ?? f.unitPrice ?? f.UnitPrice ?? foodObj.price ?? foodObj.Price ?? 0);
-                
-                if (qty > 0) {
-                  parsedFoods.push({ name, quantity: qty, price });
-                }
-              });
-            }
+            const parsedFoods = normalizeFoodsList(rawFoods, catalogs);
+            // totalAmount của booking là tiền vé. Tiền đồ ăn/combo được cộng
+            // riêng ở tổng thanh toán phía dưới.
+            const itemPrice = explicitSeatPrice > 0
+              ? explicitSeatPrice
+              : rawBookingAmount;
 
             const currentBId = t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id;
 
@@ -283,6 +362,12 @@ export function useTicket() {
               }
 
               const ticketCode = t.ticketCodes.join(", ");
+              const ticketPriceAmount = Number(t.totalPriceSum || 0);
+              const foodPriceAmount = (t.foodsList || []).reduce(
+                (sum, food) => sum + (Number(food.price || 0) * Number(food.quantity || 0)),
+                0
+              );
+              const totalPriceAmount = ticketPriceAmount + foodPriceAmount;
 
               return {
                 id: ticketCode,
@@ -300,7 +385,8 @@ export function useTicket() {
                 cinema: t.cinemaName ?? t.CinemaName ?? cinema?.cinemaName ?? cinema?.CinemaName ?? cinema?.name ?? cinema?.Name ?? "Rạp chiếu phim",
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,
-                price: (t.totalPriceSum + (t.foodsList || []).reduce((sum, f) => sum + ((f.price || 0) * (f.quantity || 0)), 0)).toLocaleString("vi-VN") + "đ",
+                ticketPrice: ticketPriceAmount.toLocaleString("vi-VN") + "đ",
+                price: totalPriceAmount.toLocaleString("vi-VN") + "đ",
                 status: finalStatus,
                 foods: t.foodsList || [],
                 bookingIds: t.bookingIds || [],
