@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  MdDashboard,
   MdConfirmationNumber,
   MdReceiptLong,
   MdFastfood,
@@ -14,7 +13,6 @@ import {
 import { useState } from "react";
 
 const navItems = [
-  { to: "/staff/dashboard", label: "Dashboard", icon: <MdDashboard /> },
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
   { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
   { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },

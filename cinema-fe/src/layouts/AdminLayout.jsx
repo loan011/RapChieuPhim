@@ -1,7 +1,6 @@
 import "../styles/Admin/AdminLayout.css";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  MdDashboard,
   MdPeople,
   MdMovie,
   MdMeetingRoom,
@@ -19,7 +18,6 @@ import {
 import { useState } from "react";
 
 const navItems = [
-  { to: "/admin/dashboard",             label: "Dashboard",              icon: <MdDashboard /> },
   { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Người Dùng",    icon: <MdPeople /> },
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },

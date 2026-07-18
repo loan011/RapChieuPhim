@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchTickets, removeTicket, addTicket, editTicket } from "./QuanLyVeService";
-import { STATUS_OPTIONS, EMPTY_FORM } from "../../Admin/Ticket/useTicket.js";
+import { EMPTY_FORM } from "../../Admin/Ticket/useTicket.js";
 
 export function useQuanLyVe() {
   const [list, setList] = useState([]);
@@ -31,7 +31,13 @@ export function useQuanLyVe() {
       setLoading(true);
       setError(null);
       const data = await fetchTickets();
-      setList(normalizeArray(data));
+      const normalized = normalizeArray(data);
+      normalized.sort((a, b) => {
+        const dateA = new Date(a.issuedAt || a.IssuedAt || 0);
+        const dateB = new Date(b.issuedAt || b.IssuedAt || 0);
+        return dateB - dateA;
+      });
+      setList(normalized);
     } catch (err) {
       setList([]);
       setError(err?.message || "Không thể tải danh sách vé.");
@@ -136,7 +142,16 @@ export function useQuanLyVe() {
     }
   }
 
+  const STATUS_OPTIONS = ["Đang hoạt động", "Đã sử dụng"];
+
   const filtered = list.filter((t) => {
+    const isKeepStatus =
+      t.status === "Active" ||
+      t.status === "Used" ||
+      t.status === "Đã đặt" ||
+      t.status === "Đã thanh toán";
+    if (!isKeepStatus) return false;
+
     const code = t.code || t.ticketCode || "";
     const customer = t.customerName || "";
     const movie = t.movieTitle || "";
@@ -146,7 +161,13 @@ export function useQuanLyVe() {
       customer.toLowerCase().includes(search.toLowerCase()) ||
       movie.toLowerCase().includes(search.toLowerCase());
 
-    const matchStatus = filterStatus ? t.status === filterStatus : true;
+    let matchStatus = true;
+    if (filterStatus === "Đang hoạt động") {
+      matchStatus = t.status === "Active" || t.status === "Đã đặt";
+    } else if (filterStatus === "Đã sử dụng") {
+      matchStatus = t.status === "Used" || t.status === "Đã thanh toán";
+    }
+
     return matchSearch && matchStatus;
   });
 
