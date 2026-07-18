@@ -111,10 +111,18 @@ export async function sellCombo(payload) {
   }
 
   const orderResult = await readResponse(response);
-  const orderId = orderResult?.data?.orderId || orderResult?.OrderId;
+  // Backend trả về { Message, Data: { OrderId, ... } } - cover cả PascalCase và camelCase
+  const orderId =
+    orderResult?.Data?.OrderId ??
+    orderResult?.data?.OrderId ??
+    orderResult?.Data?.orderId ??
+    orderResult?.data?.orderId ??
+    orderResult?.OrderId ??
+    orderResult?.orderId;
 
   if (!orderId) {
-    throw new Error("Không nhận được mã đơn hàng từ máy chủ!");
+    console.error("[sellCombo] Response từ server:", JSON.stringify(orderResult));
+    throw new Error("Không nhận được mã đơn hàng từ máy chủ! Kiểm tra console để biết thêm.");
   }
 
   // 2. Confirm payment by patching order status to "Confirmed"
