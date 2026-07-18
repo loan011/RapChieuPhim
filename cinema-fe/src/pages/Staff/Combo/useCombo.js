@@ -4,9 +4,10 @@ import { getCombosList, sellCombo } from "./ComboService";
 export function useCombo() {
   const [combos, setCombos] = useState([]);
   const [quantities, setQuantities] = useState({});
-  const [customerName, setCustomerName] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // "cash" | "qr"
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -18,8 +19,10 @@ export function useCombo() {
 
   function handleQuantityChange(id, delta) {
     setQuantities(prev => {
+      const item = combos.find(c => c.id === id);
       const current = prev[id] || 0;
-      const next = Math.max(0, current + delta);
+      const maxQty = item ? item.quantity : 999;
+      const next = Math.min(maxQty, Math.max(0, current + delta));
       return { ...prev, [id]: next };
     });
   }
@@ -27,15 +30,10 @@ export function useCombo() {
   const selectedItems = combos.filter(item => (quantities[item.id] || 0) > 0);
   const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * quantities[item.id]), 0);
 
-  async function handleSell(e) {
-    e.preventDefault();
-    if (selectedItems.length === 0) return alert("Vui lòng chọn ít nhất một Combo/Món ăn!");
-    if (!customerName.trim()) return alert("Vui lòng nhập tên khách hàng!");
-
+  async function executeSell() {
     try {
       setLoading(true);
       const res = await sellCombo({
-        customerName,
         items: selectedItems.map(item => ({
           id: item.id,
           type: item.type,
@@ -43,29 +41,44 @@ export function useCombo() {
           quantity: quantities[item.id],
           price: item.price
         })),
-        totalAmount
+        totalAmount,
+        paymentMethod
       });
       setSuccess(res);
       setQuantities({});
-      setCustomerName("");
+      setShowQRModal(false);
     } catch (err) {
-      alert("Bán combo thất bại.");
+      alert("Bán combo thất bại: " + (err.message || "Lỗi không xác định"));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSell(e) {
+    e.preventDefault();
+    if (selectedItems.length === 0) return alert("Vui lòng chọn ít nhất một Combo/Món ăn!");
+
+    if (paymentMethod === "qr") {
+      setShowQRModal(true);
+    } else {
+      await executeSell();
     }
   }
 
   return {
     combos,
     quantities,
-    customerName,
-    setCustomerName,
     loading,
     success,
     setSuccess,
     handleQuantityChange,
     selectedItems,
     totalAmount,
+    paymentMethod,
+    setPaymentMethod,
+    showQRModal,
+    setShowQRModal,
     handleSell,
+    executeSell,
   };
 }

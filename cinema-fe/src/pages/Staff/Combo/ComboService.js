@@ -51,7 +51,9 @@ export async function getCombosList() {
     name: c.comboName ?? c.ComboName ?? "",
     description: c.description ?? c.Description ?? "",
     price: Number(c.price ?? c.Price ?? 0),
-    image: c.imageUrl ?? c.ImageUrl ?? "🍿🥤",
+    imageUrl: c.imageUrl ?? c.ImageUrl ?? null,
+    imageEmoji: "🍿🥤",
+    quantity: Number(c.quantity ?? c.Quantity ?? 0),
     category: "combo",
   }));
 
@@ -61,17 +63,19 @@ export async function getCombosList() {
     name: f.foodName ?? f.FoodName ?? "",
     description: f.category ?? f.Category ?? "",
     price: Number(f.price ?? f.Price ?? 0),
-    image: f.imageUrl ?? f.ImageUrl ?? "🥤",
+    imageUrl: f.imageUrl ?? f.ImageUrl ?? null,
+    imageEmoji: (f.category ?? f.Category ?? "").toLowerCase().includes("nước") || (f.category ?? f.Category ?? "").toLowerCase().includes("uống") ? "🥤" : "🍿",
+    quantity: Number(f.quantity ?? f.Quantity ?? 0),
     category: (f.category ?? f.Category ?? "").toLowerCase().includes("nước") || (f.category ?? f.Category ?? "").toLowerCase().includes("uống") ? "drink" : "food",
   }));
 
   if (combos.length === 0 && foods.length === 0) {
     return [
-      { id: 1, type: "combo", name: "Combo Solo", description: "1 Bắp ngọt lớn + 1 Nước ngọt lớn (Coke/Pepsi/Fanta)", price: 85000, image: "🍿🥤" },
-      { id: 2, type: "combo", name: "Combo Couple", description: "1 Bắp ngọt lớn + 2 Nước ngọt lớn (Coke/Pepsi/Fanta)", price: 115000, image: "🍿🥤🥤" },
-      { id: 3, type: "combo", name: "Combo Family", description: "2 Bắp ngọt lớn + 3 Nước ngọt lớn + 1 Snack Khoai tây", price: 185000, image: "🍿🍿🥤🥤🥤" },
-      { id: 4, type: "food", name: "Bắp Ngọt Lớn", description: "Bắp ngọt giòn thơm nóng hổi cỡ lớn", price: 60000, image: "🍿" },
-      { id: 5, type: "food", name: "Nước Ngọt Lớn", description: "Ly nước ngọt 32oz mát lạnh (Coca, Pepsi, Sprite)", price: 35000, image: "🥤" }
+      { id: 1, type: "combo", name: "Combo Solo", description: "1 Bắp ngọt lớn + 1 Nước ngọt lớn (Coke/Pepsi/Fanta)", price: 85000, imageUrl: null, imageEmoji: "🍿🥤", quantity: 99 },
+      { id: 2, type: "combo", name: "Combo Couple", description: "1 Bắp ngọt lớn + 2 Nước ngọt lớn (Coke/Pepsi/Fanta)", price: 115000, imageUrl: null, imageEmoji: "🍿🥤🥤", quantity: 99 },
+      { id: 3, type: "combo", name: "Combo Family", description: "2 Bắp ngọt lớn + 3 Nước ngọt lớn + 1 Snack Khoai tây", price: 185000, imageUrl: null, imageEmoji: "🍿🍿🥤🥤🥤", quantity: 99 },
+      { id: 4, type: "food", name: "Bắp Ngọt Lớn", description: "Bắp ngọt giòn thơm nóng hổi cỡ lớn", price: 60000, imageUrl: null, imageEmoji: "🍿", quantity: 99 },
+      { id: 5, type: "food", name: "Nước Ngọt Lớn", description: "Ly nước ngọt 32oz mát lạnh (Coca, Pepsi, Sprite)", price: 35000, imageUrl: null, imageEmoji: "🥤", quantity: 99 }
     ];
   }
 
@@ -87,7 +91,8 @@ export async function sellCombo(payload) {
       foodId: item.type === "food" ? item.id : null,
       comboId: item.type === "combo" ? item.id : null,
       quantity: item.quantity
-    }))
+    })),
+    paymentMethod: payload.paymentMethod || "Cash"
   };
 
   // 1. Create Order in Database
