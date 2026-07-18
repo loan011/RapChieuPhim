@@ -21,6 +21,7 @@ export default function Dashboard() {
 
   const [activeTab, setActiveTab] = useState('Phim');
 
+
   const handleQuickDate = (type) => {
     const now = new Date();
     if (type === 'today') {
@@ -50,6 +51,18 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page">
+      {loading && (
+        <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(59,130,246,0.12)', color: '#bfdbfe', border: '1px solid rgba(59,130,246,0.35)' }}>
+          Đang tải dữ liệu dashboard...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div style={{ marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.12)', color: '#fecaca', border: '1px solid rgba(239,68,68,0.45)' }}>
+          {error}
+        </div>
+      )}
+
       {/* HEADER SECTION */}
       <div className="dashboard-header-bar">
         <div className="dashboard-header-right">

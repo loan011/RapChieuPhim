@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   MdMovie,
@@ -14,27 +14,43 @@ import {
   getMovieStats,
   getMovieDetailStats,
   getCinemas,
-  getMovies,
-  getDashboardFoodSources
+  getDashboardFoodSources,
 } from "./dashboardService";
-import { getDailyRevenue } from "../../Staff/DoanhThu/dailyRevenueService";
 
-function buildFoodDistributionsFromBills(revenueData) {
+function buildFoodDistributions(source, selectedDate) {
+  const foods = toList(source?.foods);
+  const combos = toList(source?.combos);
   const revenueByName = new Map();
 
-  (revenueData?.bills || []).forEach((bill) => {
-    (bill.concessions || []).forEach((item) => {
-      const name = String(item.name || "").trim();
-      if (!name || name === "N/A") return;
-      const revenue = Number(item.subtotal || (item.unitPrice * item.quantity) || 0);
-      revenueByName.set(name, (revenueByName.get(name) || 0) + revenue);
+  toList(source?.bookings).forEach((booking) => {
+    const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
+    if (["pending", "unpaid", "cancelled", "canceled"].some(s => status.includes(s))) return;
+
+    const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
+    if (selectedDate && rawDate && String(rawDate).split("T")[0] !== selectedDate) return;
+
+    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ??
+      booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
+
+    toList(rawItems).forEach((item) => {
+      const foodId  = item.foodId  ?? item.FoodId  ?? item.food?.foodId  ?? item.Food?.FoodId;
+      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
+      const catalog = foodId != null
+        ? foods.find(f => String(f.foodId ?? f.FoodId ?? f.id ?? f.Id) === String(foodId))
+        : combos.find(c => String(c.comboId ?? c.ComboId ?? c.id ?? c.Id) === String(comboId));
+      const direct  = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName;
+      const catName = catalog?.foodName ?? catalog?.FoodName ?? catalog?.comboName ?? catalog?.ComboName;
+      const name    = direct && String(direct).toLowerCase() !== "string" ? direct : catName;
+      if (!name) return;
+      const qty   = Number(item.quantity ?? item.Quantity ?? 1);
+      const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? catalog?.price ?? catalog?.Price ?? 0);
+      revenueByName.set(name, (revenueByName.get(name) || 0) + price * qty);
     });
   });
 
-  const total = Array.from(revenueByName.values()).reduce((sum, value) => sum + value, 0);
+  const total = Array.from(revenueByName.values()).reduce((s, v) => s + v, 0);
   return Array.from(revenueByName, ([name, value]) => ({
-    name,
-    value,
+    name, value,
     percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
   })).sort((a, b) => b.value - a.value);
 }
@@ -42,43 +58,6 @@ function buildFoodDistributionsFromBills(revenueData) {
 function toList(value) {
   if (Array.isArray(value)) return value;
   return value?.$values || value?.data || value?.items || [];
-}
-
-function buildFoodDistributionsFromBookings(source, selectedDate) {
-  const foods = toList(source?.foods);
-  const combos = toList(source?.combos);
-  const revenueByName = new Map();
-
-  toList(source?.bookings).forEach((booking) => {
-    const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
-    if (["pending", "unpaid", "cancelled", "canceled"].some(value => status.includes(value))) return;
-
-    const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
-    if (selectedDate && rawDate && String(rawDate).split("T")[0] !== selectedDate) return;
-
-    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ?? booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
-    toList(rawItems).forEach((item) => {
-      const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
-      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
-      const catalogItem = foodId != null
-        ? foods.find(food => String(food.foodId ?? food.FoodId ?? food.id ?? food.Id) === String(foodId))
-        : combos.find(combo => String(combo.comboId ?? combo.ComboId ?? combo.id ?? combo.Id) === String(comboId));
-      const directName = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName;
-      const catalogName = catalogItem?.foodName ?? catalogItem?.FoodName ?? catalogItem?.comboName ?? catalogItem?.ComboName;
-      const name = directName && String(directName).toLowerCase() !== "string" ? directName : catalogName;
-      if (!name) return;
-      const quantity = Number(item.quantity ?? item.Quantity ?? 1);
-      const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? catalogItem?.price ?? catalogItem?.Price ?? 0);
-      revenueByName.set(name, (revenueByName.get(name) || 0) + (price * quantity));
-    });
-  });
-
-  const total = Array.from(revenueByName.values()).reduce((sum, value) => sum + value, 0);
-  return Array.from(revenueByName, ([name, value]) => ({
-    name,
-    value,
-    percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
-  })).sort((a, b) => b.value - a.value);
 }
 
 function getMovieStatus(movie) {
@@ -155,11 +134,25 @@ export function buildDashboardCards(stats) {
   ];
 }
 
+// Chuẩn hoá foodDistributions từ response API /Dashboard/RevenueChart
+function normalizeFoodDistributions(chartDataResp) {
+  const raw =
+    chartDataResp?.foodDistributions?.$values ||
+    chartDataResp?.foodDistributions ||
+    chartDataResp?.FoodDistributions?.$values ||
+    chartDataResp?.FoodDistributions || [];
+
+  return toList(raw).map(f => ({
+    name: f.foodName || f.FoodName || f.name || f.Name || "Chưa rõ",
+    value: f.revenue || f.Revenue || f.value || f.Value || 0,
+    percent: f.percentage || f.Percentage || f.percent || f.Percent || 0,
+  }));
+}
+
 export function useDashboard() {
   const [stats, setStats] = useState(DEFAULT_DASHBOARD_STATS);
   const [recentTickets, setRecentTickets] = useState([]);
   
-  // New Stats
   // Mặc định lấy ngày hôm nay định dạng YYYY-MM-DD
   const [timeFilter, setTimeFilter] = useState(new Date().toISOString().split('T')[0]);
   const [cinemaId, setCinemaId] = useState("");
@@ -175,83 +168,115 @@ export function useDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Cache để tránh fetch lại khi filter không đổi
+  const cacheRef = useRef({});
+
   useEffect(() => {
     fetchDashboardData();
   }, [timeFilter, cinemaId]);
 
+  // ─── Fetch toàn bộ dữ liệu dashboard (5 API song song) ───────────────
   async function fetchDashboardData() {
+    const cacheKey = `${timeFilter}__${cinemaId}`;
+
+    // Dùng cache nếu đã fetch rồi
+    if (cacheRef.current[cacheKey]) {
+      applyData(cacheRef.current[cacheKey]);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
-      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp, moviesResp, dailyRevenueResp, foodSources] = await Promise.all([
+      // 5 API song song — không gọi /Bookings, /Foods, /Combos nặng nữa
+      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp] = await Promise.all([
         getDashboardStats(timeFilter, cinemaId),
         getRecentTickets(),
         getRevenueChart(timeFilter, cinemaId),
         getMovieStats(timeFilter, cinemaId),
         getCinemas(),
-        getMovies(),
-        /^\d{4}-\d{2}-\d{2}$/.test(timeFilter)
-          ? getDailyRevenue(timeFilter).catch(() => null)
-          : Promise.resolve(null),
-        getDashboardFoodSources()
       ]);
 
-      setStats(normalizeDashboardStats(statsData));
-      setRecentTickets(normalizeRecentTickets(recentTicketData));
-      
-      const cList = cinemasResp?.$values || cinemasResp || [];
-      setCinemas(cList);
-      
-      const apiFoodDistributions = chartDataResp?.foodDistributions?.$values || chartDataResp?.foodDistributions || chartDataResp?.FoodDistributions?.$values || chartDataResp?.FoodDistributions || [];
-      const bookingFoodDistributions = buildFoodDistributionsFromBookings(
-        foodSources,
-        /^\d{4}-\d{2}-\d{2}$/.test(timeFilter) ? timeFilter : ""
-      );
-      const fallbackFoodDistributions = buildFoodDistributionsFromBills(dailyRevenueResp);
-      const reliableFoodDistributions = bookingFoodDistributions.length > 0
-        ? bookingFoodDistributions
-        : (fallbackFoodDistributions.length > 0 ? fallbackFoodDistributions : apiFoodDistributions);
+      const result = { statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp };
+      cacheRef.current[cacheKey] = result;
+      applyData(result);
 
-      // Handle Chart Data lowercasing
-      setChartData({
-        totalTicketRevenue: chartDataResp?.totalTicketRevenue || chartDataResp?.TotalTicketRevenue || 0,
-        totalFoodRevenue: chartDataResp?.totalFoodRevenue || chartDataResp?.TotalFoodRevenue || 0,
-        ticketRevenuePercentage: chartDataResp?.ticketRevenuePercentage || chartDataResp?.TicketRevenuePercentage || 0,
-        foodRevenuePercentage: chartDataResp?.foodRevenuePercentage || chartDataResp?.FoodRevenuePercentage || 0,
-        foodDistributions: reliableFoodDistributions.map(f => ({
-          name: f.foodName || f.FoodName || f.name || "Chưa rõ",
-          value: f.revenue || f.Revenue || f.value || 0,
-          percent: f.percentage || f.Percentage || f.percent || 0
-        })),
-        topShowtimes: (chartDataResp?.topShowtimes?.$values || chartDataResp?.topShowtimes || chartDataResp?.TopShowtimes?.$values || chartDataResp?.TopShowtimes || []).map(s => ({
-          movieTitle: s.movieTitle || s.MovieTitle,
-          showtimeLabel: s.showtimeLabel || s.ShowtimeLabel,
-          revenue: s.revenue || s.Revenue,
-          occupancy: s.occupancy || s.Occupancy
-        })),
-        revenueByTime: (chartDataResp?.revenueByTime?.$values || chartDataResp?.revenueByTime || chartDataResp?.RevenueByTime?.$values || chartDataResp?.RevenueByTime || []).map(r => ({
-          timeLabel: r.timeLabel || r.TimeLabel,
-          totalRevenue: r.totalRevenue || r.TotalRevenue,
-          ticketRevenue: r.ticketRevenue || r.TicketRevenue || 0,
-          foodRevenue: r.foodRevenue || r.FoodRevenue || 0
-        }))
-      });
+      // Fetch food distribution nền — không block UI chính
+      fetchFoodDistributionBg(timeFilter, cinemaId, cacheKey);
 
-      const movies = moviesResp?.$values || moviesResp?.data || moviesResp || [];
-      const moviesById = new Map(
-        movies.map(movie => [String(movie.movieId ?? movie.MovieId ?? movie.id ?? movie.Id), movie])
-      );
+    } catch (err) {
+      console.error("Dashboard error:", err);
+      setError(err.message || "Lấy dữ liệu dashboard thất bại!");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => {
-        const movieId = m.movieId ?? m.MovieId;
-        const movie = moviesById.get(String(movieId));
-        const movieStatus = movie ? getMovieStatus(movie) : "Đang chiếu";
+  // ─── Background fetch food distribution ────────────────────────
+  async function fetchFoodDistributionBg(filter, _cinemaId, cacheKey) {
+    const foodCacheKey = `food__${cacheKey}`;
+    if (cacheRef.current[foodCacheKey]) {
+      applyFoodDistribution(cacheRef.current[foodCacheKey], filter);
+      return;
+    }
+    try {
+      const foodSources = await getDashboardFoodSources();
+      cacheRef.current[foodCacheKey] = foodSources;
+      applyFoodDistribution(foodSources, filter);
+    } catch (e) {
+      // Silent fail — chart stays empty if backend returns error
+    }
+  }
 
-        return {
-        movieId,
-        movieTitle: movie?.title ?? movie?.Title ?? movie?.movieTitle ?? movie?.MovieTitle ?? m.movieTitle ?? m.MovieTitle,
-        posterUrl: movie?.posterUrl ?? movie?.PosterUrl ?? movie?.imageUrl ?? movie?.ImageUrl ?? m.posterUrl ?? m.PosterUrl,
+  function applyFoodDistribution(foodSources, filter) {
+    const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(filter) ? filter : "";
+    const distributions = buildFoodDistributions(foodSources, selectedDate);
+    if (distributions.length > 0) {
+      setChartData(prev => prev ? { ...prev, foodDistributions: distributions } : prev);
+    }
+  }
+
+  function applyData({ statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp }) {
+    setStats(normalizeDashboardStats(statsData));
+    setRecentTickets(normalizeRecentTickets(recentTicketData));
+
+    const cList = cinemasResp?.$values || cinemasResp || [];
+    setCinemas(cList);
+
+    // Dùng foodDistributions đã có trong RevenueChart response — không cần fetch thêm
+    console.log('[DEBUG] chartDataResp keys:', Object.keys(chartDataResp || {}));
+    console.log('[DEBUG] chartDataResp full:', chartDataResp);
+    const foodDistributions = normalizeFoodDistributions(chartDataResp);
+    console.log('[DEBUG] foodDistributions resolved:', foodDistributions);
+
+    setChartData({
+      totalTicketRevenue: chartDataResp?.totalTicketRevenue || chartDataResp?.TotalTicketRevenue || 0,
+      totalFoodRevenue: chartDataResp?.totalFoodRevenue || chartDataResp?.TotalFoodRevenue || 0,
+      ticketRevenuePercentage: chartDataResp?.ticketRevenuePercentage || chartDataResp?.TicketRevenuePercentage || 0,
+      foodRevenuePercentage: chartDataResp?.foodRevenuePercentage || chartDataResp?.FoodRevenuePercentage || 0,
+      foodDistributions,
+      topShowtimes: (chartDataResp?.topShowtimes?.$values || chartDataResp?.topShowtimes || chartDataResp?.TopShowtimes?.$values || chartDataResp?.TopShowtimes || []).map(s => ({
+        movieTitle: s.movieTitle || s.MovieTitle,
+        showtimeLabel: s.showtimeLabel || s.ShowtimeLabel,
+        revenue: s.revenue || s.Revenue,
+        occupancy: s.occupancy || s.Occupancy
+      })),
+      revenueByTime: (chartDataResp?.revenueByTime?.$values || chartDataResp?.revenueByTime || chartDataResp?.RevenueByTime?.$values || chartDataResp?.RevenueByTime || []).map(r => ({
+        timeLabel: r.timeLabel || r.TimeLabel,
+        totalRevenue: r.totalRevenue || r.TotalRevenue,
+        ticketRevenue: r.ticketRevenue || r.TicketRevenue || 0,
+        foodRevenue: r.foodRevenue || r.FoodRevenue || 0
+      }))
+    });
+
+    // Dùng thông tin phim từ movieStatsResp (không cần gọi /Movies riêng)
+    setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => {
+      const movieStatus = getMovieStatus(m);
+      return {
+        movieId: m.movieId ?? m.MovieId,
+        movieTitle: m.movieTitle ?? m.MovieTitle ?? m.title ?? m.Title,
+        posterUrl: m.posterUrl ?? m.PosterUrl ?? m.imageUrl ?? m.ImageUrl,
         movieStatus,
         totalRevenue: m.totalRevenue || m.TotalRevenue || 0,
         totalTicketsSold: m.totalTicketsSold || m.TotalTicketsSold || 0,
@@ -262,14 +287,23 @@ export function useDashboard() {
           percentage: c.percentage || c.Percentage,
           ticketsSold: c.ticketsSold || c.TicketsSold
         }))
-      }}).filter(m => m.movieTitle && m.movieStatus !== "Đã chiếu"));
+      };
+    }).filter(m => m.movieTitle && m.movieStatus !== "Đã chiếu"));
+  }
 
-    } catch (err) {
-      console.error("Dashboard error:", err);
-      setError(err.message || "Lấy dữ liệu dashboard thất bại!");
-    } finally {
-      setLoading(false);
-    }
+  // Xoá cache khi filter thay đổi
+  function clearCache() {
+    cacheRef.current = {};
+  }
+
+  function handleSetTimeFilter(val) {
+    clearCache();
+    setTimeFilter(val);
+  }
+
+  function handleSetCinemaId(val) {
+    clearCache();
+    setCinemaId(val);
   }
 
   async function openMovieDetail(movie) {
@@ -313,14 +347,14 @@ export function useDashboard() {
   return {
     stats, setStats,
     recentTickets, setRecentTickets,
-    cards, loading, setLoading, error, setError,
+    cards, loading, error, setError,
     fetchDashboardData,
     
     // New
     timeFilter,
-    setTimeFilter,
+    setTimeFilter: handleSetTimeFilter,
     cinemaId,
-    setCinemaId,
+    setCinemaId: handleSetCinemaId,
     cinemas,
     chartData,
     movieStats,

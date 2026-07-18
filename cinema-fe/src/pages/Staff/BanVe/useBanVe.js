@@ -661,7 +661,7 @@ export function useBanVe() {
 
       const showtimeId = getShowtimeId(selectedShowtime);
 
-      const bookingPromises = selectedSeats.map(async (seat) => {
+      const bookingPromises = selectedSeats.map(async (seat, idx) => {
         const seatId = Number(getSeatId(seat));
         const price = Number(calculateSeatPrice(seat));
 

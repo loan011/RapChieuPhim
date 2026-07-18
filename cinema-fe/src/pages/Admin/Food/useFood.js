@@ -1,8 +1,27 @@
 import { useState, useEffect } from "react";
 import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo } from "./foodService";
 
+// ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
+const MOCK_FOODS = [
+  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 100, imageUrl: '/img/trasua.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 2, itemType: 'food', name: 'Trà Đào',      category: 'Nước Uống', price: 45000, quantity: 98,  imageUrl: '/img/tradao.jpg',       isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 3, itemType: 'food', name: 'Bắp Caramel',  category: 'Bắp Rang',  price: 60000, quantity: 94,  imageUrl: '/img/bapngot.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 4, itemType: 'food', name: 'Bắp Ngọt Lớn', category: 'Bắp Rang',  price: 60000, quantity: 90,  imageUrl: '/img/bapngot.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 5, itemType: 'food', name: '7up',           category: 'Nước Uống', price: 35000, quantity: 98,  imageUrl: '/img/7up.jpg',          isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 6, itemType: 'food', name: 'Sting',         category: 'Nước Uống', price: 35000, quantity: 90,  imageUrl: '/img/sting.jpg',        isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 8, itemType: 'food', name: 'Pepsi',         category: 'Nước Uống', price: 35000, quantity: 98,  imageUrl: '/img/pepsi.jpg',        isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 9, itemType: 'food', name: 'Mirinda Cam',   category: 'Nước Uống', price: 35000, quantity: 97,  imageUrl: '/img/MirindaCam.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+];
+
+const MOCK_COMBOS = [
+  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 100, imageUrl: '/img/combosolo.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
+  { id: 4, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 100, imageUrl: '/img/combocouple.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
+  { id: 6, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 59,  imageUrl: '/img/combofamily.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
+];
+
+
 export function useFood() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([...MOCK_FOODS, ...MOCK_COMBOS]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,63 +60,69 @@ export function useFood() {
     setError("");
     try {
       const [foodsData, combosData] = await Promise.all([
-        fetchFoods().catch(() => []),
-        fetchCombos().catch(() => [])
+        fetchFoods().catch(() => null),
+        fetchCombos().catch(() => null)
       ]);
-      
-      const normalizedFoods = (foodsData || []).map(f => {
-        const trend = Math.floor(Math.random() * 30) - 10;
-        return {
-          id: f.foodId,
-          itemType: 'food',
-          name: f.foodName,
-          category: f.category || "Khác",
-          price: f.price,
-          quantity: f.quantity,
-          imageUrl: f.imageUrl,
-          isAvailable: f.isAvailable,
-          soldThisMonth: f.soldThisMonth || 0,
-          revenueThisMonth: f.revenueThisMonth || 0,
-          soldThisWeek: f.soldThisWeek || 0,
-          revenueThisWeek: f.revenueThisWeek || 0,
-          soldToday: f.soldToday || 0,
-          revenueToday: f.revenueToday || 0,
-          trend: trend,
-          revenue: f.revenueThisMonth || 0,
-          originalData: f
-        }
-      });
 
-      const normalizedCombos = (combosData || []).map(c => {
-        const trend = Math.floor(Math.random() * 20) - 5;
-        return {
-          id: c.comboId,
-          itemType: 'combo',
-          name: c.comboName,
-          category: "Combo",
-          price: c.price,
-          quantity: c.quantity,
-          imageUrl: c.imageUrl,
-          isAvailable: c.isAvailable,
-          soldThisMonth: c.soldThisMonth || 0,
-          revenueThisMonth: c.revenueThisMonth || 0,
-          soldThisWeek: c.soldThisWeek || 0,
-          revenueThisWeek: c.revenueThisWeek || 0,
-          soldToday: c.soldToday || 0,
-          revenueToday: c.revenueToday || 0,
-          trend: trend,
-          revenue: c.revenueThisMonth || 0,
-          originalData: c
-        }
-      });
+      const normalizedFoods = foodsData && foodsData.length > 0
+        ? foodsData.map(f => {
+            const trend = Math.floor(Math.random() * 30) - 10;
+            return {
+              id: f.foodId,
+              itemType: 'food',
+              name: f.foodName,
+              category: f.category || "Khác",
+              price: f.price,
+              quantity: f.quantity,
+              imageUrl: f.imageUrl,
+              isAvailable: f.isAvailable,
+              soldThisMonth: f.soldThisMonth || 0,
+              revenueThisMonth: f.revenueThisMonth || 0,
+              soldThisWeek: f.soldThisWeek || 0,
+              revenueThisWeek: f.revenueThisWeek || 0,
+              soldToday: f.soldToday || 0,
+              revenueToday: f.revenueToday || 0,
+              trend: trend,
+              revenue: f.revenueThisMonth || 0,
+              originalData: f
+            };
+          })
+        : MOCK_FOODS; // Giữ mock nếu API lỗi hoặc trả rỗng
+
+      const normalizedCombos = combosData && combosData.length > 0
+        ? combosData.map(c => {
+            const trend = Math.floor(Math.random() * 20) - 5;
+            return {
+              id: c.comboId,
+              itemType: 'combo',
+              name: c.comboName,
+              category: "Combo",
+              price: c.price,
+              quantity: c.quantity,
+              imageUrl: c.imageUrl,
+              isAvailable: c.isAvailable,
+              soldThisMonth: c.soldThisMonth || 0,
+              revenueThisMonth: c.revenueThisMonth || 0,
+              soldThisWeek: c.soldThisWeek || 0,
+              revenueThisWeek: c.revenueThisWeek || 0,
+              soldToday: c.soldToday || 0,
+              revenueToday: c.revenueToday || 0,
+              trend: trend,
+              revenue: c.revenueThisMonth || 0,
+              originalData: c
+            };
+          })
+        : MOCK_COMBOS; // Giữ mock nếu API lỗi hoặc trả rỗng
 
       setItems([...normalizedFoods, ...normalizedCombos].sort((a, b) => b.id - a.id));
     } catch (err) {
       setError(err.message || "Lỗi khi tải dữ liệu");
+      // Giữ nguyên mock data, không xoá
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadData();
