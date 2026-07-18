@@ -564,24 +564,3 @@
 .fm-genre-quick-select:focus {
   border-color: #f97316 !important;
 }
-/* Fix chữ bảng bị trắng/mờ */
-.fm-table-film,
-.fm-table-film th,
-.fm-table-film td {
-  color: #111827 !important;
-  opacity: 1 !important;
-}
-
-.fm-table-film tbody tr,
-.fm-table-film tbody td {
-  background-color: #ffffff !important;
-}
-
-.fm-table-film tbody tr:hover {
-  background-color: #f9fafb !important;
-}
-
-/* Status vẫn giữ màu riêng */
-.fm-table-film tbody td span {
-  opacity: 1 !important;
-}
