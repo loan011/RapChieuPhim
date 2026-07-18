@@ -163,19 +163,35 @@ export async function getCombosAndFoodsList() {
 
   try {
     const res = await fetch(`${API_URL}/Combos/Available`, { headers: getAuthHeaders() });
-    const data = await readResponse(res);
-    combosData = normalizeArray(data);
+    if (res.ok) {
+      const text = await res.text();
+      const raw = text ? JSON.parse(text) : null;
+      console.log("[BanVe] Combos raw:", raw);
+      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+      combosData = normalizeArray(unwrapped);
+    } else {
+      console.warn("[BanVe] Combos/Available trả về", res.status);
+    }
   } catch (err) {
-    console.warn("Failed to load combos:", err);
+    console.warn("[BanVe] Failed to load combos:", err);
   }
 
   try {
     const res = await fetch(`${API_URL}/Foods/Available`, { headers: getAuthHeaders() });
-    const data = await readResponse(res);
-    foodsData = normalizeArray(data);
+    if (res.ok) {
+      const text = await res.text();
+      const raw = text ? JSON.parse(text) : null;
+      console.log("[BanVe] Foods raw:", raw);
+      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+      foodsData = normalizeArray(unwrapped);
+    } else {
+      console.warn("[BanVe] Foods/Available trả về", res.status);
+    }
   } catch (err) {
-    console.warn("Failed to load foods:", err);
+    console.warn("[BanVe] Failed to load foods:", err);
   }
+
+  console.log("[BanVe] Combos:", combosData.length, "| Foods:", foodsData.length);
 
   const combos = combosData.map(c => ({
     id: c.comboId ?? c.ComboId,

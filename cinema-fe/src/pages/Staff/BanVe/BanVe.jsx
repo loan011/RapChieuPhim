@@ -54,7 +54,7 @@ function QrPaymentModal({ paymentQrCode, totalAmount, paymentTicketIds, formatMo
         {/* Payment info */}
         <div className="bv-qr-info">
           <p>💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{formatMoney(totalAmount)}đ</strong></p>
-          <p>📝 Nội dung: <strong>Thanh toan ve {paymentTicketIds.join(" ")}</strong></p>
+          <p>📝 Nội dung: <strong>DATVE {paymentTicketIds[0]}</strong></p>
         </div>
 
         {/* Confirmation checkbox */}

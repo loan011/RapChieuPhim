@@ -146,7 +146,7 @@ export function usePayment() {
           }
         } else if (bankId && accountNo) {
           const amount = bookingData.totalAmount;
-          const addInfo = encodeURIComponent(`Thanh toan ve ${bookingData.bookingIds.join(" ")}`);
+          const addInfo = encodeURIComponent(`DATVE ${bookingData.bookingIds[0]}`);
           qrCodeUrlToUse = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${addInfo}`;
         }
 
@@ -155,7 +155,7 @@ export function usePayment() {
           const defaultBank = "MB";
           const defaultAccount = "190220042001";
           const amount = bookingData.totalAmount;
-          const addInfo = encodeURIComponent(`Thanh toan ve ${bookingData.bookingIds.join(" ")}`);
+          const addInfo = encodeURIComponent(`DATVE ${bookingData.bookingIds[0]}`);
           qrCodeUrlToUse = `https://img.vietqr.io/image/${defaultBank}-${defaultAccount}-compact2.png?amount=${amount}&addInfo=${addInfo}`;
           console.log("GENERATED FALLBACK VIETQR:", qrCodeUrlToUse);
         }

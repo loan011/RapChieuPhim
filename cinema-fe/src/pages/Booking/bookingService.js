@@ -261,33 +261,50 @@ export async function releaseSeat(holdKey) {
 }
 
 export async function getCombos() {
+  // Hàm fetch an toàn - chỉ dùng token, không thử lại không có auth vì API luôn cần đăng nhập
   const fetchSafe = async (url) => {
     try {
-      let res = await fetch(url, { method: "GET", headers: getAuthHeaders() });
-      if (res.status === 401 || res.status === 403) {
-        res = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json" } });
+      const res = await fetch(url, { method: "GET", headers: getAuthHeaders() });
+
+      if (!res.ok) {
+        console.warn(`[getCombos] API trả về ${res.status} cho ${url}`);
+        return null;
       }
-      if (res.ok) {
-        const text = await res.text();
-        const data = text ? JSON.parse(text) : [];
-        return data?.data || data?.result || data;
-      }
+
+      const text = await res.text();
+      if (!text) return null;
+
+      const raw = JSON.parse(text);
+      console.log(`[getCombos] Response từ ${url}:`, raw);
+
+      // Unwrap các cấu trúc phổ biến từ ASP.NET Core
+      const unwrapped =
+        raw?.data ??
+        raw?.Data ??
+        raw?.result ??
+        raw?.Result ??
+        raw;
+
+      return unwrapped;
     } catch (e) {
-      console.warn("fetchSafe error", url, e);
+      console.warn("[getCombos] Lỗi khi gọi", url, e);
+      return null;
     }
-    return null;
   };
 
-  const [foodsData, combosData] = await Promise.all([
+  const [combosRaw, foodsRaw] = await Promise.all([
+    fetchSafe(`${API_URL}/Combos/Available`),
     fetchSafe(`${API_URL}/Foods/Available`),
-    fetchSafe(`${API_URL}/Combos/Available`)
   ]);
 
-  const foods = foodsData ? normalizeArray(foodsData) : [];
-  const combos = combosData ? normalizeArray(combosData) : [];
+  const combos = normalizeArray(combosRaw);
+  const foods  = normalizeArray(foodsRaw);
+
+  console.log("[getCombos] Combos:", combos.length, "| Foods:", foods.length);
 
   return [...combos, ...foods];
 }
+
 
 export async function cancelBooking(id) {
   const data = await tryDelete([`${API_URL}/Bookings/${id}`]);

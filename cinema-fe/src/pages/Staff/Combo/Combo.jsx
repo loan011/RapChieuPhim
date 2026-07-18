@@ -1,10 +1,10 @@
 import "./Combo.css";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCombo } from "./useCombo.js";
 import {
   MdFastfood, MdAdd, MdRemove, MdShoppingCart,
   MdReceipt, MdCheckCircle, MdQrCode2, MdAttachMoney,
-  MdClose, MdCheckBox, MdCheckBoxOutlineBlank, MdWarning
+  MdClose, MdWarning, MdHourglassTop, MdPendingActions
 } from "react-icons/md";
 
 // ===== Cấu hình ngân hàng VietQR - thay bằng thông tin thực tế =====
@@ -35,19 +35,26 @@ function ComboImage({ item }) {
   );
 }
 
-// ===== Modal thanh toán QR =====
-function QRPaymentModal({ totalAmount, onCancel, onConfirm, loading }) {
-  const [confirmed, setConfirmed] = useState(false);
+// ===== Modal thanh toán QR (với polling trạng thái tự động) =====
+function QRPaymentModal({ totalAmount, orderId, paymentStatus, onCancel, onConfirm, loading }) {
   const [qrError, setQrError] = useState(false);
 
-  // Đúng format VietQR: /image/{BANK_ID}-{ACCOUNT_NO}-compact.png
-  const addInfo = encodeURIComponent(`THANH TOAN COMBO`);
+  // Khôi phục QR động theo đúng số tiền thực tế của đơn hàng
+  const addInfo = encodeURIComponent(`CB${orderId || ""}`);
   const accountNameEncoded = encodeURIComponent(ACCOUNT_NAME);
-  const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact.png?amount=${totalAmount}&addInfo=${addInfo}&accountName=${accountNameEncoded}`;
+  const qrUrl = `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${totalAmount}&addInfo=${addInfo}&accountName=${accountNameEncoded}`;
   const amountText = totalAmount.toLocaleString("vi-VN");
 
+  const isPaid = paymentStatus === "paid";
+  const isError = paymentStatus === "error";
+
+  // Reset trạng thái lỗi khi thay đổi đơn hàng hoặc số tiền
+  useEffect(() => {
+    setQrError(false);
+  }, [totalAmount, orderId]);
+
   return (
-    <div className="qr-modal-overlay" onClick={onCancel}>
+    <div className="qr-modal-overlay">
       <div className="qr-modal-card" onClick={e => e.stopPropagation()}>
         <button onClick={onCancel} className="qr-close-btn">
           <MdClose />
@@ -59,7 +66,8 @@ function QRPaymentModal({ totalAmount, onCancel, onConfirm, loading }) {
           thực hiện thanh toán chuyển khoản tại quầy.
         </p>
 
-        <div className="qr-image-wrapper">
+        {/* QR Image + overlay trạng thái */}
+        <div className="qr-image-wrapper" style={{ position: "relative" }}>
           {qrError ? (
             <div className="qr-image-fallback">
               <span>⚠️</span>
@@ -72,35 +80,78 @@ function QRPaymentModal({ totalAmount, onCancel, onConfirm, loading }) {
               alt="VietQR Payment"
               className="qr-image"
               onError={() => setQrError(true)}
+              style={{ opacity: isPaid ? 0.35 : 1, transition: "opacity 0.4s ease" }}
             />
+          )}
+          {isPaid && (
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              background: "rgba(240,253,244,0.93)",
+              borderRadius: "12px", gap: "8px"
+            }}>
+              <MdCheckCircle style={{ fontSize: "3.5rem", color: "#16a34a" }} />
+              <span style={{ fontWeight: 700, color: "#15803d", fontSize: "1.1rem" }}>
+                Đã nhận được tiền!
+              </span>
+            </div>
           )}
         </div>
 
+        {/* Thông tin tài khoản */}
         <div className="qr-info-box">
           <div><span className="qr-info-icon">💰</span> Số tiền: <strong>{amountText}đ</strong></div>
           <div><span className="qr-info-icon">🏦</span> Ngân hàng: <strong>TPBank - {ACCOUNT_NO}</strong></div>
           <div><span className="qr-info-icon">👤</span> Chủ TK: <strong>{ACCOUNT_NAME}</strong></div>
-          <div><span className="qr-info-icon">📋</span> Nội dung: <strong>THANH TOAN COMBO</strong></div>
+          <div><span className="qr-info-icon">📋</span> Nội dung: <strong>CB{orderId || ""}</strong></div>
         </div>
 
-        <label className="qr-confirm-check" onClick={() => setConfirmed(v => !v)}>
-          <span className="qr-check-icon">
-            {confirmed
-              ? <MdCheckBox className="text-green-600 text-xl" />
-              : <MdCheckBoxOutlineBlank className="text-gray-400 text-xl" />
-            }
-          </span>
-          <span>Tôi xác nhận khách hàng đã <strong>chuyển khoản thành công</strong></span>
-        </label>
+        {/* Banner trạng thái thanh toán */}
+        <div style={{
+          margin: "14px 0 6px",
+          padding: "11px 16px",
+          borderRadius: "10px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          fontSize: "0.9rem",
+          fontWeight: 600,
+          ...(isPaid
+            ? { background: "#dcfce7", color: "#15803d", border: "1.5px solid #86efac" }
+            : isError
+              ? { background: "#fef2f2", color: "#b91c1c", border: "1.5px solid #fca5a5" }
+              : { background: "#fffbeb", color: "#b45309", border: "1.5px solid #fcd34d" }
+          )
+        }}>
+          {isPaid ? (
+            <><MdCheckCircle style={{ fontSize: "1.3rem", flexShrink: 0 }} /> Khách hàng đã thanh toán thành công!</>
+          ) : isError ? (
+            <><MdWarning style={{ fontSize: "1.3rem", flexShrink: 0 }} /> Giao dịch bị lỗi hoặc đã hủy.</>
+          ) : (
+            <>
+              <MdHourglassTop style={{ fontSize: "1.3rem", flexShrink: 0, animation: "spin 1.5s linear infinite" }} />
+              Đang chờ khách hàng quét mã và chuyển khoản...
+            </>
+          )}
+        </div>
 
+        {!isPaid && !isError && (
+          <p style={{ fontSize: "0.78rem", color: "#9ca3af", textAlign: "center", margin: "2px 0 10px" }}>
+            Hệ thống tự động xác nhận khi nhận được thanh toán. Nút xác nhận sẽ mở khóa sau khi nhận tiền.
+          </p>
+        )}
+
+        {/* Action buttons */}
         <div className="qr-modal-actions">
           <button onClick={onCancel} className="qr-btn-cancel">HỦY GIAO DỊCH</button>
           <button
             onClick={onConfirm}
-            disabled={!confirmed || loading}
+            disabled={!isPaid || loading}
             className="qr-btn-confirm"
+            style={!isPaid ? { opacity: 0.45, cursor: "not-allowed" } : {}}
           >
-            {loading ? "Đang xử lý..." : "XÁC NHẬN ĐÃ NHẬN TIỀN"}
+            {loading ? "Đang xử lý..." : isPaid ? "XÁC NHẬN ĐÃ NHẬN TIỀN" : "Chờ thanh toán..."}
           </button>
         </div>
       </div>
@@ -122,9 +173,11 @@ export default function StaffCombo() {
     paymentMethod,
     setPaymentMethod,
     showQRModal,
-    setShowQRModal,
     handleSell,
-    executeSell,
+    qrPendingOrderId,
+    qrPaymentStatus,
+    executeQrConfirm,
+    handleCancelQr,
   } = useCombo();
 
   return (
@@ -170,7 +223,7 @@ export default function StaffCombo() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Danh sách combo */}
+        {/* Danh sách combo & food */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h5 className="font-bold text-gray-800 text-base mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -185,7 +238,7 @@ export default function StaffCombo() {
                   const outOfStock = item.quantity === 0;
                   const currentQty = quantities[item.id] || 0;
                   return (
-                    <div key={item.id} className={`py-4 flex items-center justify-between gap-4 ${outOfStock ? "opacity-50" : ""}`}>
+                    <div key={item.uid} className={`py-4 flex items-center justify-between gap-4 ${outOfStock ? "opacity-50" : ""}`}>
                       <div className="flex items-center gap-4">
                         <ComboImage item={item} />
                         <div>
@@ -207,16 +260,16 @@ export default function StaffCombo() {
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleQuantityChange(item.id, -1)}
-                          disabled={currentQty === 0}
+                          onClick={() => handleQuantityChange(item.uid, -1)}
+                          disabled={quantities[item.uid] === 0 || !quantities[item.uid]}
                           className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-all disabled:opacity-30"
                         >
                           <MdRemove />
                         </button>
-                        <span className="w-6 text-center font-bold text-sm text-gray-800">{currentQty}</span>
+                        <span className="w-6 text-center font-bold text-sm text-gray-800">{quantities[item.uid] || 0}</span>
                         <button
-                          onClick={() => handleQuantityChange(item.id, 1)}
-                          disabled={outOfStock || currentQty >= item.quantity}
+                          onClick={() => handleQuantityChange(item.uid, 1)}
+                          disabled={outOfStock || (quantities[item.uid] || 0) >= item.quantity}
                           className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-all disabled:opacity-30"
                         >
                           <MdAdd />
@@ -242,12 +295,12 @@ export default function StaffCombo() {
             ) : (
               <div className="space-y-3 mb-6">
                 {selectedItems.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
+                  <div key={item.uid} className="flex justify-between items-center text-sm">
                     <span className="text-gray-700 font-medium">
-                      {item.name} <span className="text-gray-400 font-normal">x{quantities[item.id]}</span>
+                      {item.name} <span className="text-gray-400 font-normal">x{quantities[item.uid]}</span>
                     </span>
                     <span className="text-gray-800 font-semibold">
-                      {(item.price * quantities[item.id]).toLocaleString("vi-VN")} đ
+                      {(item.price * quantities[item.uid]).toLocaleString("vi-VN")} đ
                     </span>
                   </div>
                 ))}
@@ -262,7 +315,6 @@ export default function StaffCombo() {
           </div>
 
           <form onSubmit={handleSell} className="space-y-4 border-t border-gray-100 pt-4">
-            {/* Chọn hình thức thanh toán */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                 Hình Thức Thanh Toán
@@ -309,11 +361,16 @@ export default function StaffCombo() {
       {showQRModal && (
         <QRPaymentModal
           totalAmount={totalAmount}
+          orderId={qrPendingOrderId}
+          paymentStatus={qrPaymentStatus}
           loading={loading}
-          onCancel={() => setShowQRModal(false)}
-          onConfirm={executeSell}
+          onCancel={handleCancelQr}
+          onConfirm={executeQrConfirm}
         />
       )}
+
+      {/* Keyframe animation */}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

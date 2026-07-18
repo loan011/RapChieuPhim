@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
-import { getCombosList, sellCombo } from "./ComboService";
+import { useState, useEffect, useRef } from "react";
+import {
+  getCombosList,
+  sellCombo,
+  createPendingOrder,
+  checkOrderStatus,
+  confirmOrder,
+  cancelOrder,
+} from "./ComboService";
 
 export function useCombo() {
   const [combos, setCombos] = useState([]);
@@ -9,6 +16,11 @@ export function useCombo() {
   const [paymentMethod, setPaymentMethod] = useState("cash"); // "cash" | "qr"
   const [showQRModal, setShowQRModal] = useState(false);
 
+  // QR payment state
+  const [qrPendingOrderId, setQrPendingOrderId] = useState(null);
+  const [qrPaymentStatus, setQrPaymentStatus] = useState("pending"); // "pending" | "paid" | "error"
+  const pollingRef = useRef(null);
+
   useEffect(() => {
     async function loadData() {
       const list = await getCombosList();
@@ -17,19 +29,62 @@ export function useCombo() {
     loadData();
   }, []);
 
-  function handleQuantityChange(id, delta) {
+  // Dọn dẹp polling khi unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  function handleQuantityChange(uid, delta) {
     setQuantities(prev => {
-      const item = combos.find(c => c.id === id);
-      const current = prev[id] || 0;
+      const item = combos.find(c => c.uid === uid);
+      const current = prev[uid] || 0;
       const maxQty = item ? item.quantity : 999;
       const next = Math.min(maxQty, Math.max(0, current + delta));
-      return { ...prev, [id]: next };
+      return { ...prev, [uid]: next };
     });
   }
 
-  const selectedItems = combos.filter(item => (quantities[item.id] || 0) > 0);
-  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * quantities[item.id]), 0);
+  const selectedItems = combos.filter(item => (quantities[item.uid] || 0) > 0);
+  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * quantities[item.uid]), 0);
 
+  /**
+   * Bắt đầu polling trạng thái đơn hàng mỗi 3 giây
+   */
+  function startPolling(orderId) {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+
+    pollingRef.current = setInterval(async () => {
+      const status = await checkOrderStatus(orderId);
+      console.log("[QR Polling] Order status:", status);
+
+      if (status === "Confirmed") {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        setQrPaymentStatus("paid");
+      } else if (status === "Cancelled") {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        setQrPaymentStatus("error");
+      }
+      // Nếu null hoặc "Pending" thì tiếp tục poll
+    }, 3000);
+  }
+
+  /**
+   * Dừng polling
+   */
+  function stopPolling() {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }
+
+  /**
+   * Hoàn tất bán (Tiền mặt): tạo order và confirm ngay
+   */
   async function executeSell() {
     try {
       setLoading(true);
@@ -38,7 +93,7 @@ export function useCombo() {
           id: item.id,
           type: item.type,
           name: item.name,
-          quantity: quantities[item.id],
+          quantity: quantities[item.uid],
           price: item.price
         })),
         totalAmount,
@@ -54,12 +109,92 @@ export function useCombo() {
     }
   }
 
+  /**
+   * Hoàn tất bán (QR): Staff bấm "Xác nhận đã nhận tiền" sau khi đã poll thấy paid
+   * orderId đã có, chỉ cần confirm (hoặc đã auto-confirm qua Sepay webhook)
+   */
+  async function executeQrConfirm() {
+    if (!qrPendingOrderId) return;
+    try {
+      setLoading(true);
+      stopPolling();
+
+      // Nếu status chưa Confirmed qua webhook, gọi thủ công
+      if (qrPaymentStatus !== "paid") {
+        await confirmOrder(qrPendingOrderId);
+      }
+
+      const res = {
+        success: true,
+        id: `CB${qrPendingOrderId}`,
+        orderId: qrPendingOrderId,
+        items: selectedItems.map(item => ({
+          id: item.id,
+          type: item.type,
+          name: item.name,
+          quantity: quantities[item.uid],
+          price: item.price
+        })),
+        totalAmount,
+        time: new Date().toLocaleString("vi-VN"),
+        date: new Date().toLocaleDateString("en-CA"),
+        createdAt: new Date().toISOString()
+      };
+
+      setSuccess(res);
+      setQuantities({});
+      setShowQRModal(false);
+      setQrPendingOrderId(null);
+      setQrPaymentStatus("pending");
+    } catch (err) {
+      alert("Xác nhận thất bại: " + (err.message || "Lỗi không xác định"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Hủy giao dịch QR
+   */
+  async function handleCancelQr() {
+    stopPolling();
+    if (qrPendingOrderId) {
+      await cancelOrder(qrPendingOrderId);
+    }
+    setShowQRModal(false);
+    setQrPendingOrderId(null);
+    setQrPaymentStatus("pending");
+  }
+
   async function handleSell(e) {
     e.preventDefault();
     if (selectedItems.length === 0) return alert("Vui lòng chọn ít nhất một Combo/Món ăn!");
 
     if (paymentMethod === "qr") {
-      setShowQRModal(true);
+      // Tạo pending order trước khi hiện QR modal
+      try {
+        setLoading(true);
+        const { orderId } = await createPendingOrder({
+          items: selectedItems.map(item => ({
+            id: item.id,
+            type: item.type,
+            name: item.name,
+            quantity: quantities[item.uid],
+            price: item.price
+          })),
+          totalAmount,
+          paymentMethod: "QR"
+        });
+        setQrPendingOrderId(orderId);
+        setQrPaymentStatus("pending");
+        setShowQRModal(true);
+        // Bắt đầu polling
+        startPolling(orderId);
+      } catch (err) {
+        alert("Không thể tạo đơn hàng: " + (err.message || "Lỗi không xác định"));
+      } finally {
+        setLoading(false);
+      }
     } else {
       await executeSell();
     }
@@ -80,5 +215,10 @@ export function useCombo() {
     setShowQRModal,
     handleSell,
     executeSell,
+    // QR payment
+    qrPendingOrderId,
+    qrPaymentStatus,
+    executeQrConfirm,
+    handleCancelQr,
   };
 }
