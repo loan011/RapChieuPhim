@@ -1,96 +1,98 @@
 import "./BanVe.css";
 import { useState } from "react";
 import { useBanVe } from "./useBanVe.js";
-import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning } from "react-icons/md";
+import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning, MdHourglassTop } from "react-icons/md";
 
 /* ── QR Payment Modal with confirmation checkbox ── */
 function QrPaymentModal({ paymentQrCode, totalAmount, paymentTicketIds, formatMoney, onCancel, onConfirm }) {
-  const [confirmed, setConfirmed] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [verifying, setVerifying] = useState(false);
-
-  async function handleConfirmClick() {
-    if (!confirmed) {
-      setErrorMsg("Vui lòng tích xác nhận trước khi hoàn tất giao dịch.");
-      return;
-    }
-
-    setErrorMsg("");
-    setVerifying(true);
-    try {
-      const success = await onConfirm();
-      if (success === false) {
-        // API trả về chưa nhận tiền
-        setErrorMsg("Giao dịch chưa thành công! Hệ thống chưa nhận được tiền chuyển khoản. Vui lòng yêu cầu khách hàng thực hiện lại.");
-        setConfirmed(false);
-      }
-      // Nếu success = true → onConfirm tự đóng modal, không cần làm gì thêm
-    } catch (err) {
-      setErrorMsg("Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.");
-    } finally {
-      setVerifying(false);
-    }
-  }
+  const BANK_ID = "TPB";
+  const ACCOUNT_NO = "15145686888";
+  const ACCOUNT_NAME = "Nguyen Quang Vinh";
 
   return (
-    <div className="bv-modal-overlay">
-      <div className="bv-modal-box" style={{ maxWidth: "460px" }}>
-        <h2 className="bv-modal-title" style={{ color: "#f97316" }}>QUÉT MÃ THANH TOÁN QR</h2>
-        <p className="bv-modal-desc">
-          Vui lòng hướng dẫn khách hàng quét mã QR dưới đây để thực hiện thanh toán chuyển khoản tại quầy.
+    <div className="qr-modal-overlay">
+      <div className="qr-modal-card" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onCancel} className="qr-close-btn">
+          <MdClose />
+        </button>
+
+        <h3 className="qr-modal-title">QUÉT MÃ THANH TOÁN QR</h3>
+        <p className="qr-modal-subtitle">
+          Vui lòng hướng dẫn khách hàng quét mã QR dưới đây để<br />
+          thực hiện thanh toán chuyển khoản tại quầy.
         </p>
 
         {/* QR Code */}
-        <div className="bv-qr-wrapper">
+        <div className="qr-image-wrapper">
           <img
-            src={paymentQrCode.startsWith("data:image") || paymentQrCode.startsWith("http")
-              ? paymentQrCode
-              : `data:image/png;base64,${paymentQrCode}`}
-            alt="Payment QR Code"
-            className="bv-qr-img"
+            src={
+              paymentQrCode.startsWith("data:image") || paymentQrCode.startsWith("http")
+                ? paymentQrCode
+                : `data:image/png;base64,${paymentQrCode}`
+            }
+            alt="VietQR Payment"
+            className="qr-image"
           />
         </div>
 
-        {/* Payment info */}
-        <div className="bv-qr-info">
-          <p>💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{formatMoney(totalAmount)}đ</strong></p>
-          <p>📝 Nội dung: <strong>DATVE {paymentTicketIds[0]}</strong></p>
+        {/* Thông tin tài khoản */}
+        <div className="qr-info-box">
+          <div>
+            <span className="qr-info-icon">💰</span> Số tiền: <strong>{formatMoney(totalAmount)}đ</strong>
+          </div>
+          <div>
+            <span className="qr-info-icon">🏦</span> Ngân hàng: <strong>TPBank - {ACCOUNT_NO}</strong>
+          </div>
+          <div>
+            <span className="qr-info-icon">👤</span> Chủ TK: <strong>{ACCOUNT_NAME}</strong>
+          </div>
+          <div>
+            <span className="qr-info-icon">📋</span> Nội dung: <strong>DATVE {paymentTicketIds[0]}</strong>
+          </div>
         </div>
 
-        {/* Confirmation checkbox */}
-        <label className="bv-qr-confirm-label" onClick={() => { if (!verifying) { setConfirmed(c => !c); setErrorMsg(""); } }}>
-          <div className={`bv-qr-checkbox ${confirmed ? "checked" : ""}`}>
-            {confirmed && <MdCheckCircle />}
-          </div>
-          <span>Tôi xác nhận khách hàng đã <strong>chuyển khoản thành công</strong></span>
-        </label>
+        {/* Banner trạng thái thanh toán */}
+        <div
+          style={{
+            margin: "14px 0 6px",
+            padding: "11px 16px",
+            borderRadius: "10px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            background: "#fffbeb",
+            color: "#b45309",
+            border: "1.5px solid #fcd34d",
+            textAlign: "left",
+          }}
+        >
+          <MdHourglassTop style={{ fontSize: "1.3rem", flexShrink: 0, animation: "spin 1.5s linear infinite" }} />
+          Đang chờ khách hàng quét mã và chuyển khoản...
+        </div>
 
-        {/* Error message */}
-        {errorMsg && (
-          <div className="bv-qr-error">
-            <MdWarning className="bv-qr-error-icon" />
-            {errorMsg}
-          </div>
-        )}
+        <p style={{ fontSize: "0.78rem", color: "#9ca3af", textAlign: "center", margin: "2px 0 10px" }}>
+          Hệ thống tự động xác nhận khi nhận được thanh toán. Nút xác nhận sẽ mở khóa sau khi nhận tiền.
+        </p>
 
-        {/* Actions */}
-        <div className="bv-modal-actions">
-          <button type="button" onClick={onCancel} disabled={verifying} className="bv-modal-btn bv-modal-btn-cancel">
+        {/* Action buttons */}
+        <div className="qr-modal-actions">
+          <button onClick={onCancel} className="qr-btn-cancel">
             HỦY GIAO DỊCH
           </button>
           <button
-            type="button"
-            onClick={handleConfirmClick}
-            disabled={verifying}
-            className={`bv-modal-btn ${confirmed && !verifying ? "bv-modal-btn-confirm" : "bv-modal-btn-pending"}`}
+            disabled={true}
+            className="qr-btn-confirm"
           >
-            {verifying ? "⏳ ĐANG KIỂM TRA..." : confirmed ? "✓ HOÀN TẤT GIAO DỊCH" : "XÁC NHẬN ĐÃ NHẬN TIỀN"}
+            Chờ thanh toán...
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 export default function StaffBanVe() {
   const {

@@ -174,11 +174,12 @@ export default function Ticket() {
                         </span>
 
                         {ticket.status === "upcoming" && (
-                          <div className="ticket-qr" title="Mã QR vé" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px" }}>
+                          <div className="ticket-qr" title="Mã QR vé" data-darkreader-ignore="true" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px", filter: "none", colorScheme: "light" }}>
                             <img
                               src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getQrDataText(ticket))}`}
                               alt="Ticket QR Code"
-                              style={{ width: "40px", height: "40px", objectFit: "contain" }}
+                              data-darkreader-ignore="true"
+                              style={{ width: "40px", height: "40px", objectFit: "contain", filter: "none" }}
                             />
                           </div>
                         )}
@@ -214,11 +215,12 @@ export default function Ticket() {
             <div className="ticket-detail-modal-body">
               <div className="ticket-detail-modal-qr-section" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                 <span className="room-entry-label">Mã vào khán phòng:</span>
-                <div className="detail-qr-code-wrapper" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                <div className="detail-qr-code-wrapper" data-darkreader-ignore="true" style={{ background: "#ffffff", padding: "12px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", filter: "none", colorScheme: "light" }}>
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrDataText(selectedTicket))}`}
                     alt="Ticket QR Code"
-                    style={{ width: "150px", height: "150px", objectFit: "contain", display: "block" }}
+                    data-darkreader-ignore="true"
+                    style={{ width: "150px", height: "150px", objectFit: "contain", display: "block", filter: "none" }}
                   />
                 </div>
                 <span className="detail-ticket-code">{selectedTicket.id}</span>
