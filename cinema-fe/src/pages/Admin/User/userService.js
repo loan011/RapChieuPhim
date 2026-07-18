@@ -106,7 +106,7 @@ export async function updateProfile(user) {
   return data;
 }
 
-// PUT /api/Users/ChangePassword
+// POST /api/Auth/ChangePassword
 export async function changePassword(payload) {
   const allowedPayload = {
     currentPassword: payload.currentPassword ?? payload.CurrentPassword ?? "",
@@ -114,8 +114,8 @@ export async function changePassword(payload) {
     confirmPassword: payload.confirmPassword ?? payload.ConfirmPassword ?? "",
   };
 
-  const response = await fetch(`${API_URL}/Users/ChangePassword`, {
-    method: "PUT",
+  const response = await fetch(`${API_URL}/Auth/ChangePassword`, {
+    method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(allowedPayload),
   });

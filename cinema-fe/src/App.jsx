@@ -19,7 +19,6 @@ import LichSuDatVe from "./pages/Customer/History/History.jsx";
 import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
 import UserManagement from "./pages/Admin/UserManagement/UserManagement.jsx";
 import Phim from "./pages/Admin/Film/Film.jsx";
 import PhongChieu from "./pages/Admin/Room/Room.jsx";
@@ -30,7 +29,6 @@ import ThongBao from "./pages/Admin/Notice/Notice.jsx";
 import Food from "./pages/Admin/Food/Food.jsx";
 
 import StaffLayout from "./layouts/StaffLayout";
-import StaffDashboard from "./pages/Staff/Dashbord/Dashboard.jsx";
 import StaffBanVe from "./pages/Staff/BanVe/BanVe.jsx";
 import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe.jsx";
 import StaffCombo from "./pages/Staff/Combo/Combo.jsx";
@@ -144,8 +142,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<StaffDashboard />} />
+          <Route index element={<Navigate to="ban-ve" replace />} />
           <Route path="ban-ve" element={<StaffBanVe />} />
           <Route path="quan-ly-ve" element={<StaffQuanLyVe />} />
           <Route path="combo" element={<StaffCombo />} />
@@ -163,8 +160,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<Navigate to="quan-ly-nguoi-dung" replace />} />
           <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
           <Route path="phim" element={<Phim />} />
           <Route path="phong-chieu" element={<PhongChieu />} />

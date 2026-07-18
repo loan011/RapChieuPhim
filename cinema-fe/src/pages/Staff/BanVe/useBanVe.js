@@ -798,7 +798,7 @@ export function useBanVe() {
       }
 
       // ALWAYS USE USER'S TPBANK DETAILS FOR SEPAY AUTOMATIC DETECTION
-      const addInfo = encodeURIComponent(`Thanh toan ve ${bookedIds.join(" ")}`);
+      const addInfo = encodeURIComponent(`DATVE ${bookedIds[0]}`);
       qrCodeUrlToUse = `https://img.vietqr.io/image/TPB-15145686888-compact.png?amount=${totalAmount}&addInfo=${addInfo}&accountName=Nguyen%20Quang%20Vinh`;
       console.log("GENERATED STAFF VIETQR FOR SEPAY:", qrCodeUrlToUse);
 

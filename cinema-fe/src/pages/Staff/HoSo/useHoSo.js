@@ -6,6 +6,8 @@ export function useHoSo() {
     name: "",
     email: "",
     phone: "",
+    dateOfBirth: "2000-01-01",
+    gender: "Nam",
   });
 
   const [pwForm, setPwForm] = useState({
@@ -31,6 +33,8 @@ export function useHoSo() {
           name: data.fullName || data.FullName || data.name || data.Name || "",
           email: data.email || data.Email || "",
           phone: data.phone || data.Phone || data.phoneNumber || data.PhoneNumber || "",
+          dateOfBirth: data.dateOfBirth || data.DateOfBirth || "2000-01-01",
+          gender: data.gender || data.Gender || "Nam",
         });
       }
     } catch (err) {
@@ -50,6 +54,8 @@ export function useHoSo() {
         fullName: profileForm.name,
         email: profileForm.email,
         phone: profileForm.phone,
+        dateOfBirth: profileForm.dateOfBirth,
+        gender: profileForm.gender,
       });
       alert("Lưu thay đổi thành công!");
     } catch (err) {
@@ -58,6 +64,7 @@ export function useHoSo() {
       setLoading(false);
     }
   }
+
 
   async function handlePasswordSubmit(e) {
     e.preventDefault();

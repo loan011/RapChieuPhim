@@ -251,7 +251,7 @@ export default function Payment() {
                 💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{totalAmount.toLocaleString("vi-VN")}đ</strong>
               </p>
               <p style={{ margin: "0", fontSize: "0.85rem", color: "#4b5563" }}>
-                📝 Nội dung chuyển khoản: <strong style={{ wordBreak: "break-all" }}>Thanh toan ve {newTicketIds.join(", ")}</strong>
+                📝 Nội dung chuyển khoản: <strong style={{ wordBreak: "break-all" }}>DATVE {newTicketIds[0]}</strong>
               </p>
             </div>
 

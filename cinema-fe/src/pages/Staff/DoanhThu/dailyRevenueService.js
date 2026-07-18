@@ -6,22 +6,36 @@ const API_URL = getApiUrl();
 export async function getDailyRevenue(date) {
   const headers = getAuthHeaders();
 
-  // Fetch all payments, bookings, and orders in parallel
-  const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
-    fetch(`${API_URL}/Payments`, { headers }),
-    fetch(`${API_URL}/Bookings`, { headers }),
-    fetch(`${API_URL}/Orders`, { headers })
-  ]);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
 
-  if (!paymentsRes.ok || !bookingsRes.ok || !ordersRes.ok) {
-    throw new Error("Lấy dữ liệu từ máy chủ thất bại!");
+  let payments = [];
+  let bookings = [];
+  let orders = [];
+
+  try {
+    // Fetch all payments, bookings, and orders in parallel
+    const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
+      fetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal })
+    ]);
+
+    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok) {
+      const [pData, bData, oData] = await Promise.all([
+        readResponse(paymentsRes),
+        readResponse(bookingsRes),
+        readResponse(ordersRes)
+      ]);
+      payments = pData || [];
+      bookings = bData || [];
+      orders = oData || [];
+    }
+  } catch (err) {
+    console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const [payments, bookings, orders] = await Promise.all([
-    readResponse(paymentsRes),
-    readResponse(bookingsRes),
-    readResponse(ordersRes)
-  ]);
 
   // Filter payments for the selected date and successful status
   const filteredPayments = (payments || []).filter(p => {
@@ -117,11 +131,60 @@ export async function getDailyRevenue(date) {
     bills.push(bill);
   }
 
-  // 5. Load and merge simulated combo orders from localStorage
+  // 5. Load and merge real standalone combo orders from Database
+  const realStandaloneOrders = (orders || []).filter(o => {
+    // Must be Confirmed or Success status
+    const isConfirmed = o.status && (
+      o.status.toLowerCase() === "confirmed" || 
+      o.status.toLowerCase() === "success"
+    );
+    if (!isConfirmed) return false;
+
+    // Must NOT be linked to any payment (to avoid double-counting)
+    const isLinkedToPayment = (payments || []).some(p => p.orderId === o.orderId);
+    if (isLinkedToPayment) return false;
+
+    // Date must match
+    const oDate = o.orderDate ? o.orderDate.split('T')[0] : "";
+    return oDate === date;
+  });
+
   const user = getUser();
+  for (const localOrder of realStandaloneOrders) {
+    const bill = {
+      paymentId: localOrder.orderId + 2000000, // Unique simulated paymentId mapping
+      billCode: `CB${localOrder.orderId}`,
+      paymentDate: localOrder.orderDate,
+      customerName: localOrder.userName || "Khách mua combo",
+      customerEmail: "N/A",
+      staffName: localOrder.staffName || "Nhân viên T&M",
+      paymentMethod: "Tiền mặt",
+      discountAmt: 0,
+      totalAmount: localOrder.totalAmount || 0,
+      tickets: [],
+      ticketSubtotal: 0,
+      concessions: (localOrder.items || []).map(item => ({
+        name: item.comboName || item.foodName || "N/A",
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        subtotal: item.subtotal || 0
+      })),
+      concessionSubtotal: localOrder.totalAmount || 0
+    };
+
+    totalConcessionRevenue += localOrder.totalAmount || 0;
+    totalOverallRevenue += localOrder.totalAmount || 0;
+
+    bills.push(bill);
+  }
+
+  // 6. Merge legacy simulated combo orders from localStorage (excluding any already matched by code to prevent double count)
   const localOrdersStr = localStorage.getItem("simulated_orders") || "[]";
   const localOrders = JSON.parse(localOrdersStr);
-  const matchingLocalOrders = localOrders.filter(o => o.date === date);
+  const matchingLocalOrders = localOrders.filter(o => {
+    const alreadyInBills = bills.some(b => b.billCode === o.id);
+    return o.date === date && !alreadyInBills;
+  });
 
   for (const localOrder of matchingLocalOrders) {
     const bill = {
