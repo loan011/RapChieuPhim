@@ -293,7 +293,7 @@ export default function Phim() {
 
         {!loading && !error && (
           <div className="overflow-x-auto">
-            <table className="min-w-[1200px] w-full text-sm text-left">
+            <table className="fm-table-film min-w-[1200px] w-full text-sm text-left">
               <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
                 <tr>
                   <th className="px-3 py-2 min-w-[50px]">#</th>
