@@ -117,11 +117,60 @@ export async function getDailyRevenue(date) {
     bills.push(bill);
   }
 
-  // 5. Load and merge simulated combo orders from localStorage
+  // 5. Load and merge real standalone combo orders from Database
+  const realStandaloneOrders = (orders || []).filter(o => {
+    // Must be Confirmed or Success status
+    const isConfirmed = o.status && (
+      o.status.toLowerCase() === "confirmed" || 
+      o.status.toLowerCase() === "success"
+    );
+    if (!isConfirmed) return false;
+
+    // Must NOT be linked to any payment (to avoid double-counting)
+    const isLinkedToPayment = (payments || []).some(p => p.orderId === o.orderId);
+    if (isLinkedToPayment) return false;
+
+    // Date must match
+    const oDate = o.orderDate ? o.orderDate.split('T')[0] : "";
+    return oDate === date;
+  });
+
   const user = getUser();
+  for (const localOrder of realStandaloneOrders) {
+    const bill = {
+      paymentId: localOrder.orderId + 2000000, // Unique simulated paymentId mapping
+      billCode: `CB${localOrder.orderId}`,
+      paymentDate: localOrder.orderDate,
+      customerName: localOrder.userName || "Khách mua combo",
+      customerEmail: "N/A",
+      staffName: localOrder.staffName || "Nhân viên T&M",
+      paymentMethod: "Tiền mặt",
+      discountAmt: 0,
+      totalAmount: localOrder.totalAmount || 0,
+      tickets: [],
+      ticketSubtotal: 0,
+      concessions: (localOrder.items || []).map(item => ({
+        name: item.comboName || item.foodName || "N/A",
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        subtotal: item.subtotal || 0
+      })),
+      concessionSubtotal: localOrder.totalAmount || 0
+    };
+
+    totalConcessionRevenue += localOrder.totalAmount || 0;
+    totalOverallRevenue += localOrder.totalAmount || 0;
+
+    bills.push(bill);
+  }
+
+  // 6. Merge legacy simulated combo orders from localStorage (excluding any already matched by code to prevent double count)
   const localOrdersStr = localStorage.getItem("simulated_orders") || "[]";
   const localOrders = JSON.parse(localOrdersStr);
-  const matchingLocalOrders = localOrders.filter(o => o.date === date);
+  const matchingLocalOrders = localOrders.filter(o => {
+    const alreadyInBills = bills.some(b => b.billCode === o.id);
+    return o.date === date && !alreadyInBills;
+  });
 
   for (const localOrder of matchingLocalOrders) {
     const bill = {

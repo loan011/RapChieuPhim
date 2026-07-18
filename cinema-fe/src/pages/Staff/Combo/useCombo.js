@@ -37,6 +37,8 @@ export function useCombo() {
       const res = await sellCombo({
         customerName,
         items: selectedItems.map(item => ({
+          id: item.id,
+          type: item.type,
           name: item.name,
           quantity: quantities[item.id],
           price: item.price
