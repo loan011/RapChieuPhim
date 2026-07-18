@@ -23,12 +23,14 @@ async function apiGet(url) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
+    const errorMsg =
       getErrorMessage?.(data) ||
-        data?.message ||
-        data?.title ||
-        `Lỗi API status: ${response.status}`
-    );
+      data?.message ||
+      data?.title ||
+      `Lỗi API status: ${response.status}`;
+    const err = new Error(errorMsg);
+    err.status = response.status;
+    throw err;
   }
 
   return data;
@@ -44,12 +46,14 @@ async function apiPost(url, body) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
+    const errorMsg =
       getErrorMessage?.(data) ||
-        data?.message ||
-        data?.title ||
-        `Lỗi API status: ${response.status}`
-    );
+      data?.message ||
+      data?.title ||
+      `Lỗi API status: ${response.status}`;
+    const err = new Error(errorMsg);
+    err.status = response.status;
+    throw err;
   }
 
   return data;
@@ -65,12 +69,14 @@ async function apiDelete(url, body) {
   const data = await readResponse(response);
 
   if (!response.ok) {
-    throw new Error(
+    const errorMsg =
       getErrorMessage?.(data) ||
-        data?.message ||
-        data?.title ||
-        `Lỗi API status: ${response.status}`
-    );
+      data?.message ||
+      data?.title ||
+      `Lỗi API status: ${response.status}`;
+    const err = new Error(errorMsg);
+    err.status = response.status;
+    throw err;
   }
 
   return data;
@@ -88,7 +94,8 @@ async function tryGet(urls) {
 
       if (
         err.message.includes("Phiên đăng nhập") ||
-        err.message.includes("hết hạn")
+        err.message.includes("hết hạn") ||
+        (err.status && err.status !== 404)
       ) {
         throw err;
       }
@@ -110,7 +117,8 @@ async function tryPost(urls, body) {
 
       if (
         err.message.includes("Phiên đăng nhập") ||
-        err.message.includes("hết hạn")
+        err.message.includes("hết hạn") ||
+        (err.status && err.status !== 404)
       ) {
         throw err;
       }
@@ -132,7 +140,8 @@ async function tryDelete(urls, body) {
 
       if (
         err.message.includes("Phiên đăng nhập") ||
-        err.message.includes("hết hạn")
+        err.message.includes("hết hạn") ||
+        (err.status && err.status !== 404)
       ) {
         throw err;
       }
