@@ -82,6 +82,7 @@ export default function Rate() {
   /* ── Local state: search phim trong modal ── */
   const [formMovieSearch, setFormMovieSearch] = useState("");
   const [showMovieDropdown, setShowMovieDropdown] = useState(false);
+  const [isMovieLimitExpanded, setIsMovieLimitExpanded] = useState(false);
   const movieSearchRef = useRef(null);
 
   const {
@@ -141,6 +142,18 @@ export default function Rate() {
     sellingCount,
     movieCount,
   } = useRate();
+
+  const handleSelectMovieChange = (newMovieId) => {
+    if (newMovieId === "") {
+      if (selectedMovieId) {
+        handleMovieClick(selectedMovieId);
+      }
+    } else {
+      if (selectedMovieId !== newMovieId) {
+        handleMovieClick(newMovieId);
+      }
+    }
+  };
 
   return (
     <div className="lc-wrapper">
@@ -246,61 +259,63 @@ export default function Rate() {
             {selectedCinemaId
               ? `Phim đang chiếu tại ${
                   selectedCinema?.name ?? "chi nhánh này"
-                } — bấm để lọc suất:`
+                } — chọn phim để lọc suất:`
               : "Chọn phim để xem suất chiếu:"}
           </p>
 
-          <div className="lc-movie-search-wrap">
-            <MdSearch size={18} className="lc-movie-search-icon" />
+          <div className="lc-movie-control-group">
+            <div className="lc-movie-search-wrap lc-movie-search-wrap--compact">
+              <MdSearch size={18} className="lc-movie-search-icon" />
 
-            <input
-              type="text"
-              className="lc-movie-search-input"
-              placeholder="Tìm tên phim..."
-              value={movieSearch}
-              onChange={(e) => setMovieSearch(e.target.value)}
-            />
+              <input
+                type="text"
+                className="lc-movie-search-input"
+                placeholder="Tìm phim..."
+                value={movieSearch}
+                onChange={(e) => setMovieSearch(e.target.value)}
+              />
 
-            {movieSearch && (
-              <button
-                type="button"
-                className="lc-movie-search-clear"
-                onClick={() => setMovieSearch("")}
-                title="Xóa"
-              >
-                ×
-              </button>
-            )}
+              {movieSearch && (
+                <button
+                  type="button"
+                  className="lc-movie-search-clear"
+                  onClick={() => setMovieSearch("")}
+                  title="Xóa"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            <button type="button" className="lc-search-btn">
+              <MdSearch size={16} />
+              Tìm kiếm
+            </button>
           </div>
 
-          <div className="lc-movie-chips">
-            {moviesFiltered.map((m) => {
-              const mId = String(getMovieId(m));
-              const mTitle = getMovieTitle(m);
-              const count = getMovieShowtimeCount(mId);
-              const isActive = selectedMovieId === mId;
-
-              return (
-                <button
-                  key={mId}
-                  type="button"
-                  className={`lc-movie-chip${
-                    isActive ? " lc-movie-chip--active" : ""
-                  }`}
-                  onClick={() => handleMovieClick(mId)}
-                  title={mTitle}
-                >
-                  <span className="lc-chip-title">{mTitle}</span>
-                  <span className="lc-chip-count">{count} suất</span>
-                </button>
-              );
-            })}
-
-            {moviesFiltered.length === 0 && (
-              <p className="lc-movie-no-result">
-                Không tìm thấy phim phù hợp.
-              </p>
-            )}
+          <div className="lc-select-wrap">
+            <select
+              className="lc-select-dark"
+              value={selectedMovieId || ""}
+              onChange={(e) => handleSelectMovieChange(e.target.value)}
+            >
+              <option value="">-- Tất cả phim --</option>
+              {moviesFiltered
+                .filter((m) => {
+                  const status = (m?.status ?? m?.Status ?? "").toLowerCase();
+                  return status.includes("đang chiếu") || status.includes("sắp chiếu");
+                })
+                .map((m) => {
+                  const mId = String(getMovieId(m));
+                  const mTitle = getMovieTitle(m);
+                  const count = getMovieShowtimeCount(mId);
+                  return (
+                    <option key={mId} value={mId}>
+                      {mTitle} ({count} suất)
+                    </option>
+                  );
+                })}
+            </select>
           </div>
         </div>
       )}
@@ -499,27 +514,18 @@ export default function Rate() {
               {formError && <p className="lc-form-error">{formError}</p>}
 
               <form onSubmit={handleSubmit} className="lc-form">
-                <div className="lc-field" style={{ position: "relative" }}>
+                <div className="lc-field lc-field--movie-search">
                   <label className="lc-label">
                     Phim <span className="lc-required">*</span>
                   </label>
 
                   {/* Search input */}
-                  <div style={{ position: "relative" }}>
-                    <span style={{
-                      position: "absolute",
-                      left: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#9ca3af",
-                      fontSize: "1rem",
-                      pointerEvents: "none",
-                    }}>&#128269;</span>
+                  <div className="lc-modal-search-wrap">
+                    <span className="lc-modal-search-icon">&#128269;</span>
                     <input
                       ref={movieSearchRef}
                       type="text"
-                      className="lc-input"
-                      style={{ paddingLeft: 32 }}
+                      className="lc-input lc-input--search"
                       placeholder="Tìm tên phim..."
                       value={formMovieSearch || (() => {
                         if (!form.movieId) return "";
@@ -547,23 +553,11 @@ export default function Rate() {
                     {formMovieSearch && (
                       <button
                         type="button"
+                        className="lc-modal-search-clear"
                         onClick={() => {
                           setFormMovieSearch("");
                           setShowMovieDropdown(false);
                           handleChange({ target: { name: "movieId", value: "" } });
-                        }}
-                        style={{
-                          position: "absolute",
-                          right: 8,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          fontSize: "1.1rem",
-                          color: "#9ca3af",
-                          padding: 0,
-                          lineHeight: 1,
                         }}
                         title="Xóa"
                       >×</button>
@@ -577,22 +571,9 @@ export default function Rate() {
                       !kw || getMovieTitle(m).toLowerCase().includes(kw)
                     );
                     return (
-                      <div style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        zIndex: 9999,
-                        background: "#fff",
-                        border: "1.5px solid #e5e7eb",
-                        borderRadius: 10,
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.13)",
-                        maxHeight: 220,
-                        overflowY: "auto",
-                        marginTop: 4,
-                      }}>
+                      <div className="lc-movie-dropdown">
                         {filtered.length === 0 ? (
-                          <div style={{ padding: "10px 14px", color: "#9ca3af", fontSize: "0.88rem" }}>
+                          <div className="lc-movie-dropdown-empty">
                             Không tìm thấy phìm
                           </div>
                         ) : filtered.map((m) => {
@@ -603,43 +584,20 @@ export default function Rate() {
                           return (
                             <div
                               key={mId}
+                              className={`lc-movie-dropdown-item${
+                                isSelected ? " lc-movie-dropdown-item--selected" : ""
+                              }`}
                               onMouseDown={() => {
                                 handleChange({ target: { name: "movieId", value: String(mId) } });
                                 setFormMovieSearch("");
                                 setShowMovieDropdown(false);
                               }}
-                              style={{
-                                padding: "9px 14px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: 8,
-                                background: isSelected ? "#f0f4ff" : "transparent",
-                                borderLeft: isSelected ? "3px solid #6366f1" : "3px solid transparent",
-                                fontSize: "0.9rem",
-                                transition: "background 0.15s",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) e.currentTarget.style.background = "#f9fafb";
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected) e.currentTarget.style.background = "transparent";
-                              }}
                             >
-                              <span style={{ color: isSelected ? "#4f46e5" : "#111827", fontWeight: isSelected ? 600 : 400 }}>
+                              <span className="lc-movie-dropdown-title">
                                 {mTitle}
                               </span>
                               {dur && (
-                                <span style={{
-                                  flexShrink: 0,
-                                  padding: "2px 8px",
-                                  borderRadius: 20,
-                                  background: "#f0f4ff",
-                                  color: "#6366f1",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                }}>
+                                <span className="lc-movie-duration-badge">
                                   ⏱ {dur} phút
                                 </span>
                               )}
@@ -658,18 +616,7 @@ export default function Rate() {
                     const dur = getMovieDurationMinutes(sel);
                     if (!dur) return null;
                     return (
-                      <span style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        marginTop: 6,
-                        padding: "3px 10px",
-                        borderRadius: 20,
-                        background: "#f0f4ff",
-                        color: "#6366f1",
-                        fontSize: "0.82rem",
-                        fontWeight: 600,
-                      }}>
+                      <span className="lc-selected-duration-badge">
                         ⏱ {dur} phút
                       </span>
                     );
@@ -788,42 +735,22 @@ export default function Rate() {
                       if (dur) {
                         return (
                           <>
-                            <div style={{ position: "relative" }}>
+                            <div className="lc-end-hour-wrap">
                               <input
                                 type="time"
                                 name="endHour"
                                 value={form.endHour}
                                 readOnly
-                                className="lc-input"
-                                style={{ background: "#f3f4f6", cursor: "not-allowed", color: "#374151",
-                                  paddingRight: crossMid ? 72 : undefined }}
+                                className="lc-input lc-input--readonly"
                                 title="Tự động tính từ thời lượng phim"
                               />
                               {crossMid && (
-                                <span style={{
-                                  position: "absolute",
-                                  right: 8,
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  background: "#f97316",
-                                  color: "#fff",
-                                  fontSize: "0.7rem",
-                                  fontWeight: 700,
-                                  padding: "2px 7px",
-                                  borderRadius: 20,
-                                  whiteSpace: "nowrap",
-                                  pointerEvents: "none",
-                                }}>
+                                <span className="lc-midnight-badge">
                                   +1 ngày
                                 </span>
                               )}
                             </div>
-                            <span style={{
-                              display: "block",
-                              fontSize: "0.75rem",
-                              color: crossMid ? "#f97316" : "#6366f1",
-                              marginTop: 4,
-                            }}>
+                            <span className={`lc-duration-tip${crossMid ? " lc-duration-tip--cross" : ""}`}>
                               {crossMid
                                 ? `⏱ Kết thúc sang ngày hôm sau (±${dur} phút)`
                                 : `⏱ Tự động tính: ${dur} phút`}
@@ -832,30 +759,16 @@ export default function Rate() {
                         );
                       }
                       return (
-                        <div style={{ position: "relative" }}>
+                        <div className="lc-end-hour-wrap">
                           <input
                             type="time"
                             name="endHour"
                             value={form.endHour}
                             onChange={handleChange}
                             className="lc-input"
-                            style={{ paddingRight: crossMid ? 72 : undefined }}
                           />
                           {crossMid && (
-                            <span style={{
-                              position: "absolute",
-                              right: 8,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              background: "#f97316",
-                              color: "#fff",
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              padding: "2px 7px",
-                              borderRadius: 20,
-                              whiteSpace: "nowrap",
-                              pointerEvents: "none",
-                            }}>
+                            <span className="lc-midnight-badge">
                               +1 ngày
                             </span>
                           )}
