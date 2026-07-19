@@ -661,32 +661,45 @@ export function useBanVe() {
 
       const showtimeId = getShowtimeId(selectedShowtime);
 
-      const bookingPromises = selectedSeats.map(async (seat) => {
-        const seatId = Number(getSeatId(seat));
-        const price = Number(calculateSeatPrice(seat));
-
-        const payload = {
-          userId: Number(staffUserId),
-          showtimeId: Number(showtimeId),
-          seatId,
-          seatIds: [seatId],
-          SeatIds: [seatId],
-          totalPrice: price,
-          status: "Paid",
-          paymentStatus: "Paid",
-        };
-
-        const res = await createBooking(payload);
-        console.log("STAFF CREATE BOOKING RESPONSE:", res);
-        console.log("STAFF DEBUG RESPONSE STRING:", JSON.stringify(res));
-        return res;
+      const bookingResults = [];
+      const orderItemsPayload = selectedFoodsList.map((item) => {
+        const isCombo = item.type === "Combo" || item.isCombo || item._isCombo;
+        const id = Number(item.id);
+        if (isCombo) {
+          return { comboId: id, quantity: Number(item.quantity) };
+        }
+        return { foodId: id, quantity: Number(item.quantity) };
       });
 
-      const bookingResults = await Promise.all(bookingPromises);
-      const bookedIds = bookingResults.map((data, idx) => {
-        const id = extractBookingId(data);
-        return id !== null ? id : `BK${Math.floor(Math.random() * 90000)}`;
-      });
+      const seatIds = selectedSeats.map(seat => Number(getSeatId(seat)));
+
+      // Tạo duy nhất 1 request booking chứa tất cả các ghế và đồ ăn kèm
+      const payload = {
+        showTimeId: Number(showtimeId),
+        seatIds: seatIds,
+        bookingType: "Staff",
+        targetUserId: Number(staffUserId),
+      };
+
+      if (orderItemsPayload.length > 0) {
+        payload.orderItems = orderItemsPayload;
+      }
+
+      console.log("SENDING STAFF CREATE BOOKING PAYLOAD:", payload);
+      const res = await createBooking(payload);
+      console.log("STAFF CREATE BOOKING RESPONSE:", res);
+
+      // Trích xuất bookingIds
+      let bookedIds = [];
+      const resData = res?.data ?? res;
+      if (resData && (resData.bookingIds || resData.BookingIds)) {
+        const rawIds = resData.bookingIds ?? resData.BookingIds;
+        bookedIds = Array.isArray(rawIds) ? rawIds : (rawIds?.$values || []);
+      }
+      if (bookedIds.length === 0) {
+        const singleId = extractBookingId(res);
+        bookedIds = singleId !== null ? [singleId] : [`BK${Math.floor(Math.random() * 90000)}`];
+      }
 
       // NẾU CHỌN THANH TOÁN TIỀN MẶT
       if (paymentMethod === "Cash") {

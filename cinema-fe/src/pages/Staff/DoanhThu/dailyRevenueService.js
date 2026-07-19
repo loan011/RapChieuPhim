@@ -88,24 +88,29 @@ export async function getDailyRevenue(date) {
       ticketSubtotal = batchBookings.reduce((sum, b) => sum + (b.ticketPrice || 0), 0);
     }
 
-    // 3. Find order if payment has OrderId
-    const order = payment.orderId ? (orders || []).find(o => o.orderId === payment.orderId) : null;
+    // 3. Find order if payment has OrderId OR by matching bookingId of the tickets in this bill
+    let order = payment.orderId ? (orders || []).find(o => o.orderId === payment.orderId) : null;
+    if (!order && ticketsInBill.length > 0) {
+      const matchBookingIds = ticketsInBill.map(t => t.bookingId);
+      order = (orders || []).find(o => o.bookingId && matchBookingIds.includes(o.bookingId));
+    }
+
     let concessionsInBill = [];
     let concessionSubtotal = 0;
 
     if (order) {
       concessionSubtotal = order.totalAmount || 0;
-      if (order.items) {
-        concessionsInBill = order.items.map(item => ({
-          name: item.foodName || item.comboName || "N/A",
-          quantity: item.quantity || 0,
-          unitPrice: item.unitPrice || 0,
-          subtotal: item.subtotal || 0
-        }));
-      }
+      const items = order.items?.$values ?? order.items ?? [];
+      concessionsInBill = items.map(item => ({
+        name: item.foodName || item.comboName || "N/A",
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        subtotal: item.subtotal || 0
+      }));
     }
 
-    // 4. Build bill details matching backend schema
+    // 4. Build bill details (recalculate totalAmount to sum ticket + concession)
+    const finalTotalAmount = ticketSubtotal + concessionSubtotal - (payment.discountAmt || 0);
     const bill = {
       paymentId: payment.paymentId,
       billCode: `BILL${String(payment.paymentId).padStart(6, '0')}`,
@@ -115,7 +120,7 @@ export async function getDailyRevenue(date) {
       staffName: order && order.staffName ? order.staffName : (payment.staffId ? `Nhân viên (ID ${payment.staffId})` : "Hệ thống Online"),
       paymentMethod: payment.paymentMethod,
       discountAmt: payment.discountAmt || 0,
-      totalAmount: payment.totalAmount || 0,
+      totalAmount: finalTotalAmount,
       tickets: ticketsInBill,
       ticketSubtotal: ticketSubtotal,
       concessions: concessionsInBill,
@@ -125,7 +130,7 @@ export async function getDailyRevenue(date) {
     totalTicketRevenue += ticketSubtotal;
     totalConcessionRevenue += concessionSubtotal;
     totalDiscount += payment.discountAmt || 0;
-    totalOverallRevenue += payment.totalAmount || 0;
+    totalOverallRevenue += finalTotalAmount;
     totalTicketsCount += ticketsInBill.length;
 
     bills.push(bill);
