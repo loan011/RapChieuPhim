@@ -98,6 +98,40 @@
   margin-bottom: 14px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
+
+/* ── Unified filter block ── */
+.lc-filter-block {
+  padding: 14px 18px 10px;
+}
+.lc-filter-row-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.lc-cinema-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.lc-cinema-search-wrap--inline {
+  margin-bottom: 0 !important;
+  max-width: 260px;
+}
+.lc-movie-control-group--inline {
+  flex: 1 1 300px;
+  min-width: 0;
+  margin-top: 0 !important;
+  align-self: flex-end;
+}
+.lc-filter-bar--inline {
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
+}
 .lc-section-label {
   display: flex;
   align-items: center;
