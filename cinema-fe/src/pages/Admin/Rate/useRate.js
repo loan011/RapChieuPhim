@@ -18,7 +18,6 @@ import { getCinemaList } from "../Cinema/cinemaService";
 export const STATUS_OPTIONS = [
   "Đang chiếu",
   "Sắp chiếu",
-  "Đã chiếu",
   "Chiếu sớm",
 ];
 
@@ -29,7 +28,6 @@ export const EMPTY_FORM = {
   showDate: "",
   startHour: "",
   endHour: "",
-  basePrice: "",
   status: "Sắp chiếu",
 };
 
@@ -358,10 +356,6 @@ export function validateShowtimeForm(form) {
   if (!form.startHour) return "Vui lòng chọn giờ bắt đầu.";
   if (!form.endHour) return "Vui lòng chọn giờ kết thúc.";
 
-  if (!form.basePrice || Number(form.basePrice) <= 0) {
-    return "Vui lòng nhập giá vé hợp lệ.";
-  }
-
   return "";
 }
 
@@ -400,7 +394,6 @@ export function buildShowtimePayload(form) {
     startTime: form.startHour,
     endTime: form.endHour,
     endDate,                      /* ngày kết thúc (có thể là hôm sau) */
-    basePrice: Number(form.basePrice),
     status: STATUS_TO_API[form.status] ?? form.status,
   };
 }

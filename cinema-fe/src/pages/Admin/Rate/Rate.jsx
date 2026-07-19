@@ -198,88 +198,27 @@ export default function Rate() {
         />
       </div>
 
-      {/* ── Bước 1: Chọn chi nhánh ── */}
-      <div className="lc-section-block">
-        <p className="lc-section-label">
-          <MdTheaters size={16} />
-          Chọn chi nhánh
-        </p>
+      {/* ── Bộ lọc tổng hợp ── */}
+      <div className="lc-section-block lc-filter-block">
 
-        <div className="lc-cinema-search-wrap">
-          <MdSearch size={18} className="lc-cinema-search-icon" />
-
-          <input
-            type="text"
-            className="lc-cinema-search-input"
-            placeholder="Tìm tên chi nhánh..."
-            value={cinemaSearch}
-            onChange={(e) => setCinemaSearch(e.target.value)}
-          />
-
-          {cinemaSearch && (
-            <button
-              type="button"
-              className="lc-cinema-search-clear"
-              onClick={() => setCinemaSearch("")}
-              title="Xóa"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        <div className="lc-cinema-tabs">
-          {cinemaOptions.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`lc-cinema-tab${
-                selectedCinemaId === c.id ? " lc-cinema-tab--active" : ""
-              }`}
-              onClick={() => handleCinemaChange(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
-
-          {cinemaOptions.length === 0 && (
-            <p className="lc-cinema-no-result">
-              Không tìm thấy chi nhánh phù hợp.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ── Bước 2: Chọn phim ── */}
-      {moviesInCinema.length > 0 && (
-        <div className="lc-section-block">
-          <p className="lc-section-label">
-            <MdMovie size={16} />
-
-            {selectedCinemaId
-              ? `Phim đang chiếu tại ${
-                  selectedCinema?.name ?? "chi nhánh này"
-                } — chọn phim để lọc suất:`
-              : "Chọn phim để xem suất chiếu:"}
-          </p>
-
-          <div className="lc-movie-control-group">
-            <div className="lc-movie-search-wrap lc-movie-search-wrap--compact">
-              <MdSearch size={18} className="lc-movie-search-icon" />
-
+        {/* Hàng 1: Tabs chi nhánh + Tìm phim + Dropdown phim */}
+        <div className="lc-filter-row-top">
+          {/* Search chi nhánh + tabs */}
+          <div className="lc-cinema-filter-group">
+            <div className="lc-cinema-search-wrap lc-cinema-search-wrap--inline">
+              <MdSearch size={16} className="lc-cinema-search-icon" />
               <input
                 type="text"
-                className="lc-movie-search-input"
-                placeholder="Tìm phim..."
-                value={movieSearch}
-                onChange={(e) => setMovieSearch(e.target.value)}
+                className="lc-cinema-search-input"
+                placeholder="Tìm chi nhánh..."
+                value={cinemaSearch}
+                onChange={(e) => setCinemaSearch(e.target.value)}
               />
-
-              {movieSearch && (
+              {cinemaSearch && (
                 <button
                   type="button"
-                  className="lc-movie-search-clear"
-                  onClick={() => setMovieSearch("")}
+                  className="lc-cinema-search-clear"
+                  onClick={() => setCinemaSearch("")}
                   title="Xóa"
                 >
                   ×
@@ -287,103 +226,110 @@ export default function Rate() {
               )}
             </div>
 
-            <button type="button" className="lc-search-btn">
-              <MdSearch size={16} />
-              Tìm kiếm
-            </button>
+            <div className="lc-cinema-tabs">
+              {cinemaOptions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`lc-cinema-tab${
+                    selectedCinemaId === c.id ? " lc-cinema-tab--active" : ""
+                  }`}
+                  onClick={() => handleCinemaChange(c.id)}
+                >
+                  {c.name}
+                </button>
+              ))}
+              {cinemaOptions.length === 0 && (
+                <p className="lc-cinema-no-result">
+                  Không tìm thấy chi nhánh phù hợp.
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="lc-select-wrap">
-            <select
-              className="lc-select-dark"
-              value={selectedMovieId || ""}
-              onChange={(e) => handleSelectMovieChange(e.target.value)}
-            >
-              <option value="">-- Tất cả phim --</option>
-              {moviesFiltered
-                .filter((m) => {
-                  const status = (m?.status ?? m?.Status ?? "").toLowerCase();
-                  return status.includes("đang chiếu") || status.includes("sắp chiếu");
-                })
-                .map((m) => {
-                  const mId = String(getMovieId(m));
-                  const mTitle = getMovieTitle(m);
-                  const count = getMovieShowtimeCount(mId);
-                  return (
-                    <option key={mId} value={mId}>
-                      {mTitle} ({count} suất)
-                    </option>
-                  );
-                })}
-            </select>
-          </div>
-        </div>
-      )}
+          {/* Tìm phim + dropdown phim (chỉ hiện khi có phim) */}
+          {moviesInCinema.length > 0 && (
+            <div className="lc-movie-control-group lc-movie-control-group--inline">
+              <div className="lc-movie-search-wrap lc-movie-search-wrap--compact">
+                <MdSearch size={18} className="lc-movie-search-icon" />
+                <input
+                  type="text"
+                  className="lc-movie-search-input"
+                  placeholder="Tìm phim..."
+                  value={movieSearch}
+                  onChange={(e) => setMovieSearch(e.target.value)}
+                />
+                {movieSearch && (
+                  <button
+                    type="button"
+                    className="lc-movie-search-clear"
+                    onClick={() => setMovieSearch("")}
+                    title="Xóa"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
-      {/* ── Breadcrumb ── */}
-      {selectedMovieId && (
-        <div className="lc-breadcrumb">
-          <button
-            type="button"
-            className="lc-back-btn"
-            onClick={() => handleMovieClick(selectedMovieId)}
-          >
-            <MdArrowBack size={16} />
-            Tất cả phim
-          </button>
-
-          <span className="lc-breadcrumb-sep">›</span>
-
-          <span className="lc-breadcrumb-current">
-            {getMovieTitle(
-              movies.find((m) => String(getMovieId(m)) === selectedMovieId) ??
-                {}
-            )}
-          </span>
-
-          {selectedCinema && (
-            <>
-              <span className="lc-breadcrumb-sep">›</span>
-              <span className="lc-breadcrumb-cinema">
-                {selectedCinema.name}
-              </span>
-            </>
+              <select
+                className="lc-select-dark"
+                value={selectedMovieId || ""}
+                onChange={(e) => handleSelectMovieChange(e.target.value)}
+              >
+                <option value="">-- Tất cả phim --</option>
+                {moviesFiltered
+                  .filter((m) => {
+                    const status = (m?.status ?? m?.Status ?? "").toLowerCase();
+                    return status.includes("đang chiếu") || status.includes("sắp chiếu");
+                  })
+                  .map((m) => {
+                    const mId = String(getMovieId(m));
+                    const mTitle = getMovieTitle(m);
+                    const count = getMovieShowtimeCount(mId);
+                    return (
+                      <option key={mId} value={mId}>
+                        {mTitle} ({count} suất)
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
           )}
         </div>
-      )}
 
-      {/* ── Filter phụ ── */}
-      <div className="lc-filter-bar">
-        <input
-          type="date"
-          className="lc-date-input"
-          value={filterDate}
-          onChange={(e) => handleFilterDateChange(e.target.value)}
-          title="Chọn ngày để nhảy đến tuần tương ứng"
-        />
+        {/* Hàng 2: Lọc ngày + trạng thái + nút xóa */}
+        <div className="lc-filter-bar lc-filter-bar--inline">
+          <input
+            type="date"
+            className="lc-date-input"
+            value={filterDate}
+            onChange={(e) => handleFilterDateChange(e.target.value)}
+            title="Chọn ngày để nhảy đến tuần tương ứng"
+          />
 
-        <select
-          className="lc-status-select"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="">Tất cả trạng thái</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        {(filterDate || filterStatus) && (
-          <button
-            type="button"
-            className="lc-clear-btn"
-            onClick={clearFilters}
+          <select
+            className="lc-status-select"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
           >
-            Xóa bộ lọc
-          </button>
-        )}
+            <option value="">Tất cả trạng thái</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          {(filterDate || filterStatus) && (
+            <button
+              type="button"
+              className="lc-clear-btn"
+              onClick={clearFilters}
+            >
+              Xóa bộ lọc
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Loading / Error ── */}
@@ -567,9 +513,12 @@ export default function Rate() {
                   {/* Dropdown kết quả */}
                   {showMovieDropdown && (() => {
                     const kw = formMovieSearch.trim().toLowerCase();
-                    const filtered = movies.filter((m) =>
-                      !kw || getMovieTitle(m).toLowerCase().includes(kw)
-                    );
+                    const filtered = movies.filter((m) => {
+                      const status = (m?.status ?? m?.Status ?? "").toLowerCase();
+                      const isAllowed =
+                        status.includes("đang chiếu") || status.includes("sắp chiếu");
+                      return isAllowed && (!kw || getMovieTitle(m).toLowerCase().includes(kw));
+                    });
                     return (
                       <div className="lc-movie-dropdown">
                         {filtered.length === 0 ? (
@@ -623,88 +572,113 @@ export default function Rate() {
                   })()}
                 </div>
 
-                <div className="lc-field">
-                  <label className="lc-label">
-                    Chi Nhánh / Khu Vực{" "}
-                    <span className="lc-required">*</span>
-                  </label>
+                {/* Hàng: Chi Nhánh + Phòng Chiếu */}
+                <div className="lc-field-row">
+                  <div className="lc-field">
+                    <label className="lc-label">
+                      Chi Nhánh / Khu Vực{" "}
+                      <span className="lc-required">*</span>
+                    </label>
 
-                  <select
-                    name="cinemaId"
-                    value={form.cinemaId}
-                    onChange={handleChange}
-                    className="lc-input"
-                  >
-                    <option value="">-- Chọn chi nhánh/khu vực --</option>
+                    <select
+                      name="cinemaId"
+                      value={form.cinemaId}
+                      onChange={handleChange}
+                      className="lc-input"
+                    >
+                      <option value="">-- Chọn chi nhánh --</option>
 
-                    {cinemas.map((c) => {
-                      const cId =
-                        c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
-                      const cName =
-                        c?.cinemaName ??
-                        c?.CinemaName ??
-                        c?.name ??
-                        c?.Name ??
-                        "—";
-
-                      return (
-                        <option key={cId} value={cId}>
-                          {cName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div className="lc-field">
-                  <label className="lc-label">
-                    Phòng Chiếu <span className="lc-required">*</span>
-                  </label>
-
-                  <select
-                    name="roomId"
-                    value={form.roomId}
-                    onChange={handleChange}
-                    className="lc-input"
-                    disabled={!form.cinemaId}
-                  >
-                    <option value="">-- Chọn phòng chiếu --</option>
-
-                    {rooms
-                      .filter(
-                        (r) =>
-                          String(getRoomCinemaId(r)) ===
-                          String(form.cinemaId)
-                      )
-                      .map((r) => {
-                        const rId =
-                          r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
-                        const rName =
-                          r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
+                      {cinemas.map((c) => {
+                        const cId =
+                          c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
+                        const cName =
+                          c?.cinemaName ??
+                          c?.CinemaName ??
+                          c?.name ??
+                          c?.Name ??
+                          "—";
 
                         return (
-                          <option key={rId} value={rId}>
-                            {rName}
+                          <option key={cId} value={cId}>
+                            {cName}
                           </option>
                         );
                       })}
-                  </select>
+                    </select>
+                  </div>
+
+                  <div className="lc-field">
+                    <label className="lc-label">
+                      Phòng Chiếu <span className="lc-required">*</span>
+                    </label>
+
+                    <select
+                      name="roomId"
+                      value={form.roomId}
+                      onChange={handleChange}
+                      className="lc-input"
+                      disabled={!form.cinemaId}
+                    >
+                      <option value="">-- Chọn phòng chiếu --</option>
+
+                      {rooms
+                        .filter(
+                          (r) =>
+                            String(getRoomCinemaId(r)) ===
+                            String(form.cinemaId)
+                        )
+                        .map((r) => {
+                          const rId =
+                            r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
+                          const rName =
+                            r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
+
+                          return (
+                            <option key={rId} value={rId}>
+                              {rName}
+                            </option>
+                          );
+                        })}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="lc-field">
-                  <label className="lc-label">
-                    Ngày Chiếu <span className="lc-required">*</span>
-                  </label>
+                {/* Hàng: Ngày Chiếu + Trạng Thái */}
+                <div className="lc-field-row">
+                  <div className="lc-field">
+                    <label className="lc-label">
+                      Ngày Chiếu <span className="lc-required">*</span>
+                    </label>
 
-                  <input
-                    type="date"
-                    name="showDate"
-                    value={form.showDate}
-                    onChange={handleChange}
-                    className="lc-input"
-                  />
+                    <input
+                      type="date"
+                      name="showDate"
+                      value={form.showDate}
+                      onChange={handleChange}
+                      className="lc-input"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+
+                  <div className="lc-field">
+                    <label className="lc-label">Trạng Thái</label>
+
+                    <select
+                      name="status"
+                      value={form.status}
+                      onChange={handleChange}
+                      className="lc-input"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
+                {/* Hàng: Giờ Bắt Đầu + Giờ Kết Thúc */}
                 <div className="lc-field-row">
                   <div className="lc-field">
                     <label className="lc-label">
@@ -775,41 +749,6 @@ export default function Rate() {
                         </div>
                       );
                     })()}
-                  </div>
-                </div>
-
-                <div className="lc-field-row">
-                  <div className="lc-field">
-                    <label className="lc-label">
-                      Giá Vé (đ) <span className="lc-required">*</span>
-                    </label>
-
-                    <input
-                      type="number"
-                      name="basePrice"
-                      value={form.basePrice}
-                      onChange={handleChange}
-                      placeholder="VD: 95000"
-                      min={0}
-                      className="lc-input"
-                    />
-                  </div>
-
-                  <div className="lc-field">
-                    <label className="lc-label">Trạng Thái</label>
-
-                    <select
-                      name="status"
-                      value={form.status}
-                      onChange={handleChange}
-                      className="lc-input"
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
