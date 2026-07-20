@@ -4,26 +4,30 @@ import {
   MdReceiptLong,
   MdFastfood,
   MdQrCodeScanner,
-  MdPersonOutline,
   MdMenu,
   MdLogout,
   MdLocalActivity,
   MdBarChart,
 } from "react-icons/md";
 import { useState } from "react";
+import { getUser } from "../services/authService";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
   { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
-  { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },
-  { to: "/staff/quet-qr", label: "Quét QR", icon: <MdQrCodeScanner /> },
+  { to: "/staff/combo", label: "Đồ ăn", icon: <MdFastfood /> },
+  { to: "/staff/quet-qr", label: "Quét QR Vé", icon: <MdQrCodeScanner /> },
+  { to: "/staff/quet-qr-do-an", label: "Quét QR Đồ ăn", icon: <MdFastfood /> },
+  { to: "/staff/quan-ly-do-an", label: "Quản lý Đồ ăn", icon: <MdReceiptLong /> },
   { to: "/staff/doanh-thu", label: "Doanh thu ngày", icon: <MdBarChart /> },
-  { to: "/staff/ho-so", label: "Hồ sơ", icon: <MdPersonOutline /> },
 ];
 
 export default function StaffLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const user = getUser();
+  const branchName = user?.fullName || user?.FullName || "T&M Cinema";
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -41,7 +45,7 @@ export default function StaffLayout() {
         <div className="flex items-center gap-2 px-3 py-4 border-b border-gray-700">
           <MdConfirmationNumber className="text-green-400 text-2xl shrink-0" />
           {sidebarOpen && (
-            <span className="text-sm font-bold leading-tight">T&M Staff</span>
+            <span className="text-sm font-bold leading-tight truncate">{branchName}</span>
           )}
         </div>
 
@@ -82,7 +86,7 @@ export default function StaffLayout() {
             <MdMenu className="text-2xl" />
           </button>
           <span className="text-gray-700 font-semibold text-sm">
-            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M
+            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - {branchName}
           </span>
         </header>
 

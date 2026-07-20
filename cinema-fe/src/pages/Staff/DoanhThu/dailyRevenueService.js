@@ -12,24 +12,28 @@ export async function getDailyRevenue(date) {
   let payments = [];
   let bookings = [];
   let orders = [];
+  let ticketsList = [];
 
   try {
-    // Fetch all payments, bookings, and orders in parallel
-    const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
+    // Fetch all payments, bookings, orders, and tickets in parallel
+    const [paymentsRes, bookingsRes, ordersRes, ticketsRes] = await Promise.all([
       fetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
       fetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
-      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal })
+      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Tickets`, { headers, signal: controller.signal })
     ]);
 
-    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok) {
-      const [pData, bData, oData] = await Promise.all([
+    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok && ticketsRes.ok) {
+      const [pData, bData, oData, tData] = await Promise.all([
         readResponse(paymentsRes),
         readResponse(bookingsRes),
-        readResponse(ordersRes)
+        readResponse(ordersRes),
+        readResponse(ticketsRes)
       ]);
       payments = pData || [];
       bookings = bData || [];
       orders = oData || [];
+      ticketsList = tData || [];
     }
   } catch (err) {
     console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
@@ -88,34 +92,70 @@ export async function getDailyRevenue(date) {
       ticketSubtotal = batchBookings.reduce((sum, b) => sum + (b.ticketPrice || 0), 0);
     }
 
-    // 3. Find order if payment has OrderId
-    const order = payment.orderId ? (orders || []).find(o => o.orderId === payment.orderId) : null;
+    // 3. Find order if payment has OrderId OR by matching bookingId of the tickets in this bill
+    let order = payment.orderId ? (orders || []).find(o => o.orderId === payment.orderId) : null;
+    if (!order && ticketsInBill.length > 0) {
+      const matchBookingIds = ticketsInBill.map(t => t.bookingId);
+      order = (orders || []).find(o => o.bookingId && matchBookingIds.includes(o.bookingId));
+    }
+
     let concessionsInBill = [];
     let concessionSubtotal = 0;
 
     if (order) {
       concessionSubtotal = order.totalAmount || 0;
-      if (order.items) {
-        concessionsInBill = order.items.map(item => ({
-          name: item.foodName || item.comboName || "N/A",
-          quantity: item.quantity || 0,
-          unitPrice: item.unitPrice || 0,
-          subtotal: item.subtotal || 0
-        }));
+      const items = order.items?.$values ?? order.items ?? [];
+      concessionsInBill = items.map(item => ({
+        name: item.foodName || item.comboName || "N/A",
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        subtotal: item.subtotal || 0
+      }));
+    }
+
+    // 4. Build bill details (recalculate totalAmount to sum ticket + concession, map ticket code to billCode)
+    const finalTotalAmount = ticketSubtotal + concessionSubtotal - (payment.discountAmt || 0);
+    
+    // Resolve ticket code for this booking to display in place of billCode
+    let resolvedBillCode = `BILL${String(payment.paymentId).padStart(6, '0')}`;
+    if (rootBooking) {
+      const ticketObj = (ticketsList || []).find(t => t.bookingId === rootBooking.bookingId);
+      if (ticketObj && (ticketObj.ticketCode || ticketObj.code)) {
+        resolvedBillCode = ticketObj.ticketCode || ticketObj.code;
       }
     }
 
-    // 4. Build bill details matching backend schema
+    // Resolve if this is a counter purchase (either tickets booked by staff or combo sold by staff)
+    const isCounter = (rootBooking && rootBooking.bookingType === "Staff") || 
+                      (order && (order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway")) ||
+                      (rootBooking && (rootBooking.customerName === "Cơ Sở 2" || rootBooking.customerName === "Hệ Thống Admin")) ||
+                      (order && (order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin"));
+
+    const resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai");
+    const resolvedCustomerEmail = isCounter ? "Tại quầy" : (rootBooking ? (rootBooking.email || "N/A") : "N/A");
+
+    let savedCash = payment.cashReceived || payment.CashReceived;
+    if (!savedCash && rootBooking) {
+      savedCash = localStorage.getItem("cash_received_booking_" + rootBooking.bookingId);
+    }
+    if (!savedCash && resolvedBillCode) {
+      savedCash = localStorage.getItem("cash_received_bill_" + resolvedBillCode);
+    }
+    const resolvedCashReceived = savedCash ? Number(savedCash) : finalTotalAmount;
+    const resolvedChangeAmount = Math.max(0, resolvedCashReceived - finalTotalAmount);
+
     const bill = {
       paymentId: payment.paymentId,
-      billCode: `BILL${String(payment.paymentId).padStart(6, '0')}`,
+      billCode: resolvedBillCode,
       paymentDate: payment.createdAt,
-      customerName: rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai",
-      customerEmail: rootBooking ? (rootBooking.email || "N/A") : "N/A",
+      customerName: resolvedCustomerName,
+      customerEmail: resolvedCustomerEmail,
       staffName: order && order.staffName ? order.staffName : (payment.staffId ? `Nhân viên (ID ${payment.staffId})` : "Hệ thống Online"),
       paymentMethod: payment.paymentMethod,
+      cashReceived: resolvedCashReceived,
+      changeAmount: resolvedChangeAmount,
       discountAmt: payment.discountAmt || 0,
-      totalAmount: payment.totalAmount || 0,
+      totalAmount: finalTotalAmount,
       tickets: ticketsInBill,
       ticketSubtotal: ticketSubtotal,
       concessions: concessionsInBill,
@@ -125,7 +165,7 @@ export async function getDailyRevenue(date) {
     totalTicketRevenue += ticketSubtotal;
     totalConcessionRevenue += concessionSubtotal;
     totalDiscount += payment.discountAmt || 0;
-    totalOverallRevenue += payment.totalAmount || 0;
+    totalOverallRevenue += finalTotalAmount;
     totalTicketsCount += ticketsInBill.length;
 
     bills.push(bill);
@@ -151,14 +191,26 @@ export async function getDailyRevenue(date) {
 
   const user = getUser();
   for (const localOrder of realStandaloneOrders) {
+    const isLocalCounter = localOrder.userName === "Cơ Sở 2" || localOrder.userName === "Hệ Thống Admin" || localOrder.orderType === "Staff" || localOrder.orderType === "Counter" || localOrder.orderType === "Takeaway";
+    const resolvedLocalName = isLocalCounter ? "Khách mua tại quầy" : (localOrder.userName || "Khách mua combo");
+    const resolvedLocalEmail = isLocalCounter ? "Tại quầy" : "N/A";
+
+    const savedCash = localStorage.getItem("cash_received_order_" + localOrder.orderId) || 
+                      localStorage.getItem("cash_received_bill_CB" + localOrder.orderId) || 
+                      localOrder.cashReceived;
+    const resolvedCashReceived = savedCash ? Number(savedCash) : (localOrder.totalAmount || 0);
+    const resolvedChangeAmount = Math.max(0, resolvedCashReceived - (localOrder.totalAmount || 0));
+
     const bill = {
       paymentId: localOrder.orderId + 2000000, // Unique simulated paymentId mapping
       billCode: `CB${localOrder.orderId}`,
       paymentDate: localOrder.orderDate,
-      customerName: localOrder.userName || "Khách mua combo",
-      customerEmail: "N/A",
+      customerName: resolvedLocalName,
+      customerEmail: resolvedLocalEmail,
       staffName: localOrder.staffName || "Nhân viên T&M",
       paymentMethod: "Tiền mặt",
+      cashReceived: resolvedCashReceived,
+      changeAmount: resolvedChangeAmount,
       discountAmt: 0,
       totalAmount: localOrder.totalAmount || 0,
       tickets: [],
@@ -187,6 +239,12 @@ export async function getDailyRevenue(date) {
   });
 
   for (const localOrder of matchingLocalOrders) {
+    const savedCash = localStorage.getItem("cash_received_order_" + localOrder.orderId) || 
+                      localStorage.getItem("cash_received_bill_" + localOrder.id) || 
+                      localOrder.cashReceived;
+    const resolvedCashReceived = savedCash ? Number(savedCash) : (localOrder.totalAmount || 0);
+    const resolvedChangeAmount = Math.max(0, resolvedCashReceived - (localOrder.totalAmount || 0));
+
     const bill = {
       paymentId: localOrder.orderId + 1000000, // Unique simulated paymentId
       billCode: localOrder.id,
@@ -195,6 +253,8 @@ export async function getDailyRevenue(date) {
       customerEmail: "N/A",
       staffName: user?.fullName || user?.FullName || "Nhân viên T&M",
       paymentMethod: "Tiền mặt",
+      cashReceived: resolvedCashReceived,
+      changeAmount: resolvedChangeAmount,
       discountAmt: 0,
       totalAmount: localOrder.totalAmount || 0,
       tickets: [],
@@ -214,6 +274,23 @@ export async function getDailyRevenue(date) {
     bills.push(bill);
   }
 
+  // Calculate Cash vs Transfer totals
+  let totalCashRevenue = 0;
+  let totalTransferRevenue = 0;
+  let totalCashBillsCount = 0;
+  let totalTransferBillsCount = 0;
+
+  for (const bill of bills) {
+    const pm = bill.paymentMethod ? String(bill.paymentMethod).toLowerCase() : "";
+    if (pm === "cash" || pm === "tiền mặt") {
+      totalCashRevenue += bill.totalAmount || 0;
+      totalCashBillsCount += 1;
+    } else {
+      totalTransferRevenue += bill.totalAmount || 0;
+      totalTransferBillsCount += 1;
+    }
+  }
+
   // Sort bills by paymentDate descending (newest first)
   bills.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
@@ -225,6 +302,10 @@ export async function getDailyRevenue(date) {
     totalOverallRevenue,
     totalBillsCount: bills.length,
     totalTicketsCount,
+    totalCashRevenue,
+    totalTransferRevenue,
+    totalCashBillsCount,
+    totalTransferBillsCount,
     bills
   };
 }
@@ -260,10 +341,13 @@ export async function sendDailyRevenueReport(payload) {
                   `- Giờ gửi báo cáo: ${payload.sendTime || 'N/A'}\n` +
                   `- Doanh thu vé: ${revenueData.totalTicketRevenue?.toLocaleString('vi-VN')}đ (${totalBookings} vé)\n` +
                   `- Doanh thu bắp nước: ${revenueData.totalConcessionRevenue?.toLocaleString('vi-VN')}đ (${totalOrders} đơn)\n` +
+                  `- Doanh thu Tiền mặt: ${revenueData.totalCashRevenue?.toLocaleString('vi-VN')}đ (${revenueData.totalCashBillsCount || 0} đơn)\n` +
+                  `- Doanh thu Tiền CK: ${revenueData.totalTransferRevenue?.toLocaleString('vi-VN')}đ (${revenueData.totalTransferBillsCount || 0} đơn)\n` +
                   `- Giảm giá: ${revenueData.totalDiscount?.toLocaleString('vi-VN')}đ\n` +
                   `- Tổng doanh thu thực nhận: ${totalRevenue?.toLocaleString('vi-VN')}đ\n` +
                   `- Ghi chú báo cáo: ${payload.notes || "Không có"}\n` +
                   `- Người gửi: ${user?.fullName || user?.FullName || 'Nhân viên T&M'}`;
+
 
   const reportBody = {
     staffId: staffId,

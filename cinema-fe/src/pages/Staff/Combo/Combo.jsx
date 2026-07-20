@@ -172,6 +172,8 @@ export default function StaffCombo() {
     totalAmount,
     paymentMethod,
     setPaymentMethod,
+    cashReceived,
+    setCashReceived,
     showQRModal,
     handleSell,
     qrPendingOrderId,
@@ -211,6 +213,18 @@ export default function StaffCombo() {
                 <span>Tổng tiền:</span>
                 <span>{success.totalAmount.toLocaleString("vi-VN")} đ</span>
               </div>
+              {success.cashReceived > 0 && (
+                <div className="border-t border-dashed border-green-200 pt-2 mt-2 space-y-1 text-xs font-semibold text-green-900">
+                  <div className="flex justify-between">
+                    <span>Tiền nhận:</span>
+                    <span>{success.cashReceived.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-green-800">
+                    <span>Tiền thừa trả khách:</span>
+                    <span>{Math.max(0, success.cashReceived - success.totalAmount).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setSuccess(null)}
@@ -343,11 +357,61 @@ export default function StaffCombo() {
                   <MdQrCode2 className="text-lg" /> Quét QR
                 </button>
               </div>
+
+              {paymentMethod === "cash" && (
+                <div className="mt-3 p-3 bg-gray-50 border border-gray-150 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
+                    <span>Tiền nhận (khách đưa):</span>
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="Nhập số tiền khách đưa..."
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    {totalAmount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setCashReceived(totalAmount)}
+                        className="px-2.5 py-1 bg-green-50 border border-green-200 rounded text-xxs font-bold text-green-700 hover:bg-green-100 transition-colors"
+                      >
+                        {totalAmount.toLocaleString("vi-VN")}đ (Đúng tiền)
+                      </button>
+                    )}
+                    {[50000, 100000, 200000, 500000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCashReceived(amt)}
+                        className="px-2 py-1 bg-white border border-gray-200 rounded text-xxs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        {amt.toLocaleString("vi-VN")}đ
+                      </button>
+                    ))}
+                  </div>
+
+                  {cashReceived !== "" && Number(cashReceived) < totalAmount ? (
+                    <div className="pt-2 border-t border-red-200 text-xs font-bold text-red-600 flex items-center justify-between">
+                      <span>⚠️ Tiền nhận chưa đủ</span>
+                      <span>Thiếu: {(totalAmount - Number(cashReceived)).toLocaleString("vi-VN")} đ</span>
+                    </div>
+                  ) : Number(cashReceived) >= totalAmount && totalAmount > 0 ? (
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-xs font-bold">
+                      <span className="text-gray-600">Tiền thừa trả khách:</span>
+                      <span className="text-green-600 text-sm font-extrabold">
+                        {(Number(cashReceived) - totalAmount).toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={selectedItems.length === 0 || loading}
+              disabled={selectedItems.length === 0 || loading || (paymentMethod === "cash" && cashReceived !== "" && Number(cashReceived) < totalAmount)}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <MdReceipt />

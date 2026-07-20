@@ -15,6 +15,21 @@ function formatDateTime(rawDate) {
   return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
 }
 
+function getCustomerDisplayName(t) {
+  const name = t.customerName || "";
+  const isCounter =
+    t.bookingType === "Staff" ||
+    name === "Cơ Sở 2" ||
+    name === "Hệ Thống Admin" ||
+    name === "Khách vãng lai" ||
+    name === "Đồng Khởi" ||
+    name.toLowerCase().includes("đồng khởi") ||
+    name.toLowerCase().includes("cinemahcm") ||
+    !name;
+
+  return isCounter ? "Khách mua tại quầy" : name;
+}
+
 export default function StaffQuanLyVe() {
   const {
     loading,
@@ -25,6 +40,7 @@ export default function StaffQuanLyVe() {
     setFilterStatus,
     filtered,
     STATUS_OPTIONS,
+    fetchData,
   } = useQuanLyVe();
 
   return (
@@ -33,6 +49,13 @@ export default function StaffQuanLyVe() {
         <h4 className="font-bold text-2xl text-gray-800 flex items-center gap-2">
           <MdConfirmationNumber className="text-green-600" /> Quản Lý Vé
         </h4>
+        <button 
+          onClick={fetchData}
+          disabled={loading}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+        >
+          {loading ? "Đang tải..." : "🔄 Tải lại danh sách"}
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -43,7 +66,7 @@ export default function StaffQuanLyVe() {
             </span>
             <input
               type="text"
-              placeholder="Tìm mã vé, tên khách hàng, tên phim..."
+              placeholder="Tìm theo mã vé..."
               className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -110,7 +133,7 @@ export default function StaffQuanLyVe() {
                       <td className="px-4 py-3.5 font-semibold text-gray-800">
                         {t.code || t.ticketCode || `VE${t.id}`}
                       </td>
-                      <td className="px-4 py-3.5 text-gray-600">{t.customerName}</td>
+                      <td className="px-4 py-3.5 text-gray-600">{getCustomerDisplayName(t)}</td>
                       <td className="px-4 py-3.5 text-gray-700 font-medium">{t.movieTitle}</td>
                       <td className="px-4 py-3.5">
                         <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded font-mono text-xs font-semibold">

@@ -157,6 +157,8 @@ export default function StaffBanVe() {
     selectedFoodsList,
     foodTotalAmount,
     handleFoodQuantityChange,
+    cashReceived,
+    setCashReceived,
   } = useBanVe();
 
   return (
@@ -222,6 +224,12 @@ export default function StaffBanVe() {
                 <div className="bv-receipt-full"><strong>Đồ ăn:</strong> {successReceipt.foodsText}</div>
               )}
               <div><strong>Thanh toán:</strong> {successReceipt.paymentMethod}</div>
+              {successReceipt.cashReceived > 0 && (
+                <>
+                  <div><strong>Tiền nhận:</strong> {formatMoney(successReceipt.cashReceived)} đ</div>
+                  <div><strong>Tiền thừa:</strong> {formatMoney(Math.max(0, successReceipt.cashReceived - successReceipt.totalAmount))} đ</div>
+                </>
+              )}
               <div><strong>Ngày xuất:</strong> {successReceipt.dateBooked}</div>
               <div className="bv-receipt-full bv-receipt-total">
                 <span>Tổng tiền:</span>
@@ -435,10 +443,6 @@ export default function StaffBanVe() {
                     : "—"}
                 </strong>
               </div>
-              <div className="bv-order-row">
-                <span>Giá vé cơ bản</span>
-                <strong>{formatMoney(getSelectedShowtimeBasePrice())} đ</strong>
-              </div>
             </div>
 
             {/* Đồ ăn */}
@@ -493,6 +497,56 @@ export default function StaffBanVe() {
                   📱 Quét QR
                 </button>
               </div>
+
+              {paymentMethod === "Cash" && (
+                <div className="mt-3 p-3 bg-gray-50 border border-gray-150 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
+                    <span>Tiền nhận (khách đưa):</span>
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="Nhập số tiền khách đưa..."
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    {totalAmount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setCashReceived(totalAmount)}
+                        className="px-2.5 py-1 bg-green-50 border border-green-200 rounded text-xxs font-bold text-green-700 hover:bg-green-100 transition-colors"
+                      >
+                        {formatMoney(totalAmount)}đ (Đúng tiền)
+                      </button>
+                    )}
+                    {[50000, 100000, 200000, 500000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCashReceived(amt)}
+                        className="px-2 py-1 bg-white border border-gray-200 rounded text-xxs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        {formatMoney(amt)}đ
+                      </button>
+                    ))}
+                  </div>
+
+                  {cashReceived !== "" && Number(cashReceived) < totalAmount ? (
+                    <div className="pt-2 border-t border-red-200 text-xs font-bold text-red-600 flex items-center justify-between">
+                      <span>⚠️ Tiền nhận chưa đủ</span>
+                      <span>Thiếu: {formatMoney(totalAmount - Number(cashReceived))} đ</span>
+                    </div>
+                  ) : Number(cashReceived) >= totalAmount && totalAmount > 0 ? (
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-xs font-bold">
+                      <span className="text-gray-600">Tiền thừa trả khách:</span>
+                      <span className="text-green-600 text-sm font-extrabold">
+                        {formatMoney(Number(cashReceived) - totalAmount)} đ
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Tổng tiền */}
@@ -504,7 +558,7 @@ export default function StaffBanVe() {
             {/* Nút xuất vé */}
             <button
               type="submit"
-              disabled={selectedSeats.length === 0 || loading}
+              disabled={selectedSeats.length === 0 || loading || (paymentMethod === "Cash" && cashReceived !== "" && Number(cashReceived) < totalAmount)}
               className="bv-submit-btn"
             >
               {loading ? "Đang xử lý..." : "🎟 XUẤT VÉ & THANH TOÁN"}

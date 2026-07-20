@@ -128,7 +128,7 @@ export default function StaffQuetQR() {
               >
                 <input
                   type="text"
-                  placeholder="Nhập mã vé (VD: VE1 hoặc code từ hóa đơn)"
+                  placeholder="Nhập mã vé"
                   value={ticketCode}
                   onChange={e => setTicketCode(e.target.value)}
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
@@ -216,7 +216,11 @@ export default function StaffQuetQR() {
 
           {ticketDetails && (
             <div className="pt-6 border-t border-gray-100 mt-6">
-              {ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng" ? (
+              {ticketDetails.isExpired ? (
+                <div className="w-full text-center bg-red-100 text-red-800 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 border border-red-200">
+                  <MdError /> VÉ ĐÃ HẾT HẠN SUẤT CHIẾU (KHÔNG THỂ CHECK-IN)
+                </div>
+              ) : ticketDetails.status === "Used" || ticketDetails.status === "Đã sử dụng" ? (
                 <div className="w-full text-center bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 border border-gray-200">
                   <MdCheckCircle /> {ticketDetails.checkedInJustNow ? "VÉ ĐÃ ĐƯỢC CHECK-IN" : "VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ"}
                 </div>
