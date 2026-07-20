@@ -1,5 +1,38 @@
 import { useState, useEffect } from "react";
-import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo } from "./foodService";
+import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo, fetchBookingsForInventory } from "./foodService";
+
+function toList(value) {
+  if (Array.isArray(value)) return value;
+  return value?.$values || value?.data || value?.items || [];
+}
+
+function getMonthlySoldQuantities(bookings) {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const foodSales = new Map();
+  const comboSales = new Map();
+
+  toList(bookings).forEach((booking) => {
+    const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
+    if (["pending", "unpaid", "cancelled", "canceled"].some(value => status.includes(value))) return;
+
+    const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
+    const date = rawDate ? new Date(rawDate) : null;
+    if (date && !Number.isNaN(date.getTime()) && (date.getMonth() !== month || date.getFullYear() !== year)) return;
+
+    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ?? booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
+    toList(rawItems).forEach((item) => {
+      const quantity = Number(item.quantity ?? item.Quantity ?? 1);
+      const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
+      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
+      if (foodId != null) foodSales.set(String(foodId), (foodSales.get(String(foodId)) || 0) + quantity);
+      if (comboId != null) comboSales.set(String(comboId), (comboSales.get(String(comboId)) || 0) + quantity);
+    });
+  });
+
+  return { foodSales, comboSales };
+}
 
 // ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
 const MOCK_FOODS = [
@@ -59,29 +92,35 @@ export function useFood() {
     setLoading(true);
     setError("");
     try {
-      const [foodsData, combosData] = await Promise.all([
+      const [foodsData, combosData, bookingsData] = await Promise.all([
         fetchFoods().catch(() => null),
-        fetchCombos().catch(() => null)
+        fetchCombos().catch(() => null),
+        fetchBookingsForInventory().catch(() => [])
       ]);
+      const { foodSales, comboSales } = getMonthlySoldQuantities(bookingsData);
 
       const normalizedFoods = foodsData && foodsData.length > 0
         ? foodsData.map(f => {
             const trend = Math.floor(Math.random() * 30) - 10;
+            const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
+            const derivedSold = foodSales.get(String(foodId)) || 0;
+            const apiSold = Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0);
+            const shouldDeriveStock = apiSold === 0 && derivedSold > 0;
             return {
-              id: f.foodId,
+              id: foodId,
               itemType: 'food',
-              name: f.foodName,
-              category: f.category || "Khác",
-              price: f.price,
-              quantity: f.quantity,
-              imageUrl: f.imageUrl,
-              isAvailable: f.isAvailable,
-              soldThisMonth: f.soldThisMonth || 0,
-              revenueThisMonth: f.revenueThisMonth || 0,
-              soldThisWeek: f.soldThisWeek || 0,
-              revenueThisWeek: f.revenueThisWeek || 0,
-              soldToday: f.soldToday || 0,
-              revenueToday: f.revenueToday || 0,
+              name: f.foodName ?? f.FoodName,
+              category: f.category ?? f.Category ?? "Khác",
+              price: Number(f.price ?? f.Price ?? 0),
+              quantity: Math.max(0, Number(f.quantity ?? f.Quantity ?? 0) - (shouldDeriveStock ? derivedSold : 0)),
+              imageUrl: f.imageUrl ?? f.ImageUrl,
+              isAvailable: f.isAvailable ?? f.IsAvailable ?? true,
+              soldThisMonth: Math.max(apiSold, derivedSold),
+              revenueThisMonth: Math.max(Number(f.revenueThisMonth ?? f.RevenueThisMonth ?? 0), derivedSold * Number(f.price ?? f.Price ?? 0)),
+              soldThisWeek: Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0),
+              revenueThisWeek: Number(f.revenueThisWeek ?? f.RevenueThisWeek ?? 0),
+              soldToday: Number(f.soldToday ?? f.SoldToday ?? 0),
+              revenueToday: Number(f.revenueToday ?? f.RevenueToday ?? 0),
               trend: trend,
               revenue: f.revenueThisMonth || 0,
               originalData: f
@@ -92,21 +131,25 @@ export function useFood() {
       const normalizedCombos = combosData && combosData.length > 0
         ? combosData.map(c => {
             const trend = Math.floor(Math.random() * 20) - 5;
+            const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
+            const derivedSold = comboSales.get(String(comboId)) || 0;
+            const apiSold = Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0);
+            const shouldDeriveStock = apiSold === 0 && derivedSold > 0;
             return {
-              id: c.comboId,
+              id: comboId,
               itemType: 'combo',
-              name: c.comboName,
+              name: c.comboName ?? c.ComboName,
               category: "Combo",
-              price: c.price,
-              quantity: c.quantity,
-              imageUrl: c.imageUrl,
-              isAvailable: c.isAvailable,
-              soldThisMonth: c.soldThisMonth || 0,
-              revenueThisMonth: c.revenueThisMonth || 0,
-              soldThisWeek: c.soldThisWeek || 0,
-              revenueThisWeek: c.revenueThisWeek || 0,
-              soldToday: c.soldToday || 0,
-              revenueToday: c.revenueToday || 0,
+              price: Number(c.price ?? c.Price ?? 0),
+              quantity: Math.max(0, Number(c.quantity ?? c.Quantity ?? 0) - (shouldDeriveStock ? derivedSold : 0)),
+              imageUrl: c.imageUrl ?? c.ImageUrl,
+              isAvailable: c.isAvailable ?? c.IsAvailable ?? true,
+              soldThisMonth: Math.max(apiSold, derivedSold),
+              revenueThisMonth: Math.max(Number(c.revenueThisMonth ?? c.RevenueThisMonth ?? 0), derivedSold * Number(c.price ?? c.Price ?? 0)),
+              soldThisWeek: Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0),
+              revenueThisWeek: Number(c.revenueThisWeek ?? c.RevenueThisWeek ?? 0),
+              soldToday: Number(c.soldToday ?? c.SoldToday ?? 0),
+              revenueToday: Number(c.revenueToday ?? c.RevenueToday ?? 0),
               trend: trend,
               revenue: c.revenueThisMonth || 0,
               originalData: c

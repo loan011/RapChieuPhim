@@ -14,10 +14,13 @@ import {
   MdSearch,
   MdKeyboardArrowDown,
   MdFastfood,
+  MdDashboard,
 } from "react-icons/md";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getApiUrl, getAuthHeaders, readResponse } from "../services/apiHelper";
 
 const navItems = [
+  { to: "/admin/dashboard",             label: "Doanh Thu",              icon: <MdDashboard /> },
   { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Người Dùng",    icon: <MdPeople /> },
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
@@ -27,11 +30,26 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notifMenuOpen, setNotifMenuOpen] = useState(false);
+  const [reports, setReports] = useState([]);
+  const navigate = useNavigate();
 
-  function handleLogout() {
+  useEffect(() => {
+    fetch(`${getApiUrl()}/StaffReports`, { headers: getAuthHeaders() })
+      .then(res => {
+        if (res.ok) return readResponse(res);
+        return [];
+      })
+      .then(data => {
+        const arr = data?.$values || data || [];
+        setReports(arr.sort((a, b) => new Date(b.reportDate) - new Date(a.reportDate)));
+      })
+      .catch(err => console.error("Lỗi tải thông báo:", err));
+  }, []);
+
+  const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     navigate("/login");
@@ -109,12 +127,39 @@ export default function AdminLayout() {
             </div>
 
             {/* Notification Bell */}
-            <button className="relative w-9 h-9 flex items-center justify-center bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0">
-              <MdNotificationsNone className="text-xl" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff3b30] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
-                5
-              </span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setNotifMenuOpen(!notifMenuOpen)}
+                className="relative w-9 h-9 flex items-center justify-center bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0"
+              >
+                <MdNotificationsNone className="text-xl" />
+                {reports.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff3b30] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+                    {reports.length}
+                  </span>
+                )}
+              </button>
+
+              {notifMenuOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-[#1c1c1e] rounded-lg shadow-xl border border-[#2c2c2e] py-2 z-50 max-h-96 overflow-y-auto">
+                  <h3 className="px-4 py-2 font-semibold text-white border-b border-[#2c2c2e]">Thông báo báo cáo doanh thu</h3>
+                  {reports.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-400 text-center">Không có báo cáo nào</div>
+                  ) : (
+                    reports.map(r => (
+                      <div key={r.reportId || Math.random()} className="px-4 py-3 hover:bg-white/5 border-b border-[#2c2c2e] last:border-0 cursor-default">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-sm font-medium text-white">{r.staff?.fullName || r.staff?.FullName || 'Nhân viên'} báo cáo</span>
+                          <span className="text-xs text-gray-500">{new Date(r.reportDate || r.ReportDate).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-1 whitespace-pre-wrap">{r.summary || r.Summary}</p>
+                        <div className="text-sm font-bold text-[#10b981]">{(r.totalRevenue || r.TotalRevenue || 0).toLocaleString('vi-VN')}đ</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* User Profile */}
             <div className="relative">

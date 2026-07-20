@@ -75,11 +75,6 @@ export async function getMovies() {
 }
 
 export async function getDashboardFoodSources() {
-  const [bookings, foods, combos] = await Promise.all([
-    apiGet("/Bookings", "Lấy danh sách đặt vé thất bại!").catch(() => []),
-    apiGet("/Foods", "Lấy danh sách đồ ăn thất bại!").catch(() => []),
-    apiGet("/Combos", "Lấy danh sách combo thất bại!").catch(() => []),
-  ]);
-
-  return { bookings, foods, combos };
+  const orders = await apiGet("/Orders", "Lấy danh sách order thất bại!").catch(() => []);
+  return { orders };
 }

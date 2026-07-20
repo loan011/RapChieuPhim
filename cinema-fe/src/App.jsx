@@ -19,6 +19,7 @@ import LichSuDatVe from "./pages/Customer/History/History.jsx";
 import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
+import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
 import UserManagement from "./pages/Admin/UserManagement/UserManagement.jsx";
 import Phim from "./pages/Admin/Film/Film.jsx";
 import PhongChieu from "./pages/Admin/Room/Room.jsx";
@@ -160,7 +161,8 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="quan-ly-nguoi-dung" replace />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
           <Route path="phim" element={<Phim />} />
           <Route path="phong-chieu" element={<PhongChieu />} />

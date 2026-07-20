@@ -17,34 +17,43 @@ import {
   getDashboardFoodSources,
 } from "./dashboardService";
 
-function buildFoodDistributions(source, selectedDate) {
-  const foods = toList(source?.foods);
-  const combos = toList(source?.combos);
+function buildFoodDistributions(source, timeFilter) {
+  const orders = toList(source?.orders);
   const revenueByName = new Map();
 
-  toList(source?.bookings).forEach((booking) => {
-    const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
-    if (["pending", "unpaid", "cancelled", "canceled"].some(s => status.includes(s))) return;
+  orders.forEach((order) => {
+    // Lọc đơn hàng đã hủy hoặc chưa thanh toán
+    const status = String(order.status ?? order.Status ?? "").toLowerCase();
+    if (["cancelled", "canceled", "pending", "unpaid"].some(s => status.includes(s))) return;
 
-    const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
-    if (selectedDate && rawDate && String(rawDate).split("T")[0] !== selectedDate) return;
+    // Lọc theo thời gian nếu có filter
+    if (timeFilter) {
+      const rawDate = order.orderDate ?? order.OrderDate ?? order.createdAt ?? order.CreatedAt;
+      if (rawDate) {
+        const orderDay = String(rawDate).split("T")[0];
+        if (!orderDay.startsWith(timeFilter.substring(0, 7)) && orderDay !== timeFilter) {
+          // Nếu filter là ngày cụ thể (YYYY-MM-DD), so khớp chính xác
+          if (/^\d{4}-\d{2}-\d{2}$/.test(timeFilter) && orderDay !== timeFilter) return;
+          // Nếu filter là tháng (YYYY-MM), so khớp tháng
+          if (/^\d{4}-\d{2}$/.test(timeFilter) && !orderDay.startsWith(timeFilter)) return;
+        }
+      }
+    }
 
-    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ??
-      booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
+    const items = toList(order.orderitems ?? order.OrderItems ?? order.items ?? order.Items);
+    items.forEach((item) => {
+      // Lấy tên: ưu tiên từ food/combo object đính kèm
+      const foodName  = item.food?.foodName  ?? item.Food?.foodName  ?? item.Food?.FoodName  ?? item.foodName  ?? item.FoodName;
+      const comboName = item.combo?.comboName ?? item.Combo?.comboName ?? item.Combo?.ComboName ?? item.comboName ?? item.ComboName;
+      const name = foodName || comboName;
+      if (!name || String(name).toLowerCase() === "string") return;
 
-    toList(rawItems).forEach((item) => {
-      const foodId  = item.foodId  ?? item.FoodId  ?? item.food?.foodId  ?? item.Food?.FoodId;
-      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
-      const catalog = foodId != null
-        ? foods.find(f => String(f.foodId ?? f.FoodId ?? f.id ?? f.Id) === String(foodId))
-        : combos.find(c => String(c.comboId ?? c.ComboId ?? c.id ?? c.Id) === String(comboId));
-      const direct  = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName;
-      const catName = catalog?.foodName ?? catalog?.FoodName ?? catalog?.comboName ?? catalog?.ComboName;
-      const name    = direct && String(direct).toLowerCase() !== "string" ? direct : catName;
-      if (!name) return;
-      const qty   = Number(item.quantity ?? item.Quantity ?? 1);
-      const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? catalog?.price ?? catalog?.Price ?? 0);
-      revenueByName.set(name, (revenueByName.get(name) || 0) + price * qty);
+      const subtotal = Number(item.subtotal ?? item.Subtotal ?? 0);
+      const qty      = Number(item.quantity  ?? item.Quantity  ?? 1);
+      const price    = Number(item.unitPrice ?? item.UnitPrice ?? item.price ?? item.Price ?? 0);
+      const revenue  = subtotal > 0 ? subtotal : price * qty;
+
+      revenueByName.set(name, (revenueByName.get(name) || 0) + revenue);
     });
   });
 
@@ -54,6 +63,7 @@ function buildFoodDistributions(source, selectedDate) {
     percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
   })).sort((a, b) => b.value - a.value);
 }
+
 
 function toList(value) {
   if (Array.isArray(value)) return value;
@@ -230,8 +240,8 @@ export function useDashboard() {
   }
 
   function applyFoodDistribution(foodSources, filter) {
-    const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(filter) ? filter : "";
-    const distributions = buildFoodDistributions(foodSources, selectedDate);
+    // Pass filter trực tiếp (có thể là date YYYY-MM-DD hoặc period string)
+    const distributions = buildFoodDistributions(foodSources, filter);
     if (distributions.length > 0) {
       setChartData(prev => prev ? { ...prev, foodDistributions: distributions } : prev);
     }

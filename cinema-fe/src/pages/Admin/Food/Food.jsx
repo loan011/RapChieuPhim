@@ -42,16 +42,26 @@ export default function Food() {
     <div className="food-dashboard" onClick={() => setActiveDropdown(null)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>🍿 Quản lý đồ ăn</h2>
-        <div style={{ display: 'flex', background: '#1c1c24', border: '1px solid #3a3a45', borderRadius: 8, padding: 4 }}>
-          <select 
-            value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value)}
-            style={{ padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', background: 'transparent', color: '#fff', outline: 'none' }}
-          >
-            <option value="month" style={{ background: '#1c1c24', color: '#fff' }}>Tháng này</option>
-            <option value="week" style={{ background: '#1c1c24', color: '#fff' }}>Tuần này</option>
-            <option value="today" style={{ background: '#1c1c24', color: '#fff' }}>Hôm nay</option>
-          </select>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', background: '#1c1c24', border: '1px solid #3a3a45', borderRadius: 8, padding: 4 }}>
+            <select 
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              style={{ padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', background: 'transparent', color: '#fff', outline: 'none' }}
+            >
+              <option value="month" style={{ background: '#1c1c24', color: '#fff' }}>Tháng này</option>
+              <option value="week" style={{ background: '#1c1c24', color: '#fff' }}>Tuần này</option>
+              <option value="today" style={{ background: '#1c1c24', color: '#fff' }}>Hôm nay</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#1c1c24', border: '1px solid #3a3a45', borderRadius: 8, padding: '4px 12px' }}>
+            <input 
+              type="date" 
+              value={timeFilter !== 'week' && timeFilter !== 'month' && timeFilter !== 'today' ? timeFilter : ''} 
+              onChange={e => setTimeFilter(e.target.value)}
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', color: '#9ca3af', cursor: 'pointer', fontSize: 13 }}
+            />
+          </div>
         </div>
       </div>
       
@@ -76,7 +86,12 @@ export default function Food() {
         <div className="fd-card">
           <div className="fd-card-icon blue"><FaShoppingCart /></div>
           <div className="fd-card-info">
-            <h4>{timeFilter === 'month' ? 'Đã bán trong tháng' : (timeFilter === 'week' ? 'Đã bán trong tuần' : 'Đã bán hôm nay')}</h4>
+            <h4>
+              {timeFilter === 'month' ? 'Đã bán trong tháng' : 
+               timeFilter === 'week' ? 'Đã bán trong tuần' : 
+               timeFilter === 'today' ? 'Đã bán hôm nay' : 
+               `Đã bán ngày ${timeFilter.split('-').reverse().join('/')}`}
+            </h4>
             <div className="fd-value">{stats.totalSold.toLocaleString('vi-VN')} <span style={{ fontSize: 13, fontWeight: 400 }}>phần</span></div>
             <div className="fd-trend up"><MdTrendingUp /> 12% so với kỳ trước</div>
           </div>
@@ -133,7 +148,7 @@ export default function Food() {
                 <th>Danh mục</th>
                 <th>Giá bán</th>
                 <th>Tồn kho</th>
-                <th>Đã bán (tháng)</th>
+                <th>Đã bán</th>
                 <th>Trạng thái</th>
                 <th style={{ width: 40 }}></th>
               </tr>
@@ -166,7 +181,7 @@ export default function Food() {
                       </span>
                     </td>
                     <td style={{ fontWeight: 500 }}>{item.price.toLocaleString("vi-VN")}đ</td>
-                    <td>{item.quantity}</td>
+                    <td>{Math.max(0, item.quantity - getSold(item))}</td>
                     <td>{getSold(item)}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -256,7 +271,7 @@ export default function Food() {
                 {item.imageUrl ? <img src={item.imageUrl} className="fd-top-img" alt={item.name}/> : <div className="fd-top-img" style={{background: '#f3f4f6'}}></div>}
                 <div className="fd-top-info">
                   <h5>{item.name}</h5>
-                  <p>{getSold(item)} phần đã bán ({timeFilter === 'month' ? 'tháng này' : (timeFilter === 'week' ? 'tuần này' : 'hôm nay')})</p>
+                  <p>{getSold(item)} phần đã bán</p>
                 </div>
                 <div className="fd-top-trend">
                   <MdTrendingUp /> {item.trend > 0 ? item.trend : 5}%
