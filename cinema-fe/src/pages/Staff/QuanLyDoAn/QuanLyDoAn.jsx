@@ -34,25 +34,20 @@ export default function StaffQuanLyDoAn() {
 
       // Map orders with local storage pickup status & ticket codes
       const mappedOrders = ordersList.map(order => {
-        const booking = order.bookingId ? bookingsList.find(b => b.bookingId === order.bookingId) : null;
+        const booking = order.bookingId ? bookingsList.find(b => String(b.bookingId || b.BookingId) === String(order.bookingId)) : null;
         
         // Counter purchase detection
         const isCounter = order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway" || booking?.bookingType === "Staff" || order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin" || !order.bookingId;
 
         const isLocalCompleted = localStorage.getItem("food_pickup_status_" + order.orderId) === "Completed";
         
-        // Resolve status: Counter purchases are automatically CompletedAtCounter
-        let status = order.status || "Confirmed";
-        if (isCounter) {
-          status = "CompletedAtCounter";
-        } else if (isLocalCompleted) {
-          status = "Completed";
-        }
+        // Both ticket orders & standalone counter food orders default to Pending until confirmed via QR/manual code
+        let status = (isLocalCompleted || order.status === "Completed") ? "Completed" : "Pending";
 
         let ticketCode = null;
         if (order.bookingId) {
-          const tObj = (ticketsList || []).find(t => t.bookingId === order.bookingId);
-          ticketCode = tObj?.ticketCode || tObj?.code;
+          const tObj = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(order.bookingId));
+          ticketCode = tObj?.ticketCode || tObj?.TicketCode || tObj?.code || tObj?.Code;
         }
 
         return {
@@ -76,7 +71,7 @@ export default function StaffQuanLyDoAn() {
   // Filter and search logic
   const filteredOrders = orders.filter(order => {
     // 1. Resolve customer and booking info for searching
-    const booking = order.bookingId ? bookings.find(b => b.bookingId === order.bookingId) : null;
+    const booking = order.bookingId ? bookings.find(b => String(b.bookingId || b.BookingId) === String(order.bookingId)) : null;
     
     // Check if it's a counter purchase
     const isCounter = order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway" || booking?.bookingType === "Staff" || order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin" || !order.bookingId;
@@ -85,22 +80,30 @@ export default function StaffQuanLyDoAn() {
     const customerEmail = isCounter ? "Tại quầy" : (booking?.email || order.customerEmail || "");
     const movieTitle = booking?.movieTitle || "";
     const seatNumber = booking?.seatNumber || "";
-    const itemsText = (order.items || []).map(i => i.foodName || i.comboName || "").join(" ").toLowerCase();
+    const itemsText = (order.items?.$values ?? order.items ?? []).map(i => i.foodName || i.comboName || "").join(" ").toLowerCase();
     
-    // Resolve order/ticket display code
-    const orderDisplayCode = order.ticketCode ? order.ticketCode : `CB${order.orderId}`;
-
     const query = searchQuery.toLowerCase().trim();
-    const matchesSearch = 
-      String(order.orderId).includes(query) ||
-      orderDisplayCode.toLowerCase().includes(query) ||
-      customerName.toLowerCase().includes(query) ||
-      customerEmail.toLowerCase().includes(query) ||
-      movieTitle.toLowerCase().includes(query) ||
-      seatNumber.toLowerCase().includes(query) ||
-      itemsText.includes(query);
+    const cleanQuery = query.replace(/\s+/g, "");
 
-    if (!matchesSearch) return false;
+    if (query) {
+      const orderIdStr = String(order.orderId || "");
+      const cbCode = `cb${orderIdStr}`;
+      const billCode = `bill${orderIdStr}`;
+      const paddedBillCode = `bill${orderIdStr.padStart(6, '0')}`;
+      const ticketCodeStr = String(order.ticketCode || "").toLowerCase();
+      const cleanTicketCode = ticketCodeStr.replace(/\s+/g, "");
+      const bookingIdStr = String(order.bookingId || "").toLowerCase();
+
+      const matchesSearch =
+        orderIdStr.includes(query) ||
+        cbCode.includes(cleanQuery) ||
+        billCode.includes(cleanQuery) ||
+        paddedBillCode.includes(cleanQuery) ||
+        (ticketCodeStr && (ticketCodeStr.includes(query) || cleanTicketCode.includes(cleanQuery))) ||
+        (bookingIdStr && bookingIdStr.includes(query));
+
+      if (!matchesSearch) return false;
+    }
 
     // 2. Tab filter
     const isCompleted = order.status === "Completed" || order.status === "CompletedAtCounter" || order.status === "Đã lấy" || order.status === "Đã nhận";
@@ -168,7 +171,7 @@ export default function StaffQuanLyDoAn() {
             </span>
             <input
               type="text"
-              placeholder="Tìm tên khách, số ghế, món ăn, mã đơn..."
+              placeholder="Tìm theo mã đơn, mã vé..."
               className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50/30 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -242,20 +245,18 @@ export default function StaffQuanLyDoAn() {
                           {(() => {
                             const isCounter = order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway" || booking?.bookingType === "Staff" || order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin" || !order.bookingId;
                             const displayName = isCounter ? "Khách mua tại quầy" : (booking?.customerName || order.userName || "Khách mua tại quầy");
-                            const displayEmail = isCounter ? "Tại quầy" : (booking?.email || order.customerEmail || "Không có email");
+                            const displayEmail = isCounter ? "" : (booking?.email || order.customerEmail || "");
+                            const showEmail = displayEmail && displayEmail !== "Tại quầy" && displayEmail !== "Không có email" && displayEmail !== "N/A";
                             return (
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                  {displayName.charAt(0)}
+                              <div>
+                                <div className="font-semibold text-gray-800">
+                                  {displayName}
                                 </div>
-                                <div>
-                                  <div className="font-semibold text-gray-800">
-                                    {displayName}
-                                  </div>
-                                  <div className="text-[11px] text-gray-405">
+                                {showEmail && (
+                                  <div className="text-[11px] text-gray-400">
                                     {displayEmail}
                                   </div>
-                                </div>
+                                )}
                               </div>
                             );
                           })()}
@@ -289,13 +290,9 @@ export default function StaffQuanLyDoAn() {
 
                         {/* Status Badge */}
                         <td className="px-4 py-4 text-center">
-                          {order.status === "CompletedAtCounter" ? (
+                          {isCompleted ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-700 border-green-150">
                               <MdCheckCircle className="text-sm" /> ĐÃ NHẬN TẠI QUẦY
-                            </span>
-                          ) : isCompleted ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-700 border-green-150">
-                              <MdCheckCircle className="text-sm" /> ĐÃ LẤY ĐỒ
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border bg-orange-50 text-orange-855 border-orange-100">

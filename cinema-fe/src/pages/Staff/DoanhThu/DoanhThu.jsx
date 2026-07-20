@@ -14,7 +14,9 @@ import {
   MdCheckCircle,
   MdFastfood,
   MdPerson,
-  MdSearch
+  MdSearch,
+  MdPayments,
+  MdQrCode2
 } from "react-icons/md";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
 import "./DoanhThu.css";
@@ -232,6 +234,59 @@ export default function DoanhThu() {
               </div>
             </div>
 
+            {/* THẺ THỐNG KÊ PHƯƠNG THỨC THANH TOÁN (TIỀN MẶT & TIỀN CK) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Thẻ 1: Tiền mặt */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 text-2xl">
+                    <MdPayments />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tổng Tiền Mặt</span>
+                    <h3 className="text-xl font-bold text-gray-800 mt-0.5">
+                      {formatVND(reportData.totalCashRevenue)}
+                    </h3>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block bg-amber-50 text-amber-700 font-bold text-xs px-2.5 py-1 rounded-full border border-amber-100">
+                    {reportData.totalCashBillsCount || 0} đơn
+                  </span>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {reportData.totalOverallRevenue > 0
+                      ? `${Math.round(((reportData.totalCashRevenue || 0) / reportData.totalOverallRevenue) * 100)}% tổng thu`
+                      : "0% tổng thu"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Thẻ 2: Tiền Chuyển Khoản / CK */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-50 rounded-2xl text-blue-600 text-2xl">
+                    <MdQrCode2 />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tổng Tiền Chuyển Khoản (CK)</span>
+                    <h3 className="text-xl font-bold text-gray-800 mt-0.5">
+                      {formatVND(reportData.totalTransferRevenue)}
+                    </h3>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-full border border-blue-100">
+                    {reportData.totalTransferBillsCount || 0} đơn
+                  </span>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {reportData.totalOverallRevenue > 0
+                      ? `${Math.round(((reportData.totalTransferRevenue || 0) / reportData.totalOverallRevenue) * 100)}% tổng thu`
+                      : "0% tổng thu"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* BẢNG TỔNG QUAN & NÚT GỬI BÁO CÁO */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-4">
@@ -318,7 +373,9 @@ export default function DoanhThu() {
                           {/* Khách Hàng */}
                           <td className="px-4 py-3.5">
                             <div className="font-medium text-gray-805">{bill.customerName}</div>
-                            <div className="text-[11px] text-gray-400">{bill.customerEmail}</div>
+                            {bill.customerEmail && bill.customerEmail !== "Tại quầy" && bill.customerEmail !== "N/A" && (
+                              <div className="text-[11px] text-gray-400">{bill.customerEmail}</div>
+                            )}
                           </td>
 
                           {/* Vé (Ghế) */}
@@ -433,6 +490,14 @@ export default function DoanhThu() {
                     <span className="text-gray-400"> + Tiền nước/đồ ăn:</span>
                     <span className="font-semibold text-gray-600">{formatVND(reportData.totalConcessionRevenue)}</span>
                   </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500 font-medium"> + Tiền mặt ({reportData.totalCashBillsCount || 0} đơn):</span>
+                    <span className="font-semibold text-emerald-700">{formatVND(reportData.totalCashRevenue || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500 font-medium"> + Tiền chuyển khoản / CK ({reportData.totalTransferBillsCount || 0} đơn):</span>
+                    <span className="font-semibold text-blue-700">{formatVND(reportData.totalTransferRevenue || 0)}</span>
+                  </div>
                   <div className="flex justify-between text-xs border-t border-gray-200/60 pt-1.5 mt-1.5">
                     <span className="text-gray-405">Khấu trừ giảm giá:</span>
                     <span className="font-semibold text-red-500">-{formatVND(reportData.totalDiscount)}</span>
@@ -545,7 +610,9 @@ export default function DoanhThu() {
                       <MdPerson className="text-sm" /> Khách hàng:
                     </div>
                     <div className="font-bold text-gray-700 pl-5">{selectedBill.customerName}</div>
-                    <div className="text-gray-500 pl-5 text-[11px]">{selectedBill.customerEmail}</div>
+                    {selectedBill.customerEmail && selectedBill.customerEmail !== "Tại quầy" && selectedBill.customerEmail !== "N/A" && (
+                      <div className="text-gray-500 pl-5 text-[11px]">{selectedBill.customerEmail}</div>
+                    )}
                   </div>
 
                   {/* Ticket Items */}
@@ -629,6 +696,23 @@ export default function DoanhThu() {
                       <span>TỔNG CỘNG:</span>
                       <span className="text-green-700 text-base">{formatVND(selectedBill.totalAmount)}</span>
                     </div>
+
+                    {(selectedBill.paymentMethod === "Cash" || selectedBill.paymentMethod === "Tiền mặt") && (
+                      <div className="space-y-1 text-xs border-t border-dashed border-gray-300 pt-2 mt-2 font-medium">
+                        <div className="flex justify-between text-gray-700 font-semibold">
+                          <span>+ Thanh toán tiền mặt:</span>
+                          <span>{formatVND(selectedBill.totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-700">
+                          <span>Tiền nhận:</span>
+                          <span>{formatVND(selectedBill.cashReceived || selectedBill.totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-900 font-bold">
+                          <span>Tiền thừa:</span>
+                          <span>{formatVND(selectedBill.changeAmount ?? (selectedBill.cashReceived ? Math.max(0, selectedBill.cashReceived - selectedBill.totalAmount) : 0))}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-dashed border-gray-300 my-4"></div>
@@ -645,7 +729,8 @@ export default function DoanhThu() {
               <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end shrink-0">
                 <button
                   onClick={() => setSelectedBill(null)}
-                  className="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 rounded-xl text-sm transition-all"
+                  className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-gray-200"
+                  style={{ color: "#ffffff" }}
                 >
                   Đóng Hóa Đơn
                 </button>

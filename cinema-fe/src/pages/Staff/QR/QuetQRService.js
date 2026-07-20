@@ -24,3 +24,16 @@ export async function fetchTicketByCode(ticketCode) {
     return null;
   }
 }
+
+export async function fetchBookingById(bookingId) {
+  try {
+    const response = await fetch(`${API_URL}/Bookings/${bookingId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return null;
+    return await readResponse(response);
+  } catch (err) {
+    console.error("Error fetching booking by id:", err);
+    return null;
+  }
+}

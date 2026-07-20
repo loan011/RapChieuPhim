@@ -204,6 +204,7 @@ export function useBanVe() {
   const [paymentTicketIds, setPaymentTicketIds] = useState([]);
   const [tempReceipt, setTempReceipt] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [cashReceived, setCashReceived] = useState("");
   const [currentPaymentId, setCurrentPaymentId] = useState(null);
 
   const [customer, setCustomer] = useState({
@@ -647,6 +648,11 @@ export function useBanVe() {
       return;
     }
 
+    if (paymentMethod === "Cash" && cashReceived !== "" && Number(cashReceived) < totalAmount) {
+      alert(`Số tiền nhận (${Number(cashReceived).toLocaleString("vi-VN")} đ) phải lớn hơn hoặc bằng tổng tiền đơn hàng (${totalAmount.toLocaleString("vi-VN")} đ)!`);
+      return;
+    }
+
 
 
     try {
@@ -716,6 +722,10 @@ export function useBanVe() {
           console.warn("Cash Payment creation failed:", payErr);
         }
 
+        if (bookedIds[0] && cashReceived) {
+          localStorage.setItem("cash_received_booking_" + bookedIds[0], cashReceived);
+        }
+
         // Force activate tickets to Active state immediately
         await forceActivateTickets(bookedIds);
 
@@ -732,10 +742,12 @@ export function useBanVe() {
           customerName: customer.name || "Khách vãng lai",
           customerPhone: customer.phone || "",
           totalAmount,
+          cashReceived: Number(cashReceived) || 0,
           dateBooked: new Date().toLocaleString("vi-VN"),
           ticketCode: bookedIds.join(", "),
           paymentMethod: "Tiền mặt",
         });
+        setCashReceived("");
 
         setSelectedSeats([]);
         setSelectedFoods({});
@@ -1104,6 +1116,8 @@ export function useBanVe() {
     // Payment Method
     paymentMethod,
     setPaymentMethod,
+    cashReceived,
+    setCashReceived,
 
     // Foods States & Handlers
     foodMenu,

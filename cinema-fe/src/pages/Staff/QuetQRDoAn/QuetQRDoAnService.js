@@ -38,6 +38,19 @@ export async function fetchOrdersByBooking(bookingId) {
   }
 }
 
+export async function fetchBookingById(bookingId) {
+  try {
+    const response = await fetch(`${API_URL}/Bookings/${bookingId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return null;
+    return await readResponse(response);
+  } catch (err) {
+    console.error("Error fetching booking by id:", err);
+    return null;
+  }
+}
+
 export async function updateOrderStatus(orderId, status) {
   const response = await fetch(`${API_URL}/Orders/${orderId}/Status`, {
     method: "PATCH",

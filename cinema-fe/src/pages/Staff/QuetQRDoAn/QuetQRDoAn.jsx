@@ -103,13 +103,6 @@ export default function StaffQuetQRDoAn() {
         <h4 className="font-bold text-2xl text-gray-800 flex items-center gap-2">
           <MdFastfood className="text-orange-500 text-3xl" /> Quét QR Nhận Đồ Ăn Online
         </h4>
-        <button
-          type="button"
-          onClick={handleSimulateScan}
-          className="bg-orange-50 text-orange-700 border border-orange-200 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-orange-100 transition-colors"
-        >
-          🔍 Giả lập Quét Vé
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -125,9 +118,6 @@ export default function StaffQuetQRDoAn() {
             {/* Laser line effect */}
             <div className="absolute left-0 right-0 h-0.5 bg-orange-500 top-1/2 -translate-y-1/2 animate-pulse shadow-[0_0_10px_#f97316] pointer-events-none z-10"></div>
           </div>
-          <p className="text-xs text-gray-400 mt-4 text-center">
-            Đưa mã QR trên vé của khách hàng vào vùng quét của camera để nhận diện tự động
-          </p>
         </div>
 
         {/* Search and Details */}
@@ -135,7 +125,7 @@ export default function StaffQuetQRDoAn() {
           <div className="space-y-6">
             <div>
               <h5 className="font-bold text-gray-800 text-base mb-4 border-b border-gray-50 pb-2">
-                Nhập Mã Vé Thủ Công
+                Nhập Mã Vé / Mã Đơn (CB...) Thủ Công
               </h5>
               <form
                 onSubmit={e => {
@@ -146,7 +136,7 @@ export default function StaffQuetQRDoAn() {
               >
                 <input
                   type="text"
-                  placeholder="Nhập mã vé (VD: VE1 hoặc quét code)"
+                  placeholder="Nhập mã vé hoặc mã đơn (VD: CB73)..."
                   value={ticketCode}
                   onChange={e => setTicketCode(e.target.value)}
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50/50 transition-all duration-200"
@@ -253,8 +243,14 @@ export default function StaffQuetQRDoAn() {
                         )}
                       </div>
 
-                      {/* Confirm Pick up Button */}
-                      {!isCompleted && (
+                      {/* Confirm Pick up Button or Expired Warning */}
+                      {order.isExpired ? (
+                        <div className="mt-4 pt-3 border-t border-red-100">
+                          <div className="w-full text-center bg-red-100 text-red-800 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200">
+                            <MdError /> ĐƠN HÀNG ĐÃ HẾT HẠN QUÉT (KHÔNG THỂ GIAO ĐỒ)
+                          </div>
+                        </div>
+                      ) : !isCompleted ? (
                         <div className="mt-4 pt-3 border-t border-gray-100/50">
                           <button
                             onClick={() => handleConfirmPickup(order.orderId)}
@@ -264,7 +260,7 @@ export default function StaffQuetQRDoAn() {
                             <MdRestaurant /> {loading ? "Đang xác nhận..." : "XÁC NHẬN ĐÃ GIAO ĐỒ ĂN CHO KHÁCH"}
                           </button>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}

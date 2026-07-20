@@ -152,14 +152,22 @@ export function useQuanLyVe() {
       t.status === "Đã thanh toán";
     if (!isKeepStatus) return false;
 
-    const code = t.code || t.ticketCode || "";
-    const customer = t.customerName || "";
-    const movie = t.movieTitle || "";
+    const query = search.toLowerCase().trim();
+    const cleanQuery = query.replace(/\s+/g, "");
+
+    const code = (t.code || t.ticketCode || t.Code || t.TicketCode || "").toLowerCase();
+    const cleanCode = code.replace(/\s+/g, "");
+    const customer = (t.customerName || t.CustomerName || "").toLowerCase();
+    const movie = (t.movieTitle || t.MovieTitle || "").toLowerCase();
+    const ticketId = String(t.ticketId || t.TicketId || t.id || t.Id || "").toLowerCase();
+    const bookingId = String(t.bookingId || t.BookingId || "").toLowerCase();
 
     const matchSearch =
-      code.toLowerCase().includes(search.toLowerCase()) ||
-      customer.toLowerCase().includes(search.toLowerCase()) ||
-      movie.toLowerCase().includes(search.toLowerCase());
+      !query ||
+      code.includes(query) ||
+      cleanCode.includes(cleanQuery) ||
+      ticketId.includes(query) ||
+      bookingId.includes(query);
 
     let matchStatus = true;
     if (filterStatus === "Đang hoạt động") {

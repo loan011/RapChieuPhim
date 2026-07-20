@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchTickets, validateTicket, fetchTicketByCode } from "./QuetQRService";
+import { fetchTickets, validateTicket, fetchTicketByCode, fetchBookingById } from "./QuetQRService";
 
 export function useQuetQR() {
   const [ticketCode, setTicketCode] = useState("");
@@ -54,12 +54,51 @@ export function useQuetQR() {
       }
 
       if (found) {
-        setTicketDetails(found);
-        
         const ticketId = found.ticketId || found.id;
         const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
         
-        if (isAlreadyUsed) {
+        // Fetch linked booking to ensure we have the exact showtime
+        const bId = found.bookingId || found.BookingId;
+        let booking = null;
+        if (bId) {
+          booking = await fetchBookingById(bId);
+        }
+
+        // Check showtime expiration (ticket only valid BEFORE and DURING showtime)
+        const rawStartTime = found.startTime || found.showtime || found.showTime || found.startTimeDate || booking?.startTime || booking?.showtime || booking?.bookingDate;
+        const rawEndTime = found.endTime || found.showtimeEnd || found.endTimeDate || booking?.endTime;
+
+        let isShowtimeExpired = false;
+        let startDate = rawStartTime ? new Date(rawStartTime) : null;
+        let endDate = rawEndTime ? new Date(rawEndTime) : null;
+
+        if (startDate && !isNaN(startDate.getTime())) {
+          if (!endDate || isNaN(endDate.getTime())) {
+            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
+          }
+          if (new Date() > endDate) {
+            isShowtimeExpired = true;
+          }
+        }
+
+        const enrichedDetails = {
+          ...found,
+          movieTitle: found.movieTitle || booking?.movieTitle || "—",
+          roomName: found.roomName || booking?.roomName || "—",
+          seatCode: found.seatCode || booking?.seatNumber || "—",
+          customerName: found.customerName || booking?.customerName || "—",
+          startTimeStr: startDate ? startDate.toLocaleString("vi-VN") : "N/A",
+          endTimeStr: endDate ? endDate.toLocaleString("vi-VN") : "N/A",
+          isExpired: isShowtimeExpired
+        };
+        setTicketDetails(enrichedDetails);
+
+        if (isShowtimeExpired) {
+          setStatusMessage({
+            type: "error",
+            text: `❌ CẢNH BÁO: Vé ${found.ticketCode || `VE${ticketId}`} ĐÃ HẾT HẠN QUÉT! Suất chiếu này (kết thúc lúc ${endDate ? endDate.toLocaleString("vi-VN") : ""}) đã qua. Vé chỉ được phép quét TRƯỚC và TRONG khung giờ chiếu phim!`
+          });
+        } else if (isAlreadyUsed) {
           setStatusMessage({
             type: "error",
             text: `CẢNH BÁO: Vé ${found.ticketCode || `VE${ticketId}`} đã được check-in sử dụng trước đó! Không hợp lệ.`
@@ -104,6 +143,13 @@ export function useQuetQR() {
 
   async function handleCheckIn() {
     if (!ticketDetails) return;
+    if (ticketDetails.isExpired) {
+      setStatusMessage({
+        type: "error",
+        text: "❌ Không thể check-in vé đã hết hạn suất chiếu!"
+      });
+      return;
+    }
     
     setLoading(true);
     setStatusMessage(null);

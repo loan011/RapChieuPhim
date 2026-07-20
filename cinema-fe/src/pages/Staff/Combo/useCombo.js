@@ -14,6 +14,7 @@ export function useCombo() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("cash"); // "cash" | "qr"
+  const [cashReceived, setCashReceived] = useState("");
   const [showQRModal, setShowQRModal] = useState(false);
 
   // QR payment state
@@ -99,7 +100,15 @@ export function useCombo() {
         totalAmount,
         paymentMethod
       });
-      setSuccess(res);
+      if (cashReceived && res?.orderId) {
+        localStorage.setItem("cash_received_order_" + res.orderId, cashReceived);
+        localStorage.setItem("cash_received_bill_CB" + res.orderId, cashReceived);
+      }
+      setSuccess({
+        ...res,
+        cashReceived: Number(cashReceived) || 0
+      });
+      setCashReceived("");
       setQuantities({});
       setShowQRModal(false);
     } catch (err) {
@@ -170,6 +179,11 @@ export function useCombo() {
     e.preventDefault();
     if (selectedItems.length === 0) return alert("Vui lòng chọn ít nhất một Combo/Món ăn!");
 
+    if (paymentMethod === "cash" && cashReceived !== "" && Number(cashReceived) < totalAmount) {
+      alert(`Số tiền nhận (${Number(cashReceived).toLocaleString("vi-VN")} đ) phải lớn hơn hoặc bằng tổng tiền đơn hàng (${totalAmount.toLocaleString("vi-VN")} đ)!`);
+      return;
+    }
+
     if (paymentMethod === "qr") {
       // Tạo pending order trước khi hiện QR modal
       try {
@@ -211,6 +225,8 @@ export function useCombo() {
     totalAmount,
     paymentMethod,
     setPaymentMethod,
+    cashReceived,
+    setCashReceived,
     showQRModal,
     setShowQRModal,
     handleSell,
