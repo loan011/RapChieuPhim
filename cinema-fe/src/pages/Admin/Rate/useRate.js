@@ -395,6 +395,7 @@ export function buildShowtimePayload(form) {
     endTime: form.endHour,
     endDate,                      /* ngày kết thúc (có thể là hôm sau) */
     status: STATUS_TO_API[form.status] ?? form.status,
+    basePrice: Number(form.basePrice || 70000),
   };
 }
 

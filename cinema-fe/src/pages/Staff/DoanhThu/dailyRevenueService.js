@@ -41,6 +41,15 @@ export async function getDailyRevenue(date) {
     clearTimeout(timeoutId);
   }
 
+  // Lấy chi nhánh của nhân viên đang đăng nhập
+  let staffCinemaId = "1";
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user && (user.cinemaId || user.CinemaId)) {
+      staffCinemaId = String(user.cinemaId || user.CinemaId);
+    }
+  } catch (e) {}
+
   // Filter payments for the selected date and successful status
   const filteredPayments = (payments || []).filter(p => {
     let isSuccess = p.paymentStatus && (
@@ -56,7 +65,37 @@ export async function getDailyRevenue(date) {
     if (!isSuccess) return false;
 
     const pDate = p.createdAt ? p.createdAt.split('T')[0] : "";
-    return pDate === date;
+    if (pDate !== date) return false;
+
+    // Filter by branch
+    let pCinemaId = "1"; // fallback
+
+    let order = p.orderId ? (orders || []).find(o => o.orderId === p.orderId) : null;
+    let rootBooking = p.bookingId ? (bookings || []).find(b => b.bookingId === p.bookingId) : null;
+    if (!order && rootBooking) {
+      order = (orders || []).find(o => o.bookingId === rootBooking.bookingId);
+    }
+
+    if (order) {
+      let cid = order.cinemaId ?? order.CinemaId ?? order.staff?.cinemaId ?? order.staff?.CinemaId ?? order.Staff?.cinemaId ?? order.Staff?.CinemaId;
+      if (cid) {
+        pCinemaId = String(cid);
+      } else {
+        try {
+          const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+          const oid = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
+          if (oid && map[String(oid)]) pCinemaId = String(map[String(oid)]);
+        } catch(e) {}
+      }
+    } else if (rootBooking) {
+      const ticket = (ticketsList || []).find(t => t.bookingId === rootBooking.bookingId);
+      if (ticket) {
+        let cid = ticket.cinemaId ?? ticket.CinemaId ?? ticket.cinema?.cinemaId ?? ticket.cinema?.CinemaId ?? ticket.showtime?.room?.cinemaId ?? ticket.Showtime?.Room?.CinemaId;
+        if (cid) pCinemaId = String(cid);
+      }
+    }
+
+    return pCinemaId === staffCinemaId;
   });
 
   const bills = [];
@@ -377,3 +416,75 @@ export async function sendDailyRevenueReport(payload) {
 
   return data;
 }
+
+// ==========================================
+// MÃ MỚI THÊM VÀO THEO YÊU CẦU CỦA BẠN
+// (Đã chỉnh sửa để dùng đúng API_URL của dự án)
+// ==========================================
+
+const DAILY_REVENUE_STORAGE_KEY = "dailyRevenue";
+
+const normalizeDailyRevenueData = (responseData) => {
+  if (Array.isArray(responseData)) return responseData;
+  if (Array.isArray(responseData?.data)) return responseData.data;
+  if (Array.isArray(responseData?.result)) return responseData.result;
+  if (Array.isArray(responseData?.items)) return responseData.items;
+  if (Array.isArray(responseData?.$values)) return responseData.$values;
+  return [];
+};
+
+export const getDailyRevenueFromLocalStorage = () => {
+  try {
+    const storedData = localStorage.getItem(DAILY_REVENUE_STORAGE_KEY);
+    if (!storedData) return [];
+    const parsedData = JSON.parse(storedData);
+    return Array.isArray(parsedData) ? parsedData : [];
+  } catch (error) {
+    console.error("Không thể đọc doanh thu từ localStorage:", error);
+    return [];
+  }
+};
+
+export const saveDailyRevenueToLocalStorage = (data) => {
+  try {
+    const safeData = Array.isArray(data) ? data : [];
+    localStorage.setItem(DAILY_REVENUE_STORAGE_KEY, JSON.stringify(safeData));
+  } catch (error) {
+    console.error("Không thể lưu doanh thu vào localStorage:", error);
+  }
+};
+
+export const fetchDailyRevenue = async (signal) => {
+  try {
+    if (signal?.aborted) return null;
+
+    const response = await fetch(`${API_URL}/revenue/daily`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+      signal,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Không thể lấy doanh thu. HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData?.message || errorData?.error || errorMessage;
+      } catch {}
+      throw new Error(errorMessage);
+    }
+
+    const responseData = await response.json();
+    const dailyRevenue = normalizeDailyRevenueData(responseData);
+
+    saveDailyRevenueToLocalStorage(dailyRevenue);
+    return dailyRevenue;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      console.log("Request lấy doanh thu đã được hủy.");
+      return null;
+    }
+
+    console.warn("Không thể lấy doanh thu từ API, sử dụng dữ liệu localStorage:", error);
+    return getDailyRevenueFromLocalStorage();
+  }
+};

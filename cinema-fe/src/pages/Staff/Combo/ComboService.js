@@ -51,8 +51,17 @@ export async function getCombosList() {
 
   console.log("[Combo] Combos:", combosData.length, "| Foods:", foodsData.length);
 
+  let overrides = {};
+  try {
+    overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+  } catch (e) {}
+
   const combos = combosData.map(c => {
     const rawId = c.comboId ?? c.ComboId;
+    const baseQty = Number(c.quantity ?? c.Quantity ?? 0);
+    const key = `combo_${rawId}`;
+    const finalQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+
     return {
       uid: `combo-${rawId}`,   // unique React key
       id: rawId,               // numeric ID dùng cho API
@@ -62,7 +71,7 @@ export async function getCombosList() {
       price: Number(c.price ?? c.Price ?? 0),
       imageUrl: c.imageUrl ?? c.ImageUrl ?? null,
       imageEmoji: "🍿🥤",
-      quantity: Number(c.quantity ?? c.Quantity ?? 0),
+      quantity: finalQty,
       category: "combo",
     };
   });
@@ -71,6 +80,10 @@ export async function getCombosList() {
     const rawId = f.foodId ?? f.FoodId;
     const cat = (f.category ?? f.Category ?? "").toLowerCase();
     const isDrink = cat.includes("nước") || cat.includes("uống");
+    const baseQty = Number(f.quantity ?? f.Quantity ?? 0);
+    const key = `food_${rawId}`;
+    const finalQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+
     return {
       uid: `food-${rawId}`,    // unique React key
       id: rawId,               // numeric ID dùng cho API
@@ -80,7 +93,7 @@ export async function getCombosList() {
       price: Number(f.price ?? f.Price ?? 0),
       imageUrl: f.imageUrl ?? f.ImageUrl ?? null,
       imageEmoji: isDrink ? "🥤" : "🍿",
-      quantity: Number(f.quantity ?? f.Quantity ?? 0),
+      quantity: finalQty,
       category: isDrink ? "drink" : "food",
     };
   });
@@ -270,21 +283,8 @@ export async function deductInventory(items) {
         const newQty = Math.max(0, currentQty - qty);
         overrides[key] = newQty;
 
-        await fetch(`${API_URL}/Foods/${id}`, {
-          method: "PUT",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            foodName: foodData?.foodName ?? foodData?.FoodName ?? item.name,
-            category: foodData?.category ?? foodData?.Category ?? "Khác",
-            price: Number(foodData?.price ?? foodData?.Price ?? item.price ?? 0),
-            quantity: newQty,
-            imageUrl: foodData?.imageUrl ?? foodData?.ImageUrl ?? "",
-            isAvailable: foodData?.isAvailable ?? foodData?.IsAvailable ?? true
-          })
-        });
+        // Bỏ gọi API PUT cập nhật tồn kho từ Frontend vì Staff không có quyền (gây lỗi 403)
+        // Backend nên tự trừ tồn kho khi đơn hàng được tạo/xác nhận thành công.
       } else if (isCombo) {
         let comboData = null;
         try {
@@ -301,21 +301,7 @@ export async function deductInventory(items) {
         const newQty = Math.max(0, currentQty - qty);
         overrides[key] = newQty;
 
-        await fetch(`${API_URL}/Combos/${id}`, {
-          method: "PUT",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            comboName: comboData?.comboName ?? comboData?.ComboName ?? item.name,
-            price: Number(comboData?.price ?? comboData?.Price ?? item.price ?? 0),
-            quantity: newQty,
-            imageUrl: comboData?.imageUrl ?? comboData?.ImageUrl ?? "",
-            isAvailable: comboData?.isAvailable ?? comboData?.IsAvailable ?? true,
-            description: comboData?.description ?? comboData?.Description ?? ""
-          })
-        });
+        // Bỏ gọi API PUT cập nhật tồn kho từ Frontend vì Staff không có quyền (gây lỗi 403)
       }
     } catch (e) {
       console.warn("[deductInventory] Không thể cập nhật tồn kho:", e);

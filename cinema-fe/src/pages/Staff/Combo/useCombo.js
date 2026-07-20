@@ -23,11 +23,12 @@ export function useCombo() {
   const [qrPaymentStatus, setQrPaymentStatus] = useState("pending"); // "pending" | "paid" | "error"
   const pollingRef = useRef(null);
 
+  async function loadData() {
+    const list = await getCombosList();
+    setCombos(list);
+  }
+
   useEffect(() => {
-    async function loadData() {
-      const list = await getCombosList();
-      setCombos(list);
-    }
     loadData();
   }, []);
 
@@ -112,6 +113,7 @@ export function useCombo() {
       setCashReceived("");
       setQuantities({});
       setShowQRModal(false);
+      await loadData();
     } catch (err) {
       alert("Bán combo thất bại: " + (err.message || "Lỗi không xác định"));
     } finally {
@@ -159,6 +161,7 @@ export function useCombo() {
       setShowQRModal(false);
       setQrPendingOrderId(null);
       setQrPaymentStatus("pending");
+      await loadData();
     } catch (err) {
       alert("Xác nhận thất bại: " + (err.message || "Lỗi không xác định"));
     } finally {

@@ -47,7 +47,11 @@ export default function AdminLayout() {
       .then(data => {
         const arr = data?.$values || data || [];
         const safeArr = Array.isArray(arr) ? arr : [];
-        setReports(safeArr.sort((a, b) => new Date(b.reportDate) - new Date(a.reportDate)));
+        setReports(safeArr.sort((a, b) => {
+          const dateA = new Date(a.reportDate || a.ReportDate || 0);
+          const dateB = new Date(b.reportDate || b.ReportDate || 0);
+          return dateB - dateA;
+        }));
       })
       .catch(err => console.error("Lỗi tải thông báo:", err));
   }, []);

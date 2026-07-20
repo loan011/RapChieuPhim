@@ -75,6 +75,27 @@ export async function getMovies() {
 }
 
 export async function getDashboardFoodSources() {
-  const orders = await apiGet("/Orders", "Lấy danh sách order thất bại!").catch(() => []);
+  const apiOrders = await apiGet("/Orders", "Lấy danh sách order thất bại!").catch(() => []);
+  let orders = Array.isArray(apiOrders) ? [...apiOrders] : (apiOrders?.$values || apiOrders?.items || []);
+  if (!Array.isArray(orders)) orders = [];
+
+  // Đồng bộ thêm các order giả lập bán trực tiếp tại quầy (từ Staff)
+  try {
+    const localStr = localStorage.getItem("simulated_orders");
+    if (localStr) {
+      const localOrders = JSON.parse(localStr);
+      if (Array.isArray(localOrders)) {
+        localOrders.forEach(lo => {
+          orders.push({
+            ...lo,
+            orderDate: lo.date || lo.orderDate,
+            status: "Success",
+            cinemaId: 1 // Gắn mặc định về Đồng Khởi để hiện đúng khi lọc
+          });
+        });
+      }
+    }
+  } catch (e) {}
+
   return { orders };
 }

@@ -53,7 +53,7 @@ function getOrderCinemaId(order) {
     }
   } catch (e) {}
 
-  return "";
+  return "1";
 }
 
 function buildFoodDistributions(source, timeFilter, cinemaId) {
@@ -66,8 +66,8 @@ function buildFoodDistributions(source, timeFilter, cinemaId) {
     // Lọc theo chi nhánh
     if (cinemaId) {
       const orderCinemaId = getOrderCinemaId(order);
-      // Nếu order xác định được chi nhánh và khác chi nhánh đang chọn thì bỏ qua
-      if (orderCinemaId && orderCinemaId !== String(cinemaId)) return;
+      // Bắt buộc phải trùng cinemaId, nếu không có orderCinemaId thì bỏ qua luôn
+      if (orderCinemaId !== String(cinemaId)) return;
     }
 
     // Lọc đơn hàng đã hủy hoặc chưa thanh toán
@@ -310,9 +310,24 @@ export function useDashboard() {
   }
 
   function applyFoodDistribution(foodSources, filter, cinemaId) {
-    // Pass filter trực tiếp (có thể là date YYYY-MM-DD hoặc period string)
     const distributions = buildFoodDistributions(foodSources, filter, cinemaId);
-    setChartData(prev => prev ? { ...prev, foodDistributions: distributions } : prev);
+    const newTotalFood = distributions.reduce((acc, curr) => acc + (curr.value || 0), 0);
+    
+    setChartData(prev => {
+      if (!prev) return prev;
+      
+      // Chỉ ghi đè biểu đồ nếu thuật toán frontend (tính thêm offline) ra doanh thu cao hơn backend
+      if (newTotalFood > prev.totalFoodRevenue) {
+        return {
+          ...prev,
+          foodDistributions: distributions,
+          totalFoodRevenue: newTotalFood
+        };
+      }
+      
+      // Ngược lại, giữ nguyên dữ liệu gốc từ API RevenueChart
+      return prev;
+    });
   }
 
   function applyData({ statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp }) {

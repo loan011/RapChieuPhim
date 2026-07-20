@@ -108,11 +108,24 @@ export default function Dashboard() {
 
       {/* KPI CARDS */}
       <div className="dashboard-stats-grid">
+        {activeTab === 'Tổng quan' && (
+          <div className="dashboard-stat-card stat-blue" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+            <div className="dashboard-stat-content">
+              <span className="dashboard-stat-label" style={{ color: '#fff' }}>Tổng doanh thu (Thực nhận)</span>
+              <strong className="dashboard-stat-value" style={{ color: '#fff' }}>{formatMoney((chartData?.totalTicketRevenue || 0) + (chartData?.totalFoodRevenue || 0))}đ</strong>
+              <span className="dashboard-stat-trend trend-up" style={{ color: '#d1fae5', background: 'rgba(255,255,255,0.2)' }}>▲ 16.5% so với kỳ trước</span>
+            </div>
+            <div className="dashboard-stat-icon" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+              💰
+            </div>
+          </div>
+        )}
+
         {(activeTab === 'Tổng quan' || activeTab === 'Phim') && (
           <>
             <div className="dashboard-stat-card stat-blue">
               <div className="dashboard-stat-content">
-                <span className="dashboard-stat-label">Tổng doanh thu (phim)</span>
+                <span className="dashboard-stat-label">Doanh thu vé</span>
                 <strong className="dashboard-stat-value">{formatMoney(chartData?.totalTicketRevenue || 0)}đ</strong>
                 <span className="dashboard-stat-trend trend-up">▲ 18.6% so với kỳ trước</span>
               </div>

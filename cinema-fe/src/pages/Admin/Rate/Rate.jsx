@@ -514,7 +514,18 @@ export default function Rate() {
                   {showMovieDropdown && (() => {
                     const kw = formMovieSearch.trim().toLowerCase();
                     const filtered = movies.filter((m) => {
-                      const status = (m?.status ?? m?.Status ?? "").toLowerCase();
+                      let status = (m?.status ?? m?.Status ?? "").toLowerCase();
+                      
+                      // Tự động tính toán nếu phim đã qua ngày kết thúc thì coi như "đã chiếu"
+                      const endDateValue = m?.endDate ?? m?.EndDate ?? m?.endTime ?? m?.EndTime;
+                      if (endDateValue) {
+                        const endDate = new Date(endDateValue);
+                        endDate.setHours(23, 59, 59, 999);
+                        if (!Number.isNaN(endDate.getTime()) && endDate < new Date()) {
+                          status = "đã chiếu";
+                        }
+                      }
+
                       const isAllowed =
                         status.includes("đang chiếu") || status.includes("sắp chiếu");
                       return isAllowed && (!kw || getMovieTitle(m).toLowerCase().includes(kw));

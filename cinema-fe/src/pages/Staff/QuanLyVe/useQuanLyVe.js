@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchTickets, removeTicket, addTicket, editTicket } from "./QuanLyVeService";
+import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
 import { EMPTY_FORM } from "../../Admin/Ticket/useTicket.js";
 
 export function useQuanLyVe() {
@@ -8,6 +9,7 @@ export function useQuanLyVe() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString("en-CA")); // YYYY-MM-DD format
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -30,8 +32,67 @@ export function useQuanLyVe() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTickets();
-      const normalized = normalizeArray(data);
+      
+      const [data, showtimes] = await Promise.all([
+        fetchTickets(),
+        getShowtimeDetailList().catch(() => [])
+      ]);
+      
+      let normalized = normalizeArray(data);
+      const normalizedShowtimes = normalizeArray(showtimes);
+      
+      const showtimeCinemaMap = {};
+      normalizedShowtimes.forEach(st => {
+          const id = st.id || st.Id;
+          const cinemaId = st.room?.cinemaId || st.Room?.CinemaId;
+          if (id && cinemaId) {
+             showtimeCinemaMap[id] = String(cinemaId);
+          }
+      });
+
+      try {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const staffCinemaId = String(user.cinemaId || user.CinemaId || "");
+          if (staffCinemaId) {
+            normalized = normalized.filter((t) => {
+              let tCinemaId = String(
+                t.cinemaId ??
+                  t.CinemaId ??
+                  t.cinema?.cinemaId ??
+                  t.cinema?.CinemaId ??
+                  t.showtime?.room?.cinemaId ??
+                  t.Showtime?.Room?.CinemaId ??
+                  ""
+              );
+
+              // 1. Map via showtime
+              if (!tCinemaId) {
+                  const sId = t.showtimeId || t.ShowtimeId || t.showTimeId || t.ShowTimeId;
+                  if (sId && showtimeCinemaMap[sId]) {
+                      tCinemaId = showtimeCinemaMap[sId];
+                  }
+              }
+
+              // 2. Map via name
+              if (!tCinemaId) {
+                 const name = (t.cinemaName || t.CinemaName || t.cinema || t.roomName || t.RoomName || t.movieTitle || "").toLowerCase();
+                 if (name.includes("đồng khởi") || name.includes("dong khoi")) tCinemaId = "1";
+                 else if (name.includes("bến thành") || name.includes("ben thanh")) tCinemaId = "2";
+                 else if (name.includes("tân bình") || name.includes("tan binh")) tCinemaId = "3";
+                 else if (name.includes("nguyễn trãi") || name.includes("nguyen trai")) tCinemaId = "4";
+              }
+
+              const finalCinemaId = tCinemaId || "1"; // Mặc định về Đồng Khởi (1) nếu thiếu dữ liệu
+              return finalCinemaId === staffCinemaId;
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Lỗi lọc vé theo chi nhánh:", e);
+      }
+
       normalized.sort((a, b) => {
         const dateA = new Date(a.issuedAt || a.IssuedAt || 0);
         const dateB = new Date(b.issuedAt || b.IssuedAt || 0);
@@ -72,6 +133,7 @@ export function useQuanLyVe() {
       seatCode: ticket.seatCode || "",
       price: ticket.price || ticket.amount || 0,
       status: ticket.status || "Đã đặt",
+      cinemaId: ticket.cinemaId || ticket.CinemaId || "",
     });
     setFormError("");
     setShowModal(true);
@@ -86,10 +148,7 @@ export function useQuanLyVe() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
   async function handleSubmitForm(e) {
@@ -152,6 +211,17 @@ export function useQuanLyVe() {
       t.status === "Đã thanh toán";
     if (!isKeepStatus) return false;
 
+    // Filter by date
+    if (filterDate) {
+      const tDateRaw = t.issuedAt || t.IssuedAt || t.CreatedAt || t.createdAt;
+      if (tDateRaw) {
+         const tDateStr = tDateRaw.split("T")[0];
+         if (tDateStr !== filterDate) return false;
+      } else {
+         return false; // hide items without date if filter is applied
+      }
+    }
+
     const query = search.toLowerCase().trim();
     const cleanQuery = query.replace(/\s+/g, "");
 
@@ -167,7 +237,9 @@ export function useQuanLyVe() {
       code.includes(query) ||
       cleanCode.includes(cleanQuery) ||
       ticketId.includes(query) ||
-      bookingId.includes(query);
+      bookingId.includes(query) ||
+      movie.includes(query) ||
+      customer.includes(query);
 
     let matchStatus = true;
     if (filterStatus === "Đang hoạt động") {
@@ -187,6 +259,8 @@ export function useQuanLyVe() {
     setSearch,
     filterStatus,
     setFilterStatus,
+    filterDate,
+    setFilterDate,
     filtered,
     showModal,
     editId,

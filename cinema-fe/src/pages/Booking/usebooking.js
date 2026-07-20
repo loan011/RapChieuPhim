@@ -462,17 +462,28 @@ export function getSeatId(seat) {
 }
 
 export function getSeatRow(seat) {
-  return seat?.seatRow || seat?.SeatRow || seat?.row || seat?.Row || "";
+  let row = seat?.seatRow || seat?.SeatRow || seat?.row || seat?.Row || "";
+  if (!row) {
+    const rawNum = String(
+      seat?.seatNumber || seat?.SeatNumber || seat?.number || seat?.Number || ""
+    );
+    const match = rawNum.match(/^[A-Za-z]+/);
+    if (match) row = match[0].toUpperCase();
+  }
+  return row;
 }
 
 export function getSeatNumber(seat) {
-  return (
+  const raw = String(
     seat?.seatNumber ||
     seat?.SeatNumber ||
     seat?.number ||
     seat?.Number ||
     ""
   );
+  // Extract only digits
+  const match = raw.match(/\d+/);
+  return match ? match[0] : raw;
 }
 
 export function getSeatType(seat) {

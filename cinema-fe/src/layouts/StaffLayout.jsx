@@ -9,8 +9,10 @@ import {
   MdLocalActivity,
   MdBarChart,
 } from "react-icons/md";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getUser } from "../services/authService";
+import { getCinemaList } from "../pages/Admin/Cinema/cinemaService";
+import { getEmployeeById } from "../pages/Admin/Personnel/employeeService";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
@@ -25,9 +27,58 @@ const navItems = [
 export default function StaffLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [branchName, setBranchName] = useState("Đang tải...");
 
   const user = getUser();
-  const branchName = user?.fullName || user?.FullName || "T&M Cinema";
+
+  useEffect(() => {
+    async function loadBranchName() {
+      try {
+        let cId = user?.cinemaId ?? user?.CinemaId;
+        
+        // Nếu API thiếu cinemaId, tìm trong mappings fallback do Admin phân quyền
+        if (!cId) {
+          const email = user?.email ?? user?.Email;
+          if (email) {
+            const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+            cId = mappings[email];
+          }
+        }
+
+        // TỰ ĐỘNG FETCH CHI NHÁNH TỪ PROFILE NẾU VẪN KHÔNG TÌM THẤY (dành cho Staff đăng nhập ở máy mới)
+        if (!cId) {
+          const uId = user?.userId ?? user?.UserId ?? user?.id ?? user?.Id;
+          if (uId) {
+            try {
+              const uData = await getEmployeeById(uId);
+              cId = uData?.cinemaId ?? uData?.CinemaId;
+            } catch (e) {
+              console.warn("Không thể fetch profile Staff:", e);
+            }
+          }
+        }
+
+        if (cId) {
+          // Gắn ngược lại vào localStorage để các trang như Quản Lý Vé, Doanh Thu lọc đúng chi nhánh
+          if (user && !user.cinemaId && !user.CinemaId) {
+            user.cinemaId = cId;
+            localStorage.setItem("user", JSON.stringify(user));
+          }
+
+          const cinemas = await getCinemaList();
+          const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cId));
+          if (found) {
+            setBranchName(found.cinemaName ?? found.CinemaName ?? "T&M Cinema");
+            return;
+          }
+        }
+        setBranchName("T&M Cinema");
+      } catch (e) {
+        setBranchName("T&M Cinema");
+      }
+    }
+    loadBranchName();
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("token");
