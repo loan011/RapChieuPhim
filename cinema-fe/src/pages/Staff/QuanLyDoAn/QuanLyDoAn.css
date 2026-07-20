@@ -1,0 +1,80 @@
+/* CSS Styling for Food Pickup Management Page */
+
+.qld-root {
+  padding: 4px;
+}
+
+.qld-root select,
+.qld-root input {
+  font-family: inherit;
+}
+
+/* Custom Table hover styling */
+.qld-root table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.qld-root table th {
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+/* Custom colors and layout tweaks */
+.text-orange-855 {
+  color: #c2410c !important;
+}
+
+.bg-orange-50 {
+  background-color: #fff7ed !important;
+}
+
+.border-orange-100 {
+  border-color: #ffedd5 !important;
+}
+
+/* Scrollbar styling for table container */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Animation tweaks */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: .8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .flex-col {
+    flex-direction: column !important;
+  }
+  
+  .max-w-md {
+    max-w: 100% !important;
+  }
+}

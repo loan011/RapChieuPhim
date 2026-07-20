@@ -54,3 +54,45 @@ export async function updateOrderStatus(orderId, status) {
   }
   return true;
 }
+
+export async function fetchAllOrders() {
+  try {
+    const response = await fetch(`${API_URL}/Orders`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return [];
+    const data = await readResponse(response);
+    return normalizeArray(data);
+  } catch (err) {
+    console.error("Error fetching all orders:", err);
+    return [];
+  }
+}
+
+export async function fetchAllBookings() {
+  try {
+    const response = await fetch(`${API_URL}/Bookings/Detail`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return [];
+    const data = await readResponse(response);
+    return normalizeArray(data);
+  } catch (err) {
+    console.error("Error fetching all bookings:", err);
+    return [];
+  }
+}
+
+export async function fetchAllTickets() {
+  try {
+    const response = await fetch(`${API_URL}/Tickets`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return [];
+    const data = await readResponse(response);
+    return normalizeArray(data);
+  } catch (err) {
+    console.error("Error fetching all tickets:", err);
+    return [];
+  }
+}

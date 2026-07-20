@@ -285,7 +285,6 @@ export default function DoanhThu() {
                       <th className="px-4 py-3 text-left">Mã HĐ</th>
                       <th className="px-4 py-3 text-left">Thời Gian</th>
                       <th className="px-4 py-3 text-left">Khách Hàng</th>
-                      <th className="px-4 py-3 text-left">Giao Dịch Viên</th>
                       <th className="px-4 py-3 text-left">Vé (Ghế)</th>
                       <th className="px-4 py-3 text-left">Nước / Combo</th>
                       <th className="px-4 py-3 text-left">Thanh Toán</th>
@@ -296,7 +295,7 @@ export default function DoanhThu() {
                   <tbody className="divide-y divide-gray-100">
                     {filteredBills.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-12 text-gray-400 font-medium">
+                        <td colSpan={8} className="text-center py-12 text-gray-400 font-medium">
                           {searchQuery
                             ? `Không tìm thấy hóa đơn nào khớp với từ khóa "${searchQuery}"`
                             : `Chưa có giao dịch thành công nào trong ngày ${date}`}
@@ -322,11 +321,6 @@ export default function DoanhThu() {
                             <div className="text-[11px] text-gray-400">{bill.customerEmail}</div>
                           </td>
 
-                          {/* Giao Dịch Viên */}
-                          <td className="px-4 py-3.5 text-xs text-gray-600">
-                            {bill.staffName}
-                          </td>
-                          
                           {/* Vé (Ghế) */}
                           <td className="px-4 py-3.5">
                             {bill.tickets.length > 0 ? (

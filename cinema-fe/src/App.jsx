@@ -36,6 +36,7 @@ import StaffQuetQR from "./pages/Staff/QR/QuetQR.jsx";
 import StaffQuetQRDoAn from "./pages/Staff/QuetQRDoAn/QuetQRDoAn.jsx";
 import StaffHoSo from "./pages/Staff/HoSo/HoSo.jsx";
 import StaffDoanhThu from "./pages/Staff/DoanhThu/DoanhThu.jsx";
+import StaffQuanLyDoAn from "./pages/Staff/QuanLyDoAn/QuanLyDoAn.jsx";
 
 function App() {
   return (
@@ -149,6 +150,7 @@ function App() {
           <Route path="combo" element={<StaffCombo />} />
           <Route path="quet-qr" element={<StaffQuetQR />} />
           <Route path="quet-qr-do-an" element={<StaffQuetQRDoAn />} />
+          <Route path="quan-ly-do-an" element={<StaffQuanLyDoAn />} />
           <Route path="ho-so" element={<StaffHoSo />} />
           <Route path="doanh-thu" element={<StaffDoanhThu />} />
         </Route>

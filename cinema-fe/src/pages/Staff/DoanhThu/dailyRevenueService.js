@@ -12,24 +12,28 @@ export async function getDailyRevenue(date) {
   let payments = [];
   let bookings = [];
   let orders = [];
+  let ticketsList = [];
 
   try {
-    // Fetch all payments, bookings, and orders in parallel
-    const [paymentsRes, bookingsRes, ordersRes] = await Promise.all([
+    // Fetch all payments, bookings, orders, and tickets in parallel
+    const [paymentsRes, bookingsRes, ordersRes, ticketsRes] = await Promise.all([
       fetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
       fetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
-      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal })
+      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal }),
+      fetch(`${API_URL}/Tickets`, { headers, signal: controller.signal })
     ]);
 
-    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok) {
-      const [pData, bData, oData] = await Promise.all([
+    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok && ticketsRes.ok) {
+      const [pData, bData, oData, tData] = await Promise.all([
         readResponse(paymentsRes),
         readResponse(bookingsRes),
-        readResponse(ordersRes)
+        readResponse(ordersRes),
+        readResponse(ticketsRes)
       ]);
       payments = pData || [];
       bookings = bData || [];
       orders = oData || [];
+      ticketsList = tData || [];
     }
   } catch (err) {
     console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
@@ -109,14 +113,33 @@ export async function getDailyRevenue(date) {
       }));
     }
 
-    // 4. Build bill details (recalculate totalAmount to sum ticket + concession)
+    // 4. Build bill details (recalculate totalAmount to sum ticket + concession, map ticket code to billCode)
     const finalTotalAmount = ticketSubtotal + concessionSubtotal - (payment.discountAmt || 0);
+    
+    // Resolve ticket code for this booking to display in place of billCode
+    let resolvedBillCode = `BILL${String(payment.paymentId).padStart(6, '0')}`;
+    if (rootBooking) {
+      const ticketObj = (ticketsList || []).find(t => t.bookingId === rootBooking.bookingId);
+      if (ticketObj && (ticketObj.ticketCode || ticketObj.code)) {
+        resolvedBillCode = ticketObj.ticketCode || ticketObj.code;
+      }
+    }
+
+    // Resolve if this is a counter purchase (either tickets booked by staff or combo sold by staff)
+    const isCounter = (rootBooking && rootBooking.bookingType === "Staff") || 
+                      (order && (order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway")) ||
+                      (rootBooking && (rootBooking.customerName === "Cơ Sở 2" || rootBooking.customerName === "Hệ Thống Admin")) ||
+                      (order && (order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin"));
+
+    const resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai");
+    const resolvedCustomerEmail = isCounter ? "Tại quầy" : (rootBooking ? (rootBooking.email || "N/A") : "N/A");
+
     const bill = {
       paymentId: payment.paymentId,
-      billCode: `BILL${String(payment.paymentId).padStart(6, '0')}`,
+      billCode: resolvedBillCode,
       paymentDate: payment.createdAt,
-      customerName: rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai",
-      customerEmail: rootBooking ? (rootBooking.email || "N/A") : "N/A",
+      customerName: resolvedCustomerName,
+      customerEmail: resolvedCustomerEmail,
       staffName: order && order.staffName ? order.staffName : (payment.staffId ? `Nhân viên (ID ${payment.staffId})` : "Hệ thống Online"),
       paymentMethod: payment.paymentMethod,
       discountAmt: payment.discountAmt || 0,
@@ -156,12 +179,16 @@ export async function getDailyRevenue(date) {
 
   const user = getUser();
   for (const localOrder of realStandaloneOrders) {
+    const isLocalCounter = localOrder.userName === "Cơ Sở 2" || localOrder.userName === "Hệ Thống Admin" || localOrder.orderType === "Staff" || localOrder.orderType === "Counter" || localOrder.orderType === "Takeaway";
+    const resolvedLocalName = isLocalCounter ? "Khách mua tại quầy" : (localOrder.userName || "Khách mua combo");
+    const resolvedLocalEmail = isLocalCounter ? "Tại quầy" : "N/A";
+
     const bill = {
       paymentId: localOrder.orderId + 2000000, // Unique simulated paymentId mapping
       billCode: `CB${localOrder.orderId}`,
       paymentDate: localOrder.orderDate,
-      customerName: localOrder.userName || "Khách mua combo",
-      customerEmail: "N/A",
+      customerName: resolvedLocalName,
+      customerEmail: resolvedLocalEmail,
       staffName: localOrder.staffName || "Nhân viên T&M",
       paymentMethod: "Tiền mặt",
       discountAmt: 0,

@@ -18,6 +18,7 @@ const navItems = [
   { to: "/staff/combo", label: "Combo", icon: <MdFastfood /> },
   { to: "/staff/quet-qr", label: "Quét QR Vé", icon: <MdQrCodeScanner /> },
   { to: "/staff/quet-qr-do-an", label: "Quét QR Đồ ăn", icon: <MdFastfood /> },
+  { to: "/staff/quan-ly-do-an", label: "Quản lý Đồ ăn", icon: <MdReceiptLong /> },
   { to: "/staff/doanh-thu", label: "Doanh thu ngày", icon: <MdBarChart /> },
   { to: "/staff/ho-so", label: "Hồ sơ", icon: <MdPersonOutline /> },
 ];
