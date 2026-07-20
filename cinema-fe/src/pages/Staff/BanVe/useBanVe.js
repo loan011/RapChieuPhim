@@ -668,7 +668,7 @@ export function useBanVe() {
       const showtimeId = getShowtimeId(selectedShowtime);
 
       const orderItemsPayload = selectedFoodsList.map((item) => {
-        const isCombo = item.type === "Combo" || item.isCombo || item._isCombo;
+        const isCombo = item.type === "Combo" || item.type === "combo" || item.isCombo || item._isCombo;
         const id = Number(item.id);
         if (isCombo) {
           return { comboId: id, quantity: Number(item.quantity) };

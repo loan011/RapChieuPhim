@@ -144,12 +144,20 @@ export async function getDailyRevenue(date) {
     if (order) {
       concessionSubtotal = order.totalAmount || 0;
       const items = order.items?.$values ?? order.items ?? [];
-      concessionsInBill = items.map(item => ({
-        name: item.foodName || item.comboName || "N/A",
-        quantity: item.quantity || 0,
-        unitPrice: item.unitPrice || 0,
-        subtotal: item.subtotal || 0
-      }));
+      concessionsInBill = items.map((item, idx) => {
+        const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
+        const itemName = isCombo 
+          ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? "Combo")
+          : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? "N/A");
+
+        return {
+          id: item.foodId || item.comboId || idx,
+          name: itemName,
+          quantity: item.quantity || 0,
+          unitPrice: item.unitPrice || 0,
+          subtotal: item.subtotal || 0
+        };
+      });
     }
 
     // 4. Build bill details (recalculate totalAmount to sum ticket + concession, map ticket code to billCode)

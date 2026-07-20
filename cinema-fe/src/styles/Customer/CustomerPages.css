@@ -80,13 +80,11 @@
 
 /* ── Glass card ── */
 .cust-card {
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
+  background: #14151a;
+  border: 1px solid #2a2a2d;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   animation: cpFadeUp 0.45s ease;
 }
 
@@ -157,9 +155,9 @@
 .ticket-card {
   display: flex;
   gap: 0;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
+  background: #0f1014;
+  border: 1px solid #2a2a2d;
+  border-radius: 12px;
   overflow: hidden;
   margin-bottom: 16px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -309,9 +307,9 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
+  background: #0f1014;
+  border: 1px solid #2a2a2d;
+  border-radius: 12px;
   margin-bottom: 12px;
   transition: background 0.2s ease;
 }
@@ -384,9 +382,9 @@
   display: flex;
   gap: 14px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
+  background: #0f1014;
+  border: 1px solid #2a2a2d;
+  border-radius: 12px;
   margin-bottom: 12px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -497,9 +495,9 @@
 }
 
 .cust-stat-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  background: #0f1014;
+  border: 1px solid #2a2a2d;
+  border-radius: 12px;
   padding: 16px 18px;
   text-align: center;
 }

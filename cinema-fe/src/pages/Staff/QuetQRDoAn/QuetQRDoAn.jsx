@@ -225,7 +225,10 @@ export default function StaffQuetQRDoAn() {
                           <div className="italic text-gray-400">Không có chi tiết món ăn.</div>
                         ) : (
                           items.map((item, idx) => {
-                            const itemName = item.foodName ?? item.comboName ?? item.food?.foodName ?? item.combo?.comboName ?? "Món ăn/Combo";
+                            const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
+                            const itemName = isCombo 
+                              ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? "Combo")
+                              : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? "Món ăn/Combo");
                             const itemDetails = item.food?.category ?? item.combo?.description ?? "";
                             return (
                               <div key={idx} className="flex justify-between items-center py-1">

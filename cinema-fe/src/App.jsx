@@ -18,6 +18,8 @@ import CustomerProfile from "./pages/Customer/Profile/Profile.jsx";
 import VeCuaToi from "./pages/Customer/Ticket/Ticket.jsx";
 import LichSuDatVe from "./pages/Customer/History/History.jsx";
 import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
+import CustomerDoiMatKhau from "./pages/Customer/ChangePassword/ChangePassword.jsx";
+import CustomerProfileLayout from "./layouts/CustomerProfileLayout.jsx";
 
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
@@ -104,40 +106,19 @@ function App() {
         />
 
         <Route
-          path="/customer/profile"
+          path="/customer"
           element={
             <ProtectedRoute allowedRoles={["Customer"]}>
-              <CustomerProfile />
+              <CustomerProfileLayout />
             </ProtectedRoute>
           }
-        />
-
-        <Route
-          path="/customer/ve-cua-toi"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <VeCuaToi />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/customer/lich-su"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <LichSuDatVe />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/customer/thong-bao"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <CustomerThongBao />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="profile" element={<CustomerProfile />} />
+          <Route path="ve-cua-toi" element={<VeCuaToi />} />
+          <Route path="lich-su" element={<LichSuDatVe />} />
+          <Route path="thong-bao" element={<CustomerThongBao />} />
+          <Route path="doi-mat-khau" element={<CustomerDoiMatKhau />} />
+        </Route>
 
         {/* Staff routes */}
         <Route

@@ -126,146 +126,141 @@ export default function Ticket() {
   const [selectedTicket, setSelectedTicket] = useState(null);
 
   return (
-    <div className="cust-page">
-      <div className="cust-wrapper">
-        <div className="cust-header-wrap">
-          <Link to="/" className="back-arrow-btn" title="Quay lại trang chủ">
-            <MdArrowBack />
-          </Link>
-          <div className="cust-header">
-            <h1>
-              <span className="page-icon">🎫</span>
-              Vé của tôi
-            </h1>
-            <p>Danh sách tất cả vé bạn đã đặt</p>
-          </div>
+    <>
+      <div className="profile-header-wrap">
+        <div className="profile-header">
+          <h1>
+            <span className="page-icon">🎫</span>
+            Vé của tôi
+          </h1>
+          <p>Danh sách tất cả vé bạn đã đặt</p>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="cust-card p-6 flex justify-center items-center text-gray-500 text-sm">
-            Đang tải danh sách vé...
-          </div>
-        ) : (
-          <>
-            <div className="cust-stats">
-              <div className="cust-stat-card yellow">
-                <span className="stat-num">{counts.all}</span>
-                <span className="stat-label">Tổng vé</span>
-              </div>
-
-              <div className="cust-stat-card green">
-                <span className="stat-num">{counts.upcoming}</span>
-                <span className="stat-label">Sắp chiếu</span>
-              </div>
-
-              <div className="cust-stat-card red">
-                <span className="stat-num">{counts.cancelled}</span>
-                <span className="stat-label">Đã hủy</span>
-              </div>
+      {loading ? (
+        <div className="cust-card p-6 flex justify-center items-center text-gray-500 text-sm">
+          Đang tải danh sách vé...
+        </div>
+      ) : (
+        <>
+          <div className="cust-stats">
+            <div className="cust-stat-card yellow">
+              <span className="stat-num">{counts.all}</span>
+              <span className="stat-label">Tổng vé</span>
             </div>
 
-            <div className="cust-card">
-              <div className="cust-tabs">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    className={`cust-tab${activeTab === tab.key ? " active" : ""}`}
-                    onClick={() => setActiveTab(tab.key)}
+            <div className="cust-stat-card green">
+              <span className="stat-num">{counts.upcoming}</span>
+              <span className="stat-label">Sắp chiếu</span>
+            </div>
+
+            <div className="cust-stat-card red">
+              <span className="stat-num">{counts.cancelled}</span>
+              <span className="stat-label">Đã hủy</span>
+            </div>
+          </div>
+
+          <div className="cust-card">
+            <div className="cust-tabs">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`cust-tab${activeTab === tab.key ? " active" : ""}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+
+                  {counts[tab.key] > 0 && (
+                    <span className="cust-tab-badge">{counts[tab.key]}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="cust-body">
+              {filteredTickets.length === 0 ? (
+                <div className="cust-empty">
+                  <div className="cust-empty-icon">🎟️</div>
+                  <h3>Không có vé nào</h3>
+                  <p>Bạn chưa có vé trong mục này</p>
+                </div>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <div
+                    className="ticket-card"
+                    key={ticket.id}
+                    onClick={() => setSelectedTicket(ticket)}
                   >
-                    {tab.label}
+                    <div className="ticket-stripe" />
 
-                    {counts[tab.key] > 0 && (
-                      <span className="cust-tab-badge">{counts[tab.key]}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
+                    <img
+                      src={ticket.poster}
+                      alt={ticket.movie}
+                      className="ticket-poster"
+                      onError={handlePosterError}
+                    />
 
-              <div className="cust-body">
-                {filteredTickets.length === 0 ? (
-                  <div className="cust-empty">
-                    <div className="cust-empty-icon">🎟️</div>
-                    <h3>Không có vé nào</h3>
-                    <p>Bạn chưa có vé trong mục này</p>
-                  </div>
-                ) : (
-                  filteredTickets.map((ticket) => (
-                    <div
-                      className="ticket-card"
-                      key={ticket.id}
-                      onClick={() => setSelectedTicket(ticket)}
-                    >
-                      <div className="ticket-stripe" />
+                    <div className="ticket-info">
+                      <p className="ticket-title">{ticket.movie}</p>
 
-                      <img
-                        src={ticket.poster}
-                        alt={ticket.movie}
-                        className="ticket-poster"
-                        onError={handlePosterError}
-                      />
-
-                      <div className="ticket-info">
-                        <p className="ticket-title">{ticket.movie}</p>
-
-                        <div className="ticket-meta">
-                          <span>
-                            <MdCalendarToday />
-                            {ticket.date}
-                          </span>
-
-                          <span>
-                            <MdAccessTime />
-                            {ticket.time}
-                          </span>
-
-                          <span>
-                            <MdLocationOn />
-                            {ticket.cinema}
-                          </span>
-
-                          <span>
-                            <MdConfirmationNumber />
-                            {ticket.hall}
-                          </span>
-                        </div>
-
-                        <div className="ticket-seats">
-                          {ticket.seats.map((seat) => (
-                            <span className="seat-chip" key={seat}>
-                              <MdEventSeat className="ticket-seat-icon" />
-                              {seat}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="ticket-right">
-                        <span className="ticket-price">{ticket.price}</span>
-
-                        <span className={`ticket-status ${ticket.status}`}>
-                          {getTicketStatusLabel(ticket.status)}
+                      <div className="ticket-meta">
+                        <span>
+                          <MdCalendarToday />
+                          {ticket.date}
                         </span>
 
-                        {ticket.status === "upcoming" && (
-                          <div className="ticket-qr" title="Mã QR vé" data-darkreader-ignore="true" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px", filter: "none", colorScheme: "light" }}>
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getQrDataText(ticket))}`}
-                              alt="Ticket QR Code"
-                              data-darkreader-ignore="true"
-                              style={{ width: "40px", height: "40px", objectFit: "contain", filter: "none" }}
-                            />
-                          </div>
-                        )}
+                        <span>
+                          <MdAccessTime />
+                          {ticket.time}
+                        </span>
+
+                        <span>
+                          <MdLocationOn />
+                          {ticket.cinema}
+                        </span>
+
+                        <span>
+                          <MdConfirmationNumber />
+                          {ticket.hall}
+                        </span>
+                      </div>
+
+                      <div className="ticket-seats">
+                        {ticket.seats.map((seat) => (
+                          <span className="seat-chip" key={seat}>
+                            <MdEventSeat className="ticket-seat-icon" />
+                            {seat}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    <div className="ticket-right">
+                      <span className="ticket-price">{ticket.price}</span>
+
+                      <span className={`ticket-status ${ticket.status}`}>
+                        {getTicketStatusLabel(ticket.status)}
+                      </span>
+
+                      {ticket.status === "upcoming" && (
+                        <div className="ticket-qr" title="Mã QR vé" data-darkreader-ignore="true" style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#ffffff", padding: "4px", borderRadius: "6px", filter: "none", colorScheme: "light" }}>
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getQrDataText(ticket))}`}
+                            alt="Ticket QR Code"
+                            data-darkreader-ignore="true"
+                            style={{ width: "40px", height: "40px", objectFit: "contain", filter: "none" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* ── Ticket Detail Modal ── */}
       {selectedTicket && (
@@ -401,6 +396,6 @@ export default function Ticket() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

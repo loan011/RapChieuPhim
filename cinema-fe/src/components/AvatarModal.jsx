@@ -1,25 +1,24 @@
 import { useState, useRef } from "react";
-import { MdCameraAlt, MdCheckCircle, MdClose } from "react-icons/md";
-import "../styles/Customer/CustomerPages.css";
+import { MdClose, MdCloudUpload, MdFileUpload, MdSave } from "react-icons/md";
+import "../styles/Customer/AvatarModal.css";
 
-/**
- * AvatarModal — Modal đổi avatar, dùng chung toàn app.
- * Props:
- *   open: boolean
- *   onClose: () => void
- *   onSaved: (newUrl: string) => void   // optional callback
- */
 export default function AvatarModal({ open, onClose, onSaved }) {
   const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const fallbackChar = (
+    savedUser.fullName ||
+    savedUser.FullName ||
+    localStorage.getItem("fullName") ||
+    "C"
+  ).charAt(0).toUpperCase();
+
   const currentAvatar =
     savedUser.avatarUrl ||
     savedUser.AvatarUrl ||
     localStorage.getItem("avatarUrl") ||
-    "/images/default-avatar.png";
+    `https://ui-avatars.com/api/?name=${fallbackChar}&background=dc2626&color=fff&size=200`;
 
   const [preview, setPreview] = useState(currentAvatar);
   const [changed, setChanged] = useState(false);
-  const [saved, setSaved] = useState(false);
   const fileRef = useRef(null);
 
   function handleFile(e) {
@@ -29,110 +28,137 @@ export default function AvatarModal({ open, onClose, onSaved }) {
     reader.onload = () => {
       setPreview(reader.result);
       setChanged(true);
-      setSaved(false);
     };
     reader.readAsDataURL(file);
   }
 
   function handleSave() {
+    if (!changed) return;
     const oldUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const email = (
+      oldUser.email ||
+      oldUser.Email ||
+      localStorage.getItem("userEmail") ||
+      localStorage.getItem("email") ||
+      ""
+    ).trim().toLowerCase();
+    
     const updated = { ...oldUser, avatarUrl: preview };
     localStorage.setItem("user", JSON.stringify(updated));
     localStorage.setItem("avatarUrl", preview);
-    setSaved(true);
-    setChanged(false);
+    if (email) {
+      localStorage.setItem(`user_avatar_${email}`, preview);
+    }
+    window.dispatchEvent(new Event("avatarUpdated"));
     if (onSaved) onSaved(preview);
-    setTimeout(() => {
-      setSaved(false);
-      onClose();
-    }, 1200);
+    onClose();
+    setChanged(false);
   }
 
   function handleClose() {
     setPreview(currentAvatar);
     setChanged(false);
-    setSaved(false);
     onClose();
   }
 
   if (!open) return null;
 
   return (
-    <div className="avatar-modal-overlay" onClick={handleClose}>
-      <div className="avatar-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            background: "rgba(255,255,255,0.08)",
-            border: "none",
-            color: "rgba(255,255,255,0.5)",
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1rem",
-          }}
-        >
-          <MdClose />
+    <div className="am-overlay" onClick={handleClose}>
+      <div className="am-container" onClick={(e) => e.stopPropagation()}>
+        <button className="am-close-btn" onClick={handleClose}>
+          <MdClose size={20} />
         </button>
 
-        <h2>Đổi ảnh đại diện</h2>
+        <div className="am-header">
+          <h2>Đổi ảnh đại diện</h2>
+        </div>
 
-        {/* Preview */}
-        <img
-          src={preview}
-          alt="Avatar preview"
-          className="avatar-preview-big"
-          onError={(e) =>
-            (e.target.src =
-              "https://ui-avatars.com/api/?name=User&background=dc2626&color=fff&size=120")
-          }
-        />
+        <div className="am-body">
+          <div className="am-left">
+            <h3 className="am-col-title">Ảnh hiện tại</h3>
+            <div className="am-current-wrapper">
+              <img
+                src={currentAvatar}
+                alt="Current"
+                onError={(e) =>
+                  (e.target.src = `https://ui-avatars.com/api/?name=${fallbackChar}&background=dc2626&color=fff&size=200`)
+                }
+              />
+            </div>
+            <p className="am-left-desc">
+              Ảnh đại diện giúp bạn được nhận diện dễ dàng hơn.
+            </p>
+          </div>
 
-        {/* Upload zone */}
-        <label className="avatar-upload-zone" htmlFor="avatarModalInput">
-          <MdCameraAlt />
-          <p>
-            {changed
-              ? "Ảnh đã được chọn — nhấn Lưu để áp dụng"
-              : "Nhấn để chọn ảnh từ thiết bị"}
-          </p>
-          <input
-            id="avatarModalInput"
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            ref={fileRef}
-            onChange={handleFile}
-          />
-        </label>
+          <div className="am-divider"></div>
 
-        {/* Actions */}
-        <div className="avatar-modal-actions">
-          <button className="avatar-cancel-btn" onClick={handleClose}>
+          <div className="am-right">
+            <h3 className="am-col-title">Chọn ảnh mới</h3>
+
+            <label className="am-upload-box" htmlFor="am-file-upload">
+              <MdCloudUpload className="am-upload-icon" />
+              <p className="am-upload-text-main">Kéo và thả ảnh vào đây</p>
+              <p className="am-upload-text-sub">hoặc</p>
+              <div className="am-upload-btn-fake">
+                <MdFileUpload size={18} /> Chọn ảnh từ thiết bị
+              </div>
+              <input
+                id="am-file-upload"
+                type="file"
+                accept="image/jpeg, image/png, image/webp"
+                onChange={handleFile}
+                ref={fileRef}
+              />
+            </label>
+
+            <p className="am-upload-hint">
+              Hỗ trợ JPG, PNG, WebP. Kích thước tối đa 5MB.
+            </p>
+
+            <h3 className="am-col-title">Xem trước</h3>
+            <div className="am-preview-container">
+              <div className="am-preview-item">
+                <div className="am-preview-circle am-preview-large">
+                  <img
+                    src={preview}
+                    alt="Large Preview"
+                    onError={(e) =>
+                      (e.target.src = `https://ui-avatars.com/api/?name=${fallbackChar}&background=dc2626&color=fff&size=128`)
+                    }
+                  />
+                </div>
+                <span className="am-preview-label">Lớn</span>
+                <span className="am-preview-size">128px</span>
+              </div>
+
+              <div className="am-preview-item">
+                <div className="am-preview-circle am-preview-small">
+                  <img
+                    src={preview}
+                    alt="Small Preview"
+                    onError={(e) =>
+                      (e.target.src = `https://ui-avatars.com/api/?name=${fallbackChar}&background=dc2626&color=fff&size=64`)
+                    }
+                  />
+                </div>
+                <span className="am-preview-label">Nhỏ</span>
+                <span className="am-preview-size">64px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="am-footer">
+          <button className="am-btn am-btn-cancel" onClick={handleClose}>
             Hủy
           </button>
           <button
-            className="avatar-save-btn"
+            className="am-btn am-btn-save"
             onClick={handleSave}
-            disabled={!changed && !saved}
-            style={{ opacity: !changed && !saved ? 0.5 : 1 }}
+            disabled={!changed}
           >
-            {saved ? (
-              <>
-                <MdCheckCircle style={{ marginRight: 6 }} />
-                Đã lưu!
-              </>
-            ) : (
-              "Lưu ảnh"
-            )}
+            <MdSave size={18} /> Lưu thay đổi
           </button>
         </div>
       </div>

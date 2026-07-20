@@ -91,6 +91,25 @@ export function getSavedProfileUser() {
 
 export function getInitialProfileForm() {
   const savedUser = getSavedProfileUser();
+  const email = (savedUser.email || savedUser.Email || localStorage.getItem("email") || localStorage.getItem("userEmail") || "").trim().toLowerCase();
+  const emailAvatarKey = email ? `user_avatar_${email}` : null;
+  const savedEmailAvatar = emailAvatarKey ? localStorage.getItem(emailAvatarKey) : null;
+  const savedAvatar = localStorage.getItem("avatarUrl");
+
+  const rawAvatar =
+    savedUser.avatarUrl ||
+    savedUser.AvatarUrl ||
+    savedEmailAvatar ||
+    savedAvatar ||
+    "/images/default-avatar.png";
+
+  const finalAvatar = isValidAvatarUrl(rawAvatar)
+    ? rawAvatar
+    : isValidAvatarUrl(savedEmailAvatar)
+    ? savedEmailAvatar
+    : isValidAvatarUrl(savedAvatar)
+    ? savedAvatar
+    : "/images/default-avatar.png";
 
   return {
     fullName:
@@ -130,26 +149,50 @@ export function getInitialProfileForm() {
       localStorage.getItem("address") ||
       "",
 
-    avatarUrl:
-      savedUser.avatarUrl ||
-      savedUser.AvatarUrl ||
-      localStorage.getItem("avatarUrl") ||
-      "/images/default-avatar.png",
+    avatarUrl: finalAvatar,
   };
 }
 
+function isValidAvatarUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (
+    trimmed === "" ||
+    trimmed.toLowerCase() === "string" ||
+    trimmed.toLowerCase() === "null" ||
+    trimmed.toLowerCase() === "undefined"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function normalizeProfileData(data) {
+  const email = (data?.email || data?.Email || localStorage.getItem("userEmail") || localStorage.getItem("email") || "").trim().toLowerCase();
+  const emailAvatarKey = email ? `user_avatar_${email}` : null;
+  const savedEmailAvatar = emailAvatarKey ? localStorage.getItem(emailAvatarKey) : null;
+  const savedAvatarUrl = localStorage.getItem("avatarUrl");
+  const savedAddress = localStorage.getItem("address");
+
+  const backendAvatar = data?.avatarUrl || data?.AvatarUrl;
+  
+  let finalAvatar = "/images/default-avatar.png";
+  if (isValidAvatarUrl(backendAvatar)) {
+    finalAvatar = backendAvatar;
+  } else if (isValidAvatarUrl(savedEmailAvatar)) {
+    finalAvatar = savedEmailAvatar;
+  } else if (isValidAvatarUrl(savedAvatarUrl)) {
+    finalAvatar = savedAvatarUrl;
+  }
+
   return {
     fullName: data?.fullName || data?.FullName || "",
     email: data?.email || data?.Email || "",
     phone: data?.phone || data?.Phone || "",
     dateOfBirth: data?.dateOfBirth || data?.DateOfBirth || "",
     gender: data?.gender || data?.Gender || "",
-    address: data?.address || data?.Address || "",
-    avatarUrl:
-      data?.avatarUrl ||
-      data?.AvatarUrl ||
-      "/images/default-avatar.png",
+    address: data?.address || data?.Address || savedAddress || "",
+    avatarUrl: finalAvatar,
   };
 }
 
@@ -175,6 +218,7 @@ export function buildUpdateProfilePayload(form) {
 
 export function saveProfileToLocalStorage(form, updatedData) {
   const oldUser = getSavedProfileUser();
+  const email = (form.email || oldUser.email || oldUser.Email || localStorage.getItem("userEmail") || "").trim().toLowerCase();
 
   const updatedUser = {
     ...oldUser,
@@ -195,7 +239,12 @@ export function saveProfileToLocalStorage(form, updatedData) {
   localStorage.setItem("dateOfBirth", form.dateOfBirth);
   localStorage.setItem("gender", form.gender);
   localStorage.setItem("address", form.address);
-  localStorage.setItem("avatarUrl", form.avatarUrl);
+  if (isValidAvatarUrl(form.avatarUrl)) {
+    localStorage.setItem("avatarUrl", form.avatarUrl);
+    if (email) {
+      localStorage.setItem(`user_avatar_${email}`, form.avatarUrl);
+    }
+  }
 }
 
 export function readAvatarFile(file) {
@@ -246,7 +295,19 @@ export function useProfile() {
         setForm(userProfile);
         setInitialForm(userProfile);
 
-        localStorage.setItem("user", JSON.stringify(data));
+        const mergedUser = {
+          ...data,
+          fullName: userProfile.fullName,
+          avatarUrl: userProfile.avatarUrl,
+        };
+        localStorage.setItem("user", JSON.stringify(mergedUser));
+        if (isValidAvatarUrl(userProfile.avatarUrl)) {
+          localStorage.setItem("avatarUrl", userProfile.avatarUrl);
+          const email = (userProfile.email || "").trim().toLowerCase();
+          if (email) {
+            localStorage.setItem(`user_avatar_${email}`, userProfile.avatarUrl);
+          }
+        }
       }
     } catch (err) {
       console.error("Lỗi lấy thông tin profile:", err);
@@ -259,6 +320,16 @@ export function useProfile() {
 
   function handleChange(e) {
     const { name, value } = e.target;
+
+    if (name === "phone") {
+      const digitsOnly = value.replace(/\D/g, "");
+      if (digitsOnly.length > 10) return;
+      setForm((prev) => ({
+        ...prev,
+        [name]: digitsOnly,
+      }));
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
@@ -278,6 +349,16 @@ export function useProfile() {
         ...prev,
         avatarUrl,
       }));
+
+      // Immediately save to local storage & persistent email key & notify all components
+      localStorage.setItem("avatarUrl", avatarUrl);
+      const oldUser = getSavedProfileUser();
+      const email = (form.email || oldUser.email || oldUser.Email || localStorage.getItem("userEmail") || "").trim().toLowerCase();
+      if (email) {
+        localStorage.setItem(`user_avatar_${email}`, avatarUrl);
+      }
+      localStorage.setItem("user", JSON.stringify({ ...oldUser, avatarUrl }));
+      window.dispatchEvent(new Event("avatarUpdated"));
     } catch (err) {
       setError(err.message);
     }
@@ -290,6 +371,16 @@ export function useProfile() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (form.phone && !/^\d{10}$/.test(form.phone)) {
+      setError("Số điện thoại phải bao gồm đúng 10 chữ số.");
+      return;
+    }
+
+    if (form.dateOfBirth && new Date(form.dateOfBirth) > new Date()) {
+      setError("Ngày sinh không được ở tương lai.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
@@ -299,6 +390,7 @@ export function useProfile() {
       const updatedData = await updateProfile(payload);
 
       saveProfileToLocalStorage(form, updatedData);
+      window.dispatchEvent(new Event("avatarUpdated"));
 
       setInitialForm(form);
       setShowToast(true);

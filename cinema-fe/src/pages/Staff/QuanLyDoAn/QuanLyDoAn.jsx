@@ -137,7 +137,10 @@ export default function StaffQuanLyDoAn() {
           groups["Khác"].push({ ...order, _matchedItem: null });
       } else {
           items.forEach(item => {
-              const itemName = item.foodName ?? item.comboName ?? item.food?.foodName ?? item.combo?.comboName ?? "Món ăn";
+              const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
+              const itemName = isCombo 
+                ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? "Combo")
+                : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? "Món ăn");
               if (!groups[itemName]) groups[itemName] = [];
               groups[itemName].push({ ...order, _matchedItem: item });
           });

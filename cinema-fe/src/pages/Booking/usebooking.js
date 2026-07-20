@@ -897,7 +897,7 @@ export function useBooking() {
         const normalized = data.map((item, index) => {
           const rawComboId = item?.comboId ?? item?.ComboId ?? null;
           const rawFoodId = item?.foodId ?? item?.FoodId ?? null;
-          const isCombo = rawComboId !== null && rawFoodId === null;
+          const isCombo = (rawComboId !== null && rawFoodId === null) || String(item?.type).toLowerCase() === "combo" || !!item?.comboName || !!item?.ComboName || (item?.category && String(item.category).toLowerCase().includes("combo"));
           const baseId = rawComboId ?? rawFoodId ?? item?.id ?? item?.Id ?? index;
           
           // Tránh trùng React key (ví dụ Combo ID 6 và Food ID 6)

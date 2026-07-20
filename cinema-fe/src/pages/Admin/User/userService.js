@@ -67,9 +67,9 @@ export async function getProfileAdmin() {
   return data;
 }
 
-// GET /api/Users (for customer profile)
+// GET /api/Users/GetProfile (for customer profile)
 export async function getProfileCustomer() {
-  const response = await fetch(`${API_URL}/Users`, {
+  const response = await fetch(`${API_URL}/Users/GetProfile`, {
     headers: getAuthHeaders(),
   });
   const data = await readResponse(response);
@@ -94,6 +94,16 @@ export async function updateProfile(user) {
   const gender = user.gender ?? user.Gender;
   if (gender !== undefined) {
     allowedPayload.gender = gender;
+  }
+
+  const address = user.address ?? user.Address;
+  if (address !== undefined) {
+    allowedPayload.address = address;
+  }
+
+  const avatarUrl = user.avatarUrl ?? user.AvatarUrl;
+  if (avatarUrl !== undefined) {
+    allowedPayload.avatarUrl = avatarUrl;
   }
 
   const response = await fetch(`${API_URL}/Users/UpdateProfile`, {

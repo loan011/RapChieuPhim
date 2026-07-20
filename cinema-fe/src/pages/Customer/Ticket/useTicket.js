@@ -113,7 +113,10 @@ function normalizeFoodsList(rawFoods, catalogs = { foods: [], combos: [] }) {
 
     const catalogItem = findCatalogItem(item);
     const foodObj = item.food ?? item.Food ?? item.combo ?? item.Combo ?? item;
-    const directName = item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName ?? foodObj?.foodName ?? foodObj?.FoodName ?? foodObj?.comboName ?? foodObj?.ComboName ?? foodObj?.name ?? foodObj?.Name ?? item.name ?? item.Name;
+    const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
+    const directName = isCombo
+      ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? foodObj?.comboName ?? foodObj?.ComboName ?? "Combo")
+      : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? foodObj?.foodName ?? foodObj?.FoodName ?? foodObj?.name ?? foodObj?.Name ?? item.name ?? item.Name);
     const catalogName = catalogItem?.foodName ?? catalogItem?.FoodName ?? catalogItem?.comboName ?? catalogItem?.ComboName ?? catalogItem?.name ?? catalogItem?.Name;
     const name = String(directName || "").trim().toLowerCase() === "string"
       ? (catalogName || "Đồ ăn kèm")
@@ -392,6 +395,11 @@ export function useTicket() {
                 bookingIds: t.bookingIds || [],
                 rawBooking: t,
               };
+            })
+            .sort((a, b) => {
+              const dateA = new Date(a.rawBooking?.bookingDate ?? a.rawBooking?.BookingDate ?? 0).getTime();
+              const dateB = new Date(b.rawBooking?.bookingDate ?? b.rawBooking?.BookingDate ?? 0).getTime();
+              return dateB - dateA;
             })
           );
         }

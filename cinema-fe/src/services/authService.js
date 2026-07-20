@@ -123,12 +123,34 @@ export function saveAuthData(data) {
   const tokenType = data?.tokenType || data?.TokenType || "Bearer";
   const expiresAt = data?.expiresAt || data?.ExpiresAt || "";
   const user = data?.user || data?.User || {};
+  const userEmail = user?.email || user?.Email || "";
+
+  const cleanEmail = String(userEmail).trim().toLowerCase();
+  const emailAvatarKey = cleanEmail ? `user_avatar_${cleanEmail}` : null;
+  const savedEmailAvatar = emailAvatarKey ? localStorage.getItem(emailAvatarKey) : null;
+
+  const backendAvatar = user?.avatarUrl || user?.AvatarUrl;
+  const isValid = (url) => url && typeof url === "string" && url.trim() !== "" && url.toLowerCase() !== "string" && url.toLowerCase() !== "null";
+
+  const finalAvatar = isValid(backendAvatar)
+    ? backendAvatar
+    : isValid(savedEmailAvatar)
+    ? savedEmailAvatar
+    : null;
+
+  if (finalAvatar) {
+    user.avatarUrl = finalAvatar;
+    localStorage.setItem("avatarUrl", finalAvatar);
+    if (emailAvatarKey) {
+      localStorage.setItem(emailAvatarKey, finalAvatar);
+    }
+  }
 
   localStorage.setItem("token", token);
   localStorage.setItem("tokenType", tokenType);
   localStorage.setItem("expiresAt", expiresAt);
   localStorage.setItem("user", JSON.stringify(user));
-  localStorage.setItem("userEmail", user?.email || user?.Email || "");
+  localStorage.setItem("userEmail", userEmail);
   localStorage.setItem("role", user?.role || user?.Role || "");
 }
 
