@@ -272,7 +272,8 @@ export async function sendDailyRevenueReport(payload) {
     summary: summary,
     totalBookings: totalBookings,
     totalOrders: totalOrders,
-    totalRevenue: totalRevenue
+    totalRevenue: totalRevenue,
+    createdAt: new Date().toISOString()
   };
 
   const response = await fetch(`${API_URL}/StaffReports`, {

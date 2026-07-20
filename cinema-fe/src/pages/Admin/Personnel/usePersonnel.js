@@ -177,11 +177,18 @@ export function usePersonnel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [search, setSearch] = useState("");
-  const [filterPos, setFilterPos] = useState("");
-  const [filterCinemaId, setFilterCinemaId] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [search, setSearch] = useState(() => sessionStorage.getItem("pe_search") || "");
+  const [filterPos, setFilterPos] = useState(() => sessionStorage.getItem("pe_filterPos") || "");
+  const [filterCinemaId, setFilterCinemaId] = useState(() => sessionStorage.getItem("pe_filterCinemaId") || "");
+  const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem("pe_filterStatus") || "");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    sessionStorage.setItem("pe_search", search);
+    sessionStorage.setItem("pe_filterPos", filterPos);
+    sessionStorage.setItem("pe_filterCinemaId", filterCinemaId);
+    sessionStorage.setItem("pe_filterStatus", filterStatus);
+  }, [search, filterPos, filterCinemaId, filterStatus]);
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);

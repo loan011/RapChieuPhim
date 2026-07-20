@@ -1,37 +1,144 @@
 import { useState, useEffect } from "react";
-import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo, fetchBookingsForInventory } from "./foodService";
+import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo, fetchBookingsForInventory, fetchOrdersForInventory } from "./foodService";
 
 function toList(value) {
   if (Array.isArray(value)) return value;
   return value?.$values || value?.data || value?.items || [];
 }
 
-function getMonthlySoldQuantities(bookings) {
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
-  const foodSales = new Map();
-  const comboSales = new Map();
+function getBookingCinemaId(booking) {
+  if (!booking) return "1";
+  let cid = booking.cinemaId ?? booking.CinemaId;
+  if (cid) return String(cid);
 
+  const showtime = booking.showtime ?? booking.Showtime;
+  if (showtime) {
+    cid = showtime.cinemaId ?? showtime.CinemaId;
+    if (cid) return String(cid);
+    const room = showtime.room ?? showtime.Room;
+    if (room) {
+      cid = room.cinemaId ?? room.CinemaId;
+      if (cid) return String(cid);
+    }
+  }
+
+  const room = booking.room ?? booking.Room;
+  if (room) {
+    cid = room.cinemaId ?? room.CinemaId;
+    if (cid) return String(cid);
+  }
+
+  return "1";
+}
+
+function getOrderCinemaId(order) {
+  if (!order) return "1";
+  let cid = order.cinemaId ?? order.CinemaId;
+  if (cid) return String(cid);
+
+  if (order.staff) {
+    cid = order.staff.cinemaId ?? order.staff.CinemaId ?? order.staff.cinema?.cinemaId ?? order.staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+  }
+  if (order.Staff) {
+    cid = order.Staff.cinemaId ?? order.Staff.CinemaId ?? order.Staff.cinema?.cinemaId ?? order.Staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+  }
+
+  const booking = order.booking ?? order.Booking;
+  if (booking) {
+    cid = getBookingCinemaId(booking);
+    if (cid) return cid;
+  }
+
+  const orderId = order.orderId ?? order.OrderId;
+  if (orderId) {
+    try {
+      const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+      if (map[String(orderId)]) return String(map[String(orderId)]);
+    } catch (e) {}
+  }
+
+  return "1";
+}
+
+function calculateItemSales(bookings, orders, selectedCinemaId) {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+  const isThisWeek = (d) => {
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return d >= startOfWeek;
+  };
+  const isThisMonth = (d) => d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+
+  const foodStatsMap = new Map();  // foodId -> { month: 0, week: 0, today: 0 }
+  const comboStatsMap = new Map(); // comboId -> { month: 0, week: 0, today: 0 }
+
+  const addSale = (map, id, qty, dateObj) => {
+    if (!id) return;
+    const key = String(id);
+    if (!map.has(key)) map.set(key, { month: 0, week: 0, today: 0 });
+    const stat = map.get(key);
+    
+    if (isThisMonth(dateObj)) stat.month += qty;
+    if (isThisWeek(dateObj)) stat.week += qty;
+    if (isSameDay(dateObj, now)) stat.today += qty;
+  };
+
+  // 1. Process Customer Bookings
   toList(bookings).forEach((booking) => {
     const status = String(booking.status ?? booking.Status ?? booking.paymentStatus ?? booking.PaymentStatus ?? "").toLowerCase();
-    if (["pending", "unpaid", "cancelled", "canceled"].some(value => status.includes(value))) return;
+    if (["pending", "unpaid", "cancelled", "canceled"].some(v => status.includes(v))) return;
+
+    if (selectedCinemaId) {
+      const bCinemaId = getBookingCinemaId(booking);
+      if (String(bCinemaId) !== String(selectedCinemaId)) return;
+    }
 
     const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
-    const date = rawDate ? new Date(rawDate) : null;
-    if (date && !Number.isNaN(date.getTime()) && (date.getMonth() !== month || date.getFullYear() !== year)) return;
+    const dateObj = rawDate ? new Date(rawDate) : null;
+    if (!dateObj || Number.isNaN(dateObj.getTime())) return;
 
-    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ?? booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? [];
+    const rawItems = booking.bookingFoods ?? booking.BookingFoods ?? booking.foods ?? booking.Foods ?? booking.bookingCombos ?? booking.BookingCombos ?? booking.combos ?? booking.Combos ?? booking.items ?? [];
     toList(rawItems).forEach((item) => {
-      const quantity = Number(item.quantity ?? item.Quantity ?? 1);
+      const qty = Number(item.quantity ?? item.Quantity ?? 1);
       const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
       const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
-      if (foodId != null) foodSales.set(String(foodId), (foodSales.get(String(foodId)) || 0) + quantity);
-      if (comboId != null) comboSales.set(String(comboId), (comboSales.get(String(comboId)) || 0) + quantity);
+      if (foodId != null) addSale(foodStatsMap, foodId, qty, dateObj);
+      if (comboId != null) addSale(comboStatsMap, comboId, qty, dateObj);
     });
   });
 
-  return { foodSales, comboSales };
+  // 2. Process Staff POS Orders
+  toList(orders).forEach((order) => {
+    const status = String(order.status ?? order.Status ?? "").toLowerCase();
+    if (["pending", "unpaid", "cancelled", "canceled"].some(v => status.includes(v))) return;
+
+    if (selectedCinemaId) {
+      const oCinemaId = getOrderCinemaId(order);
+      if (String(oCinemaId) !== String(selectedCinemaId)) return;
+    }
+
+    const rawDate = order.orderDate ?? order.OrderDate ?? order.createdAt ?? order.CreatedAt;
+    const dateObj = rawDate ? new Date(rawDate) : null;
+    if (!dateObj || Number.isNaN(dateObj.getTime())) return;
+
+    const rawItems = order.orderitems ?? order.OrderItems ?? order.items ?? order.Items ?? [];
+    toList(rawItems).forEach((item) => {
+      const qty = Number(item.quantity ?? item.Quantity ?? 1);
+      const foodId = item.foodId ?? item.FoodId ?? item.food?.foodId ?? item.Food?.FoodId;
+      const comboId = item.comboId ?? item.ComboId ?? item.combo?.comboId ?? item.Combo?.ComboId;
+      if (foodId != null) addSale(foodStatsMap, foodId, qty, dateObj);
+      if (comboId != null) addSale(comboStatsMap, comboId, qty, dateObj);
+    });
+  });
+
+  return { foodStatsMap, comboStatsMap };
 }
 
 // ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
@@ -47,11 +154,10 @@ const MOCK_FOODS = [
 ];
 
 const MOCK_COMBOS = [
-  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 100, imageUrl: '/img/combosolo.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
-  { id: 4, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 100, imageUrl: '/img/combocouple.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
-  { id: 6, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 59,  imageUrl: '/img/combofamily.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
+  { id: 101, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 100, imageUrl: '/img/combosolo.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
+  { id: 104, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 100, imageUrl: '/img/combocouple.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
+  { id: 106, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 59,  imageUrl: '/img/combofamily.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
 ];
-
 
 export function useFood() {
   const [items, setItems] = useState([...MOCK_FOODS, ...MOCK_COMBOS]);
@@ -88,88 +194,132 @@ export function useFood() {
     isAvailable: true
   });
 
+  // Cinema filter
+  const [cinemas, setCinemas] = useState([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState("");
+
   const loadData = async () => {
     setLoading(true);
     setError("");
     try {
-      const [foodsData, combosData, bookingsData] = await Promise.all([
+      const [foodsData, combosData, bookingsData, ordersData, cinemasRes] = await Promise.all([
         fetchFoods().catch(() => null),
         fetchCombos().catch(() => null),
-        fetchBookingsForInventory().catch(() => [])
+        fetchBookingsForInventory().catch(() => []),
+        fetchOrdersForInventory().catch(() => []),
+        fetch(`${import.meta.env.VITE_API_URL}/Cinemas`, {
+          headers: {
+            "Authorization": `${localStorage.getItem("tokenType") || "Bearer"} ${localStorage.getItem("token") || ""}`
+          }
+        }).then(r => r.ok ? r.json() : []).catch(() => [])
       ]);
-      const { foodSales, comboSales } = getMonthlySoldQuantities(bookingsData);
+
+      const rawCList = cinemasRes?.$values || cinemasRes?.data || (Array.isArray(cinemasRes) ? cinemasRes : []);
+      const cList = Array.isArray(rawCList) && rawCList.length > 0
+        ? rawCList
+        : [
+            { cinemaId: 1, name: "CinemaHCM Đồng Khởi" },
+            { cinemaId: 2, name: "CinemaHN Hoàn Kiếm" },
+            { cinemaId: 3, name: "CinemaDN Hải Châu" }
+          ];
+      setCinemas(cList);
+
+      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, selectedCinemaId);
+
+      let qtyOverrides = {};
+      try {
+        qtyOverrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+      } catch (e) {}
 
       const normalizedFoods = foodsData && foodsData.length > 0
         ? foodsData.map(f => {
             const trend = Math.floor(Math.random() * 30) - 10;
             const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
-            const derivedSold = foodSales.get(String(foodId)) || 0;
-            const apiSold = Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0);
-            const shouldDeriveStock = apiSold === 0 && derivedSold > 0;
+            const stat = foodStatsMap.get(String(foodId)) || { month: 0, week: 0, today: 0 };
+            const price = Number(f.price ?? f.Price ?? 0);
+            
+            const soldThisMonth = Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
+            const soldThisWeek = Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
+            const soldToday = Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
+
+            const rawQty = Number(f.quantity ?? f.Quantity ?? 100);
+            const key = `food_${foodId}`;
+            const finalQty = qtyOverrides[key] !== undefined
+              ? Number(qtyOverrides[key])
+              : (stat.month > 0 ? Math.max(0, rawQty - stat.month) : rawQty);
+
             return {
               id: foodId,
               itemType: 'food',
               name: f.foodName ?? f.FoodName,
               category: f.category ?? f.Category ?? "Khác",
-              price: Number(f.price ?? f.Price ?? 0),
-              quantity: Math.max(0, Number(f.quantity ?? f.Quantity ?? 0) - (shouldDeriveStock ? derivedSold : 0)),
+              price: price,
+              quantity: finalQty,
               imageUrl: f.imageUrl ?? f.ImageUrl,
               isAvailable: f.isAvailable ?? f.IsAvailable ?? true,
-              soldThisMonth: Math.max(apiSold, derivedSold),
-              revenueThisMonth: Math.max(Number(f.revenueThisMonth ?? f.RevenueThisMonth ?? 0), derivedSold * Number(f.price ?? f.Price ?? 0)),
-              soldThisWeek: Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0),
-              revenueThisWeek: Number(f.revenueThisWeek ?? f.RevenueThisWeek ?? 0),
-              soldToday: Number(f.soldToday ?? f.SoldToday ?? 0),
-              revenueToday: Number(f.revenueToday ?? f.RevenueToday ?? 0),
+              soldThisMonth: soldThisMonth,
+              revenueThisMonth: soldThisMonth * price,
+              soldThisWeek: soldThisWeek,
+              revenueThisWeek: soldThisWeek * price,
+              soldToday: soldToday,
+              revenueToday: soldToday * price,
               trend: trend,
-              revenue: f.revenueThisMonth || 0,
+              revenue: soldThisMonth * price,
               originalData: f
             };
           })
-        : MOCK_FOODS; // Giữ mock nếu API lỗi hoặc trả rỗng
+        : MOCK_FOODS;
 
       const normalizedCombos = combosData && combosData.length > 0
         ? combosData.map(c => {
             const trend = Math.floor(Math.random() * 20) - 5;
             const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
-            const derivedSold = comboSales.get(String(comboId)) || 0;
-            const apiSold = Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0);
-            const shouldDeriveStock = apiSold === 0 && derivedSold > 0;
+            const stat = comboStatsMap.get(String(comboId)) || { month: 0, week: 0, today: 0 };
+            const price = Number(c.price ?? c.Price ?? 0);
+
+            const soldThisMonth = Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
+            const soldThisWeek = Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
+            const soldToday = Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
+
+            const rawQty = Number(c.quantity ?? c.Quantity ?? 100);
+            const key = `combo_${comboId}`;
+            const finalQty = qtyOverrides[key] !== undefined
+              ? Number(qtyOverrides[key])
+              : (stat.month > 0 ? Math.max(0, rawQty - stat.month) : rawQty);
+
             return {
               id: comboId,
               itemType: 'combo',
               name: c.comboName ?? c.ComboName,
               category: "Combo",
-              price: Number(c.price ?? c.Price ?? 0),
-              quantity: Math.max(0, Number(c.quantity ?? c.Quantity ?? 0) - (shouldDeriveStock ? derivedSold : 0)),
+              price: price,
+              quantity: finalQty,
               imageUrl: c.imageUrl ?? c.ImageUrl,
               isAvailable: c.isAvailable ?? c.IsAvailable ?? true,
-              soldThisMonth: Math.max(apiSold, derivedSold),
-              revenueThisMonth: Math.max(Number(c.revenueThisMonth ?? c.RevenueThisMonth ?? 0), derivedSold * Number(c.price ?? c.Price ?? 0)),
-              soldThisWeek: Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0),
-              revenueThisWeek: Number(c.revenueThisWeek ?? c.RevenueThisWeek ?? 0),
-              soldToday: Number(c.soldToday ?? c.SoldToday ?? 0),
-              revenueToday: Number(c.revenueToday ?? c.RevenueToday ?? 0),
+              soldThisMonth: soldThisMonth,
+              revenueThisMonth: soldThisMonth * price,
+              soldThisWeek: soldThisWeek,
+              revenueThisWeek: soldThisWeek * price,
+              soldToday: soldToday,
+              revenueToday: soldToday * price,
               trend: trend,
-              revenue: c.revenueThisMonth || 0,
+              revenue: soldThisMonth * price,
               originalData: c
             };
           })
-        : MOCK_COMBOS; // Giữ mock nếu API lỗi hoặc trả rỗng
+        : MOCK_COMBOS;
 
-      setItems([...normalizedFoods, ...normalizedCombos].sort((a, b) => b.id - a.id));
+      setItems([...normalizedFoods, ...normalizedCombos].sort((a, b) => a.id - b.id));
     } catch (err) {
       setError(err.message || "Lỗi khi tải dữ liệu");
-      // Giữ nguyên mock data, không xoá
     } finally {
       setLoading(false);
     }
   };
 
-
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCinemaId]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -196,7 +346,7 @@ export function useFood() {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     let finalValue = type === "checkbox" ? checked : value;
-    
+
     if (name === "name" || name === "category") {
       finalValue = capitalizeWords(finalValue);
     }
@@ -247,7 +397,7 @@ export function useFood() {
           quantity: Number(formData.quantity),
           imageUrl: formData.imageUrl,
           isAvailable: formData.isAvailable,
-          description: formData.category // map tạm category vào description nếu cần
+          description: formData.category
         });
       }
       setShowAddModal(false);
@@ -265,7 +415,7 @@ export function useFood() {
     setFormData({
       itemType: item.itemType,
       name: item.name,
-      category: item.category || item.originalData.description || "",
+      category: item.category || item.originalData?.category || item.originalData?.description || "",
       price: item.price,
       quantity: item.quantity,
       imageUrl: item.imageUrl || "",
@@ -310,6 +460,15 @@ export function useFood() {
   // Import Mode
   const openImportModal = (item) => {
     setSelectedItem(item);
+    setFormData({
+      itemType: item.itemType,
+      name: item.name,
+      category: item.category || item.originalData?.category || item.originalData?.description || "",
+      price: item.price,
+      quantity: item.quantity,
+      imageUrl: item.imageUrl || "",
+      isAvailable: item.isAvailable
+    });
     setImportQuantity(10);
     setShowImportModal(true);
   };
@@ -323,7 +482,7 @@ export function useFood() {
       if (selectedItem.itemType === 'food') {
         await updateFood(selectedItem.id, {
           foodName: selectedItem.name,
-          category: selectedItem.originalData.category,
+          category: selectedItem.originalData?.category || selectedItem.category,
           price: selectedItem.price,
           quantity: newQuantity,
           imageUrl: selectedItem.imageUrl,
@@ -336,9 +495,16 @@ export function useFood() {
           quantity: newQuantity,
           imageUrl: selectedItem.imageUrl,
           isAvailable: selectedItem.isAvailable,
-          description: selectedItem.originalData.description
+          description: selectedItem.originalData?.description || selectedItem.category
         });
       }
+      const key = `${selectedItem.itemType}_${selectedItem.id}`;
+      try {
+        const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+        overrides[key] = newQuantity;
+        localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
+      } catch (e) {}
+
       setShowImportModal(false);
       loadData();
     } catch (err) {
@@ -437,6 +603,7 @@ export function useFood() {
     showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity,
     
     timeFilter, setTimeFilter, getSold, getRev,
-    formData, setFormData, handleInputChange, handleFileChange, selectedItem
+    formData, setFormData, handleInputChange, handleFileChange, selectedItem,
+    cinemas, selectedCinemaId, setSelectedCinemaId
   };
 }

@@ -8,13 +8,24 @@ function normalizeList(data) {
 }
 
 export async function fetchFoods() {
-  const response = await fetch(`${API_URL}/Foods`, {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error(getErrorMessage(await readResponse(response)) || "Lỗi khi tải danh sách đồ ăn");
+  // Ưu tiên gọi /Foods/Available trước để tránh lỗi 500 do vòng lặp dữ liệu trên Backend (/Foods)
+  try {
+    const resAvailable = await fetch(`${API_URL}/Foods/Available`, { headers: getAuthHeaders() });
+    if (resAvailable.ok) {
+      const data = await readResponse(resAvailable);
+      const list = normalizeList(data);
+      if (list && list.length > 0) return list;
+    }
+  } catch (e) {
+    // Ignore and fallback
   }
-  return normalizeList(await readResponse(response));
+
+  const response = await fetch(`${API_URL}/Foods`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data) || "Lỗi khi tải danh sách đồ ăn");
+  }
+  return normalizeList(data);
 }
 
 export async function fetchBookingsForInventory() {
@@ -26,6 +37,19 @@ export async function fetchBookingsForInventory() {
     throw new Error(getErrorMessage(data) || "Lỗi khi tải dữ liệu bán hàng");
   }
   return Array.isArray(data) ? data : (data?.$values ?? data?.data ?? []);
+}
+
+export async function fetchOrdersForInventory() {
+  try {
+    const response = await fetch(`${API_URL}/Orders`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) return [];
+    const data = await readResponse(response);
+    return Array.isArray(data) ? data : (data?.$values ?? data?.data ?? []);
+  } catch (e) {
+    return [];
+  }
 }
 
 export async function createFood(foodData) {
@@ -69,13 +93,24 @@ export async function deleteFood(id) {
 // ================= COMBO APIS =================
 
 export async function fetchCombos() {
-  const response = await fetch(`${API_URL}/Combos`, {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error(getErrorMessage(await readResponse(response)) || "Lỗi khi tải danh sách combo");
+  // Ưu tiên gọi /Combos/Available trước để tránh lỗi 500 do vòng lặp dữ liệu trên Backend (/Combos)
+  try {
+    const resAvailable = await fetch(`${API_URL}/Combos/Available`, { headers: getAuthHeaders() });
+    if (resAvailable.ok) {
+      const data = await readResponse(resAvailable);
+      const list = normalizeList(data);
+      if (list && list.length > 0) return list;
+    }
+  } catch (e) {
+    // Ignore and fallback
   }
-  return normalizeList(await readResponse(response));
+
+  const response = await fetch(`${API_URL}/Combos`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data) || "Lỗi khi tải danh sách combo");
+  }
+  return normalizeList(data);
 }
 
 export async function createCombo(comboData) {

@@ -178,7 +178,7 @@ export default function Customer() {
                     <th>SĐT</th>
                     <th>Email</th>
                     <th>Nhóm</th>
-                    <th>Tổng chi tiêu</th>
+                    <th>Tổng chi tiêu <span style={{ fontSize: 11, marginLeft: 4, color: "#a855f7" }}>▼</span></th>
                     <th>Ngày đăng ký</th>
                   </tr>
                 </thead>

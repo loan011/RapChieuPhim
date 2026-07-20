@@ -300,7 +300,11 @@ export default function Dashboard() {
                             <span className="legend-dot" style={{ background: FOOD_COLORS[idx % FOOD_COLORS.length] }}></span>
                             {f.name.length > 15 ? f.name.substring(0, 15) + '...' : f.name}
                           </div>
-                          <div className="custom-legend-right">{f.percent}%</div>
+                          <div className="custom-legend-right" style={{ display: 'flex', gap: '12px', textAlign: 'right' }}>
+                            <span style={{ color: '#9ca3af' }}>{f.quantity || 0} phần</span>
+                            <span style={{ color: '#9ca3af' }}>{formatMoney(f.value)}đ</span>
+                            <span style={{ minWidth: '40px', fontWeight: 'bold' }}>{f.percent}%</span>
+                          </div>
                         </li>
                       ))}
                     </ul>

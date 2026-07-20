@@ -6,6 +6,7 @@ import {
   checkOrderStatus,
   confirmOrder,
   cancelOrder,
+  deductInventory,
 } from "./ComboService";
 
 export function useCombo() {
@@ -140,6 +141,9 @@ export function useCombo() {
         date: new Date().toLocaleDateString("en-CA"),
         createdAt: new Date().toISOString()
       };
+
+      // Trừ tồn kho trực tiếp vào Database cho các món đã bán qua QR
+      await deductInventory(res.items);
 
       setSuccess(res);
       setQuantities({});

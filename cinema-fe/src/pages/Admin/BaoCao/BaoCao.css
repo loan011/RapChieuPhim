@@ -1,0 +1,252 @@
+.bao-cao-container {
+  padding: 24px;
+  color: #fff;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.bc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.bc-title-group h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.bc-title-group p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.bc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.bc-stat-card {
+  background: #16161a;
+  border: 1px solid #2c2c35;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.bc-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #3b82f6;
+}
+
+.bc-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.bc-stat-icon.blue { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.bc-stat-icon.green { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.bc-stat-icon.purple { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+.bc-stat-icon.orange { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+.bc-stat-info h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+  margin: 0 0 4px 0;
+}
+
+.bc-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.bc-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: #16161a;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #2c2c35;
+  align-items: center;
+}
+
+.bc-search-input {
+  flex: 1;
+  min-width: 220px;
+  background: #0f0f12;
+  border: 1px solid #2c2c35;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.bc-search-input:focus {
+  border-color: #3b82f6;
+}
+
+.bc-select {
+  background: #0f0f12;
+  border: 1px solid #2c2c35;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.bc-reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bc-report-card {
+  background: #16161a;
+  border: 1px solid #2c2c35;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.bc-report-card:hover {
+  border-color: #ff3b30;
+}
+
+.bc-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-b: 1px solid #2c2c35;
+}
+
+.bc-staff-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bc-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff3b30, #ff7b00);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.bc-staff-meta h4 {
+  margin: 0 0 2px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.bc-staff-meta p {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.bc-report-time {
+  text-align: right;
+}
+
+.bc-date-badge {
+  display: inline-block;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 4px;
+}
+
+.bc-time-text {
+  font-size: 11px;
+  color: #6b7280;
+  display: block;
+}
+
+.bc-summary-text {
+  background: #0f0f12;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d1d5db;
+  white-space: pre-wrap;
+  margin-bottom: 16px;
+  border: 1px solid #24242d;
+}
+
+.bc-metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-top: 8px;
+}
+
+.bc-metric {
+  display: flex;
+  flex-direction: column;
+}
+
+.bc-metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.bc-metric-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.bc-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #16161a;
+  border-radius: 12px;
+  border: 1px dashed #2c2c35;
+  color: #9ca3af;
+}
+
+.bc-empty-state svg {
+  font-size: 48px;
+  color: #4b5563;
+  margin-bottom: 12px;
+}

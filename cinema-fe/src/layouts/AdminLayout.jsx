@@ -15,6 +15,7 @@ import {
   MdKeyboardArrowDown,
   MdFastfood,
   MdDashboard,
+  MdAssignment,
 } from "react-icons/md";
 import { useState, useEffect } from "react";
 import { getApiUrl, getAuthHeaders, readResponse } from "../services/apiHelper";
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",            label: "Suất Chiếu",             icon: <MdCalendarMonth /> },
+  { to: "/admin/bao-cao",               label: "Báo Cáo",                icon: <MdAssignment /> },
   { to: "/admin/thong-bao",             label: "Thông Báo",              icon: <MdNotifications /> },
   { to: "/admin/do-an",                 label: "Đồ Ăn & Combo",          icon: <MdFastfood /> },
 ];
@@ -44,7 +46,8 @@ export default function AdminLayout() {
       })
       .then(data => {
         const arr = data?.$values || data || [];
-        setReports(arr.sort((a, b) => new Date(b.reportDate) - new Date(a.reportDate)));
+        const safeArr = Array.isArray(arr) ? arr : [];
+        setReports(safeArr.sort((a, b) => new Date(b.reportDate) - new Date(a.reportDate)));
       })
       .catch(err => console.error("Lỗi tải thông báo:", err));
   }, []);

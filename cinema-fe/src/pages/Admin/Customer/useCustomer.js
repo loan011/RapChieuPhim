@@ -269,17 +269,19 @@ export function useCustomer() {
     setFilterGroup("");
   }
 
-  /* ── Derived filtered list ── */
+  /* ── Derived filtered list (Sorted by Total Spend Descending) ── */
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    return list.filter((c) => {
-      const matchSearch = !kw ||
-        getCustomerName(c).toLowerCase().includes(kw)  ||
-        getCustomerEmail(c).toLowerCase().includes(kw) ||
-        getCustomerPhone(c).toLowerCase().includes(kw);
-      const matchGroup = !filterGroup || getCustomerGroup(c, spendMap) === filterGroup;
-      return matchSearch && matchGroup;
-    });
+    return list
+      .filter((c) => {
+        const matchSearch = !kw ||
+          getCustomerName(c).toLowerCase().includes(kw)  ||
+          getCustomerEmail(c).toLowerCase().includes(kw) ||
+          getCustomerPhone(c).toLowerCase().includes(kw);
+        const matchGroup = !filterGroup || getCustomerGroup(c, spendMap) === filterGroup;
+        return matchSearch && matchGroup;
+      })
+      .sort((a, b) => getCustomerSpend(b, spendMap) - getCustomerSpend(a, spendMap));
   }, [list, spendMap, search, filterGroup]);
 
   /* ── Stats ── */

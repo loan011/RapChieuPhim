@@ -17,11 +17,59 @@ import {
   getDashboardFoodSources,
 } from "./dashboardService";
 
-function buildFoodDistributions(source, timeFilter) {
+function getOrderCinemaId(order) {
+  if (!order) return "";
+  let cid = order.cinemaId ?? order.CinemaId;
+  if (cid) return String(cid);
+
+  if (order.staff) {
+    cid = order.staff.cinemaId ?? order.staff.CinemaId ?? order.staff.cinema?.cinemaId ?? order.staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+  }
+  if (order.Staff) {
+    cid = order.Staff.cinemaId ?? order.Staff.CinemaId ?? order.Staff.cinema?.cinemaId ?? order.Staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+  }
+
+  const booking = order.booking ?? order.Booking;
+  if (booking) {
+    const showtime = booking.showtime ?? booking.Showtime;
+    if (showtime) {
+      cid = showtime.cinemaId ?? showtime.CinemaId;
+      if (cid) return String(cid);
+      const room = showtime.room ?? showtime.Room;
+      if (room) {
+        cid = room.cinemaId ?? room.CinemaId;
+        if (cid) return String(cid);
+      }
+    }
+  }
+
+  // Fallback nếu order chưa được ghi đè cinemaId
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user && (user.cinemaId || user.CinemaId)) {
+      return String(user.cinemaId || user.CinemaId);
+    }
+  } catch (e) {}
+
+  return "";
+}
+
+function buildFoodDistributions(source, timeFilter, cinemaId) {
   const orders = toList(source?.orders);
-  const revenueByName = new Map();
+  const dataByName = new Map();
 
   orders.forEach((order) => {
+    if (!order) return;
+    
+    // Lọc theo chi nhánh
+    if (cinemaId) {
+      const orderCinemaId = getOrderCinemaId(order);
+      // Nếu order xác định được chi nhánh và khác chi nhánh đang chọn thì bỏ qua
+      if (orderCinemaId && orderCinemaId !== String(cinemaId)) return;
+    }
+
     // Lọc đơn hàng đã hủy hoặc chưa thanh toán
     const status = String(order.status ?? order.Status ?? "").toLowerCase();
     if (["cancelled", "canceled", "pending", "unpaid"].some(s => status.includes(s))) return;
@@ -30,12 +78,27 @@ function buildFoodDistributions(source, timeFilter) {
     if (timeFilter) {
       const rawDate = order.orderDate ?? order.OrderDate ?? order.createdAt ?? order.CreatedAt;
       if (rawDate) {
-        const orderDay = String(rawDate).split("T")[0];
-        if (!orderDay.startsWith(timeFilter.substring(0, 7)) && orderDay !== timeFilter) {
-          // Nếu filter là ngày cụ thể (YYYY-MM-DD), so khớp chính xác
-          if (/^\d{4}-\d{2}-\d{2}$/.test(timeFilter) && orderDay !== timeFilter) return;
-          // Nếu filter là tháng (YYYY-MM), so khớp tháng
-          if (/^\d{4}-\d{2}$/.test(timeFilter) && !orderDay.startsWith(timeFilter)) return;
+        const orderDay = String(rawDate).split("T")[0]; // YYYY-MM-DD
+        const orderMonth = orderDay.substring(0, 7); // YYYY-MM
+
+        if (timeFilter === 'month') {
+          // Lấy tháng hiện tại
+          const currentMonth = new Date().toISOString().substring(0, 7);
+          if (orderMonth !== currentMonth) return;
+        } else if (timeFilter === 'week') {
+          // Lọc 7 ngày gần nhất
+          const orderTime = new Date(orderDay).getTime();
+          const now = new Date().getTime();
+          if (now - orderTime > 7 * 24 * 60 * 60 * 1000) return;
+        } else if (timeFilter === 'today') {
+          const todayStr = new Date().toISOString().substring(0, 10);
+          if (orderDay !== todayStr) return;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(timeFilter)) {
+          // Lọc chính xác theo ngày
+          if (orderDay !== timeFilter) return;
+        } else if (/^\d{4}-\d{2}$/.test(timeFilter)) {
+          // Lọc chính xác theo tháng
+          if (orderMonth !== timeFilter) return;
         }
       }
     }
@@ -53,14 +116,20 @@ function buildFoodDistributions(source, timeFilter) {
       const price    = Number(item.unitPrice ?? item.UnitPrice ?? item.price ?? item.Price ?? 0);
       const revenue  = subtotal > 0 ? subtotal : price * qty;
 
-      revenueByName.set(name, (revenueByName.get(name) || 0) + revenue);
+      const prev = dataByName.get(name) || { revenue: 0, quantity: 0 };
+      dataByName.set(name, {
+        revenue: prev.revenue + revenue,
+        quantity: prev.quantity + qty
+      });
     });
   });
 
-  const total = Array.from(revenueByName.values()).reduce((s, v) => s + v, 0);
-  return Array.from(revenueByName, ([name, value]) => ({
-    name, value,
-    percent: total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0,
+  const total = Array.from(dataByName.values()).reduce((s, v) => s + v.revenue, 0);
+  return Array.from(dataByName, ([name, data]) => ({
+    name,
+    value: data.revenue,
+    quantity: data.quantity,
+    percent: total > 0 ? Number(((data.revenue / total) * 100).toFixed(1)) : 0,
   })).sort((a, b) => b.value - a.value);
 }
 
@@ -155,6 +224,7 @@ function normalizeFoodDistributions(chartDataResp) {
   return toList(raw).map(f => ({
     name: f.foodName || f.FoodName || f.name || f.Name || "Chưa rõ",
     value: f.revenue || f.Revenue || f.value || f.Value || 0,
+    quantity: f.quantity || f.Quantity || 0,
     percent: f.percentage || f.Percentage || f.percent || f.Percent || 0,
   }));
 }
@@ -224,27 +294,25 @@ export function useDashboard() {
   }
 
   // ─── Background fetch food distribution ────────────────────────
-  async function fetchFoodDistributionBg(filter, _cinemaId, cacheKey) {
-    const foodCacheKey = `food__${cacheKey}`;
+  async function fetchFoodDistributionBg(filter, cinemaId, cacheKey) {
+    const foodCacheKey = `food__${cacheKey}__${cinemaId}`;
     if (cacheRef.current[foodCacheKey]) {
-      applyFoodDistribution(cacheRef.current[foodCacheKey], filter);
+      applyFoodDistribution(cacheRef.current[foodCacheKey], filter, cinemaId);
       return;
     }
     try {
       const foodSources = await getDashboardFoodSources();
       cacheRef.current[foodCacheKey] = foodSources;
-      applyFoodDistribution(foodSources, filter);
+      applyFoodDistribution(foodSources, filter, cinemaId);
     } catch (e) {
       // Silent fail — chart stays empty if backend returns error
     }
   }
 
-  function applyFoodDistribution(foodSources, filter) {
+  function applyFoodDistribution(foodSources, filter, cinemaId) {
     // Pass filter trực tiếp (có thể là date YYYY-MM-DD hoặc period string)
-    const distributions = buildFoodDistributions(foodSources, filter);
-    if (distributions.length > 0) {
-      setChartData(prev => prev ? { ...prev, foodDistributions: distributions } : prev);
-    }
+    const distributions = buildFoodDistributions(foodSources, filter, cinemaId);
+    setChartData(prev => prev ? { ...prev, foodDistributions: distributions } : prev);
   }
 
   function applyData({ statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp }) {

@@ -14,8 +14,9 @@ export default function Food() {
     showEditModal, setShowEditModal, openEditModal, handleEditSubmit,
     showDeleteModal, setShowDeleteModal, openDeleteModal, confirmDelete,
     showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity,
-    formData, handleInputChange, handleFileChange,
-    timeFilter, setTimeFilter, getSold, getRev
+    formData, handleInputChange, handleFileChange, selectedItem,
+    timeFilter, setTimeFilter, getSold, getRev,
+    cinemas, selectedCinemaId, setSelectedCinemaId
   } = useFood();
 
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -61,6 +62,20 @@ export default function Food() {
               onChange={e => setTimeFilter(e.target.value)}
               style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', color: '#9ca3af', cursor: 'pointer', fontSize: 13 }}
             />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#1c1c24', border: '1px solid #3a3a45', borderRadius: 8, padding: '4px 12px' }}>
+            <select
+              value={selectedCinemaId}
+              onChange={(e) => setSelectedCinemaId(e.target.value)}
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', color: '#fff', cursor: 'pointer', fontSize: 13 }}
+            >
+              <option value="" style={{ background: '#1c1c24', color: '#fff' }}>Tất cả Chi Nhánh</option>
+              {cinemas.map((c) => (
+                <option key={c.cinemaId || c.id} value={c.cinemaId || c.id} style={{ background: '#1c1c24', color: '#fff' }}>
+                  {c.name || c.cinemaName}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -181,7 +196,7 @@ export default function Food() {
                       </span>
                     </td>
                     <td style={{ fontWeight: 500 }}>{item.price.toLocaleString("vi-VN")}đ</td>
-                    <td>{Math.max(0, item.quantity - getSold(item))}</td>
+                    <td style={{ fontWeight: 600 }}>{item.quantity}</td>
                     <td>{getSold(item)}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -266,7 +281,7 @@ export default function Food() {
           <div className="fd-widget">
             <h3>Top món bán chạy</h3>
             {stats.topSelling.map((item, index) => (
-              <div key={item.id} className="fd-top-item">
+              <div key={`${item.itemType || 'item'}-${item.id}-${index}`} className="fd-top-item">
                 <div className={`fd-top-rank rank-${index + 1}`}>{index + 1}</div>
                 {item.imageUrl ? <img src={item.imageUrl} className="fd-top-img" alt={item.name}/> : <div className="fd-top-img" style={{background: '#f3f4f6'}}></div>}
                 <div className="fd-top-info">
@@ -286,8 +301,8 @@ export default function Food() {
             {stats.lowStockItems.length === 0 ? (
               <p style={{ fontSize: 12, color: '#6b7280' }}>Kho hàng đang ổn định.</p>
             ) : (
-              stats.lowStockItems.slice(0, 3).map(item => (
-                <div key={item.id} className="fd-alert-item">
+              stats.lowStockItems.slice(0, 3).map((item, index) => (
+                <div key={`${item.itemType || 'item'}-${item.id}-${index}`} className="fd-alert-item">
                   <MdWarning className="fd-alert-icon" />
                   <div className="fd-alert-info">
                     <h5>{item.name}</h5>
@@ -422,7 +437,7 @@ export default function Food() {
         <div className="food-modal-overlay">
           <div className="food-modal" style={{ width: 400 }}>
             <div className="modal-header">
-              <h3>Nhập Hàng: {formData.name}</h3>
+              <h3>Nhập Hàng: {selectedItem?.name || formData.name}</h3>
               <button className="btn-close" onClick={() => setShowImportModal(false)}>&times;</button>
             </div>
             <form onSubmit={handleImportSubmit}>
@@ -438,8 +453,8 @@ export default function Food() {
                     style={{ fontSize: 18, fontWeight: 'bold' }}
                   />
                   <p style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>
-                    Tồn kho hiện tại: {formData.quantity} <br/>
-                    Tồn kho sau khi nhập: {Number(formData.quantity) + Number(importQuantity)}
+                    Tồn kho hiện tại: {selectedItem?.quantity ?? formData.quantity} <br/>
+                    Tồn kho sau khi nhập: {Number(selectedItem?.quantity ?? formData.quantity) + Number(importQuantity)}
                   </p>
                 </div>
               </div>

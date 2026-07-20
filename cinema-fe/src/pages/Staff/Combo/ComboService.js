@@ -103,7 +103,17 @@ export async function getCombosList() {
  * Tạo đơn hàng với trạng thái Pending (dùng cho luồng QR - tạo trước, confirm sau)
  */
 export async function createPendingOrder(payload) {
+  let staffId = null;
+  let cinemaId = null;
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    staffId = user?.userId ?? user?.UserId ?? user?.staffId ?? user?.StaffId;
+    cinemaId = user?.cinemaId ?? user?.CinemaId;
+  } catch (e) {}
+
   const orderPayload = {
+    staffId: staffId,
+    cinemaId: cinemaId,
     bookingId: null,
     discountId: null,
     orderType: "Takeaway",
@@ -141,6 +151,14 @@ export async function createPendingOrder(payload) {
   if (!orderId) {
     console.error("[createPendingOrder] Response:", JSON.stringify(orderResult));
     throw new Error("Không nhận được mã đơn hàng từ máy chủ!");
+  }
+
+  if (orderId && cinemaId) {
+    try {
+      const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+      map[String(orderId)] = String(cinemaId);
+      localStorage.setItem("order_cinema_map", JSON.stringify(map));
+    } catch (e) {}
   }
 
   return { orderId, orderResult };
@@ -198,8 +216,129 @@ export async function cancelOrder(orderId) {
   }
 }
 
+export async function deductInventory(items) {
+  if (!Array.isArray(items) || items.length === 0) return;
+
+  // Load fallback list if single GET fails
+  let allFoods = [];
+  let allCombos = [];
+  try {
+    const [fRes, cRes] = await Promise.all([
+      fetch(`${API_URL}/Foods`, { headers: getAuthHeaders() }),
+      fetch(`${API_URL}/Combos`, { headers: getAuthHeaders() })
+    ]);
+    if (fRes.ok) {
+      const d = await readResponse(fRes);
+      allFoods = Array.isArray(d) ? d : (d?.$values ?? []);
+    }
+    if (cRes.ok) {
+      const d = await readResponse(cRes);
+      allCombos = Array.isArray(d) ? d : (d?.$values ?? []);
+    }
+  } catch (e) {}
+
+  let overrides = {};
+  try {
+    overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+  } catch (e) {}
+
+  for (const item of items) {
+    const qty = Number(item.quantity || 1);
+    if (qty <= 0) continue;
+
+    const isFood = item.type === "food" || item.foodId != null;
+    const isCombo = item.type === "combo" || item.comboId != null;
+    const id = item.id ?? item.foodId ?? item.comboId;
+
+    if (!id) continue;
+    const key = `${isFood ? 'food' : 'combo'}_${id}`;
+
+    try {
+      if (isFood) {
+        let foodData = null;
+        try {
+          const res = await fetch(`${API_URL}/Foods/${id}`, { headers: getAuthHeaders() });
+          if (res.ok) foodData = await readResponse(res);
+        } catch (e) {}
+
+        if (!foodData) {
+          foodData = allFoods.find(f => (f.foodId ?? f.FoodId ?? f.id) == id);
+        }
+
+        const baseQty = Number(foodData?.quantity ?? foodData?.Quantity ?? item.quantity ?? 100);
+        const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+        const newQty = Math.max(0, currentQty - qty);
+        overrides[key] = newQty;
+
+        await fetch(`${API_URL}/Foods/${id}`, {
+          method: "PUT",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            foodName: foodData?.foodName ?? foodData?.FoodName ?? item.name,
+            category: foodData?.category ?? foodData?.Category ?? "Khác",
+            price: Number(foodData?.price ?? foodData?.Price ?? item.price ?? 0),
+            quantity: newQty,
+            imageUrl: foodData?.imageUrl ?? foodData?.ImageUrl ?? "",
+            isAvailable: foodData?.isAvailable ?? foodData?.IsAvailable ?? true
+          })
+        });
+      } else if (isCombo) {
+        let comboData = null;
+        try {
+          const res = await fetch(`${API_URL}/Combos/${id}`, { headers: getAuthHeaders() });
+          if (res.ok) comboData = await readResponse(res);
+        } catch (e) {}
+
+        if (!comboData) {
+          comboData = allCombos.find(c => (c.comboId ?? c.ComboId ?? c.id) == id);
+        }
+
+        const baseQty = Number(comboData?.quantity ?? comboData?.Quantity ?? item.quantity ?? 100);
+        const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+        const newQty = Math.max(0, currentQty - qty);
+        overrides[key] = newQty;
+
+        await fetch(`${API_URL}/Combos/${id}`, {
+          method: "PUT",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            comboName: comboData?.comboName ?? comboData?.ComboName ?? item.name,
+            price: Number(comboData?.price ?? comboData?.Price ?? item.price ?? 0),
+            quantity: newQty,
+            imageUrl: comboData?.imageUrl ?? comboData?.ImageUrl ?? "",
+            isAvailable: comboData?.isAvailable ?? comboData?.IsAvailable ?? true,
+            description: comboData?.description ?? comboData?.Description ?? ""
+          })
+        });
+      }
+    } catch (e) {
+      console.warn("[deductInventory] Không thể cập nhật tồn kho:", e);
+    }
+  }
+
+  try {
+    localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
+  } catch (e) {}
+}
+
 export async function sellCombo(payload) {
+  let staffId = null;
+  let cinemaId = null;
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    staffId = user?.userId ?? user?.UserId ?? user?.staffId ?? user?.StaffId;
+    cinemaId = user?.cinemaId ?? user?.CinemaId;
+  } catch (e) {}
+
   const orderPayload = {
+    staffId: staffId,
+    cinemaId: cinemaId,
     bookingId: null,
     discountId: null,
     orderType: "Takeaway",
@@ -227,7 +366,6 @@ export async function sellCombo(payload) {
   }
 
   const orderResult = await readResponse(response);
-  // Backend trả về { Message, Data: { OrderId, ... } } - cover cả PascalCase và camelCase
   const orderId =
     orderResult?.Data?.OrderId ??
     orderResult?.data?.OrderId ??
@@ -239,6 +377,14 @@ export async function sellCombo(payload) {
   if (!orderId) {
     console.error("[sellCombo] Response từ server:", JSON.stringify(orderResult));
     throw new Error("Không nhận được mã đơn hàng từ máy chủ! Kiểm tra console để biết thêm.");
+  }
+
+  if (orderId && cinemaId) {
+    try {
+      const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+      map[String(orderId)] = String(cinemaId);
+      localStorage.setItem("order_cinema_map", JSON.stringify(map));
+    } catch (e) {}
   }
 
   // 2. Confirm payment by patching order status to "Confirmed"
@@ -255,6 +401,9 @@ export async function sellCombo(payload) {
     throw new Error("Xác nhận thanh toán đơn hàng thất bại!");
   }
 
+  // 3. Deduct stock in Database (Foods / Combos)
+  await deductInventory(payload.items);
+
   return {
     success: true,
     id: `CB${orderId}`,
@@ -263,7 +412,7 @@ export async function sellCombo(payload) {
     items: payload.items,
     totalAmount: payload.totalAmount,
     time: new Date().toLocaleString("vi-VN"),
-    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD
+    date: new Date().toLocaleDateString("en-CA"),
     createdAt: new Date().toISOString()
   };
 }
