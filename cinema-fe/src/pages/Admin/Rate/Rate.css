@@ -99,73 +99,127 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-/* ── Unified filter block ── */
-.lc-filter-block {
-  padding: 14px 18px 10px;
+/* ── Dark Filter Block ── */
+.lc-filter-container-dark {
+  background: #171a21;
+  border-radius: 12px;
+  padding: 18px 24px;
+  margin-bottom: 24px;
 }
-.lc-filter-row-top {
+.lc-filter-dark-title {
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+.lc-filter-dark-grid {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
   flex-wrap: wrap;
+  gap: 16px;
 }
-.lc-cinema-filter-group {
+.lc-filter-dark-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1 1 320px;
-  min-width: 0;
+  flex: 1 1 220px;
+  min-width: 180px;
 }
-.lc-cinema-search-wrap--inline {
-  margin-bottom: 0 !important;
-  max-width: 260px;
-}
-.lc-movie-control-group--inline {
-  flex: 1 1 300px;
-  min-width: 0;
-  margin-top: 0 !important;
-  align-self: flex-end;
-}
-.lc-filter-bar--inline {
-  margin-top: 10px;
-  margin-bottom: 0;
-  padding-top: 10px;
-  border-top: 1px solid #f3f4f6;
-}
-.lc-section-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0 0 10px;
-}
-.lc-cinema-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.lc-cinema-tab {
-  padding: 6px 16px;
-  border-radius: 20px;
-  border: 1.5px solid #e5e7eb;
-  background: #fff;
+.lc-filter-dark-group label {
+  color: #d1d5db;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
 }
-.lc-cinema-tab:hover { border-color: #f97316; color: #f97316; }
-.lc-cinema-tab--active {
-  background: #f97316 !important;
-  border-color: #f97316 !important;
-  color: #fff !important;
+.lc-filter-dark-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.lc-filter-dark-input {
+  width: 100%;
+  background: #232731;
+  border: 1.5px solid #2d313a;
+  border-radius: 8px;
+  padding: 10px 36px 10px 14px;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  appearance: none;
+}
+.lc-filter-dark-input:focus {
+  border-color: #ff3b3b;
+}
+.lc-filter-dark-input::placeholder {
+  color: #6b7280;
+}
+.lc-filter-dark-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+select.lc-filter-dark-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d1d5db' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+.lc-filter-dark-icon {
+  position: absolute;
+  left: 14px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+.lc-filter-dark-icon-right {
+  position: absolute;
+  right: 14px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+.lc-filter-dark-input-wrap > .lc-filter-dark-icon + .lc-filter-dark-input {
+  padding-left: 40px;
+}
+
+.lc-filter-dark-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex: 1 1 300px;
+  padding-top: 2px;
+}
+.lc-btn-dark-clear {
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lc-btn-dark-clear:hover {
+  background: #374151;
+  border-color: #6b7280;
+}
+.lc-btn-dark-search {
+  padding: 10px 20px;
+  background: #f9323f;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
   font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.lc-btn-dark-search:hover {
+  background: #e0202d;
 }
 
 /* ── Cinema search box ── */

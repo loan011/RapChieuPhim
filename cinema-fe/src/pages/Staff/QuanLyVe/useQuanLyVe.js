@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchTickets, removeTicket, addTicket, editTicket } from "./QuanLyVeService";
 import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
+import { getEmployeeList } from "../../Admin/Personnel/employeeService";
 import { EMPTY_FORM } from "../../Admin/Ticket/useTicket.js";
 
 export function useQuanLyVe() {
@@ -25,6 +26,8 @@ export function useQuanLyVe() {
     if (Array.isArray(data)) return data;
     if (Array.isArray(data?.$values)) return data.$values;
     if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.result)) return data.result;
     return [];
   }
 
@@ -33,13 +36,20 @@ export function useQuanLyVe() {
       setLoading(true);
       setError(null);
       
-      const [data, showtimes] = await Promise.all([
+      const [data, showtimes, staffData] = await Promise.all([
         fetchTickets(),
-        getShowtimeDetailList().catch(() => [])
+        getShowtimeDetailList().catch(() => []),
+        getEmployeeList().catch(() => [])
       ]);
       
       let normalized = normalizeArray(data);
       const normalizedShowtimes = normalizeArray(showtimes);
+      const normalizedStaff = normalizeArray(staffData);
+      
+      const staffNames = normalizedStaff
+        .map(s => s.fullName || s.FullName || s.name || s.Name || s.userName || s.UserName)
+        .filter(Boolean)
+        .map(n => n.toLowerCase().trim());
       
       const showtimeCinemaMap = {};
       normalizedShowtimes.forEach(st => {
@@ -55,6 +65,13 @@ export function useQuanLyVe() {
         if (userStr) {
           const user = JSON.parse(userStr);
           const staffCinemaId = String(user.cinemaId || user.CinemaId || "");
+          
+          // Also add current user to staff names just in case
+          const currentUserName = (user.fullName || user.FullName || user.name || user.Name || "").toLowerCase().trim();
+          if (currentUserName && !staffNames.includes(currentUserName)) {
+             staffNames.push(currentUserName);
+          }
+
           if (staffCinemaId) {
             normalized = normalized.filter((t) => {
               let tCinemaId = String(
@@ -92,6 +109,15 @@ export function useQuanLyVe() {
       } catch (e) {
         console.error("Lỗi lọc vé theo chi nhánh:", e);
       }
+
+      // Override customerName for Staff
+      normalized.forEach(t => {
+         const cName = (t.customerName || t.CustomerName || "").toLowerCase().trim();
+         if (staffNames.includes(cName)) {
+             t.customerName = "Khách mua tại quầy";
+             t.CustomerName = "Khách mua tại quầy";
+         }
+      });
 
       normalized.sort((a, b) => {
         const dateA = new Date(a.issuedAt || a.IssuedAt || 0);

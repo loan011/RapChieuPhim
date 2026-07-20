@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../../styles/Login.css";
 
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -75,9 +75,15 @@ function Login() {
 
           {error && <p className="login-error-text">{error}</p>}
 
-          <Link to="/forgot-password" className="forgot">
-            Quên mật khẩu?
-          </Link>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "-4px" }}>
+            <Link to="/forgot-password" className="forgot">
+              Quên mật khẩu?
+            </Link>
+            <span style={{ color: "rgba(255, 255, 255, 0.3)", fontSize: "13px" }}>|</span>
+            <Link to="/change-password" className="forgot">
+              Đổi mật khẩu
+            </Link>
+          </div>
 
           <button className="blue-btn" type="submit" disabled={loading}>
             {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN"}

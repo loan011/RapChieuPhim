@@ -199,84 +199,65 @@ export default function Rate() {
       </div>
 
       {/* ── Bộ lọc tổng hợp ── */}
-      <div className="lc-section-block lc-filter-block">
-
-        {/* Hàng 1: Tabs chi nhánh + Tìm phim + Dropdown phim */}
-        <div className="lc-filter-row-top">
-          {/* Search chi nhánh + tabs */}
-          <div className="lc-cinema-filter-group">
-            <div className="lc-cinema-search-wrap lc-cinema-search-wrap--inline">
-              <MdSearch size={16} className="lc-cinema-search-icon" />
-              <input
-                type="text"
-                className="lc-cinema-search-input"
-                placeholder="Tìm chi nhánh..."
-                value={cinemaSearch}
-                onChange={(e) => setCinemaSearch(e.target.value)}
-              />
-              {cinemaSearch && (
-                <button
-                  type="button"
-                  className="lc-cinema-search-clear"
-                  onClick={() => setCinemaSearch("")}
-                  title="Xóa"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-
-            <div className="lc-cinema-tabs">
-              {cinemaOptions.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`lc-cinema-tab${
-                    selectedCinemaId === c.id ? " lc-cinema-tab--active" : ""
-                  }`}
-                  onClick={() => handleCinemaChange(c.id)}
-                >
-                  {c.name}
-                </button>
-              ))}
-              {cinemaOptions.length === 0 && (
-                <p className="lc-cinema-no-result">
-                  Không tìm thấy chi nhánh phù hợp.
-                </p>
-              )}
+      <div className="lc-filter-container-dark">
+        <h5 className="lc-filter-dark-title">Tìm kiếm & lọc lịch chiếu</h5>
+        
+        <div className="lc-filter-dark-grid">
+          {/* Row 1 */}
+          <div className="lc-filter-dark-group">
+            <label>Chi nhánh</label>
+            <div className="lc-filter-dark-input-wrap">
+              <MdLocationOn className="lc-filter-dark-icon" size={18} />
+              <select 
+                value={selectedCinemaId || ""} 
+                onChange={(e) => handleCinemaChange(e.target.value)}
+                className="lc-filter-dark-input"
+              >
+                <option value="">Tất cả chi nhánh</option>
+                {cinemaOptions.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Tìm phim + dropdown phim (chỉ hiện khi có phim) */}
-          {moviesInCinema.length > 0 && (
-            <div className="lc-movie-control-group lc-movie-control-group--inline">
-              <div className="lc-movie-search-wrap lc-movie-search-wrap--compact">
-                <MdSearch size={18} className="lc-movie-search-icon" />
-                <input
-                  type="text"
-                  className="lc-movie-search-input"
-                  placeholder="Tìm phim..."
-                  value={movieSearch}
-                  onChange={(e) => setMovieSearch(e.target.value)}
-                />
-                {movieSearch && (
-                  <button
-                    type="button"
-                    className="lc-movie-search-clear"
-                    onClick={() => setMovieSearch("")}
-                    title="Xóa"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+          <div className="lc-filter-dark-group">
+            <label>&nbsp;</label>
+            <div className="lc-filter-dark-input-wrap">
+              <input
+                type="text"
+                className="lc-filter-dark-input"
+                placeholder="Tìm kiếm chi nhánh..."
+                value={cinemaSearch}
+                onChange={(e) => setCinemaSearch(e.target.value)}
+              />
+              <MdSearch className="lc-filter-dark-icon-right" size={18} />
+            </div>
+          </div>
 
+          <div className="lc-filter-dark-group">
+            <label>Tìm theo phim</label>
+            <div className="lc-filter-dark-input-wrap">
+              <input
+                type="text"
+                className="lc-filter-dark-input"
+                placeholder="Nhập tên phim..."
+                value={movieSearch}
+                onChange={(e) => setMovieSearch(e.target.value)}
+              />
+              <MdSearch className="lc-filter-dark-icon-right" size={18} />
+            </div>
+          </div>
+
+          <div className="lc-filter-dark-group">
+            <label>Trạng thái phim</label>
+            <div className="lc-filter-dark-input-wrap">
               <select
-                className="lc-select-dark"
+                className="lc-filter-dark-input"
                 value={selectedMovieId || ""}
                 onChange={(e) => handleSelectMovieChange(e.target.value)}
               >
-                <option value="">-- Tất cả phim --</option>
+                <option value="">Tất cả phim</option>
                 {moviesFiltered
                   .filter((m) => {
                     const status = (m?.status ?? m?.Status ?? "").toLowerCase();
@@ -285,50 +266,53 @@ export default function Rate() {
                   .map((m) => {
                     const mId = String(getMovieId(m));
                     const mTitle = getMovieTitle(m);
-                    const count = getMovieShowtimeCount(mId);
                     return (
                       <option key={mId} value={mId}>
-                        {mTitle} ({count} suất)
+                        {mTitle}
                       </option>
                     );
                   })}
               </select>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Hàng 2: Lọc ngày + trạng thái + nút xóa */}
-        <div className="lc-filter-bar lc-filter-bar--inline">
-          <input
-            type="date"
-            className="lc-date-input"
-            value={filterDate}
-            onChange={(e) => handleFilterDateChange(e.target.value)}
-            title="Chọn ngày để nhảy đến tuần tương ứng"
-          />
+          <div className="lc-filter-dark-group">
+            <label>Ngày chiếu</label>
+            <div className="lc-filter-dark-input-wrap">
+              <input
+                type="date"
+                className="lc-filter-dark-input"
+                value={filterDate}
+                onChange={(e) => handleFilterDateChange(e.target.value)}
+              />
+            </div>
+          </div>
 
-          <select
-            className="lc-status-select"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          {/* Row 2 */}
+          <div className="lc-filter-dark-group">
+            <label>Trạng thái suất</label>
+            <div className="lc-filter-dark-input-wrap">
+              <select
+                className="lc-filter-dark-input"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="">Tất cả trạng thái</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-          {(filterDate || filterStatus) && (
-            <button
-              type="button"
-              className="lc-clear-btn"
-              onClick={clearFilters}
-            >
+          <div className="lc-filter-dark-actions">
+            <button type="button" className="lc-btn-dark-clear" onClick={clearFilters}>
               Xóa bộ lọc
             </button>
-          )}
+            <button type="button" className="lc-btn-dark-search">
+              <MdSearch size={16} /> Tìm kiếm
+            </button>
+          </div>
         </div>
       </div>
 
@@ -680,7 +664,7 @@ export default function Rate() {
                       onChange={handleChange}
                       className="lc-input"
                     >
-                      {STATUS_OPTIONS.map((s) => (
+                      {["Đang chiếu", "Chiếu sớm"].map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>

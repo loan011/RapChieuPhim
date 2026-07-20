@@ -45,6 +45,13 @@ function getOrderCinemaId(order) {
     }
   }
 
+  // Check order_cinema_map
+  try {
+    const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+    const oid = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
+    if (oid && map[String(oid)]) return String(map[String(oid)]);
+  } catch(e) {}
+
   // Fallback nếu order chưa được ghi đè cinemaId
   try {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -317,11 +324,30 @@ export function useDashboard() {
       if (!prev) return prev;
       
       // Chỉ ghi đè biểu đồ nếu thuật toán frontend (tính thêm offline) ra doanh thu cao hơn backend
-      if (newTotalFood > prev.totalFoodRevenue) {
+      // HOẶC backend không có chi tiết phân bổ nhưng frontend tính được
+      if (newTotalFood > prev.totalFoodRevenue || (distributions.length > 0 && prev.foodDistributions?.length === 0)) {
         return {
           ...prev,
           foodDistributions: distributions,
-          totalFoodRevenue: newTotalFood
+          totalFoodRevenue: Math.max(newTotalFood, prev.totalFoodRevenue)
+        };
+      }
+      
+      // Xử lý các đơn cũ bị mất cinemaId: nếu biểu đồ rỗng nhưng có doanh thu
+      let finalDistributions = prev.foodDistributions || [];
+      if (finalDistributions.length === 0 && prev.totalFoodRevenue > 0) {
+        if (distributions.length > 0) {
+           finalDistributions = [...distributions];
+           const diff = prev.totalFoodRevenue - newTotalFood;
+           if (diff > 0) {
+               finalDistributions.push({ name: "Món khác (Dữ liệu cũ)", value: diff, quantity: "-", percent: Math.round((diff/prev.totalFoodRevenue)*100) });
+           }
+        } else {
+           finalDistributions = [{ name: "Combo / Đồ ăn (Dữ liệu cũ)", value: prev.totalFoodRevenue, quantity: "-", percent: 100 }];
+        }
+        return {
+            ...prev,
+            foodDistributions: finalDistributions
         };
       }
       

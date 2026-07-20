@@ -130,6 +130,28 @@ export async function getMoviesByTab(tabKey) {
   return list.filter((m) => {
     const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
     
+    // 1. Kiểm tra trạng thái đã ngưng / đã chiếu / hết chiếu
+    if (
+      status.includes("đã chiếu") || 
+      status.includes("ngừng") || 
+      status.includes("hết chiếu") || 
+      status.includes("kết thúc") || 
+      status === "ended" || 
+      status === "expired"
+    ) {
+      return false;
+    }
+
+    // 2. Kiểm tra ngày kết thúc chiếu (endDate)
+    const rawEnd = m.endDate || m.EndDate || m.endTime || m.EndTime || m.stopDate || m.StopDate;
+    if (rawEnd) {
+      const endDate = new Date(rawEnd);
+      endDate.setHours(23, 59, 59, 999);
+      if (!isNaN(endDate.getTime()) && endDate < today) {
+        return false;
+      }
+    }
+
     const rawRelease = m.releaseDate || m.ReleaseDate || m.release_date || m.startDate || m.StartDate || m.openingDate || m.OpeningDate || m.premiereDate || m.PremiereDate;
     const releaseDate = rawRelease ? new Date(rawRelease) : null;
     const isReleased = releaseDate && !isNaN(releaseDate.getTime()) && releaseDate <= today;
@@ -586,6 +608,28 @@ export function useMovies() {
     return allMovies.filter((m) => {
       const status = (m.status || m.Status || m.movieStatus || m.MovieStatus || "").toLowerCase();
       
+      // 1. Kiểm tra trạng thái đã ngưng / đã chiếu / hết chiếu
+      if (
+        status.includes("đã chiếu") || 
+        status.includes("ngừng") || 
+        status.includes("hết chiếu") || 
+        status.includes("kết thúc") || 
+        status === "ended" || 
+        status === "expired"
+      ) {
+        return false;
+      }
+
+      // 2. Kiểm tra ngày kết thúc chiếu (endDate)
+      const rawEnd = m.endDate || m.EndDate || m.endTime || m.EndTime || m.stopDate || m.StopDate;
+      if (rawEnd) {
+        const endDate = new Date(rawEnd);
+        endDate.setHours(23, 59, 59, 999);
+        if (!isNaN(endDate.getTime()) && endDate < today) {
+          return false;
+        }
+      }
+
       const rawRelease = m.releaseDate || m.ReleaseDate || m.release_date || m.startDate || m.StartDate || m.openingDate || m.OpeningDate || m.premiereDate || m.PremiereDate;
       const releaseDate = rawRelease ? new Date(rawRelease) : null;
       const isReleased = releaseDate && !isNaN(releaseDate.getTime()) && releaseDate <= today;

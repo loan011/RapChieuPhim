@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { fetchAllOrders, fetchAllBookings, fetchAllTickets } from "../QuetQRDoAn/QuetQRDoAnService";
 import { 
   MdFastfood, 
   MdSearch, 
   MdDateRange, 
   MdCheckCircle, 
-  MdAccessTime
+  MdAccessTime,
+  MdExpandMore,
+  MdExpandLess
 } from "react-icons/md";
 import "./QuanLyDoAn.css";
 
@@ -15,7 +17,9 @@ export default function StaffQuanLyDoAn() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString("en-CA")); // YYYY-MM-DD format
   const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "completed"
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   useEffect(() => {
     loadData();
@@ -70,6 +74,17 @@ export default function StaffQuanLyDoAn() {
 
   // Filter and search logic
   const filteredOrders = orders.filter(order => {
+    // 0. Filter by date
+    if (filterDate) {
+      const orderDateRaw = order.orderDate || order.createdAt || order.CreatedAt;
+      if (orderDateRaw) {
+         const orderDateStr = orderDateRaw.split("T")[0];
+         if (orderDateStr !== filterDate) return false;
+      } else {
+         return false; // hide items without date if filter is applied
+      }
+    }
+
     // 1. Resolve customer and booking info for searching
     const booking = order.bookingId ? bookings.find(b => String(b.bookingId || b.BookingId) === String(order.bookingId)) : null;
     
@@ -112,6 +127,30 @@ export default function StaffQuanLyDoAn() {
     return true;
   });
 
+  // 3. Group by Food Item
+  const groupedOrders = useMemo(() => {
+    const groups = {};
+    filteredOrders.forEach(order => {
+      const items = order.items?.$values ?? order.items ?? [];
+      if (items.length === 0) {
+          if (!groups["Khác"]) groups["Khác"] = [];
+          groups["Khác"].push({ ...order, _matchedItem: null });
+      } else {
+          items.forEach(item => {
+              const itemName = item.foodName ?? item.comboName ?? item.food?.foodName ?? item.combo?.comboName ?? "Món ăn";
+              if (!groups[itemName]) groups[itemName] = [];
+              groups[itemName].push({ ...order, _matchedItem: item });
+          });
+      }
+    });
+    
+    const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+    return sortedKeys.map(key => ({
+      foodName: key,
+      orders: groups[key]
+    }));
+  }, [filteredOrders]);
+
   function formatDateTime(rawDate) {
     if (!rawDate) return "—";
     const d = new Date(rawDate);
@@ -124,6 +163,13 @@ export default function StaffQuanLyDoAn() {
     return `${hh}:${min} ${dd}/${mm}/${yyyy}`;
   }
 
+  function toggleGroup(groupName) {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  }
+
   return (
     <div className="qld-root">
       {/* Header */}
@@ -131,13 +177,24 @@ export default function StaffQuanLyDoAn() {
         <h4 className="font-bold text-2xl text-gray-800 flex items-center gap-2">
           <MdFastfood className="text-orange-500 text-3xl animate-pulse" /> Giám Sát Nhận Đồ Ăn
         </h4>
-        <button 
-          onClick={loadData}
-          disabled={loading}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
-        >
-          {loading ? "Đang tải..." : "🔄 Tải lại danh sách"}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm text-sm">
+            <MdDateRange className="text-gray-400 mr-2 text-lg" />
+            <input
+              type="date"
+              className="bg-transparent border-none outline-none text-gray-700 font-medium cursor-pointer"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </div>
+          <button 
+            onClick={loadData}
+            disabled={loading}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+          >
+            {loading ? "Đang tải..." : "🔄 Tải lại danh sách"}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -193,119 +250,106 @@ export default function StaffQuanLyDoAn() {
             Đang tải dữ liệu đơn hàng đồ ăn...
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50/60 border-b border-gray-100 text-gray-655 font-semibold">
-                  <th className="px-4 py-3 text-left">Mã Đơn / Mã Vé</th>
-                  <th className="px-4 py-3 text-left">Thời Gian Đặt</th>
-                  <th className="px-4 py-3 text-left">Khách Hàng</th>
-                  <th className="px-4 py-3 text-left">Chi Tiết Đồ Ăn / Combo</th>
-                  <th className="px-4 py-3 text-right">Giá Tiền</th>
-                  <th className="px-4 py-3 text-center">Trạng Thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-400 font-medium">
-                      Không tìm thấy đơn hàng nào phù hợp
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((order) => {
-                    const booking = order.bookingId ? bookings.find(b => b.bookingId === order.bookingId) : null;
-                    const items = order.items?.$values ?? order.items ?? [];
-                    const isCompleted = order.status === "Completed" || order.status === "Đã lấy" || order.status === "Đã nhận";
-
-                    return (
-                      <tr key={order.orderId} className="hover:bg-gray-50/40 transition-colors">
-                        {/* Order ID / Ticket Code */}
-                        <td className="px-4 py-4 font-bold text-gray-800">
-                          {order.ticketCode ? (
-                            <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs border border-blue-100 font-mono font-bold">
-                              {order.ticketCode}
-                            </span>
-                          ) : (
-                            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded text-xs border border-amber-100 font-mono font-bold">
-                              CB{order.orderId}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Order Date */}
-                        <td className="px-4 py-4 text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <MdDateRange className="text-gray-400" />
-                            {formatDateTime(order.orderDate)}
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          {(() => {
-                            const isCounter = order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway" || booking?.bookingType === "Staff" || order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin" || !order.bookingId;
-                            const displayName = isCounter ? "Khách mua tại quầy" : (booking?.customerName || order.userName || "Khách mua tại quầy");
-                            const displayEmail = isCounter ? "" : (booking?.email || order.customerEmail || "");
-                            const showEmail = displayEmail && displayEmail !== "Tại quầy" && displayEmail !== "Không có email" && displayEmail !== "N/A";
-                            return (
-                              <div>
-                                <div className="font-semibold text-gray-800">
-                                  {displayName}
-                                </div>
-                                {showEmail && (
-                                  <div className="text-[11px] text-gray-400">
-                                    {displayEmail}
-                                  </div>
-                                )}
+          <div className="overflow-x-auto">
+            {groupedOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 font-medium bg-gray-50 rounded-xl border border-gray-100">
+                  Không tìm thấy đơn hàng nào phù hợp
+                </div>
+            ) : (
+               <div className="flex flex-col gap-3">
+                  {groupedOrders.map(group => {
+                     const isExpanded = expandedGroups[group.foodName] || false;
+                     const totalQty = group.orders.reduce((sum, o) => sum + (o._matchedItem?.quantity || 1), 0);
+                     
+                     return (
+                        <div key={group.foodName} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                           <div 
+                              className="bg-orange-50/50 px-5 py-3.5 flex justify-between items-center cursor-pointer hover:bg-orange-50 transition-colors"
+                              onClick={() => toggleGroup(group.foodName)}
+                           >
+                              <div className="font-bold text-gray-800 text-base flex items-center gap-2">
+                                 🍲 {group.foodName} 
+                                 <span className="text-orange-600 bg-orange-100/70 px-2 py-0.5 rounded-full text-sm ml-2">
+                                    Tổng: {totalQty} phần
+                                 </span>
                               </div>
-                            );
-                          })()}
-                        </td>
-
-
-                        {/* Food Items */}
-                        <td className="px-4 py-4 text-gray-600">
-                          <div className="space-y-1">
-                            {items.length === 0 ? (
-                              <span className="italic text-gray-400">Không có chi tiết</span>
-                            ) : (
-                              items.map((item, idx) => {
-                                const itemName = item.foodName ?? item.comboName ?? item.food?.foodName ?? item.combo?.comboName ?? "Món ăn";
-                                return (
-                                  <div key={idx} className="flex items-center gap-1 text-xs">
-                                    <span className="text-gray-400">•</span>
-                                    <span>{itemName}</span>
-                                    <span className="font-bold text-gray-800">x{item.quantity}</span>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Price */}
-                        <td className="px-4 py-4 text-right font-bold text-gray-800">
-                          {(order.totalAmount || 0).toLocaleString("vi-VN")} đ
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="px-4 py-4 text-center">
-                          {isCompleted ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-700 border-green-150">
-                              <MdCheckCircle className="text-sm" /> ĐÃ NHẬN TẠI QUẦY
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border bg-orange-50 text-orange-855 border-orange-100">
-                              <MdAccessTime className="text-sm" /> CHƯA LẤY ĐỒ
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                              <div className="text-gray-400">
+                                {isExpanded ? <MdExpandLess size={24} /> : <MdExpandMore size={24} />}
+                              </div>
+                           </div>
+                           
+                           {isExpanded && (
+                             <div className="border-t border-gray-100 bg-white">
+                               <table className="w-full text-sm border-collapse">
+                                  <thead>
+                                    <tr className="bg-gray-50/60 border-b border-gray-100 text-gray-600 font-semibold text-xs uppercase tracking-wider">
+                                      <th className="px-5 py-3 text-left">Mã Đơn / Mã Vé</th>
+                                      <th className="px-5 py-3 text-left">Thời Gian Đặt</th>
+                                      <th className="px-5 py-3 text-left">Khách Hàng</th>
+                                      <th className="px-5 py-3 text-center">Số lượng</th>
+                                      <th className="px-5 py-3 text-center">Trạng Thái</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                     {group.orders.map((order, idx) => {
+                                        const booking = order.bookingId ? bookings.find(b => b.bookingId === order.bookingId) : null;
+                                        const isCompleted = order.status === "Completed" || order.status === "Đã lấy" || order.status === "Đã nhận";
+                                        
+                                        const isCounter = order.orderType === "Staff" || order.orderType === "Counter" || order.orderType === "Takeaway" || booking?.bookingType === "Staff" || order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin" || !order.bookingId;
+                                        const displayName = isCounter ? "Khách mua tại quầy" : (booking?.customerName || order.userName || "Khách mua tại quầy");
+                                        const displayEmail = isCounter ? "" : (booking?.email || order.customerEmail || "");
+                                        const showEmail = displayEmail && displayEmail !== "Tại quầy" && displayEmail !== "Không có email" && displayEmail !== "N/A";
+                                        const itemQty = order._matchedItem?.quantity || 1;
+  
+                                        return (
+                                          <tr key={`${order.orderId}-${idx}`} className="hover:bg-gray-50/40 transition-colors">
+                                             <td className="px-5 py-4 font-bold text-gray-800">
+                                               {order.ticketCode ? (
+                                                 <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 font-mono font-bold text-[13px]">
+                                                   {order.ticketCode}
+                                                 </span>
+                                               ) : (
+                                                 <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-mono font-bold text-[13px]">
+                                                   CB{order.orderId}
+                                                 </span>
+                                               )}
+                                             </td>
+                                             <td className="px-5 py-4 text-gray-500 whitespace-nowrap">
+                                               <div className="flex items-center gap-1.5">
+                                                 <MdDateRange className="text-gray-400" />
+                                                 {formatDateTime(order.orderDate)}
+                                               </div>
+                                             </td>
+                                             <td className="px-5 py-4">
+                                                <div className="font-semibold text-gray-800">{displayName}</div>
+                                                {showEmail && <div className="text-[11px] text-gray-400 mt-0.5">{displayEmail}</div>}
+                                             </td>
+                                             <td className="px-5 py-4 text-center font-bold text-orange-600 text-base">
+                                                x{itemQty}
+                                             </td>
+                                             <td className="px-5 py-4 text-center">
+                                                {isCompleted ? (
+                                                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border bg-green-50 text-green-700 border-green-200">
+                                                    <MdCheckCircle className="text-sm" /> ĐÃ NHẬN
+                                                  </span>
+                                                ) : (
+                                                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border bg-orange-50 text-orange-700 border-orange-200">
+                                                    <MdAccessTime className="text-sm" /> CHƯA LẤY
+                                                  </span>
+                                                )}
+                                             </td>
+                                          </tr>
+                                        )
+                                     })}
+                                  </tbody>
+                               </table>
+                             </div>
+                           )}
+                        </div>
+                     )
+                  })}
+               </div>
+            )}
           </div>
         )}
       </div>

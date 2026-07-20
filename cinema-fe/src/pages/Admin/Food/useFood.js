@@ -7,7 +7,7 @@ function toList(value) {
 }
 
 function getBookingCinemaId(booking) {
-  if (!booking) return "1";
+  if (!booking) return null;
   let cid = booking.cinemaId ?? booking.CinemaId;
   if (cid) return String(cid);
 
@@ -28,11 +28,11 @@ function getBookingCinemaId(booking) {
     if (cid) return String(cid);
   }
 
-  return "1";
+  return null;
 }
 
 function getOrderCinemaId(order) {
-  if (!order) return "1";
+  if (!order) return null;
   let cid = order.cinemaId ?? order.CinemaId;
   if (cid) return String(cid);
 
@@ -51,7 +51,7 @@ function getOrderCinemaId(order) {
     if (cid) return cid;
   }
 
-  const orderId = order.orderId ?? order.OrderId;
+  const orderId = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
   if (orderId) {
     try {
       const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
@@ -59,7 +59,7 @@ function getOrderCinemaId(order) {
     } catch (e) {}
   }
 
-  return "1";
+  return null;
 }
 
 function calculateItemSales(bookings, orders, selectedCinemaId) {

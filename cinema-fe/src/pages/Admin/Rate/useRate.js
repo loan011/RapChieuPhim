@@ -28,7 +28,7 @@ export const EMPTY_FORM = {
   showDate: "",
   startHour: "",
   endHour: "",
-  status: "Sắp chiếu",
+  status: "Đang chiếu",
 };
 
 export const CALENDAR_HOURS = Array.from({ length: 17 }, (_, i) => i + 7);
@@ -348,13 +348,33 @@ export function buildFormFromShowtime(s) {
   };
 }
 
-export function validateShowtimeForm(form) {
+export function validateShowtimeForm(form, movies) {
   if (!form.cinemaId) return "Vui lòng chọn chi nhánh/khu vực.";
   if (!form.movieId) return "Vui lòng chọn phim.";
   if (!form.roomId) return "Vui lòng chọn phòng chiếu.";
   if (!form.showDate) return "Vui lòng chọn ngày chiếu.";
   if (!form.startHour) return "Vui lòng chọn giờ bắt đầu.";
   if (!form.endHour) return "Vui lòng chọn giờ kết thúc.";
+
+  if (movies && form.movieId) {
+    const movie = movies.find((m) => String(getMovieId(m)) === String(form.movieId));
+    if (movie) {
+      const releaseDateRaw = movie.releaseDate ?? movie.ReleaseDate ?? movie.startDate ?? movie.StartDate;
+      if (releaseDateRaw) {
+        const releaseDate = new Date(releaseDateRaw);
+        releaseDate.setHours(0, 0, 0, 0);
+        
+        const showDate = new Date(form.showDate);
+        showDate.setHours(0, 0, 0, 0);
+        
+        const daysDiff = (releaseDate.getTime() - showDate.getTime()) / (1000 * 3600 * 24);
+        
+        if (daysDiff > 0 && daysDiff > 4) {
+          return "Chỉ được tạo suất chiếu sớm tối đa 4 ngày trước ngày khởi chiếu!";
+        }
+      }
+    }
+  }
 
   return "";
 }
@@ -629,7 +649,7 @@ export function useRate() {
     e.preventDefault();
     setFormError("");
 
-    const err = validateShowtimeForm(form);
+    const err = validateShowtimeForm(form, movies);
 
     if (err) {
       setFormError(err);

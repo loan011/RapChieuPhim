@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../../styles/Register.css";
 
 import { useRegister } from "./useRegister.js";

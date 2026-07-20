@@ -616,7 +616,19 @@ export function useFilm() {
     if (form.releaseDate) {
       const releaseDt = new Date(form.releaseDate);
       releaseDt.setHours(0, 0, 0, 0);
-      if (!isNaN(releaseDt.getTime()) && releaseDt <= new Date()) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Nếu trạng thái muốn set là "Chiếu sớm", kiểm tra thời hạn 4 ngày so với ngày hiện tại
+      if (finalStatus === "Chiếu sớm") {
+        const daysUntilRelease = (releaseDt.getTime() - today.getTime()) / (1000 * 3600 * 24);
+        if (daysUntilRelease > 4) {
+          setFormError("Chỉ được chuyển sang trạng thái Chiếu sớm tối đa 4 ngày trước ngày khởi chiếu chính thức.");
+          return;
+        }
+      }
+
+      if (!isNaN(releaseDt.getTime()) && releaseDt <= today) {
         finalStatus = "Đang chiếu";
       }
     }

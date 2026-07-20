@@ -225,7 +225,18 @@ export async function getDailyRevenue(date) {
 
     // Date must match
     const oDate = o.orderDate ? o.orderDate.split('T')[0] : "";
-    return oDate === date;
+    if (oDate !== date) return false;
+    
+    // Branch must match
+    let oCinemaId = o.cinemaId ?? o.CinemaId ?? o.staff?.cinemaId ?? o.staff?.CinemaId ?? o.Staff?.cinemaId ?? o.Staff?.CinemaId;
+    if (!oCinemaId) {
+      try {
+        const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+        const oid = o.orderId ?? o.OrderId ?? o.id ?? o.Id;
+        if (oid && map[String(oid)]) oCinemaId = String(map[String(oid)]);
+      } catch(e) {}
+    }
+    return String(oCinemaId || "1") === staffCinemaId;
   });
 
   const user = getUser();
@@ -274,7 +285,11 @@ export async function getDailyRevenue(date) {
   const localOrders = JSON.parse(localOrdersStr);
   const matchingLocalOrders = localOrders.filter(o => {
     const alreadyInBills = bills.some(b => b.billCode === o.id);
-    return o.date === date && !alreadyInBills;
+    if (o.date !== date || alreadyInBills) return false;
+    
+    const defaultCinemaId = user?.cinemaId || user?.CinemaId || 1;
+    const oCinemaId = String(o.cinemaId || o.CinemaId || defaultCinemaId);
+    return oCinemaId === staffCinemaId;
   });
 
   for (const localOrder of matchingLocalOrders) {

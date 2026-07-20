@@ -6,6 +6,7 @@ import Login from "./pages/Auth/Login.jsx";
 import Register from "./pages/Auth/Register.jsx";
 import Movies from "./pages/Movies/Movies.jsx";
 import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
+import ChangePassword from "./pages/Auth/ChangePassword.jsx";
 import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
 import Booking from "./pages/Booking/Booking.jsx";
 import Payment from "./pages/Payment/Payment.jsx";
@@ -48,6 +49,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/ticket-info/:ticketCode" element={<TicketInfo />} />
 
         {/* Customer routes */}

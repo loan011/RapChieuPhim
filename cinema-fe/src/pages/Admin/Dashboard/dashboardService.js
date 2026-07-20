@@ -82,6 +82,8 @@ export async function getDashboardFoodSources() {
   // Đồng bộ thêm các order giả lập bán trực tiếp tại quầy (từ Staff)
   try {
     const localStr = localStorage.getItem("simulated_orders");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const defaultCinemaId = user?.cinemaId || user?.CinemaId || 1;
     if (localStr) {
       const localOrders = JSON.parse(localStr);
       if (Array.isArray(localOrders)) {
@@ -90,7 +92,7 @@ export async function getDashboardFoodSources() {
             ...lo,
             orderDate: lo.date || lo.orderDate,
             status: "Success",
-            cinemaId: 1 // Gắn mặc định về Đồng Khởi để hiện đúng khi lọc
+            cinemaId: lo.cinemaId || lo.CinemaId || defaultCinemaId // Dùng rạp của người tạo hoặc của staff hiện tại
           });
         });
       }
