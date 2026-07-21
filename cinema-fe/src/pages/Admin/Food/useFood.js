@@ -143,7 +143,7 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
 
 // ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
 const MOCK_FOODS = [
-  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 98,  imageUrl: '/img/trasua.jpg',      isAvailable: false, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 98,  imageUrl: '/img/trasua.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
   { id: 2, itemType: 'food', name: 'Trà Đào',      category: 'Nước Uống', price: 45000, quantity: 100, imageUrl: '/img/tradao.jpg',       isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
   { id: 3, itemType: 'food', name: 'Bắp Caramel',  category: 'Bắp Rang',  price: 60000, quantity: 0,   imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
   { id: 4, itemType: 'food', name: 'Bắp Ngọt Lớn', category: 'Bắp Rang',  price: 60000, quantity: 89,  imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
@@ -154,7 +154,7 @@ const MOCK_FOODS = [
 ];
 
 const MOCK_COMBOS = [
-  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 96, imageUrl: '/img/combosolo.jpg',   isAvailable: false, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
+  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 96, imageUrl: '/img/combosolo.jpg',   isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
   { id: 4, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 98, imageUrl: '/img/combocouple.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
   { id: 6, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 58, imageUrl: '/img/combofamily.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
 ];
@@ -278,9 +278,7 @@ export function useFood() {
           : rawQty;
 
         const rawAvail = f.isAvailable ?? f.IsAvailable;
-        const isAvailable = (String(foodId) === "1")
-          ? false
-          : (rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail));
+        const isAvailable = rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail);
 
         return {
           id: foodId,
@@ -344,9 +342,7 @@ export function useFood() {
           : rawQty;
 
         const rawAvail = c.isAvailable ?? c.IsAvailable;
-        const isAvailable = (String(comboId) === "1")
-          ? false
-          : (rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail));
+        const isAvailable = rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail);
 
         return {
           id: comboId,

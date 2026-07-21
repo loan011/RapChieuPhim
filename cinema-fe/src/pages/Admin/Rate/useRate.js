@@ -104,6 +104,46 @@ export function getMovieDurationMinutes(m) {
 }
 
 /**
+ * Kiểm tra xem phim có đang chiếu hoặc sắp chiếu hay không.
+ * Loại bỏ các phim có trạng thái "Đã chiếu" hoặc ngày kết thúc (endDate) đã trôi qua.
+ */
+export function isMovieNowOrUpcoming(m) {
+  if (!m) return false;
+  let status = (m?.status ?? m?.Status ?? "").toLowerCase().trim();
+
+  if (
+    status.includes("đã chiếu") ||
+    status.includes("completed") ||
+    status.includes("ngừng") ||
+    status.includes("hủy") ||
+    status.includes("kết thúc")
+  ) {
+    return false;
+  }
+
+  const endDateValue = m?.endDate ?? m?.EndDate ?? m?.endTime ?? m?.EndTime;
+  if (endDateValue) {
+    const endDate = new Date(endDateValue);
+    endDate.setHours(23, 59, 59, 999);
+    if (!Number.isNaN(endDate.getTime()) && endDate < new Date()) {
+      return false;
+    }
+  }
+
+  if (
+    !status ||
+    status.includes("đang chiếu") ||
+    status.includes("sắp chiếu") ||
+    status.includes("chiếu sớm") ||
+    status.includes("active")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Tính giờ kết thúc (HH:mm) từ giờ bắt đầu và số phút.
  * @param {string} startHour  - "HH:mm"
  * @param {number} durationMin - số phút
@@ -475,6 +515,155 @@ function getShowtimeCinemaId(showtime, rooms) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BATCH SHOWTIME GENERATOR HELPERS
+═══════════════════════════════════════════════════════════ */
+
+export const WEEKDAY_OPTIONS = [
+  { id: 1, label: "Thứ 2" },
+  { id: 2, label: "Thứ 3" },
+  { id: 3, label: "Thứ 4" },
+  { id: 4, label: "Thứ 5" },
+  { id: 5, label: "Thứ 6" },
+  { id: 6, label: "Thứ 7" },
+  { id: 0, label: "Chủ Nhật" },
+];
+
+export const EMPTY_BATCH_FORM = {
+  cinemaId: "",
+  roomId: "",
+  movieId: "",
+  fromDate: "",
+  toDate: "",
+  selectedWeekdays: [1, 2, 3, 4, 5, 6, 0],
+  adTime: 10,
+  cleanTime: 15,
+  startTimes: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+  basePrice: 70000,
+  status: "Đang chiếu",
+};
+
+export function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const [h, m] = String(timeStr).split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+export function getVietnameseDayOfWeek(dateObj) {
+  const day = dateObj.getDay();
+  if (day === 0) return "Chủ Nhật";
+  return `Thứ ${day + 1}`;
+}
+
+export function generateBatchShowtimes(batchForm, movies, rooms, existingList) {
+  if (!batchForm.cinemaId || !batchForm.roomId || !batchForm.movieId) return [];
+  if (!batchForm.fromDate || !batchForm.toDate) return [];
+  if (!batchForm.startTimes || batchForm.startTimes.length === 0) return [];
+  if (!batchForm.selectedWeekdays || batchForm.selectedWeekdays.length === 0) return [];
+
+  const selectedMovie = movies.find(
+    (m) => String(getMovieId(m)) === String(batchForm.movieId)
+  );
+  const movieDur = getMovieDurationMinutes(selectedMovie) || 120;
+  const adTime = Number(batchForm.adTime || 0);
+  const cleanTime = Number(batchForm.cleanTime || 0);
+  const totalShowMins = movieDur + adTime + cleanTime;
+
+  const startD = parseDateOnly(batchForm.fromDate);
+  const endD = parseDateOnly(batchForm.toDate);
+  if (startD > endD) return [];
+
+  const generated = [];
+  const current = new Date(startD);
+
+  while (current <= endD) {
+    const dayOfWeek = current.getDay();
+    if (batchForm.selectedWeekdays.includes(dayOfWeek)) {
+      const dateStr = toDateInputValue(current);
+      const dayName = getVietnameseDayOfWeek(current);
+
+      batchForm.startTimes.forEach((sTime) => {
+        if (!sTime) return;
+        const eTime = calcEndHour(sTime, totalShowMins);
+        const crossMid = isCrossMidnight(sTime, eTime);
+        const endDateStr = crossMid
+          ? toDateInputValue(addDays(current, 1))
+          : dateStr;
+
+        const startMins = timeToMinutes(sTime);
+        const endMins = startMins + totalShowMins;
+
+        generated.push({
+          tempId: `batch_${dateStr}_${sTime}_${Math.random().toString(36).substring(2, 6)}`,
+          cinemaId: batchForm.cinemaId,
+          roomId: batchForm.roomId,
+          movieId: batchForm.movieId,
+          movieTitle: getMovieTitle(selectedMovie),
+          showDate: dateStr,
+          endDate: endDateStr,
+          startHour: sTime,
+          endHour: eTime,
+          startMins,
+          endMins,
+          basePrice: Number(batchForm.basePrice || 70000),
+          status: batchForm.status || "Đang chiếu",
+          duration: movieDur,
+          adTime,
+          cleanTime,
+          totalShowMins,
+          dayName,
+          crossMid,
+          isConflict: false,
+          conflictReason: "",
+        });
+      });
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  // ── KIỂM TRA TRÙNG LỊCH (CONFLICT DETECTION) ──
+  const existingInRoom = existingList.filter(
+    (s) => String(getShowtimeRoomId(s)) === String(batchForm.roomId)
+  );
+
+  generated.forEach((item, idx) => {
+    // 1. So sánh với các suất chiếu đã có trong CSDL
+    for (const ex of existingInRoom) {
+      const exDate = getShowDate(ex);
+      if (exDate === item.showDate) {
+        const exStartStr = getStartHour(ex);
+        const exEndStr = getEndHour(ex);
+        const exStartMins = timeToMinutes(exStartStr);
+        let exEndMins = timeToMinutes(exEndStr);
+        if (exEndMins <= exStartMins) exEndMins += 1440;
+
+        if (item.startMins < exEndMins && exStartMins < item.endMins) {
+          item.isConflict = true;
+          item.conflictReason = `Trùng với suất "${getShowtimeMovieTitle(ex, movies)}" (${exStartStr} - ${exEndStr}) đã có trên hệ thống!`;
+          break;
+        }
+      }
+    }
+
+    // 2. So sánh với các suất khác vừa sinh trong đợt này
+    if (!item.isConflict) {
+      for (let j = 0; j < generated.length; j++) {
+        if (idx === j) continue;
+        const other = generated[j];
+        if (other.showDate === item.showDate) {
+          if (item.startMins < other.endMins && other.startMins < item.endMins) {
+            item.isConflict = true;
+            item.conflictReason = `Trùng giờ với suất ${other.startHour} - ${other.endHour} trong danh sách sinh tự động!`;
+            break;
+          }
+        }
+      }
+    }
+  });
+
+  return generated;
+}
+
+/* ═══════════════════════════════════════════════════════════
    useRate HOOK
 ═══════════════════════════════════════════════════════════ */
 
@@ -506,13 +695,22 @@ export function useRate() {
     toDateInputValue(getWeekStartSunday(new Date()))
   );
 
-  /* ── Modal / form state ── */
+  /* ── Modal đơn lẻ ── */
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  /* ── Modal Tạo Lịch Chiếu Hàng Loạt ── */
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchForm, setBatchForm] = useState(EMPTY_BATCH_FORM);
+  const [batchError, setBatchError] = useState("");
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [excludedBatchIds, setExcludedBatchIds] = useState(new Set());
+  const [newStartTimeInput, setNewStartTimeInput] = useState("");
 
   /* ── Fetch on mount ── */
 
@@ -533,7 +731,6 @@ export function useRate() {
     if (newEnd && newEnd !== form.endHour) {
       setForm((prev) => ({ ...prev, endHour: newEnd }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.movieId, form.startHour, movies]);
 
   async function fetchData() {
@@ -575,10 +772,11 @@ export function useRate() {
     }
   }
 
-  /* ── Modal handlers ── */
+  /* ── Modal đơn lẻ handlers ── */
 
   function openAddModal() {
     setEditId(null);
+    setIsEditMode(true);
     setForm({
       ...EMPTY_FORM,
       cinemaId: selectedCinemaId || "",
@@ -594,6 +792,7 @@ export function useRate() {
     const cId = roomObj ? getRoomCinemaId(roomObj) : selectedCinemaId || "";
 
     setEditId(getShowtimeId(item));
+    setIsEditMode(false); // Mặc định hiển thị chế độ Xem Chi Tiết
     setForm({
       ...baseForm,
       cinemaId: cId || "",
@@ -605,6 +804,7 @@ export function useRate() {
   function closeModal() {
     setShowModal(false);
     setEditId(null);
+    setIsEditMode(false);
     setForm(EMPTY_FORM);
     setFormError("");
   }
@@ -621,7 +821,6 @@ export function useRate() {
       return;
     }
 
-    /* Khi chọn phim → tự động tính giờ kết thúc nếu đã có giờ bắt đầu */
     if (name === "movieId") {
       const selectedMovie = movies.find(
         (m) => String(getMovieId(m)) === String(value)
@@ -636,7 +835,6 @@ export function useRate() {
       return;
     }
 
-    /* Khi đổi giờ bắt đầu → tự động tính lại giờ kết thúc nếu đã chọn phim */
     if (name === "startHour") {
       const selectedMovie = movies.find(
         (m) => String(getMovieId(m)) === String(form.movieId)
@@ -700,6 +898,151 @@ export function useRate() {
       fetchData();
     } catch (err) {
       alert(err?.message || "Xóa suất chiếu thất bại.");
+    }
+  }
+
+  /* ── Batch Showtime Modal Handlers ── */
+
+  function openBatchModal() {
+    setBatchForm({
+      ...EMPTY_BATCH_FORM,
+      cinemaId: selectedCinemaId || "",
+      fromDate: toDateInputValue(new Date()),
+      toDate: toDateInputValue(addDays(new Date(), 30)),
+    });
+    setExcludedBatchIds(new Set());
+    setBatchError("");
+    setNewStartTimeInput("");
+    setShowBatchModal(true);
+  }
+
+  function closeBatchModal() {
+    setShowBatchModal(false);
+    setBatchError("");
+    setExcludedBatchIds(new Set());
+  }
+
+  function handleBatchFormChange(e) {
+    const { name, value } = e.target;
+    setExcludedBatchIds(new Set()); // Reset excluded items when generator params change
+
+    if (name === "cinemaId") {
+      setBatchForm((prev) => ({
+        ...prev,
+        cinemaId: value,
+        roomId: "",
+      }));
+      return;
+    }
+
+    setBatchForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  function handleToggleWeekday(dayId) {
+    setExcludedBatchIds(new Set());
+    setBatchForm((prev) => {
+      const exists = prev.selectedWeekdays.includes(dayId);
+      const updated = exists
+        ? prev.selectedWeekdays.filter((d) => d !== dayId)
+        : [...prev.selectedWeekdays, dayId];
+      return { ...prev, selectedWeekdays: updated };
+    });
+  }
+
+  function handleSelectWeekdayPreset(preset) {
+    setExcludedBatchIds(new Set());
+    let days = [1, 2, 3, 4, 5, 6, 0];
+    if (preset === "weekdays") days = [1, 2, 3, 4, 5];
+    if (preset === "weekend") days = [6, 0];
+    setBatchForm((prev) => ({ ...prev, selectedWeekdays: days }));
+  }
+
+  function handleAddStartTime(timeStr) {
+    if (!timeStr) return;
+    const clean = timeStr.trim();
+    if (!clean) return;
+    setExcludedBatchIds(new Set());
+    setBatchForm((prev) => {
+      if (prev.startTimes.includes(clean)) return prev;
+      const sorted = [...prev.startTimes, clean].sort((a, b) => a.localeCompare(b));
+      return { ...prev, startTimes: sorted };
+    });
+    setNewStartTimeInput("");
+  }
+
+  function handleRemoveStartTime(timeStr) {
+    setExcludedBatchIds(new Set());
+    setBatchForm((prev) => ({
+      ...prev,
+      startTimes: prev.startTimes.filter((t) => t !== timeStr),
+    }));
+  }
+
+  // Tự động sinh danh sách các suất chiếu hàng loạt dựa theo form
+  const rawBatchItems = useMemo(() => {
+    return generateBatchShowtimes(batchForm, movies, rooms, list);
+  }, [batchForm, movies, rooms, list]);
+
+  const batchItems = useMemo(() => {
+    return rawBatchItems.filter((item) => !excludedBatchIds.has(item.tempId));
+  }, [rawBatchItems, excludedBatchIds]);
+
+  const conflictCount = useMemo(() => {
+    return batchItems.filter((item) => item.isConflict).length;
+  }, [batchItems]);
+
+  function handleRemoveBatchItem(tempId) {
+    setExcludedBatchIds((prev) => {
+      const next = new Set(prev);
+      next.add(tempId);
+      return next;
+    });
+  }
+
+  async function handleBatchSubmit(e) {
+    e.preventDefault();
+    setBatchError("");
+
+    if (!batchForm.cinemaId) {
+      setBatchError("Vui lòng chọn chi nhánh / khu vực.");
+      return;
+    }
+    if (!batchForm.roomId) {
+      setBatchError("Vui lòng chọn phòng chiếu.");
+      return;
+    }
+    if (!batchForm.movieId) {
+      setBatchError("Vui lòng chọn phim.");
+      return;
+    }
+    if (batchItems.length === 0) {
+      setBatchError("Không có suất chiếu nào được tạo ra. Vui lòng kiểm tra lại khoảng ngày và giờ bắt đầu!");
+      return;
+    }
+    if (conflictCount > 0) {
+      setBatchError(`Phát hiện ${conflictCount} suất chiếu bị trùng lịch (màu đỏ)! Vui lòng xóa bớt hoặc điều chỉnh lại giờ chiếu trước khi lưu.`);
+      return;
+    }
+
+    try {
+      setBatchSubmitting(true);
+
+      const payloads = batchItems.map((item) => buildShowtimePayload(item));
+
+      // Lưu song song tất cả các suất chiếu hợp lệ
+      await Promise.all(payloads.map((p) => createShowtime(p)));
+
+      closeBatchModal();
+      fetchData();
+      alert(`Đã tạo thành công ${payloads.length} suất chiếu hàng loạt!`);
+    } catch (err) {
+      console.error("Lỗi lưu lịch hàng loạt:", err);
+      setBatchError(err?.message || "Lưu danh sách suất chiếu thất bại.");
+    } finally {
+      setBatchSubmitting(false);
     }
   }
 
@@ -931,9 +1274,11 @@ export function useRate() {
     loading,
     error,
 
-    /* modal/form */
+    /* modal đơn lẻ */
     showModal,
     editId,
+    isEditMode,
+    setIsEditMode,
     form,
     formError,
     submitting,
@@ -943,6 +1288,25 @@ export function useRate() {
     handleChange,
     handleSubmit,
     handleDelete,
+
+    /* modal hàng loạt (batch generator) */
+    showBatchModal,
+    batchForm,
+    batchItems,
+    conflictCount,
+    batchError,
+    batchSubmitting,
+    newStartTimeInput,
+    setNewStartTimeInput,
+    openBatchModal,
+    closeBatchModal,
+    handleBatchFormChange,
+    handleToggleWeekday,
+    handleSelectWeekdayPreset,
+    handleAddStartTime,
+    handleRemoveStartTime,
+    handleRemoveBatchItem,
+    handleBatchSubmit,
 
     /* cinema/movie selection */
     selectedCinemaId,

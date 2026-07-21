@@ -75,11 +75,9 @@ export async function getMovies() {
 }
 
 export async function getDashboardFoodSources() {
-  const apiOrders = await apiGet("/Orders", "Lấy danh sách order thất bại!").catch(() => []);
-  let orders = Array.isArray(apiOrders) ? [...apiOrders] : (apiOrders?.$values || apiOrders?.items || []);
-  if (!Array.isArray(orders)) orders = [];
+  let orders = [];
 
-  // Đồng bộ thêm các order giả lập bán trực tiếp tại quầy (từ Staff)
+  // Đồng bộ các order giả lập bán trực tiếp tại quầy (nếu có trong localStorage)
   try {
     const localStr = localStorage.getItem("simulated_orders");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -92,7 +90,7 @@ export async function getDashboardFoodSources() {
             ...lo,
             orderDate: lo.date || lo.orderDate,
             status: "Success",
-            cinemaId: lo.cinemaId || lo.CinemaId || defaultCinemaId // Dùng rạp của người tạo hoặc của staff hiện tại
+            cinemaId: lo.cinemaId || lo.CinemaId || defaultCinemaId
           });
         });
       }

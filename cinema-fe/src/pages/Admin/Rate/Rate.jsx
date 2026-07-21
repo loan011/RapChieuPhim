@@ -19,6 +19,8 @@ import {
 import {
   useRate,
   STATUS_OPTIONS,
+  WEEKDAY_OPTIONS,
+  isMovieNowOrUpcoming,
   getShowtimeId,
   getShowtimeMovieTitle,
   getShowtimeRoomName,
@@ -32,6 +34,7 @@ import {
   getBasePrice,
   getStatus,
   formatMoney,
+  formatDate,
   formatCalendarHour,
 } from "./useRate.js";
 
@@ -93,9 +96,11 @@ export default function Rate() {
     loading,
     error,
 
-    /* modal/form */
+    /* modal/form đơn lẻ */
     showModal,
     editId,
+    isEditMode,
+    setIsEditMode,
     form,
     formError,
     submitting,
@@ -104,6 +109,25 @@ export default function Rate() {
     closeModal,
     handleChange,
     handleSubmit,
+
+    /* modal hàng loạt (batch generator) */
+    showBatchModal,
+    batchForm,
+    batchItems,
+    conflictCount,
+    batchError,
+    batchSubmitting,
+    newStartTimeInput,
+    setNewStartTimeInput,
+    openBatchModal,
+    closeBatchModal,
+    handleBatchFormChange,
+    handleToggleWeekday,
+    handleSelectWeekdayPreset,
+    handleAddStartTime,
+    handleRemoveStartTime,
+    handleRemoveBatchItem,
+    handleBatchSubmit,
 
     /* cinema/movie selection */
     selectedCinemaId,
@@ -156,6 +180,7 @@ export default function Rate() {
   };
 
   const isPastShowtime = form?.status === "Đã chiếu";
+  const isFieldDisabled = !isEditMode || isPastShowtime;
 
   return (
     <div className="lc-wrapper">
@@ -163,10 +188,12 @@ export default function Rate() {
       <div className="lc-header">
         <h4 className="lc-title">Quản Lý Lịch Chiếu</h4>
 
-        <button className="lc-btn-add" onClick={openAddModal}>
-          <MdAdd size={18} />
-          Thêm lịch chiếu
-        </button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <button className="lc-btn-add" style={{ background: "#4f46e5" }} onClick={openBatchModal}>
+            <MdCalendarMonth size={18} />
+            Tạo Lịch
+          </button>
+        </div>
       </div>
 
       {/* ── Stats ── */}
@@ -215,7 +242,6 @@ export default function Rate() {
                 onChange={(e) => handleCinemaChange(e.target.value)}
                 className="lc-filter-dark-input"
               >
-                <option value="">Tất cả chi nhánh</option>
                 {cinemaOptions.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -261,10 +287,7 @@ export default function Rate() {
               >
                 <option value="">Tất cả phim</option>
                 {moviesFiltered
-                  .filter((m) => {
-                    const status = (m?.status ?? m?.Status ?? "").toLowerCase();
-                    return status.includes("đang chiếu") || status.includes("sắp chiếu");
-                  })
+                  .filter((m) => isMovieNowOrUpcoming(m))
                   .map((m) => {
                     const mId = String(getMovieId(m));
                     const mTitle = getMovieTitle(m);
@@ -434,13 +457,17 @@ export default function Rate() {
         </>
       )}
 
-      {/* ── Modal Add / Edit ── */}
+      {/* ── Modal Add / Edit đơn lẻ ── */}
       {showModal &&
         createPortal(
           <div className="lc-modal-overlay">
             <div className="lc-modal">
               <h5 className="lc-modal-title">
-                {editId !== null ? "Cập Nhật Lịch Chiếu" : "Thêm Lịch Chiếu"}
+                {editId === null
+                  ? "Thêm Lịch Chiếu"
+                  : isEditMode
+                  ? "Cập Nhật Lịch Chiếu"
+                  : "Chi Tiết Lịch Chiếu"}
               </h5>
 
               {formError && <p className="lc-form-error">{formError}</p>}
@@ -451,7 +478,6 @@ export default function Rate() {
                     Phim <span className="lc-required">*</span>
                   </label>
 
-                  {/* Search input */}
                   <div className="lc-modal-search-wrap">
                     <span className="lc-modal-search-icon">&#128269;</span>
                     <input
@@ -459,7 +485,7 @@ export default function Rate() {
                       type="text"
                       className="lc-input lc-input--search"
                       placeholder="Tìm tên phim..."
-                      disabled={isPastShowtime}
+                      disabled={isFieldDisabled}
                       value={formMovieSearch || (() => {
                         if (!form.movieId) return "";
                         const sel = movies.find(
@@ -483,7 +509,7 @@ export default function Rate() {
                       }}
                       autoComplete="off"
                     />
-                    {formMovieSearch && !isPastShowtime && (
+                    {formMovieSearch && !isFieldDisabled && (
                       <button
                         type="button"
                         className="lc-modal-search-clear"
@@ -497,31 +523,16 @@ export default function Rate() {
                     )}
                   </div>
 
-                  {/* Dropdown kết quả */}
-                  {showMovieDropdown && !isPastShowtime && (() => {
+                  {showMovieDropdown && !isFieldDisabled && (() => {
                     const kw = formMovieSearch.trim().toLowerCase();
                     const filtered = movies.filter((m) => {
-                      let status = (m?.status ?? m?.Status ?? "").toLowerCase();
-                      
-                      // Tự động tính toán nếu phim đã qua ngày kết thúc thì coi như "đã chiếu"
-                      const endDateValue = m?.endDate ?? m?.EndDate ?? m?.endTime ?? m?.EndTime;
-                      if (endDateValue) {
-                        const endDate = new Date(endDateValue);
-                        endDate.setHours(23, 59, 59, 999);
-                        if (!Number.isNaN(endDate.getTime()) && endDate < new Date()) {
-                          status = "đã chiếu";
-                        }
-                      }
-
-                      const isAllowed =
-                        status.includes("đang chiếu") || status.includes("sắp chiếu");
-                      return isAllowed && (!kw || getMovieTitle(m).toLowerCase().includes(kw));
+                      return isMovieNowOrUpcoming(m) && (!kw || getMovieTitle(m).toLowerCase().includes(kw));
                     });
                     return (
                       <div className="lc-movie-dropdown">
                         {filtered.length === 0 ? (
                           <div className="lc-movie-dropdown-empty">
-                            Không tìm thấy phìm
+                            Không tìm thấy phim
                           </div>
                         ) : filtered.map((m) => {
                           const mId = getMovieId(m);
@@ -555,7 +566,6 @@ export default function Rate() {
                     );
                   })()}
 
-                  {/* Badge thời lượng phim đã chọn */}
                   {form.movieId && (() => {
                     const sel = movies.find(
                       (m) => String(getMovieId(m)) === String(form.movieId)
@@ -570,7 +580,6 @@ export default function Rate() {
                   })()}
                 </div>
 
-                {/* Hàng: Chi Nhánh + Phòng Chiếu */}
                 <div className="lc-field-row">
                   <div className="lc-field">
                     <label className="lc-label">
@@ -583,20 +592,13 @@ export default function Rate() {
                       value={form.cinemaId}
                       onChange={handleChange}
                       className="lc-input"
-                      disabled={isPastShowtime}
+                      disabled={isFieldDisabled}
                     >
                       <option value="">-- Chọn chi nhánh --</option>
 
                       {cinemas.map((c) => {
-                        const cId =
-                          c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
-                        const cName =
-                          c?.cinemaName ??
-                          c?.CinemaName ??
-                          c?.name ??
-                          c?.Name ??
-                          "—";
-
+                        const cId = c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
+                        const cName = c?.cinemaName ?? c?.CinemaName ?? c?.name ?? "—";
                         return (
                           <option key={cId} value={cId}>
                             {cName}
@@ -616,7 +618,7 @@ export default function Rate() {
                       value={form.roomId}
                       onChange={handleChange}
                       className="lc-input"
-                      disabled={!form.cinemaId || isPastShowtime}
+                      disabled={!form.cinemaId || isFieldDisabled}
                     >
                       <option value="">-- Chọn phòng chiếu --</option>
 
@@ -627,10 +629,8 @@ export default function Rate() {
                             String(form.cinemaId)
                         )
                         .map((r) => {
-                          const rId =
-                            r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
-                          const rName =
-                            r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
+                          const rId = r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
+                          const rName = r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
 
                           return (
                             <option key={rId} value={rId}>
@@ -642,7 +642,6 @@ export default function Rate() {
                   </div>
                 </div>
 
-                {/* Hàng: Ngày Chiếu + Trạng Thái */}
                 <div className="lc-field-row">
                   <div className="lc-field">
                     <label className="lc-label">
@@ -656,7 +655,7 @@ export default function Rate() {
                       onChange={handleChange}
                       className="lc-input"
                       min={new Date().toISOString().split("T")[0]}
-                      disabled={isPastShowtime}
+                      disabled={isFieldDisabled}
                     />
                   </div>
 
@@ -665,21 +664,19 @@ export default function Rate() {
 
                     <select
                       name="status"
-                      value={form.status}
+                      value={form.status || "Đang chiếu"}
                       onChange={handleChange}
                       className="lc-input"
-                      disabled={isPastShowtime}
+                      disabled={isFieldDisabled}
                     >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
+                      <option value="Đang chiếu">Đang chiếu</option>
+                      {form.status && form.status !== "Đang chiếu" && (
+                        <option value={form.status}>{form.status}</option>
+                      )}
                     </select>
                   </div>
                 </div>
 
-                {/* Hàng: Giờ Bắt Đầu + Giờ Kết Thúc */}
                 <div className="lc-field-row">
                   <div className="lc-field">
                     <label className="lc-label">
@@ -692,7 +689,7 @@ export default function Rate() {
                       value={form.startHour}
                       onChange={handleChange}
                       className="lc-input"
-                      disabled={isPastShowtime}
+                      disabled={isFieldDisabled}
                     />
                   </div>
 
@@ -701,7 +698,6 @@ export default function Rate() {
                       Giờ Kết Thúc <span className="lc-required">*</span>
                     </label>
 
-                    {/* Kiểm tra xem phim đã chọn có thời lượng không */}
                     {(() => {
                       const selMovie = movies.find(
                         (m) => String(getMovieId(m)) === String(form.movieId)
@@ -742,7 +738,7 @@ export default function Rate() {
                             value={form.endHour}
                             onChange={handleChange}
                             className="lc-input"
-                            disabled={isPastShowtime}
+                            disabled={isFieldDisabled}
                           />
                           {crossMid && (
                             <span className="lc-midnight-badge">
@@ -762,22 +758,337 @@ export default function Rate() {
                     className="lc-btn-cancel"
                     disabled={submitting}
                   >
-                    {isPastShowtime ? "Đóng" : "Hủy"}
+                    {isEditMode || editId === null ? "Hủy" : "Đóng"}
                   </button>
 
                   {!isPastShowtime && (
-                    <button
-                      type="submit"
-                      className="lc-btn-submit"
-                      disabled={submitting}
-                    >
-                      {submitting
-                        ? "Đang xử lý..."
-                        : editId !== null
-                        ? "Cập Nhật"
-                        : "Thêm Mới"}
-                    </button>
+                    editId !== null && !isEditMode ? (
+                      <button
+                        type="button"
+                        className="lc-btn-submit"
+                        style={{ background: "#f97316" }}
+                        onClick={() => setIsEditMode(true)}
+                      >
+                        <MdEdit size={16} style={{ marginRight: 4 }} /> Chỉnh Sửa
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="lc-btn-submit"
+                        disabled={submitting}
+                      >
+                        {submitting
+                          ? "Đang xử lý..."
+                          : editId !== null
+                          ? "Cập Nhật"
+                          : "Thêm Mới"}
+                      </button>
+                    )
                   )}
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ── Modal Batch Generator (Tạo Lịch Chiếu) ── */}
+      {showBatchModal &&
+        createPortal(
+          <div className="lc-modal-overlay">
+            <div className="lc-modal lc-modal--batch">
+              <div className="lc-batch-modal-header">
+                <div>
+                  <h5 className="lc-modal-title" style={{ marginBottom: 4 }}>
+                    ⚡ Tạo Lịch Chiếu
+                  </h5>
+                </div>
+                <button type="button" className="lc-batch-close-btn" onClick={closeBatchModal}>✕</button>
+              </div>
+
+              {batchError && <p className="lc-form-error">{batchError}</p>}
+
+              <form onSubmit={handleBatchSubmit} className="lc-batch-form">
+                <div className="lc-batch-grid">
+                  {/* CỘT TRÁI: CẤU HÌNH ĐẦU VÀO */}
+                  <div className="lc-batch-col-left">
+                    <h6 className="lc-batch-section-title">1. Chọn Phim & Phòng Chiếu</h6>
+
+                    {/* Phim */}
+                    <div className="lc-field">
+                      <label className="lc-label">
+                        Phim <span className="lc-required">*</span>
+                      </label>
+                      <select
+                        name="movieId"
+                        value={batchForm.movieId}
+                        onChange={handleBatchFormChange}
+                        className="lc-input"
+                      >
+                        <option value="">-- Chọn phim chiếu --</option>
+                        {movies
+                          .filter((m) => isMovieNowOrUpcoming(m))
+                          .map((m) => {
+                            const mId = getMovieId(m);
+                            const dur = getMovieDurationMinutes(m);
+                            return (
+                              <option key={mId} value={mId}>
+                                {getMovieTitle(m)} {dur ? `(${dur} phút)` : ""}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
+
+                    {/* Chi Nhánh & Phòng */}
+                    <div className="lc-field-row">
+                      <div className="lc-field">
+                        <label className="lc-label">Chi Nhánh <span className="lc-required">*</span></label>
+                        <select
+                          name="cinemaId"
+                          value={batchForm.cinemaId}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                        >
+                          <option value="">-- Chọn rạp --</option>
+                          {cinemas.map((c) => {
+                            const cId = c?.cinemaId ?? c?.CinemaId ?? c?.id ?? c?.Id;
+                            const cName = c?.cinemaName ?? c?.CinemaName ?? c?.name ?? "—";
+                            return <option key={cId} value={cId}>{cName}</option>;
+                          })}
+                        </select>
+                      </div>
+
+                      <div className="lc-field">
+                        <label className="lc-label">Phòng Chiếu <span className="lc-required">*</span></label>
+                        <select
+                          name="roomId"
+                          value={batchForm.roomId}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                          disabled={!batchForm.cinemaId}
+                        >
+                          <option value="">-- Chọn phòng --</option>
+                          {rooms
+                            .filter((r) => String(getRoomCinemaId(r)) === String(batchForm.cinemaId))
+                            .map((r) => {
+                              const rId = r?.roomId ?? r?.RoomId ?? r?.id ?? r?.Id;
+                              const rName = r?.roomName ?? r?.RoomName ?? r?.name ?? "—";
+                              return <option key={rId} value={rId}>{rName}</option>;
+                            })}
+                        </select>
+                      </div>
+                    </div>
+
+                    <h6 className="lc-batch-section-title" style={{ marginTop: 16 }}>2. Khoảng Ngày & Thứ Áp Dụng</h6>
+
+                    {/* Từ Ngày - Đến Ngày */}
+                    <div className="lc-field-row">
+                      <div className="lc-field">
+                        <label className="lc-label">Từ Ngày <span className="lc-required">*</span></label>
+                        <input
+                          type="date"
+                          name="fromDate"
+                          value={batchForm.fromDate}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                          min={new Date().toISOString().split("T")[0]}
+                        />
+                      </div>
+                      <div className="lc-field">
+                        <label className="lc-label">Đến Ngày <span className="lc-required">*</span></label>
+                        <input
+                          type="date"
+                          name="toDate"
+                          value={batchForm.toDate}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                          min={batchForm.fromDate || new Date().toISOString().split("T")[0]}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Presets Thứ trong tuần */}
+                    <div className="lc-field">
+                      <div className="lc-batch-presets-row">
+                        <span className="lc-label" style={{ margin: 0 }}>Thứ áp dụng:</span>
+                        <button type="button" className="lc-btn-preset" onClick={() => handleSelectWeekdayPreset("all")}>Tất cả</button>
+                        <button type="button" className="lc-btn-preset" onClick={() => handleSelectWeekdayPreset("weekdays")}>T2 - T6</button>
+                        <button type="button" className="lc-btn-preset" onClick={() => handleSelectWeekdayPreset("weekend")}>T7 - CN</button>
+                      </div>
+
+                      <div className="lc-batch-weekdays-grid">
+                        {WEEKDAY_OPTIONS.map((w) => {
+                          const checked = batchForm.selectedWeekdays.includes(w.id);
+                          return (
+                            <button
+                              key={w.id}
+                              type="button"
+                              className={`lc-weekday-chip${checked ? " lc-weekday-chip--active" : ""}`}
+                              onClick={() => handleToggleWeekday(w.id)}
+                            >
+                              {w.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <h6 className="lc-batch-section-title" style={{ marginTop: 16 }}>3. Thời Gian & Giờ Bắt Đầu</h6>
+
+                    {/* Quảng cáo & Dọn phòng */}
+                    <div className="lc-field-row">
+                      <div className="lc-field">
+                        <label className="lc-label">Quảng Cáo (Phút)</label>
+                        <input
+                          type="number"
+                          name="adTime"
+                          value={batchForm.adTime}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                          min={0}
+                          max={60}
+                        />
+                      </div>
+                      <div className="lc-field">
+                        <label className="lc-label">Dọn Phòng (Phút)</label>
+                        <input
+                          type="number"
+                          name="cleanTime"
+                          value={batchForm.cleanTime}
+                          onChange={handleBatchFormChange}
+                          className="lc-input"
+                          min={0}
+                          max={60}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Thêm Giờ Chiếu */}
+                    <div className="lc-field">
+                      <label className="lc-label">Danh Sách Giờ Chiếu Bắt Đầu</label>
+                      <div className="lc-batch-time-chips">
+                        {batchForm.startTimes.map((t) => (
+                          <span key={t} className="lc-time-chip">
+                            ⏱ {t}
+                            <button type="button" onClick={() => handleRemoveStartTime(t)}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="lc-batch-add-time-row">
+                        <input
+                          type="time"
+                          value={newStartTimeInput}
+                          onChange={(e) => setNewStartTimeInput(e.target.value)}
+                          className="lc-input"
+                          style={{ width: "130px" }}
+                        />
+                        <button
+                          type="button"
+                          className="lc-btn-dark-search"
+                          onClick={() => handleAddStartTime(newStartTimeInput)}
+                        >
+                          + Thêm giờ
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CỘT PHẢI: XEM TRƯỚC (PREVIEW) & KIỂM TRA TRÙNG LỊCH */}
+                  <div className="lc-batch-col-right">
+                    <div className="lc-batch-preview-head">
+                      <h6 className="lc-batch-section-title" style={{ margin: 0 }}>
+                        4. Xem Trước Khung Giờ Chiếu ({batchItems.length} suất)
+                      </h6>
+                      {conflictCount > 0 && (
+                        <span className="lc-batch-conflict-badge">
+                          ⚠️ {conflictCount} suất bị trùng lịch!
+                        </span>
+                      )}
+                    </div>
+
+                    {batchItems.length === 0 ? (
+                      <div className="lc-batch-preview-empty">
+                        <MdCalendarMonth size={36} color="#9ca3af" />
+                        <p>Vui lòng chọn Phim, Phòng chiếu, Khoảng ngày và Giờ chiếu ở cột bên trái để sinh lịch xem trước.</p>
+                      </div>
+                    ) : (
+                      <div className="lc-batch-table-wrap">
+                        <table className="lc-batch-table">
+                          <thead>
+                            <tr>
+                              <th>Ngày Chiếu</th>
+                              <th>Khung Giờ (Bắt đầu - Kết thúc)</th>
+                              <th>Trạng Thái</th>
+                              <th style={{ width: 45 }}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {batchItems.map((item) => (
+                              <tr key={item.tempId} className={item.isConflict ? "lc-row-conflict" : ""}>
+                                <td>
+                                  <strong>{item.dayName}</strong>, {formatDate(item.showDate)}
+                                </td>
+                                <td>
+                                  <span className="lc-batch-time-range">
+                                    ⏱ <strong>{item.startHour}</strong> → <strong>{item.endHour}</strong>
+                                    {item.crossMid && <span className="lc-midnight-badge">+1 ngày</span>}
+                                  </span>
+                                  <div className="lc-batch-time-detail">
+                                    {item.duration}p phim + {item.adTime}p QC + {item.cleanTime}p dọn
+                                  </div>
+                                </td>
+                                <td>
+                                  {item.isConflict ? (
+                                    <span className="lc-status-conflict" title={item.conflictReason}>
+                                      ⛔ {item.conflictReason}
+                                    </span>
+                                  ) : (
+                                    <span className="lc-status-ok">
+                                      ✓ Hợp lệ
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="lc-btn-row-del"
+                                    onClick={() => handleRemoveBatchItem(item.tempId)}
+                                    title="Xóa suất này khỏi danh sách tạo"
+                                  >
+                                    ✕
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="lc-modal-actions" style={{ marginTop: 20 }}>
+                  <button
+                    type="button"
+                    onClick={closeBatchModal}
+                    className="lc-btn-cancel"
+                    disabled={batchSubmitting}
+                  >
+                    Hủy
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="lc-btn-submit"
+                    style={{ background: conflictCount > 0 ? "#ef4444" : "#10b981" }}
+                    disabled={batchSubmitting || batchItems.length === 0 || conflictCount > 0}
+                  >
+                    {batchSubmitting
+                      ? "Đang tự động sinh & lưu suất chiếu..."
+                      : `⚡ Lưu Toàn Bộ (${batchItems.length} Suất)`}
+                  </button>
                 </div>
               </form>
             </div>

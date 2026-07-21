@@ -307,7 +307,7 @@ export function useDashboard() {
     fetchDashboardData();
   }, [timeFilter, cinemaId]);
 
-  // ─── Fetch toàn bộ dữ liệu dashboard (5 API song song) ───────────────
+  // ─── Fetch toàn bộ dữ liệu dashboard (Tối ưu hóa tốc độ load) ───────────────
   async function fetchDashboardData() {
     const cacheKey = `${timeFilter}__${cinemaId}`;
 
@@ -321,21 +321,23 @@ export function useDashboard() {
       setLoading(true);
       setError("");
 
-      // 5 API song song — không gọi /Bookings, /Foods, /Combos nặng nữa
       const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp] = await Promise.all([
         getDashboardStats(timeFilter, cinemaId),
-        getRecentTickets(),
+        getRecentTickets().catch(() => []),
         getRevenueChart(timeFilter, cinemaId),
         getMovieStats(timeFilter, cinemaId),
-        getCinemas(),
+        cinemas.length > 0 ? cinemas : getCinemas().catch(() => []),
       ]);
 
       const result = { statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp };
       cacheRef.current[cacheKey] = result;
       applyData(result);
 
-      // Fetch food distribution nền — không block UI chính
-      fetchFoodDistributionBg(timeFilter, cinemaId, cacheKey);
+      // Thêm dữ liệu từ simulated orders nếu có
+      const localFoodSources = await getDashboardFoodSources();
+      if (localFoodSources?.orders?.length > 0) {
+        applyFoodDistribution(localFoodSources, timeFilter, cinemaId);
+      }
 
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -391,14 +393,12 @@ export function useDashboard() {
     setStats(normalizeDashboardStats(statsData));
     setRecentTickets(normalizeRecentTickets(recentTicketData));
 
-    const cList = cinemasResp?.$values || cinemasResp || [];
-    setCinemas(cList);
+    const cList = cinemasResp?.$values || cinemasResp || cinemas;
+    if (Array.isArray(cList) && cList.length > 0) {
+      setCinemas(cList);
+    }
 
-    // Dùng foodDistributions đã có trong RevenueChart response — không cần fetch thêm
-    console.log('[DEBUG] chartDataResp keys:', Object.keys(chartDataResp || {}));
-    console.log('[DEBUG] chartDataResp full:', chartDataResp);
     const foodDistributions = normalizeFoodDistributions(chartDataResp);
-    console.log('[DEBUG] foodDistributions resolved:', foodDistributions);
 
     setChartData({
       totalTicketRevenue: chartDataResp?.totalTicketRevenue || chartDataResp?.TotalTicketRevenue || 0,
@@ -420,7 +420,7 @@ export function useDashboard() {
       }))
     });
 
-    // Dùng thông tin phim từ movieStatsResp (không cần gọi /Movies riêng)
+    // Dùng thông tin phim từ movieStatsResp (hiển thị tất cả phim có doanh thu/vé)
     setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => {
       const movieStatus = getMovieStatus(m);
       return {
@@ -438,7 +438,7 @@ export function useDashboard() {
           ticketsSold: c.ticketsSold || c.TicketsSold
         }))
       };
-    }).filter(m => m.movieTitle && m.movieStatus !== "Đã chiếu"));
+    }).filter(m => m.movieTitle));
   }
 
   // Xoá cache khi filter thay đổi
