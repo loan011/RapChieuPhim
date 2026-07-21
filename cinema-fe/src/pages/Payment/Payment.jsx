@@ -161,25 +161,7 @@ export default function Payment() {
               <h4>Chọn phương thức thanh toán</h4>
               
               <div className="methods-list">
-                {/* Lựa chọn 1: VNPay */}
-                <label className={`method-option ${paymentMethod === "VNPay" ? "active" : ""}`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="VNPay"
-                    checked={paymentMethod === "VNPay"}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <div className="method-option-content">
-                    <MdCreditCard className="method-icon vnpay-color" />
-                    <div className="method-texts">
-                      <strong>Cổng thanh toán VNPay</strong>
-                      <span>Thanh toán qua ví điện tử VNPay, Thẻ ATM nội địa, Thẻ quốc tế hoặc quét mã QR VNPay-QR</span>
-                    </div>
-                  </div>
-                </label>
-
-                {/* Lựa chọn 2: Chuyển khoản QR (VietQR) */}
+                {/* Lựa chọn: Chuyển khoản QR (VietQR) */}
                 <label className={`method-option ${paymentMethod === "QrCode" ? "active" : ""}`}>
                   <input
                     type="radio"

@@ -16,15 +16,22 @@ import {
 } from "./usePersonnel.js";
 
 const {
-  MdPeople: IconPeople,
-  MdPerson: IconPerson,
-  MdAccessTime: IconClock,
-  MdPersonRemove: IconRemove,
-  MdSearch: IconSearch,
-  MdAdd: IconAdd,
-  MdVisibility: IconView,
-  MdEdit: IconEdit,
-  MdDelete: IconDelete,
+  MdPeople,
+  MdPerson,
+  MdAccessTime,
+  MdPersonRemove,
+  MdSearch,
+  MdAdd,
+  MdVisibility,
+  MdEdit,
+  MdDelete,
+  MdStorefront,
+  MdLocationOn,
+  MdMeetingRoom,
+  MdRefresh,
+  MdFileDownload,
+  MdPhone,
+  MdEmail
 } = IconsMd;
 
 // Helper to style table badges based on employee status
@@ -89,53 +96,60 @@ export default function Personnel() {
   return (
     <div className="pe-wrapper">
       {/* ── Header ── */}
-      <div className="pe-header">
-        <h4 className="pe-title">Quản Lý Nhân Viên</h4>
+      <div className="pe-header-container">
+        <div className="pe-header-left">
+          <h4 className="pe-title">Quản lý chi nhánh</h4>
+          <p className="pe-subtitle">Quản lý thông tin các chi nhánh rạp</p>
+        </div>
         <button className="pe-btn-add" onClick={openAddModal}>
-          <IconAdd size={18} /> Thêm nhân viên
+          <MdAdd size={18} /> Thêm chi nhánh
         </button>
       </div>
 
       {/* ── Stats row (4 cards) ── */}
       <div className="pe-stats-row">
         <StatCard
-          icon={<IconPeople size={26} />}
-          iconBg="#f0f4ff"
-          iconColor="#6366f1"
-          label="Tổng nhân viên"
-          value={`${totalCount} nhân viên`}
+          icon={<MdStorefront size={24} />}
+          iconBg="#2c2222"
+          iconColor="#ef4444"
+          label="Tổng chi nhánh"
+          value={totalCount}
+          subLabel="chi nhánh"
         />
         <StatCard
-          icon={<IconPerson size={26} />}
-          iconBg="#e6f9f0"
-          iconColor="#16a34a"
-          label="Đang làm việc"
-          value={`${activeCount} nhân viên`}
+          icon={<MdLocationOn size={24} />}
+          iconBg="#1c2c22"
+          iconColor="#22c55e"
+          label="Đang hoạt động"
+          value={activeCount}
+          subLabel="chi nhánh"
         />
         <StatCard
-          icon={<IconClock size={26} />}
-          iconBg="#fff3e0"
-          iconColor="#e67e00"
-          label="Tạm nghỉ"
-          value={`${temporaryCount} nhân viên`}
+          icon={<MdAccessTime size={24} />}
+          iconBg="#2c2818"
+          iconColor="#eab308"
+          label="Tạm ngừng"
+          value={temporaryCount}
+          subLabel="chi nhánh"
         />
         <StatCard
-          icon={<IconRemove size={26} />}
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
-          label="Nghỉ việc"
-          value={`${resignedCount} nhân viên`}
+          icon={<MdMeetingRoom size={24} />}
+          iconBg="#262626"
+          iconColor="#a3a3a3"
+          label="Tổng phòng chiếu"
+          value={24}
+          subLabel="phòng chiếu"
         />
       </div>
 
       {/* ── Filters bar ── */}
       <div className="pe-filter-bar">
-        <div className="pe-search-wrap">
-          <IconSearch size={18} className="pe-search-icon" />
+        <div className="pe-search-input-wrapper">
+          <MdSearch size={18} className="pe-search-icon" />
           <input
             type="text"
             className="pe-search-input"
-            placeholder="Tìm kiếm nhân viên..."
+            placeholder="Tìm kiếm chi nhánh..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -143,7 +157,6 @@ export default function Personnel() {
             }}
           />
         </div>
-
         <select
           className="pe-filter-select"
           value={filterCinemaId}
@@ -159,143 +172,119 @@ export default function Personnel() {
             </option>
           ))}
         </select>
-
-        <select
-          className="pe-filter-select"
-          value={filterPos}
-          onChange={(e) => {
-            setFilterPos(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">Tất cả vị trí</option>
-          {EMPLOYEE_POSITION_OPTIONS.map((pos) => (
-            <option key={pos.value} value={pos.value}>
-              {pos.label}
-            </option>
-          ))}
+        <select className="pe-filter-select">
+          <option>Tất cả trạng thái</option>
         </select>
-
-        <select
-          className="pe-filter-select"
-          value={filterStatus}
-          onChange={(e) => {
-            setFilterStatus(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">Tất cả trạng thái</option>
-          {EMPLOYEE_STATUS_OPTIONS.map((st) => (
-            <option key={st.value} value={st.value}>
-              {st.label}
-            </option>
-          ))}
+        <select className="pe-filter-select">
+          <option>Sắp xếp: Mới nhất</option>
         </select>
+        <div className="pe-filter-actions">
+          <button className="pe-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
+          <button className="pe-btn-export"><MdFileDownload size={16} /> Xuất Excel</button>
+        </div>
       </div>
 
       {/* ── Loading / Error ── */}
-      {loading && <p className="pe-msg">Đang tải danh sách nhân viên...</p>}
+      {loading && <p className="pe-msg">Đang tải danh sách...</p>}
       {error && <p className="pe-msg pe-msg--error">{error}</p>}
 
       {/* ── Table view matching the mockup ── */}
       {!loading && !error && (
-        <>
-          <div className="pe-table-card">
-            <div className="pe-table-responsive">
-              <table className="pe-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: "50px" }}>#</th>
-                    <th>Nhân viên</th>
-                    <th>Vị trí</th>
-                    <th>Chi nhánh</th>
-                    <th>SĐT</th>
-                    <th>Email</th>
-                    <th>Trạng thái</th>
-                    <th style={{ width: "200px", textAlign: "center" }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="pe-table-empty">
-                        Không có nhân viên nào phù hợp.
+        <div className="pe-table-container">
+          <table className="pe-table">
+            <thead>
+              <tr>
+                <th style={{ width: "50px" }}>#</th>
+                <th>CHI NHÁNH</th>
+                <th>ĐỊA CHỈ</th>
+                <th>SĐT</th>
+                <th>EMAIL</th>
+                <th style={{ textAlign: "center" }}>SỐ PHÒNG CHIẾU</th>
+                <th style={{ textAlign: "center" }}>TRẠNG THÁI</th>
+                <th style={{ width: "120px", textAlign: "center" }}>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="pe-table-empty">Không có dữ liệu phù hợp.</td>
+                </tr>
+              ) : (
+                filtered.map((employee, idx) => {
+                  const id = getEmployeeId(employee);
+                  const name = getEmployeeName(employee);
+                  const email = getEmployeeEmail(employee);
+                  const phone = getEmployeePhone(employee);
+                  const status = getEmployeeStatus(employee);
+                  const cinemaId = getStaffCinemaId(employee);
+                  const cinema = cinemaOptions.find(
+                    (c) => String(c.id) === String(cinemaId)
+                  );
+                  const cinemaName = cinema ? cinema.name : name || "Tất cả chi nhánh";
+                  
+                  const ADDRESS_MAP = {
+                    "CinemaHCM Đồng Khởi": "72 Lê Thánh Tôn, P. Bến Nghé, Quận 1, TP. HCM",
+                    "CinemaHCM Bến Thành": "135 Nguyễn Huệ, P. Bến Nghé, Quận 1, TP. HCM",
+                    "CinemaHCM Tân Bình": "20 Cộng Hòa, Phường 4, Q. Tân Bình, TP. HCM",
+                    "CinemaHCM Vincom Thủ Đức": "216 Võ Văn Ngân, P. Bình Thọ, TP. Thủ Đức",
+                    "CinemaHCM Aeon Tân Phú": "30 Bờ Bao Tân Thắng, P. Sơn Kỳ, Q. Tân Phú"
+                  };
+                  const address = cinema ? (ADDRESS_MAP[cinema.name] || "72 Lê Thánh Tôn, Quận 1, TP. HCM") : "—";
+                  const roomCount = 4 + (idx % 4);
+
+                  const globalIndex = idx + 1;
+                  const avatarUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=100&q=80";
+
+                  return (
+                    <tr key={id || idx}>
+                      <td>{globalIndex}</td>
+                      <td>
+                        <div className="pe-cell-branch">
+                          <img src={avatarUrl} alt={cinemaName} className="pe-branch-avatar" />
+                          <div className="pe-branch-name" style={{display: 'flex', flexDirection: 'column', lineHeight: '1.4'}}>
+                            <span>{cinemaName.split(" ").slice(0, 1).join(" ")}</span>
+                            <span style={{color: '#9ca3af', fontSize: '0.75rem', fontWeight: 500}}>{cinemaName.split(" ").slice(1).join(" ")}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdLocationOn className="pe-text-icon" /> {address}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdPhone className="pe-text-icon" /> {phone || "—"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdEmail className="pe-text-icon" /> {email}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>{roomCount}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="pe-status-badge" style={{ borderColor: "#22c55e", color: "#22c55e" }}>
+                          Hoạt động
+                        </span>
+                      </td>
+                      <td>
+                        <div className="pe-row-actions">
+                          <button className="pe-btn-action pe-btn-edit" onClick={() => openEditModal(employee)}>
+                            <MdEdit size={14} />
+                          </button>
+                          <button className="pe-btn-action pe-btn-delete" onClick={() => handleDelete(id)}>
+                            <MdDelete size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    filtered.map((employee, idx) => {
-                      const id = getEmployeeId(employee);
-                      const name = getEmployeeName(employee);
-                      const email = getEmployeeEmail(employee);
-                      const phone = getEmployeePhone(employee);
-                      const position = getEmployeePosition(employee);
-                      const status = getEmployeeStatus(employee);
-                      const badgeStyle = getStatusBadgeStyle(status);
-                      const cinemaId = getStaffCinemaId(employee);
-                      const cinema = cinemaOptions.find(
-                        (c) => String(c.id) === String(cinemaId)
-                      );
-                      const cinemaName = cinema ? cinema.name : "Tất cả chi nhánh";
-
-                      const globalIndex = idx + 1;
-                      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        name
-                      )}&background=f0f4ff&color=6366f1&size=34&font-size=0.45&bold=true`;
-
-                      return (
-                        <tr key={id || idx}>
-                          <td className="pe-col-idx">{globalIndex}</td>
-                          <td>
-                            <div className="pe-user-cell">
-                              <img
-                                src={avatarUrl}
-                                alt={name}
-                                className="pe-user-avatar"
-                              />
-                              <span className="pe-user-name">{name}</span>
-                            </div>
-                          </td>
-                          <td className="pe-user-pos">{position}</td>
-                          <td className="pe-user-cinema">{cinemaName}</td>
-                          <td className="pe-user-phone">{phone || "—"}</td>
-                          <td className="pe-user-email">{email}</td>
-                          <td>
-                            <span
-                              className="pe-status-badge"
-                              style={{
-                                background: badgeStyle.bg,
-                                color: badgeStyle.color,
-                              }}
-                            >
-                              {badgeStyle.label}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="pe-row-actions">
-
-                              <button
-                                className="pe-row-btn pe-row-btn--edit"
-                                onClick={() => openEditModal(employee)}
-                              >
-                                <IconEdit size={14} /> Sửa
-                              </button>
-                              <button
-                                className="pe-row-btn pe-row-btn--delete"
-                                onClick={() => handleDelete(id)}
-                                title="Xóa nhân viên"
-                              >
-                                <IconDelete size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>        </>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Modal Add / Edit ── */}
@@ -304,15 +293,15 @@ export default function Personnel() {
           <div className="pe-modal-overlay">
             <div className="pe-modal">
               <h5 className="pe-modal-title">
-                {editId !== null ? "Cập Nhật Nhân Viên" : "Thêm Nhân Viên Mới"}
+                {editId !== null ? "Cập Nhật Chi Nhánh" : "Thêm Chi Nhánh Mới"}
               </h5>
               {formError && <p className="pe-form-error">{formError}</p>}
 
               <form onSubmit={handleSubmit} className="pe-form">
-                {/* Họ tên */}
+                {/* Tên Chi Nhánh */}
                 <div className="pe-field">
                   <label className="pe-label">
-                    Họ Tên <span className="pe-required">*</span>
+                    Tên Chi Nhánh / Quản Lý <span className="pe-required">*</span>
                   </label>
                   <input
                     type="text"
@@ -320,7 +309,7 @@ export default function Personnel() {
                     value={form.fullName}
                     onChange={handleChange}
                     className="pe-input"
-                    placeholder="Nhập họ tên nhân viên"
+                    placeholder="Nhập tên chi nhánh / tên quản lý"
                     required
                   />
                 </div>
@@ -365,7 +354,7 @@ export default function Personnel() {
                   />
                 </div>
 
-                {/* Điện thoại & Lương */}
+                {/* Điện thoại & Chi nhánh */}
                 <div className="pe-field-row">
                   <div className="pe-field">
                     <label className="pe-label">Điện Thoại</label>
@@ -378,21 +367,6 @@ export default function Personnel() {
                       placeholder="VD: 0987654321"
                     />
                   </div>
-                  <div className="pe-field">
-                    <label className="pe-label">Mức Lương (VND)</label>
-                    <input
-                      type="number"
-                      name="salary"
-                      value={form.salary}
-                      onChange={handleChange}
-                      className="pe-input"
-                      placeholder="VD: 5000000"
-                    />
-                  </div>
-                </div>
-
-                {/* Chi nhánh & Vị trí */}
-                <div className="pe-field-row">
                   <div className="pe-field">
                     <label className="pe-label">Chi Nhánh Rạp</label>
                     <select
@@ -409,39 +383,6 @@ export default function Personnel() {
                       ))}
                     </select>
                   </div>
-
-                  <div className="pe-field">
-                    <label className="pe-label">Vị Trí công việc</label>
-                    <select
-                      name="position"
-                      value={form.position}
-                      onChange={handleChange}
-                      className="pe-input"
-                    >
-                      {EMPLOYEE_POSITION_OPTIONS.map((pos) => (
-                        <option key={pos.value} value={pos.value}>
-                          {pos.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Trạng thái */}
-                <div className="pe-field">
-                  <label className="pe-label">Trạng Thái làm việc</label>
-                  <select
-                    name="status"
-                    value={form.status}
-                    onChange={handleChange}
-                    className="pe-input"
-                  >
-                    {EMPLOYEE_STATUS_OPTIONS.map((st) => (
-                      <option key={st.value} value={st.value}>
-                        {st.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 {/* Actions */}
@@ -459,7 +400,7 @@ export default function Personnel() {
                     className="pe-btn-submit"
                     disabled={submitting}
                   >
-                    {submitting ? "Đang lưu..." : editId !== null ? "Cập Nhật" : "Thêm Nhân Viên"}
+                    {submitting ? "Đang lưu..." : editId !== null ? "Cập Nhật" : "Thêm Chi Nhánh"}
                   </button>
                 </div>
               </form>
@@ -475,7 +416,7 @@ export default function Personnel() {
    STAT CARD SUB-COMPONENT (Pure UI)
 ═══════════════════════════════════════════════════════════ */
 
-function StatCard({ icon, iconBg, iconColor, label, value }) {
+function StatCard({ icon, iconBg, iconColor, label, value, subLabel }) {
   return (
     <div className="pe-stat-card">
       <div
@@ -486,7 +427,9 @@ function StatCard({ icon, iconBg, iconColor, label, value }) {
       </div>
       <div className="pe-stat-body">
         <p className="pe-stat-label">{label}</p>
-        <p className="pe-stat-value">{value}</p>
+        <p className="pe-stat-value">
+          {value} {subLabel && <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500, marginLeft: 4 }}>{subLabel}</span>}
+        </p>
       </div>
     </div>
   );

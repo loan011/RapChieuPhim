@@ -429,8 +429,12 @@ export function filterShowtimesForBooking({
 
     if (showtimeDate === todayStr) {
       const showtimeHour = getShowtimeHour(showtime);
+      const cutoffTime = new Date(now.getTime() - 5 * 60 * 1000);
+      const cutoffHour = String(cutoffTime.getHours()).padStart(2, "0");
+      const cutoffMin = String(cutoffTime.getMinutes()).padStart(2, "0");
+      const cutoffTimeStr = `${cutoffHour}:${cutoffMin}`;
 
-      return showtimeHour >= currentTimeStr;
+      return showtimeHour >= cutoffTimeStr;
     }
 
     return true;

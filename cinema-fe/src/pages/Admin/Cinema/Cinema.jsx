@@ -13,6 +13,11 @@ import {
   MdAdd,
   MdVisibility,
   MdEdit,
+  MdDelete,
+  MdRefresh,
+  MdFileDownload,
+  MdPhone,
+  MdEmail
 } from "react-icons/md";
 import {
   CINEMA_STATUS_OPTIONS,
@@ -97,10 +102,8 @@ export default function RapChieu() {
 
   // Stats
   const totalCinemas = list.length;
-  const totalStaff = list.reduce(
-    (acc, c) => acc + (c?.staffCount ?? c?.StaffCount ?? c?.employeeCount ?? 0),
-    0
-  );
+  const activeCinemas = list.filter((c) => getCinemaStatus(c) === "Active").length;
+  const inactiveCinemas = list.filter((c) => getCinemaStatus(c) === "Inactive").length;
   const totalRooms = list.reduce(
     (acc, c) => acc + (c?.roomCount ?? c?.RoomCount ?? c?.screeningRoomCount ?? 0),
     0
@@ -109,80 +112,161 @@ export default function RapChieu() {
   return (
     <div className="cn-wrapper">
       {/* ── Header row ── */}
-      <div className="cn-header">
-        <h4 className="cn-title">Quản Lí Chi Nhánh</h4>
+      <div className="cn-header-container">
+        <div className="cn-header-left">
+          <h4 className="cn-title">Quản lý chi nhánh</h4>
+          <p className="cn-subtitle">Quản lý thông tin các chi nhánh rạp</p>
+        </div>
         <button className="cn-btn-add" onClick={openAddModal}>
-          <MdAdd size={18} />
-          Thêm chi nhánh
+          <MdAdd size={18} /> Thêm chi nhánh
         </button>
       </div>
 
       {/* ── Stats ── */}
       <div className="cn-stats-row">
         <StatCard
-          icon={<MdStorefront size={32} />}
-          iconBg="#f0f4ff"
-          iconColor="#6366f1"
-          label="Tổng chi nhánh rạp"
-          value={`${totalCinemas} rạp`}
+          icon={<MdStorefront size={24} />}
+          iconBg="#2c2222"
+          iconColor="#ef4444"
+          label="Tổng chi nhánh"
+          value={`${totalCinemas} chi nhánh`}
         />
         <StatCard
-          icon={<MdPeople size={32} />}
-          iconBg="#f0fdf4"
-          iconColor="#16a34a"
-          label="Tổng nhân viên"
-          value={`${totalStaff} nhân viên`}
+          icon={<MdLocationOn size={24} />}
+          iconBg="#1c2c22"
+          iconColor="#22c55e"
+          label="Đang hoạt động"
+          value={`${activeCinemas} chi nhánh`}
         />
         <StatCard
-          icon={<MdOndemandVideo size={32} />}
-          iconBg="#fff7ed"
-          iconColor="#f97316"
+          icon={<MdAccessTime size={24} />}
+          iconBg="#2c2818"
+          iconColor="#eab308"
+          label="Tạm ngừng"
+          value={`${inactiveCinemas} chi nhánh`}
+        />
+        <StatCard
+          icon={<MdMeetingRoom size={24} />}
+          iconBg="#262626"
+          iconColor="#a3a3a3"
           label="Tổng phòng chiếu"
-          value={`${totalRooms} phòng`}
+          value={`${totalRooms} phòng chiếu`}
         />
       </div>
 
-      {/* ── Search ── */}
-      <div className="cn-search-row">
-        <input
-          type="text"
-          className="cn-search"
-          placeholder="Tìm kiếm theo tên, khu vực, địa chỉ..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
+      {/* ── Search & Filters ── */}
+      <div className="cn-filter-bar">
+        <div className="cn-search-input-wrapper">
+          <input
+            type="text"
+            className="cn-search-input"
+            placeholder="Tìm kiếm chi nhánh..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        <select className="cn-filter-select">
+          <option>Tất cả chi nhánh</option>
+        </select>
+        <select className="cn-filter-select">
+          <option>Tất cả trạng thái</option>
+        </select>
+        <select className="cn-filter-select">
+          <option>Sắp xếp: Mới nhất</option>
+        </select>
+        <div className="cn-filter-actions">
+          <button className="cn-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
+          <button className="cn-btn-export"><MdFileDownload size={16} /> Xuất Excel</button>
+        </div>
       </div>
 
       {/* ── Loading / Error ── */}
       {loading && <p className="cn-msg">Đang tải dữ liệu...</p>}
       {error && <p className="cn-msg cn-msg--error">{error}</p>}
 
-      {/* ── Cards grid ── */}
+      {/* ── Table view ── */}
       {!loading && !error && (
-        <>
-          {pageItems.length === 0 ? (
-            <p className="cn-msg">Không có dữ liệu phù hợp.</p>
-          ) : (
-            <div className="cn-grid">
-              {pageItems.map((cinema, idx) => {
-                const id = getCinemaId(cinema);
-                const status = getCinemaStatus(cinema);
-                const style = getStatusStyle(status);
-                return (
-                  <BranchCard
-                    key={id ?? idx}
-                    cinema={cinema}
-                    statusStyle={style}
-                    onEdit={() => openEditModal(cinema)}
-                    onDelete={() => handleDelete(id)}
-                    onDetail={() => navigate(`/admin/phong-chieu?cinemaId=${id}`)}
-                  />
-                );
-              })}
-            </div>
-          )}
+        <div className="cn-table-container">
+          <table className="cn-table">
+            <thead>
+              <tr>
+                <th style={{ width: "50px" }}>#</th>
+                <th>CHI NHÁNH</th>
+                <th>ĐỊA CHỈ</th>
+                <th>SĐT</th>
+                <th>EMAIL</th>
+                <th style={{ textAlign: "center" }}>SỐ PHÒNG CHIẾU</th>
+                <th style={{ textAlign: "center" }}>TRẠNG THÁI</th>
+                <th style={{ width: "120px", textAlign: "center" }}>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="cn-table-empty">Không có dữ liệu phù hợp.</td>
+                </tr>
+              ) : (
+                pageItems.map((cinema, idx) => {
+                  const id = getCinemaId(cinema);
+                  const name = getCinemaName(cinema);
+                  const address = getCinemaAddress(cinema);
+                  const phone = getCinemaPhone(cinema);
+                  const email = getCinemaEmail(cinema);
+                  const status = getCinemaStatus(cinema);
+                  const style = getStatusStyle(status);
+                  const roomCount = cinema?.roomCount ?? cinema?.RoomCount ?? cinema?.screeningRoomCount ?? 0;
+                  const globalIdx = (page - 1) * PAGE_SIZE + idx + 1;
 
-          {/* ── Scroll/Pagination Footer Info ── */}
+                  // Avatar demo
+                  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2c2c2c&color=ef4444&size=40`;
+
+                  return (
+                    <tr key={id ?? idx}>
+                      <td>{globalIdx}</td>
+                      <td>
+                        <div className="cn-cell-branch">
+                          <img src={avatarUrl} alt={name} className="cn-branch-avatar" />
+                          <span className="cn-branch-name">{name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="cn-cell-icon-text">
+                          <MdLocationOn className="cn-text-icon" /> {address}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="cn-cell-icon-text">
+                          <MdPhone className="cn-text-icon" /> {phone || "—"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="cn-cell-icon-text">
+                          <MdEmail className="cn-text-icon" /> {email || "—"}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>{roomCount}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="cn-status-badge" style={{ borderColor: style.color, color: style.color }}>
+                          {style.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="cn-row-actions">
+                          <button className="cn-btn-action cn-btn-edit" onClick={() => openEditModal(cinema)}>
+                            <MdEdit size={14} />
+                          </button>
+                          <button className="cn-btn-action cn-btn-delete" onClick={() => handleDelete(id)}>
+                            <MdDelete size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          
           <div className="cn-footer" style={{ justifyContent: "center", margin: "24px 0" }}>
             <span className="cn-footer-info">
               {pageItems.length < filtered.length ? (
@@ -192,7 +276,7 @@ export default function RapChieu() {
               )}
             </span>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Modal ── */}

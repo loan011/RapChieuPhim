@@ -755,7 +755,7 @@ export function useMovies() {
       if (isCanceled) return false;
 
       const startTimeStr = showtime?.startTime ?? showtime?.StartTime ?? "";
-      const isPast = startTimeStr ? new Date(startTimeStr) < now : false;
+      const isPast = startTimeStr ? (new Date(startTimeStr).getTime() + 5 * 60 * 1000 < now.getTime()) : false;
       if (isPast) return false;
 
       return true;

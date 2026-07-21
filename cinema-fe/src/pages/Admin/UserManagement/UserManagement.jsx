@@ -10,7 +10,6 @@ import TaiKhoan from "../Account/Account.jsx";
 const TABS = [
   {
     key: "nhan-vien",
-    label: "Nhân Viên",
     icon: <MdBadge />,
     color: "#ff3b30",
     bg: "#1c1c1e",
@@ -67,7 +66,6 @@ export default function UserManagement() {
           </button>
         ))}
       </div>
-
       {/* Tab Content */}
       <div className="um-content">
         {activeTab === "nhan-vien" && <Personnel />}

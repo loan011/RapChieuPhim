@@ -172,7 +172,8 @@ function Home() {
       }
 
       const startTimeStr = st?.startTime ?? st?.StartTime ?? "";
-      const notPast = startTimeStr ? new Date(startTimeStr) >= now : true;
+      // Allow customer to book tickets up to 5 minutes past start time
+      const notPast = startTimeStr ? (new Date(startTimeStr).getTime() + 5 * 60 * 1000 >= now.getTime()) : true;
 
       return notPast;
     });

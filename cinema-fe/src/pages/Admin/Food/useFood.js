@@ -97,7 +97,7 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
 
     if (selectedCinemaId) {
       const bCinemaId = getBookingCinemaId(booking);
-      if (String(bCinemaId) !== String(selectedCinemaId)) return;
+      if (bCinemaId && String(bCinemaId) !== String(selectedCinemaId)) return;
     }
 
     const rawDate = booking.bookingDate ?? booking.BookingDate ?? booking.createdAt ?? booking.CreatedAt;
@@ -121,7 +121,7 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
 
     if (selectedCinemaId) {
       const oCinemaId = getOrderCinemaId(order);
-      if (String(oCinemaId) !== String(selectedCinemaId)) return;
+      if (oCinemaId && String(oCinemaId) !== String(selectedCinemaId)) return;
     }
 
     const rawDate = order.orderDate ?? order.OrderDate ?? order.createdAt ?? order.CreatedAt;
@@ -173,8 +173,9 @@ export function useFood() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   
-  // Filter category
+  // Filter category & status
   const [activeCategory, setActiveCategory] = useState("Tất cả");
+  const [statusFilter, setStatusFilter] = useState("Tất cả");
   const [timeFilter, setTimeFilter] = useState("month"); // 'month' or 'today'
 
   // Selected item for edit/delete/import
@@ -223,8 +224,13 @@ export function useFood() {
             { cinemaId: 3, name: "CinemaDN Hải Châu" }
           ];
       setCinemas(cList);
+      let activeCinemaId = selectedCinemaId;
+      if (!activeCinemaId && cList.length > 0) {
+        activeCinemaId = String(cList[0].cinemaId || cList[0].id);
+        setSelectedCinemaId(activeCinemaId);
+      }
 
-      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, selectedCinemaId);
+      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, activeCinemaId);
 
       let qtyOverrides = {};
       try {
@@ -233,14 +239,17 @@ export function useFood() {
 
       const normalizedFoods = foodsData && foodsData.length > 0
         ? foodsData.map(f => {
-            const trend = Math.floor(Math.random() * 30) - 10;
             const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
             const stat = foodStatsMap.get(String(foodId)) || { month: 0, week: 0, today: 0 };
             const price = Number(f.price ?? f.Price ?? 0);
             
-            const soldThisMonth = Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
-            const soldThisWeek = Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
-            const soldToday = Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
+            // Allow stat.month to be the source of truth if we are filtering by branch
+            // otherwise if f.soldThisMonth is larger, use it (for "All branches" if backend provides it)
+            const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
+            const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
+            const soldToday = selectedCinemaId ? stat.today : Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
+
+            const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 30) - 10) : 0;
 
             const rawQty = Number(f.quantity ?? f.Quantity ?? 100);
             const key = `food_${foodId}`;
@@ -272,14 +281,15 @@ export function useFood() {
 
       const normalizedCombos = combosData && combosData.length > 0
         ? combosData.map(c => {
-            const trend = Math.floor(Math.random() * 20) - 5;
             const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
             const stat = comboStatsMap.get(String(comboId)) || { month: 0, week: 0, today: 0 };
             const price = Number(c.price ?? c.Price ?? 0);
 
-            const soldThisMonth = Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
-            const soldThisWeek = Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
-            const soldToday = Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
+            const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
+            const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
+            const soldToday = selectedCinemaId ? stat.today : Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
+
+            const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 20) - 5) : 0;
 
             const rawQty = Number(c.quantity ?? c.Quantity ?? 100);
             const key = `combo_${comboId}`;
@@ -543,7 +553,13 @@ export function useFood() {
     const matchesSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (f.category && f.category.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = activeCategory === "Tất cả" || f.category === activeCategory;
-    return matchesSearch && matchesCategory;
+    let matchesStatus = true;
+    if (statusFilter === "Còn hàng") {
+      matchesStatus = f.quantity > 0 && f.isAvailable;
+    } else if (statusFilter === "Hết hàng") {
+      matchesStatus = f.quantity <= 0 || !f.isAvailable;
+    }
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -560,7 +576,7 @@ export function useFood() {
   const totalRevenue = items.reduce((sum, item) => sum + getRev(item), 0);
   
   // Top selling items
-  const topSelling = [...items].sort((a, b) => getSold(b) - getSold(a)).slice(0, 5);
+  const topSelling = [...items].filter(a => getSold(a) > 0).sort((a, b) => getSold(b) - getSold(a)).slice(0, 5);
   
   // Low stock alerts
   const lowStockItems = items.filter(i => i.quantity < 100);
@@ -603,6 +619,7 @@ export function useFood() {
     showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity,
     
     timeFilter, setTimeFilter, getSold, getRev,
+    statusFilter, setStatusFilter,
     formData, setFormData, handleInputChange, handleFileChange, selectedItem,
     cinemas, selectedCinemaId, setSelectedCinemaId
   };

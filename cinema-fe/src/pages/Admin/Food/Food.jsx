@@ -16,6 +16,7 @@ export default function Food() {
     showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity,
     formData, handleInputChange, handleFileChange, selectedItem,
     timeFilter, setTimeFilter, getSold, getRev,
+    statusFilter, setStatusFilter,
     cinemas, selectedCinemaId, setSelectedCinemaId
   } = useFood();
 
@@ -69,7 +70,6 @@ export default function Food() {
               onChange={(e) => setSelectedCinemaId(e.target.value)}
               style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', color: '#fff', cursor: 'pointer', fontSize: 13 }}
             >
-              <option value="" style={{ background: '#1c1c24', color: '#fff' }}>Tất cả Chi Nhánh</option>
               {cinemas.map((c) => (
                 <option key={c.cinemaId || c.id} value={c.cinemaId || c.id} style={{ background: '#1c1c24', color: '#fff' }}>
                   {c.name || c.cinemaName}
@@ -148,6 +148,24 @@ export default function Food() {
                   onChange={handleSearch}
                 />
               </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  background: '#1c1c24',
+                  border: '1px solid #3a3a45',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  color: '#fff',
+                  fontSize: 13,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="Tất cả" style={{ background: '#1c1c24', color: '#fff' }}>Tất cả trạng thái</option>
+                <option value="Còn hàng" style={{ background: '#1c1c24', color: '#fff' }}>Còn hàng</option>
+                <option value="Hết hàng" style={{ background: '#1c1c24', color: '#fff' }}>Hết hàng</option>
+              </select>
               <button className="fd-btn-filter" onClick={openAddModal}>
                 <MdAdd size={16} /> Thêm món
               </button>
@@ -200,8 +218,8 @@ export default function Food() {
                     <td>{getSold(item)}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span className={`fd-status ${item.isAvailable && item.quantity > 0 ? 'active' : 'inactive'}`}>
-                          {item.isAvailable && item.quantity > 0 ? 'Đang bán' : 'Sắp hết hàng'}
+                        <span className={`fd-status ${item.quantity <= 0 ? 'inactive' : (item.isAvailable ? 'active' : 'inactive')}`}>
+                          {item.quantity <= 0 ? 'Hết hàng' : (item.isAvailable ? 'Còn hàng' : 'Ngừng bán')}
                         </span>
                         {/* Mini Sparkline Chart */}
                         <div style={{ width: 60, height: 20 }}>

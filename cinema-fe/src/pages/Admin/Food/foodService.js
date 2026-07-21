@@ -8,7 +8,7 @@ function normalizeList(data) {
 }
 
 export async function fetchFoods() {
-  // Ưu tiên gọi /Foods/Available trước để tránh lỗi 500 do vòng lặp dữ liệu trên Backend (/Foods)
+  // Ưu tiên gọi /Foods/Available trước để tránh lỗi 500 do vòng lặp dữ liệu trên Backend C# (/Foods)
   try {
     const resAvailable = await fetch(`${API_URL}/Foods/Available`, { headers: getAuthHeaders() });
     if (resAvailable.ok) {

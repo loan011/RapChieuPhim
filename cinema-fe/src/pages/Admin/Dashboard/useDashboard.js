@@ -323,35 +323,21 @@ export function useDashboard() {
     setChartData(prev => {
       if (!prev) return prev;
       
-      // Chỉ ghi đè biểu đồ nếu thuật toán frontend (tính thêm offline) ra doanh thu cao hơn backend
-      // HOẶC backend không có chi tiết phân bổ nhưng frontend tính được
-      if (newTotalFood > prev.totalFoodRevenue || (distributions.length > 0 && prev.foodDistributions?.length === 0)) {
+      if (distributions.length > 0) {
         return {
           ...prev,
           foodDistributions: distributions,
-          totalFoodRevenue: Math.max(newTotalFood, prev.totalFoodRevenue)
+          totalFoodRevenue: newTotalFood
         };
       }
       
-      // Xử lý các đơn cũ bị mất cinemaId: nếu biểu đồ rỗng nhưng có doanh thu
-      let finalDistributions = prev.foodDistributions || [];
-      if (finalDistributions.length === 0 && prev.totalFoodRevenue > 0) {
-        if (distributions.length > 0) {
-           finalDistributions = [...distributions];
-           const diff = prev.totalFoodRevenue - newTotalFood;
-           if (diff > 0) {
-               finalDistributions.push({ name: "Món khác (Dữ liệu cũ)", value: diff, quantity: "-", percent: Math.round((diff/prev.totalFoodRevenue)*100) });
-           }
-        } else {
-           finalDistributions = [{ name: "Combo / Đồ ăn (Dữ liệu cũ)", value: prev.totalFoodRevenue, quantity: "-", percent: 100 }];
-        }
+      if (prev.totalFoodRevenue > 0) {
         return {
-            ...prev,
-            foodDistributions: finalDistributions
+          ...prev,
+          foodDistributions: [{ name: "Combo / Đồ ăn (Dữ liệu chung)", value: prev.totalFoodRevenue, quantity: "-", percent: 100 }]
         };
       }
       
-      // Ngược lại, giữ nguyên dữ liệu gốc từ API RevenueChart
       return prev;
     });
   }

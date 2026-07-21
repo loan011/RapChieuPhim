@@ -529,7 +529,8 @@ export function filterShowtimesByCinemaAndDate({
     const notCanceled = status !== "Hủy";
 
     const startTimeStr = getStartDateTime(showtime);
-    const notPast = startTimeStr ? new Date(startTimeStr) >= now : true;
+    // Allow customer to book tickets up to 5 minutes past start time
+    const notPast = startTimeStr ? (new Date(startTimeStr).getTime() + 5 * 60 * 1000 >= now.getTime()) : true;
 
     return matchDate && matchCinema && matchArea && notCanceled && notPast;
   });

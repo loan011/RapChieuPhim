@@ -376,18 +376,21 @@ body {
   color: #fff;
 }
 .sch-badge-age-c13,
-.sch-badge-age-13 {
+.sch-badge-age-13,
+.sch-badge-age-t13 {
   background: #f9a825;
   color: #fff;
 }
 .sch-badge-age-c16,
-.sch-badge-age-16 {
+.sch-badge-age-16,
+.sch-badge-age-t16 {
   background: #ef6c00;
   color: #fff;
 }
 .sch-badge-age-c18,
-.sch-badge-age-18 {
-  background: #c62828;
+.sch-badge-age-18,
+.sch-badge-age-t18 {
+  background: #e11d48; /* Red for T18 */
   color: #fff;
 }
 .sch-badge-format {

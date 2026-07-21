@@ -77,3 +77,236 @@
   box-shadow: 0 0 0 1000px #ffffff inset !important;
   transition: background-color 9999s ease-in-out 0s;
 }
+
+/* ── Cinema Layout Styles (cn- classes) ── */
+.cn-wrapper {
+  background-color: #0c0c0e;
+  color: #f3f4f6;
+  min-height: 100vh;
+  margin: -24px;
+  padding: 32px;
+}
+
+.cn-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.cn-title {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.cn-subtitle {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.cn-btn-add {
+  background: #ff3b30;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.cn-stat-card {
+  background: #161619;
+  border: 1px solid #2c2c2e;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cn-stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cn-stat-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.cn-stat-label {
+  color: #8e8e93;
+  font-size: 0.875rem;
+  margin: 0 0 4px 0;
+}
+
+.cn-stat-value {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.cn-filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cn-search-input-wrapper {
+  flex: 1;
+}
+
+.cn-search-input {
+  width: 100%;
+  background: #161619;
+  border: 1px solid #2c2c2e;
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: #fff;
+}
+
+.cn-filter-select {
+  background: #161619;
+  border: 1px solid #2c2c2e;
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: #fff;
+}
+
+.cn-filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cn-btn-refresh, .cn-btn-export {
+  background: #161619;
+  border: 1px solid #2c2c2e;
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cn-btn-export {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.cn-table-container {
+  background: #161619;
+  border: 1px solid #2c2c2e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cn-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cn-table th {
+  background: #1c1c1e;
+  color: #8e8e93;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-bottom: 1px solid #2c2c2e;
+}
+
+.cn-table td {
+  padding: 16px;
+  border-bottom: 1px solid #2c2c2e;
+  color: #e5e5ea;
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.cn-table tbody tr:hover {
+  background: #1e1e24;
+}
+
+.cn-cell-branch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cn-branch-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.cn-branch-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.cn-cell-icon-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.cn-text-icon {
+  color: #6b7280;
+}
+
+.cn-status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.cn-row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cn-btn-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+}
+
+.cn-btn-edit {
+  background: #4b5563;
+}
+
+.cn-btn-delete {
+  background: #ef4444;
+}

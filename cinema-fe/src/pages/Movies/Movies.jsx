@@ -156,7 +156,7 @@ function Movies() {
       if (status === "Hủy") return false;
 
       const startTimeStr = showtime?.startTime ?? showtime?.StartTime ?? "";
-      if (startTimeStr && new Date(startTimeStr) < now) return false;
+      if (startTimeStr && (new Date(startTimeStr).getTime() + 5 * 60 * 1000 < now.getTime())) return false;
 
       return true;
     });
