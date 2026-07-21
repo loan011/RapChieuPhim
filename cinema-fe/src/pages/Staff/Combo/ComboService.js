@@ -51,6 +51,13 @@ export async function getCombosList() {
 
   console.log("[Combo] Combos:", combosData.length, "| Foods:", foodsData.length);
 
+  let activeCinemaId = "1";
+  try {
+    const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+    const cid = userObj.cinemaId ?? userObj.CinemaId;
+    if (cid) activeCinemaId = String(cid);
+  } catch (e) {}
+
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
@@ -59,8 +66,11 @@ export async function getCombosList() {
   const combos = combosData.map(c => {
     const rawId = c.comboId ?? c.ComboId;
     const baseQty = Number(c.quantity ?? c.Quantity ?? 0);
-    const key = `combo_${rawId}`;
-    const finalQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+    const key = `combo_${rawId}_c${activeCinemaId}`;
+    const availKey = `combo_avail_${rawId}_c${activeCinemaId}`;
+    
+    const isAvail = overrides[availKey] !== undefined ? Boolean(overrides[availKey]) : (c.isAvailable ?? c.IsAvailable ?? true);
+    const finalQty = isAvail ? (overrides[key] !== undefined ? Number(overrides[key]) : baseQty) : 0;
 
     return {
       uid: `combo-${rawId}`,   // unique React key
@@ -81,8 +91,11 @@ export async function getCombosList() {
     const cat = (f.category ?? f.Category ?? "").toLowerCase();
     const isDrink = cat.includes("nước") || cat.includes("uống");
     const baseQty = Number(f.quantity ?? f.Quantity ?? 0);
-    const key = `food_${rawId}`;
-    const finalQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+    const key = `food_${rawId}_c${activeCinemaId}`;
+    const availKey = `food_avail_${rawId}_c${activeCinemaId}`;
+
+    const isAvail = overrides[availKey] !== undefined ? Boolean(overrides[availKey]) : (f.isAvailable ?? f.IsAvailable ?? true);
+    const finalQty = isAvail ? (overrides[key] !== undefined ? Number(overrides[key]) : baseQty) : 0;
 
     return {
       uid: `food-${rawId}`,    // unique React key
@@ -255,6 +268,13 @@ export async function deductInventory(items) {
     overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
   } catch (e) {}
 
+  let activeCinemaId = "1";
+  try {
+    const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+    const cid = userObj.cinemaId ?? userObj.CinemaId;
+    if (cid) activeCinemaId = String(cid);
+  } catch (e) {}
+
   for (const item of items) {
     const qty = Number(item.quantity || 1);
     if (qty <= 0) continue;
@@ -264,7 +284,7 @@ export async function deductInventory(items) {
     const id = item.id ?? item.foodId ?? item.comboId;
 
     if (!id) continue;
-    const key = `${isFood ? 'food' : 'combo'}_${id}`;
+    const key = `${isFood ? 'food' : 'combo'}_${id}_c${activeCinemaId}`;
 
     try {
       if (isFood) {

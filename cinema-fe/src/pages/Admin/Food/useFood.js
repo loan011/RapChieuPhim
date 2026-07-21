@@ -6,10 +6,21 @@ function toList(value) {
   return value?.$values || value?.data || value?.items || [];
 }
 
-function getBookingCinemaId(booking) {
+function getBookingCinemaId(booking, showtimeCinemaMap) {
   if (!booking) return null;
   let cid = booking.cinemaId ?? booking.CinemaId;
   if (cid) return String(cid);
+
+  const tickets = booking.tickets ?? booking.Tickets;
+  if (Array.isArray(tickets) && tickets.length > 0) {
+    const t = tickets[0];
+    cid = t.cinemaId ?? t.CinemaId ?? t.cinema?.cinemaId ?? t.cinema?.CinemaId;
+    if (cid) return String(cid);
+    const stId = t.showtimeId ?? t.ShowtimeId;
+    if (stId && showtimeCinemaMap && showtimeCinemaMap.has(String(stId))) {
+      return showtimeCinemaMap.get(String(stId));
+    }
+  }
 
   const showtime = booking.showtime ?? booking.Showtime;
   if (showtime) {
@@ -22,6 +33,11 @@ function getBookingCinemaId(booking) {
     }
   }
 
+  const stId = booking.showtimeId ?? booking.ShowtimeId;
+  if (stId && showtimeCinemaMap && showtimeCinemaMap.has(String(stId))) {
+    return showtimeCinemaMap.get(String(stId));
+  }
+
   const room = booking.room ?? booking.Room;
   if (room) {
     cid = room.cinemaId ?? room.CinemaId;
@@ -31,7 +47,7 @@ function getBookingCinemaId(booking) {
   return null;
 }
 
-function getOrderCinemaId(order) {
+function getOrderCinemaId(order, showtimeCinemaMap) {
   if (!order) return null;
   let cid = order.cinemaId ?? order.CinemaId;
   if (cid) return String(cid);
@@ -47,7 +63,7 @@ function getOrderCinemaId(order) {
 
   const booking = order.booking ?? order.Booking;
   if (booking) {
-    cid = getBookingCinemaId(booking);
+    cid = getBookingCinemaId(booking, showtimeCinemaMap);
     if (cid) return cid;
   }
 
@@ -62,7 +78,7 @@ function getOrderCinemaId(order) {
   return null;
 }
 
-function calculateItemSales(bookings, orders, selectedCinemaId) {
+function calculateItemSales(bookings, orders, selectedCinemaId, showtimeCinemaMap) {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -96,7 +112,7 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
     if (["pending", "unpaid", "cancelled", "canceled"].some(v => status.includes(v))) return;
 
     if (selectedCinemaId) {
-      const bCinemaId = getBookingCinemaId(booking);
+      const bCinemaId = getBookingCinemaId(booking, showtimeCinemaMap);
       if (bCinemaId && String(bCinemaId) !== String(selectedCinemaId)) return;
     }
 
@@ -120,7 +136,7 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
     if (["pending", "unpaid", "cancelled", "canceled"].some(v => status.includes(v))) return;
 
     if (selectedCinemaId) {
-      const oCinemaId = getOrderCinemaId(order);
+      const oCinemaId = getOrderCinemaId(order, showtimeCinemaMap);
       if (oCinemaId && String(oCinemaId) !== String(selectedCinemaId)) return;
     }
 
@@ -203,16 +219,17 @@ export function useFood() {
     setLoading(true);
     setError("");
     try {
-      const [foodsData, combosData, bookingsData, ordersData, cinemasRes] = await Promise.all([
+      const headers = {
+        "Authorization": `${localStorage.getItem("tokenType") || "Bearer"} ${localStorage.getItem("token") || ""}`
+      };
+      const [foodsData, combosData, bookingsData, ordersData, cinemasRes, showtimesRes, roomsRes] = await Promise.all([
         fetchFoods().catch(() => null),
         fetchCombos().catch(() => null),
         fetchBookingsForInventory().catch(() => []),
         fetchOrdersForInventory().catch(() => []),
-        fetch(`${import.meta.env.VITE_API_URL}/Cinemas`, {
-          headers: {
-            "Authorization": `${localStorage.getItem("tokenType") || "Bearer"} ${localStorage.getItem("token") || ""}`
-          }
-        }).then(r => r.ok ? r.json() : []).catch(() => [])
+        fetch(`${import.meta.env.VITE_API_URL}/Cinemas`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`${import.meta.env.VITE_API_URL}/Showtimes`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`${import.meta.env.VITE_API_URL}/Rooms`, { headers }).then(r => r.ok ? r.json() : []).catch(() => [])
       ]);
 
       const rawCList = cinemasRes?.$values || cinemasRes?.data || (Array.isArray(cinemasRes) ? cinemasRes : []);
@@ -230,7 +247,20 @@ export function useFood() {
         setSelectedCinemaId(activeCinemaId);
       }
 
-      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, activeCinemaId);
+      const rawShowtimes = showtimesRes?.$values || showtimesRes?.data || (Array.isArray(showtimesRes) ? showtimesRes : []);
+      const rawRooms = roomsRes?.$values || roomsRes?.data || (Array.isArray(roomsRes) ? roomsRes : []);
+
+      const showtimeCinemaMap = new Map();
+      rawShowtimes.forEach(st => {
+        const rId = st.roomId ?? st.RoomId;
+        const room = rawRooms.find(r => String(r.roomId ?? r.id) === String(rId));
+        const cId = st.cinemaId ?? st.CinemaId ?? room?.cinemaId ?? room?.CinemaId;
+        if (cId) {
+          showtimeCinemaMap.set(String(st.showtimeId ?? st.id), String(cId));
+        }
+      });
+
+      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, activeCinemaId, showtimeCinemaMap);
 
       let qtyOverrides = {};
       try {
@@ -272,13 +302,16 @@ export function useFood() {
         const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 30) - 10) : 0;
 
         const rawQty = Number(f.quantity ?? f.Quantity ?? 0);
-        const key = `food_${foodId}`;
-        const finalQty = qtyOverrides[key] !== undefined
+        const key = `food_${foodId}_c${activeCinemaId}`;
+        const initialQty = qtyOverrides[key] !== undefined
           ? Number(qtyOverrides[key])
           : rawQty;
+        const finalQty = Math.max(0, initialQty - soldThisMonth);
 
-        const rawAvail = f.isAvailable ?? f.IsAvailable;
-        const isAvailable = rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail);
+        const availKey = `food_avail_${foodId}_c${activeCinemaId}`;
+        const isAvailable = qtyOverrides[availKey] !== undefined
+          ? Boolean(qtyOverrides[availKey])
+          : (f.isAvailable ?? f.IsAvailable ?? true);
 
         return {
           id: foodId,
@@ -336,13 +369,16 @@ export function useFood() {
         const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 20) - 5) : 0;
 
         const rawQty = Number(c.quantity ?? c.Quantity ?? 0);
-        const key = `combo_${comboId}`;
-        const finalQty = qtyOverrides[key] !== undefined
+        const key = `combo_${comboId}_c${activeCinemaId}`;
+        const initialQty = qtyOverrides[key] !== undefined
           ? Number(qtyOverrides[key])
           : rawQty;
+        const finalQty = Math.max(0, initialQty - soldThisMonth);
 
-        const rawAvail = c.isAvailable ?? c.IsAvailable;
-        const isAvailable = rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail);
+        const availKey = `combo_avail_${comboId}_c${activeCinemaId}`;
+        const isAvailable = qtyOverrides[availKey] !== undefined
+          ? Boolean(qtyOverrides[availKey])
+          : (c.isAvailable ?? c.IsAvailable ?? true);
 
         return {
           id: comboId,
@@ -504,10 +540,13 @@ export function useFood() {
           description: formData.category
         });
       }
-      const key = `${selectedItem.itemType}_${selectedItem.id}`;
+      const key = `${selectedItem.itemType}_${selectedItem.id}_c${selectedCinemaId}`;
+      const availKey = `${selectedItem.itemType}_avail_${selectedItem.id}_c${selectedCinemaId}`;
       try {
         const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-        overrides[key] = Number(formData.quantity);
+        const sold = selectedItem.soldThisMonth || 0;
+        overrides[key] = Number(formData.quantity) + sold;
+        overrides[availKey] = formData.isAvailable;
         localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
       } catch (e) {}
 
@@ -561,10 +600,11 @@ export function useFood() {
           description: selectedItem.originalData?.description || selectedItem.category
         });
       }
-      const key = `${selectedItem.itemType}_${selectedItem.id}`;
+      const key = `${selectedItem.itemType}_${selectedItem.id}_c${selectedCinemaId}`;
       try {
         const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-        overrides[key] = newQuantity;
+        const sold = selectedItem.soldThisMonth || 0;
+        overrides[key] = newQuantity + sold;
         localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
       } catch (e) {}
 
