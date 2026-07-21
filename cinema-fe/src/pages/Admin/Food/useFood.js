@@ -143,20 +143,20 @@ function calculateItemSales(bookings, orders, selectedCinemaId) {
 
 // ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
 const MOCK_FOODS = [
-  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 100, imageUrl: '/img/trasua.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 2, itemType: 'food', name: 'Trà Đào',      category: 'Nước Uống', price: 45000, quantity: 98,  imageUrl: '/img/tradao.jpg',       isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 3, itemType: 'food', name: 'Bắp Caramel',  category: 'Bắp Rang',  price: 60000, quantity: 94,  imageUrl: '/img/bapngot.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 4, itemType: 'food', name: 'Bắp Ngọt Lớn', category: 'Bắp Rang',  price: 60000, quantity: 90,  imageUrl: '/img/bapngot.jpg',      isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 5, itemType: 'food', name: '7up',           category: 'Nước Uống', price: 35000, quantity: 98,  imageUrl: '/img/7up.jpg',          isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 6, itemType: 'food', name: 'Sting',         category: 'Nước Uống', price: 35000, quantity: 90,  imageUrl: '/img/sting.jpg',        isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 8, itemType: 'food', name: 'Pepsi',         category: 'Nước Uống', price: 35000, quantity: 98,  imageUrl: '/img/pepsi.jpg',        isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 9, itemType: 'food', name: 'Mirinda Cam',   category: 'Nước Uống', price: 35000, quantity: 97,  imageUrl: '/img/MirindaCam.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 98,  imageUrl: '/img/trasua.jpg',      isAvailable: false, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 2, itemType: 'food', name: 'Trà Đào',      category: 'Nước Uống', price: 45000, quantity: 100, imageUrl: '/img/tradao.jpg',       isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 3, itemType: 'food', name: 'Bắp Caramel',  category: 'Bắp Rang',  price: 60000, quantity: 0,   imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 4, itemType: 'food', name: 'Bắp Ngọt Lớn', category: 'Bắp Rang',  price: 60000, quantity: 89,  imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 5, itemType: 'food', name: '7up',           category: 'Nước Uống', price: 35000, quantity: 90,  imageUrl: '/img/7up.jpg',          isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 6, itemType: 'food', name: 'Sting',         category: 'Nước Uống', price: 35000, quantity: 86,  imageUrl: '/img/sting.jpg',        isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 8, itemType: 'food', name: 'Pepsi',         category: 'Nước Uống', price: 35000, quantity: 96,  imageUrl: '/img/pepsi.jpg',        isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
+  { id: 9, itemType: 'food', name: 'Mirinda Cam',   category: 'Nước Uống', price: 35000, quantity: 97,  imageUrl: '/img/MirindaCam.jpg',   isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
 ];
 
 const MOCK_COMBOS = [
-  { id: 101, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 100, imageUrl: '/img/combosolo.jpg',   isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
-  { id: 104, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 100, imageUrl: '/img/combocouple.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
-  { id: 106, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 59,  imageUrl: '/img/combofamily.jpg', isAvailable: true, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
+  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 96, imageUrl: '/img/combosolo.jpg',   isAvailable: false, soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
+  { id: 4, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 98, imageUrl: '/img/combocouple.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
+  { id: 6, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 58, imageUrl: '/img/combofamily.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
 ];
 
 export function useFood() {
@@ -237,87 +237,137 @@ export function useFood() {
         qtyOverrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
       } catch (e) {}
 
-      const normalizedFoods = foodsData && foodsData.length > 0
-        ? foodsData.map(f => {
-            const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
-            const stat = foodStatsMap.get(String(foodId)) || { month: 0, week: 0, today: 0 };
-            const price = Number(f.price ?? f.Price ?? 0);
-            
-            // Allow stat.month to be the source of truth if we are filtering by branch
-            // otherwise if f.soldThisMonth is larger, use it (for "All branches" if backend provides it)
-            const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
-            const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
-            const soldToday = selectedCinemaId ? stat.today : Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
+      const apiFoodMap = new Map();
+      if (Array.isArray(foodsData)) {
+        foodsData.forEach(f => {
+          const fId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
+          if (fId) apiFoodMap.set(String(fId), f);
+        });
+      }
 
-            const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 30) - 10) : 0;
+      const allFoodsData = Array.isArray(foodsData) ? [...foodsData] : [];
+      MOCK_FOODS.forEach(mockItem => {
+        if (!apiFoodMap.has(String(mockItem.id))) {
+          allFoodsData.push({
+            foodId: mockItem.id,
+            foodName: mockItem.name,
+            category: mockItem.category,
+            price: mockItem.price,
+            quantity: mockItem.quantity,
+            imageUrl: mockItem.imageUrl,
+            isAvailable: mockItem.isAvailable
+          });
+        }
+      });
 
-            const rawQty = Number(f.quantity ?? f.Quantity ?? 100);
-            const key = `food_${foodId}`;
-            const finalQty = qtyOverrides[key] !== undefined
-              ? Number(qtyOverrides[key])
-              : (stat.month > 0 ? Math.max(0, rawQty - stat.month) : rawQty);
+      const normalizedFoods = allFoodsData.map(f => {
+        const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
+        const stat = foodStatsMap.get(String(foodId)) || { month: 0, week: 0, today: 0 };
+        const price = Number(f.price ?? f.Price ?? 0);
+        
+        const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
+        const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
+        const soldToday = selectedCinemaId ? stat.today : Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
 
-            return {
-              id: foodId,
-              itemType: 'food',
-              name: f.foodName ?? f.FoodName,
-              category: f.category ?? f.Category ?? "Khác",
-              price: price,
-              quantity: finalQty,
-              imageUrl: f.imageUrl ?? f.ImageUrl,
-              isAvailable: f.isAvailable ?? f.IsAvailable ?? true,
-              soldThisMonth: soldThisMonth,
-              revenueThisMonth: soldThisMonth * price,
-              soldThisWeek: soldThisWeek,
-              revenueThisWeek: soldThisWeek * price,
-              soldToday: soldToday,
-              revenueToday: soldToday * price,
-              trend: trend,
-              revenue: soldThisMonth * price,
-              originalData: f
-            };
-          })
-        : MOCK_FOODS;
+        const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 30) - 10) : 0;
 
-      const normalizedCombos = combosData && combosData.length > 0
-        ? combosData.map(c => {
-            const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
-            const stat = comboStatsMap.get(String(comboId)) || { month: 0, week: 0, today: 0 };
-            const price = Number(c.price ?? c.Price ?? 0);
+        const rawQty = Number(f.quantity ?? f.Quantity ?? 0);
+        const key = `food_${foodId}`;
+        const finalQty = qtyOverrides[key] !== undefined
+          ? Number(qtyOverrides[key])
+          : rawQty;
 
-            const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
-            const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
-            const soldToday = selectedCinemaId ? stat.today : Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
+        const rawAvail = f.isAvailable ?? f.IsAvailable;
+        const isAvailable = (String(foodId) === "1")
+          ? false
+          : (rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail));
 
-            const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 20) - 5) : 0;
+        return {
+          id: foodId,
+          itemType: 'food',
+          name: f.foodName ?? f.FoodName ?? f.name,
+          category: f.category ?? f.Category ?? "Khác",
+          price: price,
+          quantity: finalQty,
+          imageUrl: f.imageUrl ?? f.ImageUrl ?? f.image,
+          isAvailable: isAvailable,
+          soldThisMonth: soldThisMonth,
+          revenueThisMonth: soldThisMonth * price,
+          soldThisWeek: soldThisWeek,
+          revenueThisWeek: soldThisWeek * price,
+          soldToday: soldToday,
+          revenueToday: soldToday * price,
+          trend: trend,
+          revenue: soldThisMonth * price,
+          originalData: f
+        };
+      });
 
-            const rawQty = Number(c.quantity ?? c.Quantity ?? 100);
-            const key = `combo_${comboId}`;
-            const finalQty = qtyOverrides[key] !== undefined
-              ? Number(qtyOverrides[key])
-              : (stat.month > 0 ? Math.max(0, rawQty - stat.month) : rawQty);
+      const apiComboMap = new Map();
+      if (Array.isArray(combosData)) {
+        combosData.forEach(c => {
+          const cId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
+          if (cId) apiComboMap.set(String(cId), c);
+        });
+      }
 
-            return {
-              id: comboId,
-              itemType: 'combo',
-              name: c.comboName ?? c.ComboName,
-              category: "Combo",
-              price: price,
-              quantity: finalQty,
-              imageUrl: c.imageUrl ?? c.ImageUrl,
-              isAvailable: c.isAvailable ?? c.IsAvailable ?? true,
-              soldThisMonth: soldThisMonth,
-              revenueThisMonth: soldThisMonth * price,
-              soldThisWeek: soldThisWeek,
-              revenueThisWeek: soldThisWeek * price,
-              soldToday: soldToday,
-              revenueToday: soldToday * price,
-              trend: trend,
-              revenue: soldThisMonth * price,
-              originalData: c
-            };
-          })
-        : MOCK_COMBOS;
+      const allCombosData = Array.isArray(combosData) ? [...combosData] : [];
+      MOCK_COMBOS.forEach(mockItem => {
+        if (!apiComboMap.has(String(mockItem.id))) {
+          allCombosData.push({
+            comboId: mockItem.id,
+            comboName: mockItem.name,
+            price: mockItem.price,
+            quantity: mockItem.quantity,
+            imageUrl: mockItem.imageUrl,
+            isAvailable: mockItem.isAvailable,
+            description: mockItem.originalData?.description || mockItem.category
+          });
+        }
+      });
+
+      const normalizedCombos = allCombosData.map(c => {
+        const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
+        const stat = comboStatsMap.get(String(comboId)) || { month: 0, week: 0, today: 0 };
+        const price = Number(c.price ?? c.Price ?? 0);
+
+        const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
+        const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
+        const soldToday = selectedCinemaId ? stat.today : Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
+
+        const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 20) - 5) : 0;
+
+        const rawQty = Number(c.quantity ?? c.Quantity ?? 0);
+        const key = `combo_${comboId}`;
+        const finalQty = qtyOverrides[key] !== undefined
+          ? Number(qtyOverrides[key])
+          : rawQty;
+
+        const rawAvail = c.isAvailable ?? c.IsAvailable;
+        const isAvailable = (String(comboId) === "1")
+          ? false
+          : (rawAvail === undefined || rawAvail === null ? true : Boolean(rawAvail));
+
+        return {
+          id: comboId,
+          itemType: 'combo',
+          name: c.comboName ?? c.ComboName ?? c.name,
+          category: "Combo",
+          price: price,
+          quantity: finalQty,
+          imageUrl: c.imageUrl ?? c.ImageUrl ?? c.image,
+          isAvailable: isAvailable,
+          soldThisMonth: soldThisMonth,
+          revenueThisMonth: soldThisMonth * price,
+          soldThisWeek: soldThisWeek,
+          revenueThisWeek: soldThisWeek * price,
+          soldToday: soldToday,
+          revenueToday: soldToday * price,
+          trend: trend,
+          revenue: soldThisMonth * price,
+          originalData: c
+        };
+      });
 
       setItems([...normalizedFoods, ...normalizedCombos].sort((a, b) => a.id - b.id));
     } catch (err) {
@@ -458,6 +508,13 @@ export function useFood() {
           description: formData.category
         });
       }
+      const key = `${selectedItem.itemType}_${selectedItem.id}`;
+      try {
+        const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+        overrides[key] = Number(formData.quantity);
+        localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
+      } catch (e) {}
+
       setShowEditModal(false);
       loadData();
     } catch (err) {

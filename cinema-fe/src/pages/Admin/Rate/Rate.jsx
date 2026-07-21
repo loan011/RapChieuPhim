@@ -155,6 +155,8 @@ export default function Rate() {
     }
   };
 
+  const isPastShowtime = form?.status === "Đã chiếu";
+
   return (
     <div className="lc-wrapper">
       {/* ── Header ── */}
@@ -457,6 +459,7 @@ export default function Rate() {
                       type="text"
                       className="lc-input lc-input--search"
                       placeholder="Tìm tên phim..."
+                      disabled={isPastShowtime}
                       value={formMovieSearch || (() => {
                         if (!form.movieId) return "";
                         const sel = movies.find(
@@ -480,7 +483,7 @@ export default function Rate() {
                       }}
                       autoComplete="off"
                     />
-                    {formMovieSearch && (
+                    {formMovieSearch && !isPastShowtime && (
                       <button
                         type="button"
                         className="lc-modal-search-clear"
@@ -495,7 +498,7 @@ export default function Rate() {
                   </div>
 
                   {/* Dropdown kết quả */}
-                  {showMovieDropdown && (() => {
+                  {showMovieDropdown && !isPastShowtime && (() => {
                     const kw = formMovieSearch.trim().toLowerCase();
                     const filtered = movies.filter((m) => {
                       let status = (m?.status ?? m?.Status ?? "").toLowerCase();
@@ -580,6 +583,7 @@ export default function Rate() {
                       value={form.cinemaId}
                       onChange={handleChange}
                       className="lc-input"
+                      disabled={isPastShowtime}
                     >
                       <option value="">-- Chọn chi nhánh --</option>
 
@@ -612,7 +616,7 @@ export default function Rate() {
                       value={form.roomId}
                       onChange={handleChange}
                       className="lc-input"
-                      disabled={!form.cinemaId}
+                      disabled={!form.cinemaId || isPastShowtime}
                     >
                       <option value="">-- Chọn phòng chiếu --</option>
 
@@ -652,6 +656,7 @@ export default function Rate() {
                       onChange={handleChange}
                       className="lc-input"
                       min={new Date().toISOString().split("T")[0]}
+                      disabled={isPastShowtime}
                     />
                   </div>
 
@@ -663,8 +668,9 @@ export default function Rate() {
                       value={form.status}
                       onChange={handleChange}
                       className="lc-input"
+                      disabled={isPastShowtime}
                     >
-                      {["Đang chiếu", "Chiếu sớm"].map((s) => (
+                      {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
@@ -686,6 +692,7 @@ export default function Rate() {
                       value={form.startHour}
                       onChange={handleChange}
                       className="lc-input"
+                      disabled={isPastShowtime}
                     />
                   </div>
 
@@ -735,6 +742,7 @@ export default function Rate() {
                             value={form.endHour}
                             onChange={handleChange}
                             className="lc-input"
+                            disabled={isPastShowtime}
                           />
                           {crossMid && (
                             <span className="lc-midnight-badge">
@@ -754,20 +762,22 @@ export default function Rate() {
                     className="lc-btn-cancel"
                     disabled={submitting}
                   >
-                    Hủy
+                    {isPastShowtime ? "Đóng" : "Hủy"}
                   </button>
 
-                  <button
-                    type="submit"
-                    className="lc-btn-submit"
-                    disabled={submitting}
-                  >
-                    {submitting
-                      ? "Đang xử lý..."
-                      : editId !== null
-                      ? "Cập Nhật"
-                      : "Thêm Mới"}
-                  </button>
+                  {!isPastShowtime && (
+                    <button
+                      type="submit"
+                      className="lc-btn-submit"
+                      disabled={submitting}
+                    >
+                      {submitting
+                        ? "Đang xử lý..."
+                        : editId !== null
+                        ? "Cập Nhật"
+                        : "Thêm Mới"}
+                    </button>
+                  )}
                 </div>
               </form>
             </div>

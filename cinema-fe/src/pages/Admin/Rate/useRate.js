@@ -19,6 +19,7 @@ export const STATUS_OPTIONS = [
   "Đang chiếu",
   "Sắp chiếu",
   "Chiếu sớm",
+  "Đã chiếu"
 ];
 
 export const EMPTY_FORM = {
@@ -296,9 +297,18 @@ export function getStatus(s) {
   const raw = s?.status ?? s?.Status ?? "";
 
   const dateStr = getShowDate(s);
-  const endStr = getEndHour(s);
+  const startStr = getStartHour(s);
 
-  if (dateStr) {
+  if (dateStr && startStr) {
+    const startDt = new Date(`${dateStr}T${startStr}:00`);
+    if (!Number.isNaN(startDt.getTime())) {
+      const cutoffDt = new Date(startDt.getTime() + 5 * 60 * 1000);
+      if (cutoffDt < new Date()) {
+        return "Đã chiếu";
+      }
+    }
+  } else if (dateStr) {
+    const endStr = getEndHour(s);
     const endDt = new Date(
       endStr ? `${dateStr}T${endStr}:00` : `${dateStr}T23:59:00`
     );

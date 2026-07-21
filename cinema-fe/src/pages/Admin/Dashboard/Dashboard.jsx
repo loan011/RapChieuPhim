@@ -311,10 +311,10 @@ export default function Dashboard() {
                         <li key={idx}>
                           <div className="custom-legend-left">
                             <span className="legend-dot" style={{ background: FOOD_COLORS[idx % FOOD_COLORS.length] }}></span>
-                            {f.name.length > 15 ? f.name.substring(0, 15) + '...' : f.name}
+                            <span style={{ color: '#e4e4e7', fontWeight: 500 }}>{f.name}</span>
                           </div>
                           <div className="custom-legend-right" style={{ display: 'flex', gap: '12px', textAlign: 'right' }}>
-                            <span style={{ color: '#9ca3af' }}>{f.quantity || 0} phần</span>
+                            <span style={{ color: '#9ca3af' }}>{f.quantity && f.quantity !== "-" ? `${f.quantity} phần` : ""}</span>
                             <span style={{ color: '#9ca3af' }}>{formatMoney(f.value)}đ</span>
                             <span style={{ minWidth: '40px', fontWeight: 'bold' }}>{f.percent}%</span>
                           </div>

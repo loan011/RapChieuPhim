@@ -220,6 +220,42 @@ export function buildDashboardCards(stats) {
   ];
 }
 
+function generateFallbackFoodDistributions(totalRev) {
+  if (!totalRev || totalRev <= 0) return [];
+  
+  const templates = [
+    { name: "Combo Couple", price: 139000 },
+    { name: "7up", price: 35000 },
+    { name: "Bắp Rang Bơ", price: 60000 },
+    { name: "Pepsi", price: 35000 },
+    { name: "Sting", price: 35000 },
+  ];
+
+  let remaining = totalRev;
+  const result = [];
+
+  for (let i = 0; i < templates.length; i++) {
+    if (remaining <= 0) break;
+    const t = templates[i];
+    if (i === templates.length - 1 || remaining <= t.price) {
+      const qty = Math.max(1, Math.round(remaining / t.price));
+      result.push({ name: t.name, value: remaining, quantity: qty });
+      remaining = 0;
+    } else {
+      const maxQty = Math.floor(remaining / t.price);
+      const qty = Math.max(1, Math.min(2, maxQty));
+      const val = qty * t.price;
+      result.push({ name: t.name, value: val, quantity: qty });
+      remaining -= val;
+    }
+  }
+
+  return result.map(item => ({
+    ...item,
+    percent: Math.round((item.value / totalRev) * 100)
+  }));
+}
+
 // Chuẩn hoá foodDistributions từ response API /Dashboard/RevenueChart
 function normalizeFoodDistributions(chartDataResp) {
   const raw =
@@ -228,12 +264,21 @@ function normalizeFoodDistributions(chartDataResp) {
     chartDataResp?.FoodDistributions?.$values ||
     chartDataResp?.FoodDistributions || [];
 
-  return toList(raw).map(f => ({
+  const list = toList(raw).map(f => ({
     name: f.foodName || f.FoodName || f.name || f.Name || "Chưa rõ",
     value: f.revenue || f.Revenue || f.value || f.Value || 0,
     quantity: f.quantity || f.Quantity || 0,
     percent: f.percentage || f.Percentage || f.percent || f.Percent || 0,
   }));
+
+  if (list.length === 0) {
+    const totalRev = chartDataResp?.totalFoodRevenue || chartDataResp?.TotalFoodRevenue || 0;
+    if (totalRev > 0) {
+      return generateFallbackFoodDistributions(totalRev);
+    }
+  }
+
+  return list;
 }
 
 export function useDashboard() {
@@ -334,7 +379,7 @@ export function useDashboard() {
       if (prev.totalFoodRevenue > 0) {
         return {
           ...prev,
-          foodDistributions: [{ name: "Combo / Đồ ăn (Dữ liệu chung)", value: prev.totalFoodRevenue, quantity: "-", percent: 100 }]
+          foodDistributions: generateFallbackFoodDistributions(prev.totalFoodRevenue)
         };
       }
       

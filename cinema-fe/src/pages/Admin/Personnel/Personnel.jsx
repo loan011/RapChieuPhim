@@ -180,7 +180,6 @@ export default function Personnel() {
         </select>
         <div className="pe-filter-actions">
           <button className="pe-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
-          <button className="pe-btn-export"><MdFileDownload size={16} /> Xuất Excel</button>
         </div>
       </div>
 

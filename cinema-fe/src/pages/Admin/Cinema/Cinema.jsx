@@ -176,7 +176,6 @@ export default function RapChieu() {
         </select>
         <div className="cn-filter-actions">
           <button className="cn-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
-          <button className="cn-btn-export"><MdFileDownload size={16} /> Xuất Excel</button>
         </div>
       </div>
 

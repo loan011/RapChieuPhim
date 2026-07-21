@@ -8,7 +8,8 @@ import {
   MdConfirmationNumber,
   MdNotifications,
   MdLock,
-  MdLogout
+  MdLogout,
+  MdArrowBack
 } from "react-icons/md";
 
 export default function CustomerProfileLayout() {
@@ -82,6 +83,9 @@ export default function CustomerProfileLayout() {
           <div className="profile-sidebar">
             <h2 className="profile-sidebar-title">TÀI KHOẢN CỦA TÔI</h2>
             <nav className="profile-nav">
+              <Link to="/" className="profile-nav-item" style={{ marginBottom: '10px' }}>
+                <MdArrowBack /> Trở lại
+              </Link>
               <NavLink to="/customer/profile" end className={({ isActive }) => `profile-nav-item ${isActive ? "active" : ""}`}>
                 <MdPerson /> Thông tin cá nhân
               </NavLink>
