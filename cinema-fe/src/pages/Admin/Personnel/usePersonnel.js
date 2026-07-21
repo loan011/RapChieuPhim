@@ -10,11 +10,7 @@ import { getCinemaList } from "../Cinema/cinemaService";
 export const PAGE_SIZE = 6;
 
 export const EMPLOYEE_POSITION_OPTIONS = [
-  { value: "Nhân viên trưởng", label: "Nhân viên trưởng" },
   { value: "Nhân viên bán vé", label: "Nhân viên bán vé" },
-  { value: "Nhân viên kỹ thuật", label: "Nhân viên kỹ thuật" },
-  { value: "Nhân viên soát vé", label: "Nhân viên soát vé" },
-  { value: "Nhân viên CSKH", label: "Nhân viên CSKH" },
 ];
 
 export const EMPLOYEE_STATUS_OPTIONS = [
