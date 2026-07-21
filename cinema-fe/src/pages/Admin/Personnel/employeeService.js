@@ -19,6 +19,11 @@ function normalizeArray(data) {
 
 // GET /api/Users/ByRole/Staff
 export async function getEmployeeList() {
+  const role = localStorage.getItem("role") || "";
+  if (role.toLowerCase() === "staff") {
+    return [];
+  }
+
   const response = await fetch(`${API_URL}/Users/ByRole/Staff`, {
     method: "GET",
     headers: getAuthHeaders(),
@@ -50,6 +55,19 @@ export async function getEmployeeById(id) {
     );
   }
 
+  return data;
+}
+
+// GET /api/Users/GetProfile
+export async function getMyProfile() {
+  const response = await fetch(`${API_URL}/Users/GetProfile`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Lấy profile cá nhân thất bại!"));
+  }
   return data;
 }
 

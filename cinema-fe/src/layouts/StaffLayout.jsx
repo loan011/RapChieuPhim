@@ -12,7 +12,7 @@ import {
 import { useState, useEffect } from "react";
 import { getUser } from "../services/authService";
 import { getCinemaList } from "../pages/Admin/Cinema/cinemaService";
-import { getEmployeeById } from "../pages/Admin/Personnel/employeeService";
+import { getMyProfile } from "../pages/Admin/Personnel/employeeService";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
@@ -47,14 +47,11 @@ export default function StaffLayout() {
 
         // TỰ ĐỘNG FETCH CHI NHÁNH TỪ PROFILE NẾU VẪN KHÔNG TÌM THẤY (dành cho Staff đăng nhập ở máy mới)
         if (!cId) {
-          const uId = user?.userId ?? user?.UserId ?? user?.id ?? user?.Id;
-          if (uId) {
-            try {
-              const uData = await getEmployeeById(uId);
-              cId = uData?.cinemaId ?? uData?.CinemaId;
-            } catch (e) {
-              console.warn("Không thể fetch profile Staff:", e);
-            }
+          try {
+            const uData = await getMyProfile();
+            cId = uData?.cinemaId ?? uData?.CinemaId;
+          } catch (e) {
+            console.warn("Không thể fetch profile Staff:", e);
           }
         }
 

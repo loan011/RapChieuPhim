@@ -113,8 +113,10 @@ export async function getDailyRevenue(date) {
     let ticketsInBill = [];
     let ticketSubtotal = 0;
 
+    let batchBookings = [];
+
     if (rootBooking) {
-      const batchBookings = (bookings || []).filter(b => 
+      batchBookings = (bookings || []).filter(b => 
         b.bookingDate === rootBooking.bookingDate && 
         b.email === rootBooking.email
       );
@@ -191,6 +193,22 @@ export async function getDailyRevenue(date) {
     const resolvedCashReceived = savedCash ? Number(savedCash) : finalTotalAmount;
     const resolvedChangeAmount = Math.max(0, resolvedCashReceived - finalTotalAmount);
 
+    let resolvedDiscountReason = "Khấu trừ giảm giá";
+    const discountAmt = payment.discountAmt || 0;
+    if (discountAmt > 0 || batchBookings.some(b => b.discountAmt > 0)) {
+      const note = (payment.notes || payment.Notes || rootBooking?.notes || "");
+      if (note.includes("HS/SV") || note.includes("Học sinh") || note.includes("Sinh viên")) {
+        const match = note.match(/\[(HS\/SV-15%)\] (Ưu đãi HS\/SV \(\d+ vé\))/);
+        resolvedDiscountReason = match ? match[2] + " (-15%)" : "Ưu đãi Học sinh / Sinh viên (-15%)";
+      } else if (note.includes("[Mã ưu đãi")) {
+        const match = note.match(/\[Mã ưu đãi (.*?)\]/);
+        if (match) resolvedDiscountReason = `Mã ưu đãi (${match[1]})`;
+      } else {
+        const code = payment.discountCode || rootBooking?.discountCode || "";
+        resolvedDiscountReason = code ? `Mã ưu đãi (${code})` : "Khấu trừ giảm giá";
+      }
+    }
+
     const bill = {
       paymentId: payment.paymentId,
       billCode: resolvedBillCode,
@@ -201,7 +219,8 @@ export async function getDailyRevenue(date) {
       paymentMethod: payment.paymentMethod,
       cashReceived: resolvedCashReceived,
       changeAmount: resolvedChangeAmount,
-      discountAmt: payment.discountAmt || 0,
+      discountAmt: discountAmt,
+      discountReason: resolvedDiscountReason,
       totalAmount: finalTotalAmount,
       tickets: ticketsInBill,
       ticketSubtotal: ticketSubtotal,
