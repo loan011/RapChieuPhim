@@ -123,6 +123,7 @@ export function useLogin() {
   }
 
   const triggerGoogleLogin = useGoogleLogin({
+    scope: "openid email profile",
     onSuccess: async (tokenResponse) => {
       setError("");
       setLoading(true);

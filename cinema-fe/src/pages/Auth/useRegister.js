@@ -148,6 +148,7 @@ export function useRegister() {
   }
 
   const triggerGoogleRegister = useGoogleLogin({
+    scope: "openid email profile",
     onSuccess: async (tokenResponse) => {
       setError("");
       setLoading(true);
