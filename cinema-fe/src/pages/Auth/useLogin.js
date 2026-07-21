@@ -1,18 +1,42 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-import { loginApi, saveAuthData } from "../../services/authService";
-
-
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useGoogleLogin } from "@react-oauth/google";
+import { loginApi, loginGoogleApi, registerWithGoogleApi, saveAuthData } from "../../services/authService";
 
 export function useLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Modal cho hoàn tất đăng ký với Google nếu là tài khoản mới
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleProfile, setGoogleProfile] = useState(null);
+  const [googleForm, setGoogleForm] = useState({
+    fullName: "",
+    phone: "",
+    dateOfBirth: "",
+    gender: "Nam",
+  });
+
+  useEffect(() => {
+    if (location.state?.googleToken) {
+      setGoogleProfile({
+        idToken: location.state.googleToken,
+        email: location.state.email,
+        fullName: location.state.fullName,
+      });
+      setGoogleForm((prev) => ({
+        ...prev,
+        fullName: location.state.fullName || "",
+      }));
+      setShowGoogleModal(true);
+    }
+  }, [location.state]);
 
   function toggleShowPassword() {
     setShowPassword((prev) => !prev);
@@ -24,12 +48,25 @@ export function useLogin() {
       data?.Role ||
       data?.user?.role ||
       data?.user?.Role ||
-      data?.user?.role ||
       data?.User?.Role ||
       localStorage.getItem("role") ||
       "";
 
     return String(role).trim().toLowerCase();
+  }
+
+  function navigateByRole(role) {
+    if (role === "admin") {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    if (role === "staff") {
+      navigate("/staff", { replace: true });
+      return;
+    }
+
+    navigate("/", { replace: true });
   }
 
   function validateLoginForm() {
@@ -54,25 +91,6 @@ export function useLogin() {
     }
 
     return true;
-  }
-
-  function navigateByRole(role) {
-    if (role === "admin") {
-      navigate("/admin", { replace: true });
-      return;
-    }
-
-    if (role === "staff") {
-      navigate("/staff", { replace: true });
-      return;
-    }
-
-    if (role === "customer") {
-      navigate("/", { replace: true });
-      return;
-    }
-
-    navigate("/", { replace: true });
   }
 
   async function handleLogin(e) {
@@ -104,8 +122,79 @@ export function useLogin() {
     }
   }
 
-  function handleGoogleLogin() {
-    alert("Chức năng đăng nhập Google chưa được cấu hình!");
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setError("");
+      setLoading(true);
+      try {
+        const token = tokenResponse.access_token || tokenResponse.credential;
+        const res = await loginGoogleApi(token);
+
+        if (res?.needsAdditionalInfo) {
+          setGoogleProfile({
+            idToken: token,
+            email: res.email,
+            fullName: res.fullName,
+            avatarUrl: res.avatarUrl,
+          });
+          setGoogleForm((prev) => ({
+            ...prev,
+            fullName: res.fullName || "",
+          }));
+          setShowGoogleModal(true);
+          return;
+        }
+
+        saveAuthData(res);
+        const role = getRole(res);
+        navigateByRole(role);
+      } catch (err) {
+        console.error("Google login error:", err);
+        setError(err?.message || "Đăng nhập Google thất bại!");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (errorResponse) => {
+      console.error("Google OAuth error:", errorResponse);
+      setError("Đăng nhập bằng Google bị hủy hoặc thất bại.");
+    },
+  });
+
+  async function handleGoogleRegisterSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    if (!googleForm.phone.trim() || !/^[0-9]{10}$/.test(googleForm.phone.trim())) {
+      setError("Số điện thoại phải gồm đúng 10 chữ số!");
+      return;
+    }
+    if (!googleForm.dateOfBirth) {
+      setError("Vui lòng chọn ngày sinh!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const payload = {
+        idToken: googleProfile.idToken,
+        fullName: googleForm.fullName.trim() || googleProfile.fullName,
+        phone: googleForm.phone.trim(),
+        dateOfBirth: googleForm.dateOfBirth,
+        gender: googleForm.gender,
+      };
+
+      const res = await registerWithGoogleApi(payload);
+      saveAuthData(res);
+      setShowGoogleModal(false);
+      const role = getRole(res);
+      navigateByRole(role);
+    } catch (err) {
+      console.error("Google register completion error:", err);
+      setError(err?.message || "Hoàn tất thông tin thất bại!");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return {
@@ -121,6 +210,13 @@ export function useLogin() {
 
     toggleShowPassword,
     handleLogin,
-    handleGoogleLogin,
+    handleGoogleLogin: triggerGoogleLogin,
+
+    showGoogleModal,
+    setShowGoogleModal,
+    googleProfile,
+    googleForm,
+    setGoogleForm,
+    handleGoogleRegisterSubmit,
   };
 }

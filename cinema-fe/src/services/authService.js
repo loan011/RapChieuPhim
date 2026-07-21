@@ -20,6 +20,46 @@ function getErrorMessage(data, defaultMessage) {
   );
 }
 
+export async function loginGoogleApi(idToken) {
+  const response = await fetch(`${API_URL}/Auth/LoginGoogle`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ idToken }),
+  });
+
+  const data = await readResponse(response);
+
+  if (response.status === 202) {
+    return { needsAdditionalInfo: true, ...data };
+  }
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Đăng nhập Google thất bại!"));
+  }
+
+  return data;
+}
+
+export async function registerWithGoogleApi(payload) {
+  const response = await fetch(`${API_URL}/Auth/RegisterWithGoogle`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await readResponse(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, "Hoàn tất đăng ký Google thất bại!"));
+  }
+
+  return data;
+}
+
 export async function loginApi(email, password) {
   const response = await fetch(`${API_URL}/Auth/Login`, {
     method: "POST",
