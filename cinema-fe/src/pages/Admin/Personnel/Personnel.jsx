@@ -13,7 +13,7 @@ import {
   getEmployeeStatus,
   getStaffCinemaId,
   PAGE_SIZE,
-} from "./usePersonnel.js";
+} from "./usePersonnel";
 
 const {
   MdPeople,

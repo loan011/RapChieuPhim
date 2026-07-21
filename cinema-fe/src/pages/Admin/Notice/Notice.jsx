@@ -9,7 +9,7 @@ import {
   getNoticeTargetLabel,
   getNoticeCreatedAt,
   getNoticeTypeStyle,
-} from "./useNotice.js";
+} from "./useNotice";
 
 export default function Notice() {
   const {

@@ -36,7 +36,7 @@ import {
   formatMoney,
   formatDate,
   formatCalendarHour,
-} from "./useRate.js";
+} from "./useRate";
 
 /* ═══════════════════════════════════════════════════════════
    PURE UI HELPERS

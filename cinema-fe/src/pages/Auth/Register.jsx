@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { MdEmail, MdLockOutline, MdOutlineShield, MdPerson, MdDateRange, MdPhone, MdWc } from "react-icons/md";
 import { FcGoogle } from "react-icons/fc";
-import { useRegister } from "./useRegister.js";
+import { useRegister } from "./useRegister";
 import "../../styles/Login.css";
 import "../../styles/Register.css";
 

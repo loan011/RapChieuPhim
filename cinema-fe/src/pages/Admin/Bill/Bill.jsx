@@ -1,5 +1,5 @@
 ﻿import "./Bill.css";
-import { STATUS_OPTIONS, useBill } from "./useBill.js";
+import { STATUS_OPTIONS, useBill } from "./useBill";
 
 export default function HoaDon() {
   const {

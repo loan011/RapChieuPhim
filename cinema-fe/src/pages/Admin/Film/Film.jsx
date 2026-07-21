@@ -26,7 +26,7 @@ import {
   getMoviePoster,
   getMovieAgeRating,
   getMovieStatusDisplayName,
-} from "./useFilm.js";
+} from "./useFilm";
 
 // Helper for status styling
 function getStatusStyle(status) {

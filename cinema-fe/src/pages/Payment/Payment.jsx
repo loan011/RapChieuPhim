@@ -11,7 +11,7 @@ import {
   findRoomByShowtime,
   getRoomName,
   getSeatType,
-} from "../Booking/usebooking.js";
+} from "../Booking/usebooking";
 import "../../styles/Payment.css";
 
 export default function Payment() {

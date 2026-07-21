@@ -1,5 +1,5 @@
 ﻿import "./HoSo.css";
-import { useHoSo } from "./useHoSo.js";
+import { useHoSo } from "./useHoSo";
 import { MdPerson, MdLock, MdPhone, MdEmail, MdRefresh, MdSave } from "react-icons/md";
 
 export default function StaffHoSo() {

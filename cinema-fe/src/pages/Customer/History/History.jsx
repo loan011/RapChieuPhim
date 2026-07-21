@@ -12,7 +12,7 @@ import {
   useBookingHistory,
   getHistoryTypeConfig,
   formatMoney,
-} from "./useHistory.js";
+} from "./useHistory";
 
 const TABS = [
   { key: "all", label: "Tất cả" },

@@ -16,7 +16,7 @@ import {
   getRole,
   getStatus,
   getCreatedAt,
-} from "./useUser.js";
+} from "./useUser";
 
 export default function NguoiDung() {
   const {

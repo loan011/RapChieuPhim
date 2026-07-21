@@ -33,7 +33,7 @@ import {
   getAreaName,
   getStatusClass,
   getStatusText,
-} from "./useCinema.js";
+} from "./useCinema";
 
 const PAGE_SIZE = 15;
 

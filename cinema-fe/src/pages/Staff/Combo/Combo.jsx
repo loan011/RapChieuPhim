@@ -1,6 +1,6 @@
 import "./Combo.css";
 import React, { useState, useEffect } from "react";
-import { useCombo } from "./useCombo.js";
+import { useCombo } from "./useCombo";
 import {
   MdFastfood, MdAdd, MdRemove, MdShoppingCart,
   MdReceipt, MdCheckCircle, MdQrCode2, MdAttachMoney,

@@ -15,7 +15,7 @@ import {
   useTicket,
   getTicketStatusLabel,
   handlePosterError,
-} from "./useTicket.js";
+} from "./useTicket";
 
 const TABS = [
   { key: "all", label: "Tất cả" },

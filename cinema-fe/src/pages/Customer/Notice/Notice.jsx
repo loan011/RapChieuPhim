@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
 import { MdNotifications, MdArrowBack } from "react-icons/md";
-import { useNotice, getNoticeTypeConfig } from "./useNotice.js";
+import { useNotice, getNoticeTypeConfig } from "./useNotice";
 
 const TABS = [
   { key: "all", label: "Tất cả" },

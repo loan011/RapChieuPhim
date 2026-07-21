@@ -1,6 +1,6 @@
 import "./BanVe.css";
 import { useState } from "react";
-import { useBanVe } from "./useBanVe.js";
+import { useBanVe } from "./useBanVe";
 import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning, MdHourglassTop } from "react-icons/md";
 
 /* ── QR Payment Modal with confirmation checkbox ── */

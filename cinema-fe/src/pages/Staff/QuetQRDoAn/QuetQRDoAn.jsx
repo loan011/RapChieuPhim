@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import "./QuetQRDoAn.css";
-import { useQuetQRDoAn } from "./useQuetQRDoAn.js";
+import { useQuetQRDoAn } from "./useQuetQRDoAn";
 import { 
   MdQrCodeScanner, 
   MdFastfood, 

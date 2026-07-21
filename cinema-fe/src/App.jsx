@@ -1,47 +1,47 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import Home from "./pages/Home.jsx";
+import Home from "./pages/Home";
 
-import Login from "./pages/Auth/Login.jsx";
-import Register from "./pages/Auth/Register.jsx";
-import Movies from "./pages/Movies/Movies.jsx";
-import ForgotPassword from "./pages/Auth/ForgotPassword.jsx";
-import ChangePassword from "./pages/Auth/ChangePassword.jsx";
-import TicketPrice from "./pages/Ticket/TicketPrice.jsx";
-import Booking from "./pages/Booking/Booking.jsx";
+import Login from "./pages/Auth/Login";
+import Register from "./pages/Auth/Register";
+import Movies from "./pages/Movies/Movies";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ChangePassword from "./pages/Auth/ChangePassword";
+import TicketPrice from "./pages/Ticket/TicketPrice";
+import Booking from "./pages/Booking/Booking";
 import Payment from "./pages/Payment/Payment.jsx";
-import TicketInfo from "./pages/Ticket/TicketInfo.jsx";
+import TicketInfo from "./pages/Ticket/TicketInfo";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import CustomerProfile from "./pages/Customer/Profile/Profile.jsx";
-import VeCuaToi from "./pages/Customer/Ticket/Ticket.jsx";
-import LichSuDatVe from "./pages/Customer/History/History.jsx";
-import CustomerThongBao from "./pages/Customer/Notice/Notice.jsx";
-import CustomerDoiMatKhau from "./pages/Customer/ChangePassword/ChangePassword.jsx";
-import CustomerProfileLayout from "./layouts/CustomerProfileLayout.jsx";
+import CustomerProfile from "./pages/Customer/Profile/Profile";
+import VeCuaToi from "./pages/Customer/Ticket/Ticket";
+import LichSuDatVe from "./pages/Customer/History/History";
+import CustomerThongBao from "./pages/Customer/Notice/Notice";
+import CustomerDoiMatKhau from "./pages/Customer/ChangePassword/ChangePassword";
+import CustomerProfileLayout from "./layouts/CustomerProfileLayout";
 
 import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard/Dashboard.jsx";
-import UserManagement from "./pages/Admin/UserManagement/UserManagement.jsx";
-import Phim from "./pages/Admin/Film/Film.jsx";
-import PhongChieu from "./pages/Admin/Room/Room.jsx";
-import RapChieu from "./pages/Admin/Cinema/Cinema.jsx";
-import SuatChieu from "./pages/Admin/Rate/Rate.jsx";
-import Ghe from "./pages/Admin/Seat/Seat.jsx";
-import ThongBao from "./pages/Admin/Notice/Notice.jsx";
-import Food from "./pages/Admin/Food/Food.jsx";
-import BaoCao from "./pages/Admin/BaoCao/BaoCao.jsx";
+import Dashboard from "./pages/Admin/Dashboard/Dashboard";
+import UserManagement from "./pages/Admin/UserManagement/UserManagement";
+import Phim from "./pages/Admin/Film/Film";
+import PhongChieu from "./pages/Admin/Room/Room";
+import RapChieu from "./pages/Admin/Cinema/Cinema";
+import SuatChieu from "./pages/Admin/Rate/Rate";
+import Ghe from "./pages/Admin/Seat/Seat";
+import ThongBao from "./pages/Admin/Notice/Notice";
+import Food from "./pages/Admin/Food/Food";
+import BaoCao from "./pages/Admin/BaoCao/BaoCao";
 
 import StaffLayout from "./layouts/StaffLayout";
-import StaffBanVe from "./pages/Staff/BanVe/BanVe.jsx";
-import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe.jsx";
-import StaffCombo from "./pages/Staff/Combo/Combo.jsx";
-import StaffQuetQR from "./pages/Staff/QR/QuetQR.jsx";
-import StaffQuetQRDoAn from "./pages/Staff/QuetQRDoAn/QuetQRDoAn.jsx";
-import StaffHoSo from "./pages/Staff/HoSo/HoSo.jsx";
-import StaffDoanhThu from "./pages/Staff/DoanhThu/DoanhThu.jsx";
-import StaffQuanLyDoAn from "./pages/Staff/QuanLyDoAn/QuanLyDoAn.jsx";
+import StaffBanVe from "./pages/Staff/BanVe/BanVe";
+import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe";
+import StaffCombo from "./pages/Staff/Combo/Combo";
+import StaffQuetQR from "./pages/Staff/QR/QuetQR";
+import StaffQuetQRDoAn from "./pages/Staff/QuetQRDoAn/QuetQRDoAn";
+import StaffHoSo from "./pages/Staff/HoSo/HoSo";
+import StaffDoanhThu from "./pages/Staff/DoanhThu/DoanhThu";
+import StaffQuanLyDoAn from "./pages/Staff/QuanLyDoAn/QuanLyDoAn";
 
 function App() {
   return (

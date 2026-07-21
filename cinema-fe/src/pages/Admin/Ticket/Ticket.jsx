@@ -31,7 +31,7 @@ import {
   getTicketStatusDisplayName,
   getTicketShowtime,
   formatMoney,
-} from "./useTicket.js";
+} from "./useTicket";
 
 // Helper for status styling matching the mockup
 function getStatusStyle(status) {

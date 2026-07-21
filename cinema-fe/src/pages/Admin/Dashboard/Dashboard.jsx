@@ -1,6 +1,6 @@
 import "./Dashboard.css";
 import { useState } from "react";
-import { useDashboard, formatMoney } from "./useDashboard.js";
+import { useDashboard, formatMoney } from "./useDashboard";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer

@@ -9,7 +9,7 @@ import {
 } from "react-icons/md";
 import "../../styles/Booking.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
-import { useBooking } from "./usebooking.js";
+import { useBooking } from "./usebooking";
 
 import {
   getCinemaId,
@@ -37,7 +37,7 @@ import {
   getSeatPrice,
   groupSeatsByRow,
   getCinemaNameById,
-} from "./usebooking.js";
+} from "./usebooking";
 
 // Helper to format date like "Thứ 7, 18/05/2024"
 function getFormattedDateLabel(dateIso) {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdNotifications, MdCheck, MdArrowForward } from "react-icons/md";
-import { getNotificationsForCustomer } from "../pages/Customer/Notice/noticeService.js";
+import { getNotificationsForCustomer } from "../pages/Customer/Notice/noticeService";
 import "../styles/Customer/NotificationBell.css";
 
 export default function NotificationBell() {

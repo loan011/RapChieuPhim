@@ -1,5 +1,5 @@
 import "./Account.css";
-import { useAccount } from "./useAccount.js";
+import { useAccount } from "./useAccount";
 
 export default function TaiKhoan() {
   const {

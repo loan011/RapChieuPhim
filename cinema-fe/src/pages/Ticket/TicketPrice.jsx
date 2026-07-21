@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import "../../styles/TicketPrice.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
-import { useTicketPrice } from "./useTicketPrice.js";
-import { getAreaId, getAreaName } from "../usehome.js";
+import { useTicketPrice } from "./useTicketPrice";
+import { getAreaId, getAreaName } from "../usehome";
 
 // Helper to format money (e.g. 75000 -> "75.000đ")
 function formatMoney(amount) {

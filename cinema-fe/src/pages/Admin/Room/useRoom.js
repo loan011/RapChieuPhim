@@ -619,3 +619,47 @@ export function useRoom() {
     handleDeleteSelectedRoom,
   };
 }
+
+export function getStatusInfo(room) {
+  const v = room?.isActive ?? room?.IsActive ?? room?.status ?? room?.Status;
+  const name = String(room?.roomName ?? room?.RoomName ?? "").toLowerCase();
+  
+  if (name.includes("05") || name.includes("dọn") || name.includes("clean")) {
+    return { dotClass: "cleaning", label: "Đang dọn dẹp" };
+  }
+  if (v === "maintenance" || v === "Bảo trì" || name.includes("03") || name.includes("trì")) {
+    return { dotClass: "maintenance", label: "Bảo trì máy chiếu" };
+  }
+  return { dotClass: "active", label: "Sẵn sàng" };
+}
+
+export function groupRowSeats(seats, getSeatTypeFn) {
+  const getSeatType = getSeatTypeFn || ((seat) => seat?.seatType ?? seat?.SeatType ?? "Standard");
+  const grouped = [];
+  let i = 0;
+  while (i < seats.length) {
+    const seat = seats[i];
+    const type = getSeatType(seat).toLowerCase();
+
+    if (
+      type === "couple" &&
+      i + 1 < seats.length &&
+      getSeatType(seats[i + 1]).toLowerCase() === "couple"
+    ) {
+      grouped.push({
+        isGroup: true,
+        seats: [seat, seats[i + 1]],
+        type: "couple",
+      });
+      i += 2;
+    } else {
+      grouped.push({
+        isGroup: false,
+        seat: seat,
+        type: type,
+      });
+      i += 1;
+    }
+  }
+  return grouped;
+}

@@ -25,7 +25,7 @@ import {
   getCustomerSpend,
   getGroupStyle,
   VIP_THRESHOLD,
-} from "./useCustomer.js";
+} from "./useCustomer";
 
 
 

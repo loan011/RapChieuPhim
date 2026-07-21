@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { MdEmail, MdLockOutline, MdOutlineShield } from "react-icons/md";
 import { FcGoogle } from "react-icons/fc";
-import { useLogin } from "./useLogin.js";
+import { useLogin } from "./useLogin";
 import "../../styles/Login.css";
 
 function Login() {

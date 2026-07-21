@@ -19,7 +19,7 @@ import {
   GENDER_OPTIONS,
   useProfile,
   getProfileFallbackAvatar,
-} from "./useProfile.js";
+} from "./useProfile";
 
 export default function Profile() {
   const {

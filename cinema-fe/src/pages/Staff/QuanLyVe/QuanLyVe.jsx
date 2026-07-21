@@ -1,5 +1,5 @@
 import "./QuanLyVe.css";
-import { useQuanLyVe } from "./useQuanLyVe.js";
+import { useQuanLyVe } from "./useQuanLyVe";
 import { 
   MdConfirmationNumber, 
   MdSearch, 

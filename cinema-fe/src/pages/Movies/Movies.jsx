@@ -16,7 +16,7 @@ import {
   getMovieDuration,
   getMovieReleaseDate,
   getMovieTrailer,
-} from "./useMovies.js";
+} from "./useMovies";
 
 import {
   getShowtimeMovieId,
@@ -29,7 +29,7 @@ import {
   getCinemaName,
   getShowDate,
   createDateRange,
-} from "../usehome.js";
+} from "../usehome";
 
 function Movies() {
   const {

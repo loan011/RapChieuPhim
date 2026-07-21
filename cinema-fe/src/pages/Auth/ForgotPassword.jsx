@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import "../../styles/Login.css";
 import "../../styles/ForgotPassword.css";
 
-import { useForgotPassword } from "./useForgotPassword.js";
+import { useForgotPassword } from "./useForgotPassword";
 
 function ForgotPassword() {
   const {

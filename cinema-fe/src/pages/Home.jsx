@@ -29,7 +29,7 @@ import {
   getRoomName,
   getShowDate,
   getRoomCinemaId,
-} from "./usehome.js";
+} from "./usehome";
 
 // Helper to convert minutes (e.g., "113 phút" or 113) to "1h 53m"
 function formatDuration(durationStr) {

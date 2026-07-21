@@ -3,9 +3,9 @@ import { MdBadge, MdPersonOutline, MdManageAccounts, MdPeople } from "react-icon
 import "./UserManagement.css";
 
 // Import the three sub-pages as components
-import Personnel from "../Personnel/Personnel.jsx";
-import Customer from "../Customer/Customer.jsx";
-import TaiKhoan from "../Account/Account.jsx";
+import Personnel from "../Personnel/Personnel";
+import Customer from "../Customer/Customer";
+import TaiKhoan from "../Account/Account";
 
 const TABS = [
   {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import "./QuetQR.css";
-import { useQuetQR } from "./useQuetQR.js";
+import { useQuetQR } from "./useQuetQR";
 import { MdQrCodeScanner, MdCameraAlt, MdCheckCircle, MdError, MdWarning, MdArrowForward } from "react-icons/md";
 
 export default function StaffQuetQR() {
