@@ -99,8 +99,6 @@ function Login() {
 
             <div className="login-links">
               <Link to="/forgot-password">Quên mật khẩu?</Link>
-              <span className="divider">|</span>
-              <Link to="/change-password">Đổi mật khẩu</Link>
             </div>
 
             <button type="submit" className="btn-primary" disabled={loading}>

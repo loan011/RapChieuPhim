@@ -21,6 +21,7 @@ import {
   STATUS_OPTIONS,
   WEEKDAY_OPTIONS,
   isMovieNowOrUpcoming,
+  isMovieSelectable,
   getShowtimeId,
   getShowtimeMovieTitle,
   getShowtimeRoomName,
@@ -287,7 +288,7 @@ export default function Rate() {
               >
                 <option value="">Tất cả phim</option>
                 {moviesFiltered
-                  .filter((m) => isMovieNowOrUpcoming(m))
+                  .filter((m) => isMovieSelectable(m, filterDate))
                   .map((m) => {
                     const mId = String(getMovieId(m));
                     const mTitle = getMovieTitle(m);
@@ -526,7 +527,7 @@ export default function Rate() {
                   {showMovieDropdown && !isFieldDisabled && (() => {
                     const kw = formMovieSearch.trim().toLowerCase();
                     const filtered = movies.filter((m) => {
-                      return isMovieNowOrUpcoming(m) && (!kw || getMovieTitle(m).toLowerCase().includes(kw));
+                      return isMovieSelectable(m, form.showDate) && (!kw || getMovieTitle(m).toLowerCase().includes(kw));
                     });
                     return (
                       <div className="lc-movie-dropdown">
@@ -827,7 +828,7 @@ export default function Rate() {
                       >
                         <option value="">-- Chọn phim chiếu --</option>
                         {movies
-                          .filter((m) => isMovieNowOrUpcoming(m))
+                          .filter((m) => isMovieSelectable(m, batchForm.fromDate))
                           .map((m) => {
                             const mId = getMovieId(m);
                             const dur = getMovieDurationMinutes(m);

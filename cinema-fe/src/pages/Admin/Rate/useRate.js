@@ -144,6 +144,28 @@ export function isMovieNowOrUpcoming(m) {
 }
 
 /**
+ * Kiểm tra xem phim có thể được hiển thị/chọn tại thời điểm ngày chiếu đang xét hay không.
+ * Nếu phim sắp chiếu, chỉ được hiển thị khi ngày chiếu cách ngày khởi chiếu tối đa 4 ngày.
+ */
+export function isMovieSelectable(movie, referenceDateStr) {
+  if (!isMovieNowOrUpcoming(movie)) return false;
+
+  const relDateVal = movie.releaseDate ?? movie.ReleaseDate ?? movie.startDate ?? movie.StartDate;
+  if (relDateVal) {
+    const releaseDate = parseDateOnly(relDateVal);
+    const showDate = parseDateOnly(referenceDateStr || new Date());
+    const daysDiff = (releaseDate.getTime() - showDate.getTime()) / (1000 * 3600 * 24);
+    
+    // Nếu ngày xem xét (showDate) trước ngày khởi chiếu (daysDiff > 0)
+    // thì chỉ cho phép nếu khoảng cách tối đa là 4 ngày
+    if (daysDiff > 0 && Math.round(daysDiff) > 4) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Tính giờ kết thúc (HH:mm) từ giờ bắt đầu và số phút.
  * @param {string} startHour  - "HH:mm"
  * @param {number} durationMin - số phút
@@ -411,15 +433,12 @@ export function validateShowtimeForm(form, movies) {
     if (movie) {
       const releaseDateRaw = movie.releaseDate ?? movie.ReleaseDate ?? movie.startDate ?? movie.StartDate;
       if (releaseDateRaw) {
-        const releaseDate = new Date(releaseDateRaw);
-        releaseDate.setHours(0, 0, 0, 0);
-        
-        const showDate = new Date(form.showDate);
-        showDate.setHours(0, 0, 0, 0);
+        const releaseDate = parseDateOnly(releaseDateRaw);
+        const showDate = parseDateOnly(form.showDate);
         
         const daysDiff = (releaseDate.getTime() - showDate.getTime()) / (1000 * 3600 * 24);
         
-        if (daysDiff > 0 && daysDiff > 4) {
+        if (daysDiff > 0 && Math.round(daysDiff) > 4) {
           return "Chỉ được tạo suất chiếu sớm tối đa 4 ngày trước ngày khởi chiếu!";
         }
       }
@@ -655,6 +674,21 @@ export function generateBatchShowtimes(batchForm, movies, rooms, existingList) {
             item.conflictReason = `Trùng giờ với suất ${other.startHour} - ${other.endHour} trong danh sách sinh tự động!`;
             break;
           }
+        }
+      }
+    }
+
+    // 3. Kiểm tra ngày khởi chiếu (Suất chiếu sớm tối đa 4 ngày)
+    if (!item.isConflict && selectedMovie) {
+      const releaseDateRaw = selectedMovie.releaseDate ?? selectedMovie.ReleaseDate ?? selectedMovie.startDate ?? selectedMovie.StartDate;
+      if (releaseDateRaw) {
+        const releaseDate = parseDateOnly(releaseDateRaw);
+        const showDate = parseDateOnly(item.showDate);
+        
+        const daysDiff = (releaseDate.getTime() - showDate.getTime()) / (1000 * 3600 * 24);
+        if (daysDiff > 0 && Math.round(daysDiff) > 4) {
+          item.isConflict = true;
+          item.conflictReason = `Phim chỉ được tạo suất chiếu sớm tối đa 4 ngày trước ngày khởi chiếu (${formatDate(releaseDateRaw)})!`;
         }
       }
     }
