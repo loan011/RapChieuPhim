@@ -13,9 +13,14 @@ export async function validateTicket(id, ticket) {
 
 export async function fetchTicketByCode(ticketCode) {
   try {
-    const response = await fetch(`${API_URL}/Tickets/ByCode/${ticketCode}`, {
+    let response = await fetch(`${API_URL}/Tickets/ByCode/${ticketCode}`, {
       headers: getAuthHeaders(),
     });
+    if (!response.ok) {
+      response = await fetch(`${API_URL}/Tickets/Public/${ticketCode}`, {
+        headers: getAuthHeaders(),
+      });
+    }
     const data = await readResponse(response);
     if (!response.ok) return null;
     return data;

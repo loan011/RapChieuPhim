@@ -101,12 +101,15 @@ const normalizeFoodsForDisplay = (foods) => {
 
 const getQrDataText = (ticket) => {
   if (!ticket) return "";
+  const primaryCode = Array.isArray(ticket.ticketCodes) && ticket.ticketCodes.length > 0
+    ? ticket.ticketCodes[0]
+    : (typeof ticket.id === "string" ? ticket.id.split(",")[0].trim() : ticket.id);
   const seatInfo = Array.isArray(ticket.seats) ? ticket.seats.join(", ") : (ticket.seats || "N/A");
   const foodItems = normalizeFoodsForDisplay(ticket.foods);
   const foodInfo = foodItems.map((f) => `${f.name}x${f.quantity}`).join(",");
   const showtimeInfo = `${ticket.date || "N/A"} ${ticket.time || "N/A"}`;
   
-  let text = `VE:${ticket.id}|PHIM:${ticket.movie}|SUAT:${showtimeInfo}|GHE:${seatInfo}|GIA:${ticket.price}|TRANG_THAI:Active`;
+  let text = `VE:${primaryCode}|PHIM:${ticket.movie}|SUAT:${showtimeInfo}|GHE:${seatInfo}|GIA:${ticket.price}|TRANG_THAI:Active`;
   if (foodInfo) {
     text += `|DO_AN:${foodInfo}`;
   }
