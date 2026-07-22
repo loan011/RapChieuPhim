@@ -241,9 +241,14 @@ export default function StaffBanVe() {
                   <div><strong>Tiền thừa:</strong> {formatMoney(Math.max(0, successReceipt.cashReceived - successReceipt.totalAmount))} đ</div>
                 </>
               )}
-              {successReceipt.studentDiscountAmount > 0 && (
+              {successReceipt.studentDiscountAmount > 0 && successReceipt.isStudent && (
                 <div className="bv-receipt-full text-red-600 font-bold">
-                  <strong>{successReceipt.appliedDiscount ? `Mã ưu đãi (${successReceipt.appliedDiscount.discountCode}):` : `Khấu trừ HS/SV (-15% × ${successReceipt.studentCount || 1} vé):`}</strong> -{formatMoney(successReceipt.studentDiscountAmount)} đ
+                  <strong>Khấu trừ HS/SV (-15% × {successReceipt.studentCount || 1} vé):</strong> -{formatMoney(successReceipt.studentDiscountAmount)} đ
+                </div>
+              )}
+              {successReceipt.promoDiscountAmount > 0 && successReceipt.appliedDiscount && (
+                <div className="bv-receipt-full text-red-600 font-bold">
+                  <strong>Mã ưu đãi ({successReceipt.appliedDiscount.discountCode}):</strong> -{formatMoney(successReceipt.promoDiscountAmount)} đ
                 </div>
               )}
               <div><strong>Ngày xuất:</strong> {successReceipt.dateBooked}</div>
@@ -598,14 +603,13 @@ export default function StaffBanVe() {
                     placeholder="Nhập mã..."
                     value={discountCodeInput}
                     onChange={(e) => setDiscountCodeInput(e.target.value)}
-                    disabled={appliedDiscount !== null || isStudent}
+                    disabled={appliedDiscount !== null}
                     className="flex-1 border border-blue-200 rounded-xl px-3 py-1.5 text-sm font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case min-w-0"
                   />
                   {!appliedDiscount ? (
                     <button
                       type="button"
                       onClick={handleApplyDiscount}
-                      disabled={isStudent}
                       className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       Áp dụng

@@ -34,77 +34,135 @@ export default function StaffQuetQRDoAn() {
   const lastScanTimeRef = useRef(0);
   const lastScanCodeRef = useRef("");
   const [facingMode, setFacingMode] = useState("environment"); // default to back camera (environment)
+  const [cameras, setCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
 
-  // Tự động mở camera quét khi tải trang hoặc khi đổi facingMode
+  // Tự động mở camera quét khi tải trang hoặc khi đổi facingMode / selectedCameraId
   useEffect(() => {
     let isStopped = false;
+    let scannerInstance = null;
 
     async function initScanner() {
-      // Dừng camera cũ nếu đang chạy
-      if (html5QrCodeRef.current) {
+      try {
+        // Đợi DOM #reader-food sẵn sàng
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        if (isStopped) return;
+
+        const html5QrCode = new Html5Qrcode("reader-food");
+        html5QrCodeRef.current = html5QrCode;
+        scannerInstance = html5QrCode;
+        
+        // Lấy danh sách các camera có sẵn
+        let devices = [];
         try {
-          await html5QrCodeRef.current.stop();
-        } catch (e) {}
-      }
+          devices = await Html5Qrcode.getCameras();
+          setCameras(devices);
+        } catch (e) {
+          console.warn("Error getting food cameras list:", e);
+        }
+        if (isStopped) return;
 
-      if (isStopped) return;
-
-      // Đợi DOM #reader-food sẵn sàng
-      setTimeout(async () => {
-        try {
-          const html5QrCode = new Html5Qrcode("reader-food");
-          html5QrCodeRef.current = html5QrCode;
-          
-          await html5QrCode.start(
-            { facingMode: facingMode },
-            { fps: 15 },
-            (decodedText) => {
-              const now = Date.now();
-              if (decodedText === lastScanCodeRef.current && now - lastScanTimeRef.current < 3000) {
-                return; // Cooldown 3 giây
-              }
-              lastScanCodeRef.current = decodedText;
-              lastScanTimeRef.current = now;
-
-            console.log("Food QR Code Scanned:", decodedText);
-            
-            // Bóc tách mã vé sạch sẽ
-            let cleanCode = decodedText.trim();
-            if (cleanCode.includes("/ticket-info/")) {
-              const parts = cleanCode.split("/ticket-info/");
-              cleanCode = parts[parts.length - 1];
-            } else if (cleanCode.includes("data=VE:")) {
-              const match = cleanCode.match(/data=VE:([^|&]+)/);
-              if (match) cleanCode = match[1];
-            } else if (cleanCode.startsWith("VE:")) {
-              const match = cleanCode.match(/VE:([^|]+)/);
-              if (match) cleanCode = match[1];
+        let targetCamera = null;
+        if (devices && devices.length > 0) {
+          if (selectedCameraId && devices.some(d => d.id === selectedCameraId)) {
+            targetCamera = selectedCameraId;
+          } else {
+            // Tìm kiếm camera sau (environment-facing)
+            const backCamera = devices.find(d => {
+              const label = d.label.toLowerCase();
+              return label.includes("back") || label.includes("rear") || label.includes("sau") || label.includes("chính") || label.includes("environment");
+            });
+            if (backCamera) {
+              targetCamera = backCamera.id;
+              setSelectedCameraId(backCamera.id);
+            } else {
+              targetCamera = devices[0].id;
+              setSelectedCameraId(devices[0].id);
             }
+          }
+        }
+        if (isStopped) return;
 
-              setTicketCode(cleanCode);
-              handleFindTicket(cleanCode);
-            },
+        const qrCodeSuccessCallback = (decodedText) => {
+          const now = Date.now();
+          if (decodedText === lastScanCodeRef.current && now - lastScanTimeRef.current < 3000) {
+            return; // Cooldown 3 giây
+          }
+          lastScanCodeRef.current = decodedText;
+          lastScanTimeRef.current = now;
+
+          console.log("Food QR Code Scanned:", decodedText);
+          
+          // Bóc tách mã vé sạch sẽ
+          let cleanCode = decodedText.trim();
+          if (cleanCode.includes("/ticket-info/")) {
+            const parts = cleanCode.split("/ticket-info/");
+            cleanCode = parts[parts.length - 1];
+          } else if (cleanCode.includes("data=VE:")) {
+            const match = cleanCode.match(/data=VE:([^|&]+)/);
+            if (match) cleanCode = match[1];
+          } else if (cleanCode.startsWith("VE:")) {
+            const match = cleanCode.match(/VE:([^|]+)/);
+            if (match) cleanCode = match[1];
+          }
+
+          setTicketCode(cleanCode);
+          handleFindTicket(cleanCode);
+        };
+
+        const config = {
+          fps: 15,
+          qrbox: (width, height) => {
+            const minEdge = Math.min(width, height);
+            const qrboxSize = Math.floor(minEdge * 0.7);
+            return { width: qrboxSize, height: qrboxSize };
+          }
+        };
+
+        if (targetCamera) {
+          await html5QrCode.start(
+            targetCamera,
+            config,
+            qrCodeSuccessCallback,
             (errorMessage) => {}
           );
-        } catch (err) {
-          console.error("Camera startup error:", err);
+        } else {
+          await html5QrCode.start(
+            { facingMode: facingMode },
+            config,
+            qrCodeSuccessCallback,
+            (errorMessage) => {}
+          );
+        }
+
+        // Nếu trong lúc khởi động mà component đã bị tắt
+        if (isStopped) {
+          if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+          }
+        }
+      } catch (err) {
+        console.error("Camera startup error:", err);
+        if (!isStopped) {
           setStatusMessage({
             type: "error",
-            text: "Không thể khởi động camera. Vui lòng cấp quyền truy cập camera ở góc trái thanh địa chỉ trình duyệt."
+            text: "Không thể khởi động camera. Vui lòng cấp quyền truy cập camera ở góc trái thanh địa chỉ trình duyệt, hoặc chuyển đổi camera."
           });
         }
-      }, 200);
+      }
     }
 
     initScanner();
 
     return () => {
       isStopped = true;
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(err => console.log("Stop food scanner error:", err));
+      if (scannerInstance) {
+        if (scannerInstance.isScanning) {
+          scannerInstance.stop().catch(err => console.log("Stop food scanner error:", err));
+        }
       }
     };
-  }, [facingMode]);
+  }, [facingMode, selectedCameraId]);
 
   return (
     <div className="staff-qr-food-container">
@@ -130,11 +188,36 @@ export default function StaffQuetQRDoAn() {
 
           <button
             type="button"
-            onClick={() => setFacingMode(prev => prev === "environment" ? "user" : "environment")}
+            onClick={() => {
+              setFacingMode(prev => {
+                const next = prev === "environment" ? "user" : "environment";
+                setSelectedCameraId(""); // reset selected camera to auto detect in new mode
+                return next;
+              });
+            }}
             className="mt-4 px-4 py-2 text-xs font-semibold rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <MdCameraAlt className="text-orange-500 text-sm" /> Chuyển sang Camera {facingMode === "environment" ? "Trước (Selfie)" : "Sau (Chính)"}
           </button>
+
+          {cameras.length > 1 && (
+            <div className="mt-3.5 w-full max-w-sm">
+              <label className="block text-left text-xs font-bold text-gray-500 uppercase mb-1.5">
+                Chọn Camera quét:
+              </label>
+              <select
+                value={selectedCameraId}
+                onChange={(e) => setSelectedCameraId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50/50 transition-all duration-200"
+              >
+                {cameras.map((cam, idx) => (
+                  <option key={cam.id} value={cam.id}>
+                    {cam.label || `Camera ${idx + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Search and Details */}
