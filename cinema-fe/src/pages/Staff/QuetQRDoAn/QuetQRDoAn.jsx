@@ -114,7 +114,7 @@ export default function StaffQuetQRDoAn() {
           fps: 15,
           qrbox: (width, height) => {
             const minEdge = Math.min(width, height);
-            const qrboxSize = Math.floor(minEdge * 0.7);
+            const qrboxSize = Math.max(150, Math.floor(minEdge * 0.7));
             return { width: qrboxSize, height: qrboxSize };
           }
         };
