@@ -260,10 +260,10 @@ export default function StaffBanVe() {
         </div>
       )}
 
-      {/* ───── 3-COLUMN LAYOUT ───── */}
+      {/* ───── 3-COLUMN POS LAYOUT ───── */}
       <div className="bv-layout">
 
-        {/* COL 1: Lịch chiếu */}
+        {/* COL 1: Lịch chiếu phim dọc bên trái */}
         <aside className="bv-col-schedule">
           <div className="bv-panel-title">
             <span className="bv-title-bar"></span>
@@ -285,8 +285,8 @@ export default function StaffBanVe() {
                     )}
                     <div className="bv-movie-info">
                       <span className="bv-age-badge">{movie.ageRating}</span>
-                      <h6 className="bv-movie-title">{movie.title}</h6>
-                      <p className="bv-movie-duration">{movie.duration}</p>
+                      <h6 className="bv-movie-title" title={movie.title}>{movie.title}</h6>
+                      <p className="bv-movie-duration">{movie.duration} phút</p>
                     </div>
                   </div>
 
@@ -318,7 +318,7 @@ export default function StaffBanVe() {
           )}
         </aside>
 
-        {/* COL 2: Sơ đồ ghế */}
+        {/* COL 2: Sơ đồ ghế ở giữa */}
         <main className="bv-col-seats">
           <div className="bv-panel-title">
             <span className="bv-title-bar"></span>
@@ -445,9 +445,11 @@ export default function StaffBanVe() {
               Thông Tin Đơn Hàng
             </div>
 
-            {/* Tóm tắt đơn */}
-            <div className="bv-order-summary">
-              <div className="bv-order-row">
+            {/* Scrollable Body */}
+            <div className="bv-payment-body">
+              {/* Tóm tắt đơn */}
+              <div className="bv-order-summary">
+                <div className="bv-order-row">
                 <span>Ghế đã chọn</span>
                 <strong>{getSelectedSeatsText() || "Chưa chọn"}</strong>
               </div>
@@ -525,21 +527,21 @@ export default function StaffBanVe() {
               </div>
 
               {/* Ưu đãi Học sinh / Sinh viên */}
-              <div className="mt-3 p-3 bg-red-50/60 border border-red-200/80 rounded-xl">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-red-700 select-none">
+              <div className="mt-2.5 p-3 bg-red-50/60 border border-red-200/80 rounded-xl">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-red-700 select-none">
                   <input
                     type="checkbox"
                     checked={isStudent}
                     onChange={(e) => setIsStudent(e.target.checked)}
                     disabled={appliedDiscount !== null}
-                    className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 accent-red-600 disabled:opacity-50"
+                    className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500 accent-red-600 disabled:opacity-50"
                   />
                   <span>🎓 Khách là Học sinh / Sinh viên (-15% vé)</span>
                 </label>
                 {isStudent && (
-                  <div className="mt-2.5 pt-2 border-t border-red-200/60 space-y-2">
+                  <div className="mt-2 pt-2 border-t border-red-200/60 space-y-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-red-800">Số lượng vé HS/SV:</span>
+                      <span className="font-bold text-red-800">Số lượng vé HS/SV:</span>
                       <span className="text-xxs text-gray-500">(Tối đa {selectedSeats.length || 1} vé)</span>
                     </div>
                     <input
@@ -573,12 +575,12 @@ export default function StaffBanVe() {
                           setStudentCount(maxSeats);
                         }
                       }}
-                      className="w-full border border-red-200 rounded-lg px-3 py-1.5 text-xs font-bold text-red-700 bg-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      className="w-full border border-red-200 rounded-xl px-3 py-1.5 text-sm font-bold text-red-700 bg-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
                     />
                     {ticketSubtotal > 0 && (
-                      <div className="text-xxs font-semibold text-red-600 flex justify-between items-center pt-1">
+                      <div className="text-xs font-bold text-red-600 flex justify-between items-center pt-1">
                         <span>Giảm 15% cho {Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length || 1)} vé:</span>
-                        <span className="font-bold text-xs">-{formatMoney(studentDiscountAmount)} đ</span>
+                        <span className="font-extrabold text-sm">-{formatMoney(studentDiscountAmount)} đ</span>
                       </div>
                     )}
                   </div>
@@ -586,25 +588,25 @@ export default function StaffBanVe() {
               </div>
 
               {/* Nhập mã ưu đãi */}
-              <div className="mt-3 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
-                <label className="block text-xs font-bold text-blue-800 mb-2">
+              <div className="mt-2.5 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
+                <label className="block text-sm font-bold text-blue-800 mb-1.5">
                   🎟️ Mã giảm giá / Ưu đãi
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder={isStudent ? "Không áp dụng cùng lúc với thẻ HS/SV" : "Nhập mã ưu đãi..."}
+                    placeholder="Nhập mã..."
                     value={discountCodeInput}
                     onChange={(e) => setDiscountCodeInput(e.target.value)}
                     disabled={appliedDiscount !== null || isStudent}
-                    className="flex-1 border border-blue-200 rounded-lg px-3 py-1.5 text-xs font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case"
+                    className="flex-1 border border-blue-200 rounded-xl px-3 py-1.5 text-sm font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case min-w-0"
                   />
                   {!appliedDiscount ? (
                     <button
                       type="button"
                       onClick={handleApplyDiscount}
                       disabled={isStudent}
-                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 active:scale-95 transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       Áp dụng
                     </button>
@@ -612,23 +614,23 @@ export default function StaffBanVe() {
                     <button
                       type="button"
                       onClick={removeDiscount}
-                      className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 active:scale-95 transition-transform"
+                      className="px-4 py-1.5 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 active:scale-95 transition-all flex-shrink-0"
                     >
                       Hủy mã
                     </button>
                   )}
                 </div>
                 {appliedDiscount && ticketSubtotal > 0 && (
-                  <div className="mt-2 pl-2 text-xxs font-semibold text-blue-700 flex justify-between">
+                  <div className="mt-2 pl-1 text-xs font-bold text-blue-700 flex justify-between">
                     <span>Mã {appliedDiscount.discountCode} đã áp dụng:</span>
-                    <span className="font-bold text-xs text-red-600">-{formatMoney(studentDiscountAmount)} đ</span>
+                    <span className="font-extrabold text-sm text-red-600">-{formatMoney(studentDiscountAmount)} đ</span>
                   </div>
                 )}
               </div>
 
               {paymentMethod === "Cash" && (
-                <div className="mt-3 p-3 bg-gray-50 border border-gray-150 rounded-xl space-y-2">
-                  <div className="flex justify-between items-center text-xs font-semibold text-gray-600">
+                <div className="mt-3 p-3.5 bg-gray-50 border border-gray-150 rounded-2xl space-y-2.5">
+                  <div className="flex justify-between items-center text-sm font-bold text-gray-700">
                     <span>Tiền nhận (khách đưa):</span>
                   </div>
                   <input
@@ -636,16 +638,16 @@ export default function StaffBanVe() {
                     placeholder="Nhập số tiền khách đưa..."
                     value={cashReceived}
                     onChange={(e) => setCashReceived(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-base font-bold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100"
                   />
-                  <div className="flex flex-wrap gap-1">
+                  <div className="grid grid-cols-2 gap-2">
                     {totalAmount > 0 && (
                       <button
                         type="button"
                         onClick={() => setCashReceived(totalAmount)}
-                        className="px-2.5 py-1 bg-green-50 border border-green-200 rounded text-xxs font-bold text-green-700 hover:bg-green-100 transition-colors"
+                        className="col-span-2 px-3 py-2 bg-green-50 border-2 border-green-200 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 active:scale-97 transition-all flex items-center justify-center gap-1"
                       >
-                        {formatMoney(totalAmount)}đ (Đúng tiền)
+                        {formatMoney(totalAmount)}đ (Đúng số tiền)
                       </button>
                     )}
                     {[50000, 100000, 200000, 500000].map((amt) => (
@@ -653,7 +655,7 @@ export default function StaffBanVe() {
                         key={amt}
                         type="button"
                         onClick={() => setCashReceived(amt)}
-                        className="px-2 py-1 bg-white border border-gray-200 rounded text-xxs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-97 transition-all flex items-center justify-center gap-1"
                       >
                         {formatMoney(amt)}đ
                       </button>
@@ -661,36 +663,40 @@ export default function StaffBanVe() {
                   </div>
 
                   {cashReceived !== "" && Number(cashReceived) < totalAmount ? (
-                    <div className="pt-2 border-t border-red-200 text-xs font-bold text-red-600 flex items-center justify-between">
-                      <span>⚠️ Tiền nhận chưa đủ</span>
-                      <span>Thiếu: {formatMoney(totalAmount - Number(cashReceived))} đ</span>
+                    <div className="pt-2.5 border-t border-red-200 text-xs font-bold text-red-600 flex items-center justify-between">
+                      <span>⚠️ Chưa đủ</span>
+                      <span className="text-sm font-black">Thiếu: {formatMoney(totalAmount - Number(cashReceived))} đ</span>
                     </div>
                   ) : Number(cashReceived) >= totalAmount && totalAmount > 0 ? (
-                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-xs font-bold">
+                    <div className="pt-2.5 border-t border-gray-200 flex justify-between items-center text-xs font-bold">
                       <span className="text-gray-600">Tiền thừa trả khách:</span>
-                      <span className="text-green-600 text-sm font-extrabold">
+                      <span className="text-green-600 text-base font-black">
                         {formatMoney(Number(cashReceived) - totalAmount)} đ
                       </span>
                     </div>
                   ) : null}
                 </div>
               )}
-            </div>
+            </div> {/* Close bv-pay-method-section */}
+          </div> {/* Close bv-payment-body */}
 
-            {/* Tổng tiền */}
-            <div className="bv-total-row">
-              <span>Tổng tiền</span>
-              <strong>{formatMoney(totalAmount)} đ</strong>
-            </div>
+            {/* Fixed Footer */}
+            <div className="bv-payment-footer">
+              {/* Tổng tiền */}
+              <div className="bv-total-row">
+                <span>Tổng tiền</span>
+                <strong>{formatMoney(totalAmount)} đ</strong>
+              </div>
 
-            {/* Nút xuất vé */}
-            <button
-              type="submit"
-              disabled={selectedSeats.length === 0 || loading || (paymentMethod === "Cash" && cashReceived !== "" && Number(cashReceived) < totalAmount)}
-              className="bv-submit-btn"
-            >
-              {loading ? "Đang xử lý..." : "🎟 XUẤT VÉ & THANH TOÁN"}
-            </button>
+              {/* Nút xuất vé */}
+              <button
+                type="submit"
+                disabled={selectedSeats.length === 0 || loading || (paymentMethod === "Cash" && cashReceived !== "" && Number(cashReceived) < totalAmount)}
+                className="bv-submit-btn"
+              >
+                {loading ? "Đang xử lý..." : "🎟 XUẤT VÉ & THANH TOÁN"}
+              </button>
+            </div> {/* Close bv-payment-footer */}
           </form>
         </aside>
       </div>

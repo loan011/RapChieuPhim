@@ -514,7 +514,25 @@ export function useBanVe() {
           ? availableList
           : [];
 
-        setAllSeats([...normalizedSeats].sort(compareSeatPosition));
+        // Filter duplicates based on unique seat coordinates/row-number to prevent duplicates like A10 appearing twice
+        const uniqueSeats = [];
+        const seenKeys = new Set();
+        const seenIds = new Set();
+        
+        normalizedSeats.forEach((seat) => {
+          const seatId = getSeatId(seat);
+          const row = extractSeatRow(seat);
+          const num = extractSeatNumber(seat);
+          const key = `${row}-${num}`;
+          
+          if (!seenKeys.has(key) && !seenIds.has(seatId)) {
+            seenKeys.add(key);
+            seenIds.add(seatId);
+            uniqueSeats.push(seat);
+          }
+        });
+
+        setAllSeats(uniqueSeats.sort(compareSeatPosition));
         setAvailableSeats(normalizedAvailable);
         setSelectedSeats([]);
       } catch (err) {
