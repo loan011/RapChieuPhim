@@ -13,9 +13,14 @@ function normalizeArray(arr) {
 
 export async function fetchTicketByCode(ticketCode) {
   try {
-    const response = await fetch(`${API_URL}/Tickets/ByCode/${ticketCode}`, {
+    let response = await fetch(`${API_URL}/Tickets/ByCode/${ticketCode}`, {
       headers: getAuthHeaders(),
     });
+    if (!response.ok) {
+      response = await fetch(`${API_URL}/Tickets/Public/${ticketCode}`, {
+        headers: getAuthHeaders(),
+      });
+    }
     if (!response.ok) return null;
     return await readResponse(response);
   } catch (err) {

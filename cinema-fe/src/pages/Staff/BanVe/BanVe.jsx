@@ -159,6 +159,17 @@ export default function StaffBanVe() {
     handleFoodQuantityChange,
     cashReceived,
     setCashReceived,
+    isStudent,
+    setIsStudent,
+    studentCount,
+    setStudentCount,
+    discountCodeInput,
+    setDiscountCodeInput,
+    appliedDiscount,
+    handleApplyDiscount,
+    removeDiscount,
+    ticketSubtotal,
+    studentDiscountAmount,
   } = useBanVe();
 
   return (
@@ -229,6 +240,11 @@ export default function StaffBanVe() {
                   <div><strong>Tiền nhận:</strong> {formatMoney(successReceipt.cashReceived)} đ</div>
                   <div><strong>Tiền thừa:</strong> {formatMoney(Math.max(0, successReceipt.cashReceived - successReceipt.totalAmount))} đ</div>
                 </>
+              )}
+              {successReceipt.studentDiscountAmount > 0 && (
+                <div className="bv-receipt-full text-red-600 font-bold">
+                  <strong>{successReceipt.appliedDiscount ? `Mã ưu đãi (${successReceipt.appliedDiscount.discountCode}):` : `Khấu trừ HS/SV (-15% × ${successReceipt.studentCount || 1} vé):`}</strong> -{formatMoney(successReceipt.studentDiscountAmount)} đ
+                </div>
               )}
               <div><strong>Ngày xuất:</strong> {successReceipt.dateBooked}</div>
               <div className="bv-receipt-full bv-receipt-total">
@@ -443,6 +459,16 @@ export default function StaffBanVe() {
                     : "—"}
                 </strong>
               </div>
+              {studentDiscountAmount > 0 && (
+                <div className="bv-order-row text-red-600 font-bold">
+                  <span>
+                    {appliedDiscount 
+                      ? `Giảm giá mã ${appliedDiscount.discountCode} (${appliedDiscount.discountType === "Percent" ? appliedDiscount.discountValue + "%" : formatMoney(appliedDiscount.discountValue) + "đ"})` 
+                      : `Giảm giá HS/SV (15% × ${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length || 1)} vé)`}
+                  </span>
+                  <span>-{formatMoney(studentDiscountAmount)} đ</span>
+                </div>
+              )}
             </div>
 
             {/* Đồ ăn */}
@@ -496,6 +522,108 @@ export default function StaffBanVe() {
                 >
                   📱 Quét QR
                 </button>
+              </div>
+
+              {/* Ưu đãi Học sinh / Sinh viên */}
+              <div className="mt-3 p-3 bg-red-50/60 border border-red-200/80 rounded-xl">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-red-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={isStudent}
+                    onChange={(e) => setIsStudent(e.target.checked)}
+                    disabled={appliedDiscount !== null}
+                    className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 accent-red-600 disabled:opacity-50"
+                  />
+                  <span>🎓 Khách là Học sinh / Sinh viên (-15% vé)</span>
+                </label>
+                {isStudent && (
+                  <div className="mt-2.5 pt-2 border-t border-red-200/60 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-red-800">Số lượng vé HS/SV:</span>
+                      <span className="text-xxs text-gray-500">(Tối đa {selectedSeats.length || 1} vé)</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedSeats.length || 1}
+                      value={studentCount}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setStudentCount("");
+                          return;
+                        }
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                          const maxSeats = selectedSeats.length || 1;
+                          if (num > maxSeats) {
+                            setStudentCount(maxSeats);
+                          } else {
+                            setStudentCount(num);
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        const num = parseInt(studentCount, 10);
+                        const maxSeats = selectedSeats.length || 1;
+                        if (isNaN(num) || num < 1) {
+                          setStudentCount(1);
+                        } else if (num > maxSeats) {
+                          setStudentCount(maxSeats);
+                        }
+                      }}
+                      className="w-full border border-red-200 rounded-lg px-3 py-1.5 text-xs font-bold text-red-700 bg-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                    />
+                    {ticketSubtotal > 0 && (
+                      <div className="text-xxs font-semibold text-red-600 flex justify-between items-center pt-1">
+                        <span>Giảm 15% cho {Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length || 1)} vé:</span>
+                        <span className="font-bold text-xs">-{formatMoney(studentDiscountAmount)} đ</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Nhập mã ưu đãi */}
+              <div className="mt-3 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
+                <label className="block text-xs font-bold text-blue-800 mb-2">
+                  🎟️ Mã giảm giá / Ưu đãi
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={isStudent ? "Không áp dụng cùng lúc với thẻ HS/SV" : "Nhập mã ưu đãi..."}
+                    value={discountCodeInput}
+                    onChange={(e) => setDiscountCodeInput(e.target.value)}
+                    disabled={appliedDiscount !== null || isStudent}
+                    className="flex-1 border border-blue-200 rounded-lg px-3 py-1.5 text-xs font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case"
+                  />
+                  {!appliedDiscount ? (
+                    <button
+                      type="button"
+                      onClick={handleApplyDiscount}
+                      disabled={isStudent}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 active:scale-95 transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Áp dụng
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={removeDiscount}
+                      className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 active:scale-95 transition-transform"
+                    >
+                      Hủy mã
+                    </button>
+                  )}
+                </div>
+                {appliedDiscount && ticketSubtotal > 0 && (
+                  <div className="mt-2 pl-2 text-xxs font-semibold text-blue-700 flex justify-between">
+                    <span>Mã {appliedDiscount.discountCode} đã áp dụng:</span>
+                    <span className="font-bold text-xs text-red-600">-{formatMoney(studentDiscountAmount)} đ</span>
+                  </div>
+                )}
               </div>
 
               {paymentMethod === "Cash" && (

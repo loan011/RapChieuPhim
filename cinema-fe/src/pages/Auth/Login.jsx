@@ -17,6 +17,12 @@ function Login() {
     toggleShowPassword,
     handleLogin,
     handleGoogleLogin,
+    showGoogleModal,
+    setShowGoogleModal,
+    googleProfile,
+    googleForm,
+    setGoogleForm,
+    handleGoogleRegisterSubmit,
   } = useLogin();
 
   return (
@@ -109,7 +115,7 @@ function Login() {
               <span>HOẶC</span>
             </div>
 
-            <button type="button" className="btn-google" onClick={handleGoogleLogin}>
+            <button type="button" className="btn-google" onClick={handleGoogleLogin} disabled={loading}>
               <FcGoogle size={20} />
               ĐĂNG NHẬP BẰNG GOOGLE
             </button>
@@ -121,6 +127,154 @@ function Login() {
         </div>
 
       </div>
+
+      {/* Modal hoàn tất thông tin khi đăng nhập bằng Google lần đầu */}
+      {showGoogleModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "rgba(0, 0, 0, 0.75)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: "#18181b",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "16px",
+            padding: "30px",
+            maxWidth: "450px",
+            width: "90%",
+            color: "#fff"
+          }}>
+            <h3 style={{ marginTop: 0, fontSize: "1.3rem", color: "#e11d48", textTransform: "uppercase" }}>
+              Hoàn tất thông tin tài khoản
+            </h3>
+            <p style={{ fontSize: "0.9rem", color: "#a1a1aa", marginBottom: "20px" }}>
+              Tài khoản Google <strong style={{ color: "#fff" }}>{googleProfile?.email}</strong> chưa hoàn tất thông tin cá nhân. Vui lòng cung cấp thêm để tiếp tục:
+            </p>
+
+            <form onSubmit={handleGoogleRegisterSubmit}>
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "5px", color: "#a1a1aa" }}>HỌ VÀ TÊN *</label>
+                <input
+                  type="text"
+                  value={googleForm.fullName}
+                  onChange={(e) => setGoogleForm({ ...googleForm, fullName: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "5px", color: "#a1a1aa" }}>SỐ ĐIỆN THOẠI *</label>
+                <input
+                  type="text"
+                  placeholder="Nhập 10 chữ số"
+                  value={googleForm.phone}
+                  onChange={(e) => setGoogleForm({ ...googleForm, phone: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "5px", color: "#a1a1aa" }}>NGÀY SINH *</label>
+                <input
+                  type="date"
+                  value={googleForm.dateOfBirth}
+                  onChange={(e) => setGoogleForm({ ...googleForm, dateOfBirth: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "5px", color: "#a1a1aa" }}>GIỚI TÍNH</label>
+                <select
+                  value={googleForm.gender}
+                  onChange={(e) => setGoogleForm({ ...googleForm, gender: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "#27272a",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    boxSizing: "border-box"
+                  }}
+                >
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+
+              {error && <div style={{ color: "#ef4444", fontSize: "0.85rem", marginBottom: "15px" }}>{error}</div>}
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  style={{
+                    padding: "10px 18px",
+                    background: "transparent",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    cursor: "pointer"
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: "10px 18px",
+                    background: "#e11d48",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontWeight: "bold",
+                    cursor: "pointer"
+                  }}
+                >
+                  {loading ? "Đang xử lý..." : "XÁC NHẬN"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

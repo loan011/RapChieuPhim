@@ -689,7 +689,7 @@ export default function DoanhThu() {
                       <span>{formatVND(selectedBill.concessionSubtotal)}</span>
                     </div>
                     <div className="flex justify-between text-red-500 font-medium">
-                      <span>Mã giảm giá (Khấu trừ):</span>
+                      <span>{selectedBill.discountReason || "Khấu trừ giảm giá"}:</span>
                       <span>-{formatVND(selectedBill.discountAmt)}</span>
                     </div>
                     <div className="flex justify-between font-black text-sm text-gray-900 border-t border-gray-100 pt-2 mt-2">

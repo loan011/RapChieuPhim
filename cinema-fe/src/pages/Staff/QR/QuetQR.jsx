@@ -59,14 +59,20 @@ export default function StaffQuetQR() {
             
             // Tự động bóc tách mã vé sạch sẽ
             let cleanCode = decodedText.trim();
+            try {
+              if (cleanCode.includes("%")) {
+                cleanCode = decodeURIComponent(cleanCode);
+              }
+            } catch (e) {}
+
             if (cleanCode.includes("/ticket-info/")) {
               const parts = cleanCode.split("/ticket-info/");
               cleanCode = parts[parts.length - 1];
             } else if (cleanCode.includes("data=VE:")) {
               const match = cleanCode.match(/data=VE:([^|&]+)/);
               if (match) cleanCode = match[1];
-            } else if (cleanCode.startsWith("VE:")) {
-              const match = cleanCode.match(/VE:([^|]+)/);
+            } else if (cleanCode.includes("VE:")) {
+              const match = cleanCode.match(/VE:([^|&]+)/);
               if (match) cleanCode = match[1];
             }
 

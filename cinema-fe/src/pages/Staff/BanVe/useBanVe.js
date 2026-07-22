@@ -19,6 +19,7 @@ import {
   getSeatId,
   getSeatPrice,
 } from "../../Booking/usebooking.js";
+import { getApiUrl, getAuthHeaders, readResponse } from "../../../services/apiHelper";
 
 /* =========================
    SEAT HELPER
@@ -206,6 +207,65 @@ export function useBanVe() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [cashReceived, setCashReceived] = useState("");
   const [currentPaymentId, setCurrentPaymentId] = useState(null);
+  const [isStudent, setIsStudent] = useState(false);
+  const [studentCount, setStudentCount] = useState(1);
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+
+  const handleSetIsStudent = (checked) => {
+    setIsStudent(checked);
+    if (checked) {
+      setAppliedDiscount(null);
+      setDiscountCodeInput("");
+    }
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!discountCodeInput.trim()) {
+      setAppliedDiscount(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${getApiUrl()}/Discounts`, { headers: getAuthHeaders() });
+      const discounts = await readResponse(res);
+      const codeToApply = discountCodeInput.trim().toUpperCase();
+      const valid = discounts.find(
+        (d) =>
+          d.discountCode === codeToApply &&
+          d.isActive &&
+          new Date(d.startDate) <= new Date() &&
+          (!d.endDate || new Date(d.endDate) >= new Date())
+      );
+      if (valid) {
+        setAppliedDiscount(valid);
+        setIsStudent(false);
+      } else {
+        alert("Mã ưu đãi không hợp lệ hoặc đã hết hạn!");
+        setAppliedDiscount(null);
+      }
+    } catch (error) {
+      console.error("Lỗi áp dụng mã:", error);
+      alert("Lỗi kiểm tra mã!");
+    }
+  };
+
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountCodeInput("");
+  };
+
+  useEffect(() => {
+    if (selectedSeats.length > 0) {
+      setStudentCount((prev) => {
+        const num = Number(prev);
+        if (isNaN(num) || num < 1) return 1;
+        if (num > selectedSeats.length) return selectedSeats.length;
+        return prev;
+      });
+    } else {
+      setStudentCount(1);
+    }
+  }, [selectedSeats.length]);
 
   const [customer, setCustomer] = useState({
     name: "Khách vãng lai",
@@ -283,6 +343,10 @@ export function useBanVe() {
           setPaymentTicketIds([]);
           setSelectedSeats([]);
           setSelectedFoods({});
+          setIsStudent(false);
+          setStudentCount(1);
+          setAppliedDiscount(null);
+          setDiscountCodeInput("");
           setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
           
           // Reload seat map
@@ -623,13 +687,47 @@ export function useBanVe() {
     );
   }, [selectedFoodsList]);
 
-  const totalAmount = useMemo(() => {
-    const seatsPrice = selectedSeats.reduce(
+  const ticketSubtotal = useMemo(() => {
+    return selectedSeats.reduce(
       (sum, seat) => sum + Number(calculateSeatPrice(seat)),
       0
     );
-    return seatsPrice + foodTotalAmount;
-  }, [selectedSeats, selectedShowtime, foodTotalAmount]);
+  }, [selectedSeats, selectedShowtime]);
+
+  const studentDiscountAmount = useMemo(() => {
+    if (!isStudent || selectedSeats.length === 0) return 0;
+    const effectiveCount = Math.min(
+      Math.max(1, Number(studentCount) || 1),
+      selectedSeats.length
+    );
+    const targetSeats = selectedSeats.slice(0, effectiveCount);
+    return targetSeats.reduce(
+      (sum, seat) => {
+        const type = String(seat?.seatType || seat?.SeatType || seat?.type || seat?.Type || "").toLowerCase();
+        const isCouple = type.includes("couple") || type.includes("sweetbox") || type.includes("đôi") || type.includes("doi");
+        const price = Number(calculateSeatPrice(seat)) || 0;
+        const seatUnitPrice = (isCouple && price > 100000) ? (price / 2) : price;
+        return sum + Math.round(seatUnitPrice * 0.15);
+      },
+      0
+    );
+  }, [selectedSeats, selectedShowtime, isStudent, studentCount]);
+
+  const promoDiscountAmount = useMemo(() => {
+    if (!appliedDiscount || isStudent) return 0;
+    if (ticketSubtotal < appliedDiscount.minOrderAmount) return 0;
+    
+    let totalDiscount = appliedDiscount.discountType === "Percent"
+      ? Math.round((ticketSubtotal * appliedDiscount.discountValue) / 100)
+      : appliedDiscount.discountValue;
+    return Math.min(totalDiscount, ticketSubtotal);
+  }, [ticketSubtotal, appliedDiscount, isStudent]);
+
+  const finalDiscountAmount = isStudent ? studentDiscountAmount : promoDiscountAmount;
+
+  const totalAmount = useMemo(() => {
+    return (ticketSubtotal - finalDiscountAmount) + foodTotalAmount;
+  }, [ticketSubtotal, finalDiscountAmount, foodTotalAmount]);
 
   /* =========================
      SELL TICKET
@@ -678,12 +776,19 @@ export function useBanVe() {
 
       const seatIds = selectedSeats.map(seat => Number(getSeatId(seat)));
 
+      const effectiveStudentCount = isStudent
+        ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)
+        : null;
+
       // Tạo duy nhất 1 request booking chứa tất cả các ghế và đồ ăn kèm
       const payload = {
         showTimeId: Number(showtimeId),
         seatIds: seatIds,
         bookingType: "Staff",
         targetUserId: Number(staffUserId),
+        isStudent: Boolean(isStudent),
+        studentCount: effectiveStudentCount,
+        discountCode: appliedDiscount?.discountCode || null,
       };
 
       if (orderItemsPayload.length > 0) {
@@ -705,15 +810,21 @@ export function useBanVe() {
         const singleId = extractBookingId(res);
         bookedIds = singleId !== null ? [singleId] : [`BK${Math.floor(Math.random() * 90000)}`];
       }
-
       // NẾU CHỌN THANH TOÁN TIỀN MẶT
       if (paymentMethod === "Cash") {
         try {
+          const pNotes = isStudent 
+          ? `[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)` 
+          : appliedDiscount 
+            ? `[Mã ưu đãi ${appliedDiscount.discountCode}]`
+            : `Thanh toan tien mat tai quay cho booking ${bookedIds.join(", ")}`;
+
           const paymentPayload = {
             bookingId: Number(bookedIds[0]),
             bookingIds: bookedIds.map(Number),
             amount: Number(totalAmount),
             paymentMethod: "Cash",
+            notes: pNotes,
             description: `Thanh toan tien mat tai quay cho booking ${bookedIds.join(", ")}`,
           };
           await createPayment(paymentPayload);
@@ -741,6 +852,11 @@ export function useBanVe() {
           customerName: customer.name || "Khách vãng lai",
           customerPhone: customer.phone || "",
           totalAmount,
+          ticketSubtotal,
+          studentDiscountAmount: finalDiscountAmount,
+          isStudent,
+          studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
+          appliedDiscount,
           cashReceived: Number(cashReceived) || 0,
           dateBooked: new Date().toLocaleString("vi-VN"),
           ticketCode: bookedIds.join(", "),
@@ -750,6 +866,10 @@ export function useBanVe() {
 
         setSelectedSeats([]);
         setSelectedFoods({});
+        setIsStudent(false);
+        setStudentCount(1);
+        setAppliedDiscount(null);
+        setDiscountCodeInput("");
         setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
         
         // Tải lại danh sách ghế trống
@@ -766,12 +886,19 @@ export function useBanVe() {
       // Gọi API Payments sau khi tạo Booking thành công
       let qrCodeUrlToUse = "";
       try {
+        const pNotes = isStudent 
+        ? `[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)` 
+        : appliedDiscount 
+          ? `[Mã ưu đãi ${appliedDiscount.discountCode}]`
+          : `Thanh toán QR qua MOMO/VNPAY`;
+
         const paymentPayload = {
           bookingId: Number(bookedIds[0]),
           bookingIds: bookedIds.map(Number),
           amount: Number(totalAmount),
-          paymentMethod: "VNPay",
-          description: `Thanh toan ve tai quay cho booking ${bookedIds.join(", ")}`,
+          paymentMethod: "QR",
+          notes: pNotes,
+          description: `Thanh toan QR cho don: ${bookedIds.join(", ")}`,
         };
 
         console.log("SENDING STAFF PAYMENTS PAYLOAD:", paymentPayload);
@@ -839,6 +966,11 @@ export function useBanVe() {
         customerName: customer.name || "Khách vãng lai",
         customerPhone: customer.phone || "",
         totalAmount,
+        ticketSubtotal,
+        studentDiscountAmount: finalDiscountAmount,
+        isStudent,
+        studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
+        appliedDiscount,
         dateBooked: new Date().toLocaleString("vi-VN"),
         ticketCode: bookedIds.join(", "),
         paymentMethod: "Quét QR ngân hàng",
@@ -1117,6 +1249,18 @@ export function useBanVe() {
     setPaymentMethod,
     cashReceived,
     setCashReceived,
+
+    isStudent,
+    setIsStudent: handleSetIsStudent,
+    studentCount,
+    setStudentCount,
+    discountCodeInput,
+    setDiscountCodeInput,
+    appliedDiscount,
+    handleApplyDiscount,
+    removeDiscount,
+    ticketSubtotal,
+    studentDiscountAmount: finalDiscountAmount,
 
     // Foods States & Handlers
     foodMenu,

@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { registerApi } from "../../services/authService";
-
-
+import { useGoogleLogin } from "@react-oauth/google";
+import { registerApi, loginGoogleApi, registerWithGoogleApi, saveAuthData } from "../../services/authService";
 
 const INITIAL_REGISTER_FORM = {
   name: "",
@@ -149,9 +147,34 @@ export function useRegister() {
     }
   }
 
-  function handleGoogleRegister() {
-    alert("Chức năng đăng ký Google chưa được cấu hình!");
-  }
+  const triggerGoogleRegister = useGoogleLogin({
+    scope: "openid email profile",
+    onSuccess: async (tokenResponse) => {
+      setError("");
+      setLoading(true);
+      try {
+        const token = tokenResponse.access_token || tokenResponse.credential;
+        const res = await loginGoogleApi(token);
+
+        if (res?.needsAdditionalInfo) {
+          // Nếu chưa có tài khoản, chuyển hướng về Login với state mở Modal hoàn tất thông tin
+          navigate("/login", { state: { googleToken: token, email: res.email, fullName: res.fullName } });
+          return;
+        }
+
+        saveAuthData(res);
+        navigate("/", { replace: true });
+      } catch (err) {
+        console.error("Google register error:", err);
+        setError(err?.message || "Đăng ký Google thất bại!");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setError("Đăng ký bằng Google bị hủy hoặc thất bại.");
+    },
+  });
 
   return {
     form,
@@ -161,6 +184,6 @@ export function useRegister() {
     handleChange,
     handleCheckboxChange,
     handleRegister,
-    handleGoogleRegister,
+    handleGoogleRegister: triggerGoogleRegister,
   };
 }
