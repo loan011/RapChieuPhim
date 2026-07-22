@@ -1,6 +1,5 @@
 import "./Notice.css";
 import {
-  NOTICE_TARGET_OPTIONS,
   NOTICE_TYPE_OPTIONS,
   useNotice,
   getNoticeId,
@@ -17,6 +16,7 @@ export default function Notice() {
     loading,
     error,
     form,
+    targetOptions,
 
     handleChange,
     handleSend,
@@ -67,7 +67,7 @@ export default function Notice() {
                   value={form.target}
                   onChange={handleChange}
                 >
-                  {NOTICE_TARGET_OPTIONS.map((item) => (
+                  {targetOptions.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
                     </option>

@@ -4,6 +4,9 @@ import {
   sendNotification,
   deleteNotification,
 } from "./notificationService";
+import { getCinemas } from "../Dashboard/dashboardService";
+
+let globalCinemas = [];
 
 export const NOTICE_TARGET_OPTIONS = [
   {
@@ -114,6 +117,13 @@ export function getNoticeTargetLabel(notice) {
 
   if (target === "customers") return "Khách hàng";
   if (target === "staff") return "Nhân viên";
+  if (target === "all_cinemas") return "Tất cả chi nhánh";
+
+  if (target.startsWith("cinema_")) {
+    const cid = target.replace("cinema_", "");
+    const cinema = globalCinemas.find(c => String(c.cinemaId || c.id) === cid);
+    return cinema ? `Chi nhánh: ${cinema.cinemaName || cinema.name}` : `Chi nhánh #${cid}`;
+  }
 
   return "Tất cả";
 }
@@ -177,8 +187,35 @@ export function useNotice() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cinemas, setCinemas] = useState([]);
 
   const [form, setForm] = useState(INITIAL_NOTICE_FORM);
+
+  useEffect(() => {
+    async function loadCinemas() {
+      try {
+        const list = await getCinemas();
+        const arr = list?.$values || list || [];
+        globalCinemas = arr;
+        setCinemas(arr);
+      } catch (e) {
+        console.error("Lỗi lấy danh sách chi nhánh:", e);
+      }
+    }
+    loadCinemas();
+  }, []);
+
+  const targetOptions = [
+    ...NOTICE_TARGET_OPTIONS,
+    {
+      value: "all_cinemas",
+      label: "Tất cả chi nhánh (Nhân viên)",
+    },
+    ...cinemas.map(c => ({
+      value: `cinema_${c.cinemaId || c.id}`,
+      label: `Chi nhánh: ${c.cinemaName || c.name}`
+    }))
+  ];
 
   useEffect(() => {
     fetchHistory();
@@ -268,6 +305,7 @@ export function useNotice() {
 
     form,
     setForm,
+    targetOptions,
 
     fetchHistory,
     handleChange,

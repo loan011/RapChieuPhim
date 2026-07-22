@@ -38,6 +38,32 @@ export default function AdminLayout() {
   const [reports, setReports] = useState([]);
   const navigate = useNavigate();
 
+  const [readReportIds, setReadReportIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("read_report_ids");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const saveReadReportIds = (ids) => {
+    setReadReportIds(ids);
+    try {
+      localStorage.setItem("read_report_ids", JSON.stringify(ids));
+    } catch (e) {}
+  };
+
+  const getReportKey = (r) => {
+    if (!r) return "";
+    return String(r.reportId || r.ReportId || r.reportDate || r.ReportDate || '');
+  };
+
+  const unreadCount = reports.filter(r => {
+    const key = getReportKey(r);
+    return key && !readReportIds.includes(key);
+  }).length;
+
   useEffect(() => {
     fetch(`${getApiUrl()}/StaffReports`, { headers: getAuthHeaders() })
       .then(res => {
@@ -140,29 +166,66 @@ export default function AdminLayout() {
                 className="relative w-9 h-9 flex items-center justify-center bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0"
               >
                 <MdNotificationsNone className="text-xl" />
-                {reports.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff3b30] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
-                    {reports.length}
+                    {unreadCount}
                   </span>
                 )}
               </button>
 
               {notifMenuOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-[#1c1c1e] rounded-lg shadow-xl border border-[#2c2c2e] py-2 z-50 max-h-96 overflow-y-auto">
-                  <h3 className="px-4 py-2 font-semibold text-white border-b border-[#2c2c2e]">Thông báo báo cáo doanh thu</h3>
+                  <div className="px-4 py-2 border-b border-[#2c2c2e] flex justify-between items-center">
+                    <span className="font-semibold text-white">Thông báo báo cáo doanh thu</span>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const allKeys = reports.map(getReportKey).filter(Boolean);
+                          saveReadReportIds(allKeys);
+                        }}
+                        className="text-xs text-[#ff3b30] hover:underline cursor-pointer bg-transparent border-none outline-none font-medium"
+                      >
+                        Đọc tất cả
+                      </button>
+                    )}
+                  </div>
                   {reports.length === 0 ? (
                     <div className="px-4 py-4 text-sm text-gray-400 text-center">Không có báo cáo nào</div>
                   ) : (
-                    reports.map(r => (
-                      <div key={r.reportId || Math.random()} className="px-4 py-3 hover:bg-white/5 border-b border-[#2c2c2e] last:border-0 cursor-default">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-sm font-medium text-white">{r.staff?.fullName || r.staff?.FullName || 'Nhân viên'} báo cáo</span>
-                          <span className="text-xs text-gray-500">{new Date(r.reportDate || r.ReportDate).toLocaleDateString('vi-VN')}</span>
+                    reports.map(r => {
+                      const isRead = readReportIds.includes(getReportKey(r));
+                      return (
+                        <div 
+                          key={r.reportId || Math.random()} 
+                          onClick={() => {
+                            const key = getReportKey(r);
+                            if (key && !readReportIds.includes(key)) {
+                              saveReadReportIds([...readReportIds, key]);
+                            }
+                            setNotifMenuOpen(false);
+                            navigate("/admin/bao-cao");
+                          }}
+                          className={`px-4 py-3 hover:bg-white/5 border-b border-[#2c2c2e] last:border-0 cursor-pointer transition-colors relative ${!isRead ? "bg-white/[0.02]" : ""}`}
+                        >
+                          {!isRead && (
+                            <span className="absolute left-1.5 top-4.5 w-1.5 h-1.5 bg-[#ff3b30] rounded-full"></span>
+                          )}
+                          <div className="flex justify-between items-start mb-1 pl-1">
+                            <span className={`text-sm ${!isRead ? "font-semibold text-white" : "font-medium text-gray-300"}`}>
+                              {r.staff?.fullName || r.staff?.FullName || 'Nhân viên'} báo cáo
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(r.reportDate || r.ReportDate).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mb-1 pl-1 whitespace-pre-wrap">{r.summary || r.Summary}</p>
+                          <div className="text-sm font-bold text-[#10b981] pl-1">
+                            {(r.totalRevenue || r.TotalRevenue || 0).toLocaleString('vi-VN')}đ
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-400 mb-1 whitespace-pre-wrap">{r.summary || r.Summary}</p>
-                        <div className="text-sm font-bold text-[#10b981]">{(r.totalRevenue || r.TotalRevenue || 0).toLocaleString('vi-VN')}đ</div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -185,15 +248,6 @@ export default function AdminLayout() {
 
               {profileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#1c1c1e] rounded-lg shadow-xl border border-[#2c2c2e] py-1 z-50">
-                  <button
-                    onClick={() => {
-                      setProfileMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2"
-                  >
-                    <span>Cấu hình tài khoản</span>
-                  </button>
-                  <hr className="border-[#2c2c2e] my-1" />
                   <button
                     onClick={() => {
                       setProfileMenuOpen(false);

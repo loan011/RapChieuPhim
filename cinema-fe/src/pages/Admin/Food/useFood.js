@@ -465,7 +465,7 @@ export function useFood() {
 
   // Add Mode
   const openAddModal = () => {
-    setFormData({ itemType: "food", name: "", category: "", price: 0, quantity: 0, imageUrl: "", isAvailable: true });
+    setFormData({ itemType: "food", name: "", category: "Nước Uống", price: 0, quantity: 0, imageUrl: "", isAvailable: true });
     setShowAddModal(true);
   };
 

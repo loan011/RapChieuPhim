@@ -241,7 +241,7 @@ export default function BaoCao() {
           <MdSearch style={{ color: "#9ca3af", fontSize: 18 }} />
           <input
             type="text"
-            placeholder="Tìm theo tên nhân viên, nội dung báo cáo..."
+            placeholder="Tìm nội dung báo cáo..."
             className="bc-search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

@@ -309,6 +309,23 @@ export function useDashboard() {
 
   // ─── Fetch toàn bộ dữ liệu dashboard (Tối ưu hóa tốc độ load) ───────────────
   async function fetchDashboardData() {
+    if (!timeFilter) {
+      setError("Ngày nhập không hợp lệ! Vui lòng chọn ngày trên lịch.");
+      setStats({ totalMovies: 0, totalUsers: 0, totalTickets: 0, totalRevenue: 0 });
+      setChartData({
+        totalTicketRevenue: 0,
+        totalFoodRevenue: 0,
+        ticketRevenuePercentage: 0,
+        foodRevenuePercentage: 0,
+        foodDistributions: [],
+        topShowtimes: [],
+        revenueByTime: []
+      });
+      setMovieStats([]);
+      setRecentTickets([]);
+      return;
+    }
+
     const cacheKey = `${timeFilter}__${cinemaId}`;
 
     // Dùng cache nếu đã fetch rồi

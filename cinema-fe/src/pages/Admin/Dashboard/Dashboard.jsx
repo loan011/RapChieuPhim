@@ -113,7 +113,7 @@ export default function Dashboard() {
             <div className="dashboard-stat-content">
               <span className="dashboard-stat-label" style={{ color: '#fff' }}>Tổng doanh thu (Thực nhận)</span>
               <strong className="dashboard-stat-value" style={{ color: '#fff' }}>{formatMoney((chartData?.totalTicketRevenue || 0) + (chartData?.totalFoodRevenue || 0))}đ</strong>
-              <span className="dashboard-stat-trend trend-up" style={{ color: '#d1fae5', background: 'rgba(255,255,255,0.2)' }}>▲ 16.5% so với kỳ trước</span>
+              <span className="dashboard-stat-trend trend-up" style={{ color: '#d1fae5', background: 'rgba(255,255,255,0.2)' }}>▲ 16.5% so với hôm qua</span>
             </div>
             <div className="dashboard-stat-icon" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
               💰
@@ -127,7 +127,7 @@ export default function Dashboard() {
               <div className="dashboard-stat-content">
                 <span className="dashboard-stat-label">Doanh thu vé</span>
                 <strong className="dashboard-stat-value">{formatMoney(chartData?.totalTicketRevenue || 0)}đ</strong>
-                <span className="dashboard-stat-trend trend-up">▲ 18.6% so với kỳ trước</span>
+                <span className="dashboard-stat-trend trend-up">▲ 18.6% so với hôm qua</span>
               </div>
               <div className="dashboard-stat-icon">
                 🎫
@@ -137,7 +137,7 @@ export default function Dashboard() {
               <div className="dashboard-stat-content">
                 <span className="dashboard-stat-label">Tổng vé đã bán</span>
                 <strong className="dashboard-stat-value">{formatMoney(stats.totalTickets)} vé</strong>
-                <span className="dashboard-stat-trend trend-up">▲ 12.4% so với kỳ trước</span>
+                <span className="dashboard-stat-trend trend-up">▲ 12.4% so với hôm qua</span>
               </div>
               <div className="dashboard-stat-icon">
                 🎟️
@@ -149,7 +149,7 @@ export default function Dashboard() {
                 <strong className="dashboard-stat-value">
                   {movieStats.length > 0 ? (movieStats.reduce((s, m) => s + (m.seatOccupancyPercentage || 0), 0) / movieStats.length).toFixed(1) : 0}%
                 </strong>
-                <span className="dashboard-stat-trend trend-up">▲ 7.3% so với kỳ trước</span>
+                <span className="dashboard-stat-trend trend-up">▲ 7.3% so với hôm qua</span>
               </div>
               <div className="dashboard-stat-icon">
                 💺
@@ -163,7 +163,7 @@ export default function Dashboard() {
             <div className="dashboard-stat-content">
               <span className="dashboard-stat-label">Doanh thu đồ ăn</span>
               <strong className="dashboard-stat-value">{formatMoney(chartData?.totalFoodRevenue || 0)}đ</strong>
-              <span className="dashboard-stat-trend trend-up">▲ 15.2% so với kỳ trước</span>
+              <span className="dashboard-stat-trend trend-up">▲ 15.2% so với hôm qua</span>
             </div>
             <div className="dashboard-stat-icon">
               🍿
@@ -186,8 +186,8 @@ export default function Dashboard() {
                   <th>Phim</th>
                   <th>Doanh thu (đ)<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>Tổng / %</span></th>
                   <th>Vé đã bán<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>Tổng / %</span></th>
-                  <th>Tỷ lệ lấp đầy ghế<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>%</span></th>
-                  <th>Số vé theo phòng & khu vực<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>% phân bổ</span></th>
+                  {cinemaId && <th>Tỷ lệ lấp đầy ghế<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>%</span></th>}
+                  {cinemaId && <th>Số vé theo phòng & khu vực<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>% phân bổ</span></th>}
                 </tr>
               </thead>
               <tbody>
@@ -217,25 +217,29 @@ export default function Dashboard() {
                         <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${m.revenueContributionPercentage}%`, background: '#10b981'}}></div></div>
                       </div>
                     </td>
-                    <td>
-                      <div className="val-with-bar">
-                        <span className="val-text">{m.seatOccupancyPercentage}%</span>
-                        <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${m.seatOccupancyPercentage}%`, background: '#8b5cf6'}}></div></div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: '1.4' }}>
-                        {(m.cinemaDistributions || []).map((c, i) => (
-                          <div key={i} style={{ display: 'flex', gap: '8px' }}>
-                            <span style={{ fontWeight: 600, color: '#f3f4f6' }}>- {c.cinemaName}:</span>
-                            <span>{c.percentage}% ({c.ticketsSold} vé)</span>
-                          </div>
-                        ))}
-                        {(!m.cinemaDistributions || m.cinemaDistributions.length === 0) && (
-                          <span style={{ color: '#d1d5db', fontStyle: 'italic' }}>Không có dữ liệu</span>
-                        )}
-                      </div>
-                    </td>
+                    {cinemaId && (
+                      <td>
+                        <div className="val-with-bar">
+                          <span className="val-text">{m.seatOccupancyPercentage}%</span>
+                          <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${m.seatOccupancyPercentage}%`, background: '#8b5cf6'}}></div></div>
+                        </div>
+                      </td>
+                    )}
+                    {cinemaId && (
+                      <td>
+                        <div style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: '1.4' }}>
+                          {(m.cinemaDistributions || []).map((c, i) => (
+                            <div key={i} style={{ display: 'flex', gap: '8px' }}>
+                              <span style={{ fontWeight: 600, color: '#f3f4f6' }}>- {c.cinemaName}:</span>
+                              <span>{c.percentage}% ({c.ticketsSold} vé)</span>
+                            </div>
+                          ))}
+                          {(!m.cinemaDistributions || m.cinemaDistributions.length === 0) && (
+                            <span style={{ color: '#d1d5db', fontStyle: 'italic' }}>Không có dữ liệu</span>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -261,7 +265,7 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                   <div className="chart-center-text" style={{ whiteSpace: 'nowrap' }}>
                     <span className="chart-center-val">{formatBillion(chartData?.totalTicketRevenue || 0)}</span>
-                    <span className="chart-center-lbl">Tổng vé</span>
+                    <span className="chart-center-lbl">Doanh thu vé</span>
                   </div>
                 </div>
                 <div style={{ flex: 1, paddingLeft: '24px' }}>

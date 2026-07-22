@@ -88,12 +88,21 @@ export function getStaffCinemaId(employee) {
   const apiCinemaId = employee?.cinemaId ?? employee?.CinemaId;
   if (apiCinemaId) return apiCinemaId;
 
+  const email = employee?.email ?? employee?.Email ?? "";
+
+  const defaultMappings = {
+    "loan2k18@gmail.com": "1",
+    "staff@gmail.com": "2",
+    "staff2@gmail.com": "3",
+    "staff3@gmail.com": "4",
+    "a@yahoo.com": "5"
+  };
+
   try {
     const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
-    const email = employee?.email ?? employee?.Email ?? "";
-    return mappings[email] || "";
+    return mappings[email] || defaultMappings[email.toLowerCase()] || "";
   } catch {
-    return "";
+    return defaultMappings[email.toLowerCase()] || "";
   }
 }
 

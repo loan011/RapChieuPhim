@@ -357,7 +357,10 @@ export default function Food() {
                 {formData.itemType === 'food' && (
                   <div className="form-group">
                     <label>Danh mục</label>
-                    <input type="text" name="category" value={formData.category} onChange={handleInputChange} />
+                    <select name="category" value={formData.category} onChange={handleInputChange}>
+                      <option value="Nước Uống">Nước Uống</option>
+                      <option value="Đồ ăn">Đồ ăn</option>
+                    </select>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 15 }}>
@@ -379,10 +382,6 @@ export default function Food() {
                     <label>Hoặc Link ảnh</label>
                     <input type="text" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} />
                   </div>
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                  <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleInputChange} style={{ width: 'auto' }} />
-                  <label style={{ margin: 0 }}>Đang bán</label>
                 </div>
               </div>
               <div className="modal-footer">
@@ -414,7 +413,10 @@ export default function Food() {
                 {formData.itemType === 'food' && (
                   <div className="form-group">
                     <label>Danh mục</label>
-                    <input type="text" name="category" value={formData.category} onChange={handleInputChange} />
+                    <select name="category" value={formData.category} onChange={handleInputChange}>
+                      <option value="Nước Uống">Nước Uống</option>
+                      <option value="Đồ ăn">Đồ ăn</option>
+                    </select>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 15 }}>
@@ -436,10 +438,6 @@ export default function Food() {
                     <label>Hoặc Link ảnh</label>
                     <input type="text" name="imageUrl" value={formData.imageUrl} onChange={handleInputChange} />
                   </div>
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                  <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleInputChange} style={{ width: 'auto' }} />
-                  <label style={{ margin: 0 }}>Đang bán</label>
                 </div>
               </div>
               <div className="modal-footer">

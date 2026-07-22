@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { MdBadge, MdPersonOutline, MdManageAccounts, MdPeople } from "react-icons/md";
+import { MdBadge, MdManageAccounts, MdPeople } from "react-icons/md";
 import "./UserManagement.css";
 
-// Import the three sub-pages as components
+// Import the sub-pages as components
 import Personnel from "../Personnel/Personnel";
-import Customer from "../Customer/Customer";
 import TaiKhoan from "../Account/Account";
 
 const TABS = [
@@ -12,13 +11,6 @@ const TABS = [
     key: "nhan-vien",
     icon: <MdBadge />,
     color: "#ff3b30",
-    bg: "#1c1c1e",
-  },
-  {
-    key: "khach-hang",
-    label: "Khách Hàng",
-    icon: <MdPersonOutline />,
-    color: "#30d158",
     bg: "#1c1c1e",
   },
   {
@@ -69,7 +61,6 @@ export default function UserManagement() {
       {/* Tab Content */}
       <div className="um-content">
         {activeTab === "nhan-vien" && <Personnel />}
-        {activeTab === "khach-hang" && <Customer />}
         {activeTab === "tai-khoan" && <TaiKhoan />}
       </div>
     </div>

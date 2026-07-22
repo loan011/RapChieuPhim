@@ -172,15 +172,6 @@ export default function Personnel() {
             </option>
           ))}
         </select>
-        <select className="pe-filter-select">
-          <option>Tất cả trạng thái</option>
-        </select>
-        <select className="pe-filter-select">
-          <option>Sắp xếp: Mới nhất</option>
-        </select>
-        <div className="pe-filter-actions">
-          <button className="pe-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
-        </div>
       </div>
 
       {/* ── Loading / Error ── */}
