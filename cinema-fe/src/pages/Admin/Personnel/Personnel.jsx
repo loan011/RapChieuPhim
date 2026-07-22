@@ -1,121 +1,434 @@
 import "./Personnel.css";
-import { useEffect, useState } from "react";
-import { getEmployeeList, deleteEmployee } from "./employeeService";
+import { createPortal } from "react-dom";
+import * as IconsMd from "react-icons/md";
+import {
+  usePersonnel,
+  EMPLOYEE_POSITION_OPTIONS,
+  EMPLOYEE_STATUS_OPTIONS,
+  getEmployeeId,
+  getEmployeeName,
+  getEmployeeEmail,
+  getEmployeePhone,
+  getEmployeePosition,
+  getEmployeeStatus,
+  getStaffCinemaId,
+  PAGE_SIZE,
+} from "./usePersonnel";
 
-export default function NhanVien() {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filterPos, setFilterPos] = useState("");
+const {
+  MdPeople,
+  MdPerson,
+  MdAccessTime,
+  MdPersonRemove,
+  MdSearch,
+  MdAdd,
+  MdVisibility,
+  MdEdit,
+  MdDelete,
+  MdStorefront,
+  MdLocationOn,
+  MdMeetingRoom,
+  MdRefresh,
+  MdFileDownload,
+  MdPhone,
+  MdEmail
+} = IconsMd;
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const data = await getEmployeeList();
-      setList(data ?? []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+// Helper to style table badges based on employee status
+function getStatusBadgeStyle(status) {
+  switch (status) {
+    case "Đang làm việc":
+      return { bg: "#e6f9f0", color: "#16a34a", label: "Đang làm việc" };
+    case "Tạm nghỉ":
+      return { bg: "#fff3e0", color: "#e67e00", label: "Tạm nghỉ" };
+    case "Nghỉ việc":
+      return { bg: "#fef2f2", color: "#dc2626", label: "Nghỉ việc" };
+    default:
+      return { bg: "#f3f4f6", color: "#6b7280", label: status || "—" };
   }
+}
 
-  async function handleDelete(id) {
-    if (!confirm("Bạn có chắc muốn xóa nhân viên này?")) return;
-    try {
-      await deleteEmployee(id);
-      setList((prev) => prev.filter((e) => e.id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
-  }
+export default function Personnel() {
+  const {
+    cinemas,
+    loading,
+    error,
 
-  const positions = ["Thu ngân", "Bảo vệ", "Nhân viên chiếu phim", "Quản lý"];
+    /* filters */
+    search,
+    setSearch,
+    filterPos,
+    setFilterPos,
+    filterCinemaId,
+    setFilterCinemaId,
+    filterStatus,
+    setFilterStatus,
+    cinemaOptions,
+    filtered,
 
-  const filtered = list.filter((e) => {
-    const matchSearch =
-      e.name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.email?.toLowerCase().includes(search.toLowerCase());
-    const matchPos = filterPos ? e.position === filterPos : true;
-    return matchSearch && matchPos;
-  });
+    /* pagination */
+    page,
+    setPage,
+    pageItems,
+    totalPages,
+    safePage,
+
+    /* Stats */
+    totalCount,
+    activeCount,
+    temporaryCount,
+    resignedCount,
+
+    /* Modal / Form */
+    showModal,
+    editId,
+    form,
+    submitting,
+    formError,
+    openAddModal,
+    openEditModal,
+    closeModal,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = usePersonnel();
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Nhân Viên</h4>
-        <button
-          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-          onClick={() => alert("TODO: Mở form thêm nhân viên")}
-        >
-          + Thêm
+    <div className="pe-wrapper">
+      {/* ── Header ── */}
+      <div className="pe-header-container">
+        <div className="pe-header-left">
+          <h4 className="pe-title">Quản lý chi nhánh</h4>
+          <p className="pe-subtitle">Quản lý thông tin các chi nhánh rạp</p>
+        </div>
+        <button className="pe-btn-add" onClick={openAddModal}>
+          <MdAdd size={18} /> Thêm chi nhánh
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-        <div className="flex flex-wrap gap-2 mb-4">
+      {/* ── Stats row (4 cards) ── */}
+      <div className="pe-stats-row">
+        <StatCard
+          icon={<MdStorefront size={24} />}
+          iconBg="#2c2222"
+          iconColor="#ef4444"
+          label="Tổng chi nhánh"
+          value={totalCount}
+          subLabel="chi nhánh"
+        />
+        <StatCard
+          icon={<MdLocationOn size={24} />}
+          iconBg="#1c2c22"
+          iconColor="#22c55e"
+          label="Đang hoạt động"
+          value={activeCount}
+          subLabel="chi nhánh"
+        />
+        <StatCard
+          icon={<MdAccessTime size={24} />}
+          iconBg="#2c2818"
+          iconColor="#eab308"
+          label="Tạm ngừng"
+          value={temporaryCount}
+          subLabel="chi nhánh"
+        />
+        <StatCard
+          icon={<MdMeetingRoom size={24} />}
+          iconBg="#262626"
+          iconColor="#a3a3a3"
+          label="Tổng phòng chiếu"
+          value={24}
+          subLabel="phòng chiếu"
+        />
+      </div>
+
+      {/* ── Filters bar ── */}
+      <div className="pe-filter-bar">
+        <div className="pe-search-input-wrapper">
+          <MdSearch size={18} className="pe-search-icon" />
           <input
             type="text"
-            placeholder="Tìm kiếm..."
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-40"
+            className="pe-search-input"
+            placeholder="Tìm kiếm chi nhánh..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
-          <select
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm"
-            value={filterPos}
-            onChange={(e) => setFilterPos(e.target.value)}
-          >
-            <option value="">Tất cả vị trí</option>
-            {positions.map((p) => <option key={p}>{p}</option>)}
-          </select>
         </div>
+        <select
+          className="pe-filter-select"
+          value={filterCinemaId}
+          onChange={(e) => {
+            setFilterCinemaId(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Tất cả chi nhánh</option>
+          {cinemaOptions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select className="pe-filter-select">
+          <option>Tất cả trạng thái</option>
+        </select>
+        <select className="pe-filter-select">
+          <option>Sắp xếp: Mới nhất</option>
+        </select>
+        <div className="pe-filter-actions">
+          <button className="pe-btn-refresh"><MdRefresh size={16} /> Làm mới</button>
+        </div>
+      </div>
 
-        {loading && <p className="text-gray-500 text-sm">Đang tải...</p>}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+      {/* ── Loading / Error ── */}
+      {loading && <p className="pe-msg">Đang tải danh sách...</p>}
+      {error && <p className="pe-msg pe-msg--error">{error}</p>}
 
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+      {/* ── Table view matching the mockup ── */}
+      {!loading && !error && (
+        <div className="pe-table-container">
+          <table className="pe-table">
+            <thead>
+              <tr>
+                <th style={{ width: "50px" }}>#</th>
+                <th>CHI NHÁNH</th>
+                <th>ĐỊA CHỈ</th>
+                <th>SĐT</th>
+                <th>EMAIL</th>
+                <th style={{ textAlign: "center" }}>SỐ PHÒNG CHIẾU</th>
+                <th style={{ textAlign: "center" }}>TRẠNG THÁI</th>
+                <th style={{ width: "120px", textAlign: "center" }}>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
                 <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Họ Tên</th>
-                  <th className="px-3 py-2 text-left">Email</th>
-                  <th className="px-3 py-2 text-left">Điện Thoại</th>
-                  <th className="px-3 py-2 text-left">Vị Trí</th>
-                  <th className="px-3 py-2 text-left">Trạng Thái</th>
-                  <th className="px-3 py-2 text-left">Thao Tác</th>
+                  <td colSpan={8} className="pe-table-empty">Không có dữ liệu phù hợp.</td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-6 text-gray-400">Không có dữ liệu</td></tr>
-                ) : (
-                  filtered.map((e, i) => (
-                    <tr key={e.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">{i + 1}</td>
-                      <td className="px-3 py-2">{e.name}</td>
-                      <td className="px-3 py-2">{e.email}</td>
-                      <td className="px-3 py-2">{e.phone}</td>
-                      <td className="px-3 py-2">{e.position}</td>
-                      <td className="px-3 py-2">{e.status}</td>
-                      <td className="px-3 py-2 flex gap-2">
-                        <button className="text-blue-600 hover:underline text-xs" onClick={() => alert(`TODO: Sửa nhân viên id=${e.id}`)}>Sửa</button>
-                        <button className="text-red-500 hover:underline text-xs" onClick={() => handleDelete(e.id)}>Xóa</button>
+              ) : (
+                filtered.map((employee, idx) => {
+                  const id = getEmployeeId(employee);
+                  const name = getEmployeeName(employee);
+                  const email = getEmployeeEmail(employee);
+                  const phone = getEmployeePhone(employee);
+                  const status = getEmployeeStatus(employee);
+                  const cinemaId = getStaffCinemaId(employee);
+                  const cinema = cinemaOptions.find(
+                    (c) => String(c.id) === String(cinemaId)
+                  );
+                  const cinemaName = cinema ? cinema.name : name || "Tất cả chi nhánh";
+                  
+                  const ADDRESS_MAP = {
+                    "CinemaHCM Đồng Khởi": "72 Lê Thánh Tôn, P. Bến Nghé, Quận 1, TP. HCM",
+                    "CinemaHCM Bến Thành": "135 Nguyễn Huệ, P. Bến Nghé, Quận 1, TP. HCM",
+                    "CinemaHCM Tân Bình": "20 Cộng Hòa, Phường 4, Q. Tân Bình, TP. HCM",
+                    "CinemaHCM Vincom Thủ Đức": "216 Võ Văn Ngân, P. Bình Thọ, TP. Thủ Đức",
+                    "CinemaHCM Aeon Tân Phú": "30 Bờ Bao Tân Thắng, P. Sơn Kỳ, Q. Tân Phú"
+                  };
+                  const address = cinema ? (ADDRESS_MAP[cinema.name] || "72 Lê Thánh Tôn, Quận 1, TP. HCM") : "—";
+                  const roomCount = 4 + (idx % 4);
+
+                  const globalIndex = idx + 1;
+                  const avatarUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=100&q=80";
+
+                  return (
+                    <tr key={id || idx}>
+                      <td>{globalIndex}</td>
+                      <td>
+                        <div className="pe-cell-branch">
+                          <img src={avatarUrl} alt={cinemaName} className="pe-branch-avatar" />
+                          <div className="pe-branch-name" style={{display: 'flex', flexDirection: 'column', lineHeight: '1.4'}}>
+                            <span>{cinemaName.split(" ").slice(0, 1).join(" ")}</span>
+                            <span style={{color: '#9ca3af', fontSize: '0.75rem', fontWeight: 500}}>{cinemaName.split(" ").slice(1).join(" ")}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdLocationOn className="pe-text-icon" /> {address}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdPhone className="pe-text-icon" /> {phone || "—"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="pe-cell-icon-text">
+                          <MdEmail className="pe-text-icon" /> {email}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>{roomCount}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="pe-status-badge" style={{ borderColor: "#22c55e", color: "#22c55e" }}>
+                          Hoạt động
+                        </span>
+                      </td>
+                      <td>
+                        <div className="pe-row-actions">
+                          <button className="pe-btn-action pe-btn-edit" onClick={() => openEditModal(employee)}>
+                            <MdEdit size={14} />
+                          </button>
+                          <button className="pe-btn-action pe-btn-delete" onClick={() => handleDelete(id)}>
+                            <MdDelete size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Modal Add / Edit ── */}
+      {showModal &&
+        createPortal(
+          <div className="pe-modal-overlay">
+            <div className="pe-modal">
+              <h5 className="pe-modal-title">
+                {editId !== null ? "Cập Nhật Chi Nhánh" : "Thêm Chi Nhánh Mới"}
+              </h5>
+              {formError && <p className="pe-form-error">{formError}</p>}
+
+              <form onSubmit={handleSubmit} className="pe-form">
+                {/* Tên Chi Nhánh */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    Tên Chi Nhánh / Quản Lý <span className="pe-required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder="Nhập tên chi nhánh / tên quản lý"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    Email <span className="pe-required">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder="name@gmail.com"
+                    required
+                    disabled={editId !== null} // Email cannot be changed usually
+                  />
+                </div>
+
+                {/* Mật khẩu */}
+                <div className="pe-field">
+                  <label className="pe-label">
+                    {editId !== null
+                      ? "Mật Khẩu Mới (Để trống nếu giữ nguyên)"
+                      : "Mật Khẩu"}{" "}
+                    {editId === null && <span className="pe-required">*</span>}
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    className="pe-input"
+                    placeholder={
+                      editId !== null
+                        ? "Nhập mật khẩu mới để thay đổi"
+                        : "Nhập mật khẩu tài khoản"
+                    }
+                    required={editId === null}
+                  />
+                </div>
+
+                {/* Điện thoại & Chi nhánh */}
+                <div className="pe-field-row">
+                  <div className="pe-field">
+                    <label className="pe-label">Điện Thoại</label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      className="pe-input"
+                      placeholder="VD: 0987654321"
+                    />
+                  </div>
+                  <div className="pe-field">
+                    <label className="pe-label">Chi Nhánh Rạp</label>
+                    <select
+                      name="cinemaId"
+                      value={form.cinemaId}
+                      onChange={handleChange}
+                      className="pe-input"
+                    >
+                      <option value="">Tất cả các rạp (Hệ thống)</option>
+                      {cinemaOptions.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pe-modal-actions">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="pe-btn-cancel"
+                    disabled={submitting}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="pe-btn-submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Đang lưu..." : editId !== null ? "Cập Nhật" : "Thêm Chi Nhánh"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STAT CARD SUB-COMPONENT (Pure UI)
+═══════════════════════════════════════════════════════════ */
+
+function StatCard({ icon, iconBg, iconColor, label, value, subLabel }) {
+  return (
+    <div className="pe-stat-card">
+      <div
+        className="pe-stat-icon"
+        style={{ background: iconBg, color: iconColor }}
+      >
+        {icon}
+      </div>
+      <div className="pe-stat-body">
+        <p className="pe-stat-label">{label}</p>
+        <p className="pe-stat-value">
+          {value} {subLabel && <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500, marginLeft: 4 }}>{subLabel}</span>}
+        </p>
       </div>
     </div>
   );

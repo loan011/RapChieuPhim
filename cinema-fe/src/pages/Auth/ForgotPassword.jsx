@@ -1,237 +1,138 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import "../../styles/Login.css";
 import "../../styles/ForgotPassword.css";
 
-import {
-  forgotPasswordApi,
-  verifyResetCodeApi,
-  resetPasswordApi,
-} from "../../services/authService";
+import { useForgotPassword } from "./useForgotPassword";
 
 function ForgotPassword() {
-  const navigate = useNavigate();
+  const {
+    email,
+    setEmail,
+    codeInput,
+    setCodeInput,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
 
-  const [email, setEmail] = useState("");
-  const [codeInput, setCodeInput] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+    step,
+    sendingCode,
+    verifyingCode,
+    resetting,
 
-  // email -> code -> password
-  const [step, setStep] = useState("email");
-
-  const [sendingCode, setSendingCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
-  const [resetting, setResetting] = useState(false);
-
-  async function sendCode() {
-    if (!email.trim()) {
-      return alert("Vui lòng nhập email trước!");
-    }
-
-    try {
-      setSendingCode(true);
-
-      const data = await forgotPasswordApi(email.trim());
-
-      alert(data?.message || data?.Message || "Mã xác nhận đã được gửi về Gmail!");
-
-      setCodeInput("");
-      setStep("code");
-    } catch (error) {
-      console.error("ForgotPassword error:", error);
-      alert(error.message || "Không kết nối được tới server!");
-    } finally {
-      setSendingCode(false);
-    }
-  }
-
-  async function handleVerifyCode(e) {
-    e.preventDefault();
-
-    if (!email.trim()) {
-      return alert("Vui lòng nhập email!");
-    }
-
-    if (!codeInput.trim()) {
-      return alert("Vui lòng nhập mã xác nhận!");
-    }
-
-    try {
-      setVerifyingCode(true);
-
-      const data = await verifyResetCodeApi({
-        email: email.trim(),
-        otpCode: codeInput.trim(),
-      });
-
-      alert(data?.message || data?.Message || "Xác nhận mã thành công!");
-      setStep("password");
-    } catch (error) {
-      console.error("VerifyResetCode error:", error);
-      alert(error.message || "Mã xác nhận không đúng!");
-    } finally {
-      setVerifyingCode(false);
-    }
-  }
-
-  async function handleReset(e) {
-    e.preventDefault();
-
-    if (!email.trim()) {
-      return alert("Vui lòng nhập email!");
-    }
-
-    if (!codeInput.trim()) {
-      return alert("Vui lòng nhập mã xác nhận!");
-    }
-
-    if (!newPassword.trim()) {
-      return alert("Vui lòng nhập mật khẩu mới!");
-    }
-
-    if (newPassword.length < 6) {
-      return alert("Mật khẩu phải từ 6 ký tự trở lên!");
-    }
-
-    if (newPassword !== confirmPassword) {
-      return alert("Mật khẩu xác nhận không khớp!");
-    }
-
-    try {
-      setResetting(true);
-
-      const data = await resetPasswordApi({
-        email: email.trim(),
-        otpCode: codeInput.trim(),
-        newPassword,
-        confirmPassword,
-      });
-
-      alert(data?.message || data?.Message || "Đổi mật khẩu thành công!");
-      navigate("/login");
-    } catch (error) {
-      console.error("ResetPassword error:", error);
-      alert(error.message || "Đổi mật khẩu thất bại!");
-    } finally {
-      setResetting(false);
-    }
-  }
-
-  function handleSubmit(e) {
-    if (step === "email") {
-      e.preventDefault();
-      sendCode();
-      return;
-    }
-
-    if (step === "code") {
-      handleVerifyCode(e);
-      return;
-    }
-
-    if (step === "password") {
-      handleReset(e);
-    }
-  }
+    handleSubmit,
+    sendCode,
+    backToEmailStep,
+  } = useForgotPassword();
 
   return (
-    <div className="forgot-page">
-      <Link to="/login" className="forgot-back-home">
-        ← Quay lại đăng nhập
+    <div className="auth-page">
+      <Link to="/login" className="back-home-btn" title="Về trang đăng nhập">
+        🏠
       </Link>
 
-      <form className="forgot-box" onSubmit={handleSubmit}>
-        <h2>QUÊN MẬT KHẨU</h2>
+      <div className="auth-box-page" style={{ maxWidth: "520px" }}>
+        <div className="auth-tabs">
+          <Link to="/login">ĐĂNG NHẬP</Link>
+          <Link to="/register">ĐĂNG KÝ</Link>
+        </div>
 
-        {step !== "password" && (
-          <div className="forgot-field">
-            <label>Email</label>
-            <input
-              type="email"
-              placeholder="Nhập email"
-              value={email}
-              disabled={step !== "email"}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        <form className="login-form" onSubmit={handleSubmit}>
+          <div style={{ textAlign: "center", marginBottom: "8px" }}>
+            <h2 style={{ color: "#df0a5d", fontSize: "20px", fontWeight: "800", margin: "0 0 6px" }}>
+              {step === "email" && "🔑 ĐỔI MẬT KHẨU"}
+              {step === "code" && "📧 XÁC NHẬN MÃ GMAIL"}
+              {step === "password" && "🔒 ĐẶT MẬT KHẨU MỚI"}
+            </h2>
+            <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "13px", margin: 0 }}>
+              {step === "email" && "Nhập địa chỉ Gmail để hệ thống gửi mã xác nhận đổi mật khẩu."}
+              {step === "code" && `Hệ thống đã gửi mã xác nhận 6 chữ số tới ${email}`}
+              {step === "password" && "Nhập mật khẩu mới từ 6 ký tự trở lên để hoàn tất."}
+            </p>
           </div>
-        )}
 
-        {step === "email" && (
-          <button className="forgot-btn" type="submit" disabled={sendingCode}>
-            {sendingCode ? "ĐANG GỬI..." : "GỬI MÃ XÁC NHẬN"}
-          </button>
-        )}
+          {step === "email" && (
+            <>
+              <label>Email đã đăng ký</label>
+              <input
+                type="email"
+                placeholder="Ví dụ: user@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
 
-        {step === "code" && (
-          <>
-            <div className="forgot-field">
-              <label>Mã xác nhận</label>
+              <button className="blue-btn" type="submit" disabled={sendingCode}>
+                {sendingCode ? "ĐANG GỬI MÃ VỀ GMAIL..." : "GỬI MÃ XÁC NHẬN VỀ GMAIL"}
+              </button>
+            </>
+          )}
+
+          {step === "code" && (
+            <>
+              <label>Mã xác nhận OTP (từ Gmail)</label>
               <input
                 type="text"
-                placeholder="Nhập mã từ Gmail"
+                placeholder="Nhập mã xác nhận..."
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value)}
                 required
               />
-            </div>
 
-            <button className="forgot-btn" type="submit" disabled={verifyingCode}>
-              {verifyingCode ? "ĐANG XÁC NHẬN..." : "XÁC NHẬN MÃ"}
-            </button>
+              <button className="blue-btn" type="submit" disabled={verifyingCode}>
+                {verifyingCode ? "ĐANG XÁC NHẬN..." : "XÁC NHẬN MÃ OTP"}
+              </button>
 
-            <button
-              type="button"
-              className="forgot-btn"
-              onClick={sendCode}
-              disabled={sendingCode}
-            >
-              {sendingCode ? "ĐANG GỬI..." : "GỬI LẠI MÃ"}
-            </button>
+              <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                <button
+                  type="button"
+                  className="pink-btn"
+                  style={{ flex: 1 }}
+                  onClick={sendCode}
+                  disabled={sendingCode}
+                >
+                  {sendingCode ? "ĐANG GỬI..." : "GỬI LẠI MÃ"}
+                </button>
 
-            <button
-              type="button"
-              className="forgot-btn secondary"
-              onClick={() => {
-                setStep("email");
-                setCodeInput("");
-              }}
-            >
-              ĐỔI EMAIL
-            </button>
-          </>
-        )}
+                <button
+                  type="button"
+                  className="pink-btn"
+                  style={{ flex: 1 }}
+                  onClick={backToEmailStep}
+                >
+                  ĐỔI EMAIL
+                </button>
+              </div>
+            </>
+          )}
 
-        {step === "password" && (
-          <>
-            <div className="forgot-field">
+          {step === "password" && (
+            <>
               <label>Mật khẩu mới</label>
               <input
                 type="password"
-                placeholder="Mật khẩu mới"
+                placeholder="Nhập mật khẩu mới"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
               />
-            </div>
 
-            <div className="forgot-field">
-              <label>Xác nhận mật khẩu</label>
+              <label>Xác nhận lại mật khẩu</label>
               <input
                 type="password"
-                placeholder="Xác nhận mật khẩu"
+                placeholder="Xác nhận mật khẩu mới"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
-            </div>
 
-            <button className="forgot-btn" type="submit" disabled={resetting}>
-              {resetting ? "ĐANG ĐỔI..." : "ĐỔI MẬT KHẨU"}
-            </button>
-          </>
-        )}
-      </form>
+              <button className="blue-btn" type="submit" disabled={resetting}>
+                {resetting ? "ĐANG ĐỔI MẬT KHẨU..." : "ĐỔI MẬT KHẨU MỚI"}
+              </button>
+            </>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

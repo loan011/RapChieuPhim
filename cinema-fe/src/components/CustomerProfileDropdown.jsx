@@ -1,7 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AvatarModal from "./AvatarModal";
+import NotificationBell from "./NotificationBell";
 import "../styles/Customer/CustomerProfileDropdown.css";
+
+function isValidAvatar(url) {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  return (
+    trimmed !== "" &&
+    trimmed.toLowerCase() !== "string" &&
+    trimmed.toLowerCase() !== "null" &&
+    trimmed.toLowerCase() !== "undefined"
+  );
+}
 
 export default function CustomerProfileDropdown() {
   const navigate = useNavigate();
@@ -10,6 +22,33 @@ export default function CustomerProfileDropdown() {
 
   function getUser() {
     const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const email = (
+      savedUser.email ||
+      savedUser.Email ||
+      localStorage.getItem("email") ||
+      localStorage.getItem("userEmail") ||
+      ""
+    ).trim().toLowerCase();
+    
+    const emailAvatarKey = email ? `user_avatar_${email}` : null;
+    const savedEmailAvatar = emailAvatarKey ? localStorage.getItem(emailAvatarKey) : null;
+    const savedAvatar = localStorage.getItem("avatarUrl");
+
+    const rawAvatar =
+      savedUser.avatarUrl ||
+      savedUser.AvatarUrl ||
+      savedEmailAvatar ||
+      savedAvatar ||
+      "/images/default-avatar.png";
+
+    const finalAvatar = isValidAvatar(rawAvatar)
+      ? rawAvatar
+      : isValidAvatar(savedEmailAvatar)
+      ? savedEmailAvatar
+      : isValidAvatar(savedAvatar)
+      ? savedAvatar
+      : "/images/default-avatar.png";
+
     return {
       fullName:
         savedUser.fullName ||
@@ -22,15 +61,23 @@ export default function CustomerProfileDropdown() {
         localStorage.getItem("email") ||
         localStorage.getItem("userEmail") ||
         "customer@gmail.com",
-      avatarUrl:
-        savedUser.avatarUrl ||
-        savedUser.AvatarUrl ||
-        localStorage.getItem("avatarUrl") ||
-        "/images/default-avatar.png",
+      avatarUrl: finalAvatar,
     };
   }
 
   const [userInfo, setUserInfo] = useState(getUser);
+
+  useEffect(() => {
+    function handleUpdate() {
+      setUserInfo(getUser());
+    }
+    window.addEventListener("avatarUpdated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("avatarUpdated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   function goTo(path) {
     setOpen(false);
@@ -53,7 +100,8 @@ export default function CustomerProfileDropdown() {
   }
 
   return (
-    <>
+    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+      <NotificationBell />
       <div className="customer-profile-wrapper">
         <button
           type="button"
@@ -153,6 +201,6 @@ export default function CustomerProfileDropdown() {
         onClose={() => setAvatarModalOpen(false)}
         onSaved={handleAvatarSaved}
       />
-    </>
+    </div>
   );
 }

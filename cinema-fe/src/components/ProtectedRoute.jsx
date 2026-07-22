@@ -8,7 +8,7 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.map(r => r.toLowerCase()).includes(String(role).trim().toLowerCase())) {
     return <Navigate to="/login" replace />;
   }
 

@@ -1,0 +1,15 @@
+/* CSS styling for QR scan page */
+.staff-qr-container {
+  padding: 4px;
+}
+
+/* Force video to cover container to remove black bars naturally */
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+#reader {
+  border: none !important;
+}

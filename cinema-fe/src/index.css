@@ -10,3 +10,520 @@ body {
   background: #eeeeee;
 }
 
+input, select, textarea, button {
+  color: #111111;
+}
+
+td, th, p, span, label, h1, h2, h3, h4, h5, h6, a {
+  color: inherit;
+}
+
+body, #root {
+  color: #111111;
+}
+
+/* ── Global Admin Dark Mode Overrides ── */
+
+/* Main Containers background */
+.fm-wrapper, .rm-wrapper, .se-wrapper, .us-wrapper, .nt-wrapper, .bill-wrapper, .tp-wrapper, .rt-wrapper, .pe-wrapper {
+  background-color: #0c0c0e !important;
+  color: #f3f4f6 !important;
+  min-height: 100vh;
+  margin: -24px !important;
+  padding: 32px !important;
+}
+
+/* Titles and labels */
+.fm-title, .rm-title, .se-title, .us-title, .nt-title, .bill-title, .rt-title, .pe-title {
+  color: #ffffff !important;
+}
+
+/* Stat Cards */
+.fm-stat-card, .rm-stat-card, .se-stat-card, .us-stat-card, .nt-stat-card, .rt-stat-card {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+.fm-stat-label, .rm-stat-label, .se-stat-label, .us-stat-label, .nt-stat-label, .rt-stat-label {
+  color: #8e8e93 !important;
+}
+.fm-stat-value, .rm-stat-value, .se-stat-value, .us-stat-value, .nt-stat-value, .rt-stat-value {
+  color: #ffffff !important;
+}
+
+/* Page Cards */
+.fm-card, .rm-card, .se-card, .us-card, .nt-card, .bill-card, .tp-card, .rt-card, .pe-card {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  color: #e5e5ea !important;
+}
+.fm-card-title, .rm-card-name, .se-card-name, .us-card-name, .nt-card-title, .rt-card-title {
+  color: #ffffff !important;
+}
+.fm-info-value, .rm-info-value, .se-info-value, .us-info-value, .nt-info-value, .rt-info-value {
+  color: #ffffff !important;
+}
+.fm-info-label, .rm-info-label, .se-info-label, .us-info-label, .nt-info-label, .rt-info-label {
+  color: #8e8e93 !important;
+}
+
+/* Dropdown Filters and Search inputs */
+.fm-search-input, .fm-status-select,
+.rm-cinema-select, .rm-search,
+.se-filter-select, .se-search-input,
+.us-search-input, .us-role-select,
+.nt-search-input, .nt-status-select,
+.rt-search-input, .rt-status-select,
+.pe-search-input, .pe-role-select {
+  background-color: #161619 !important;
+  border: 1.5px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+.fm-search-input:focus, .fm-status-select:focus,
+.rm-cinema-select:focus, .rm-search:focus,
+.se-filter-select:focus, .se-search-input:focus,
+.rt-search-input:focus, .rt-status-select:focus {
+  border-color: #ff3b30 !important;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.15) !important;
+}
+
+/* Add/Submit Buttons */
+.fm-btn-add, .rm-btn-add, .se-btn-add, .us-btn-add, .nt-btn-add, .rt-btn-add, .pe-btn-add {
+  background: #ff3b30 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.25) !important;
+  border: none !important;
+}
+.fm-btn-add:hover, .rm-btn-add:hover, .se-btn-add:hover, .us-btn-add:hover, .rt-btn-add:hover {
+  background: #e02d24 !important;
+}
+
+/* Tables */
+.fm-table, .rm-table, .se-table, .us-table, .nt-table, .rt-table, .pe-table {
+  color: #e5e5ea !important;
+}
+.fm-th, .rm-th, .se-th, .us-th, .nt-th, .rt-th, .pe-th {
+  background: #1c1c1e !important;
+  color: #8e8e93 !important;
+  border-bottom: 1px solid #2c2c2e !important;
+}
+.fm-td, .rm-td, .se-td, .us-td, .nt-td, .rt-td, .pe-td {
+  border-bottom: 1px solid #2c2c2e !important;
+  color: #e5e5ea !important;
+}
+.fm-tr:hover, .rm-tr:hover, .se-tr:hover, .us-tr:hover, .rt-tr:hover {
+  background: #1e1e24 !important;
+}
+
+/* Modals */
+.fm-modal, .rm-modal, .se-modal, .us-modal, .nt-modal, .rt-modal {
+  background: #1c1c1e !important;
+  border: 1.5px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+.fm-modal-title, .rm-modal-title, .se-modal-title, .us-modal-title, .rt-modal-title {
+  color: #ffffff !important;
+  border-bottom: 1.5px solid #2c2c2e !important;
+}
+.fm-input, .rm-input, .se-input, .us-input, .nt-input, .rt-input {
+  background: #2c2c2e !important;
+  border: 1.5px solid #3a3a3c !important;
+  color: #ffffff !important;
+}
+.fm-input:focus, .rm-input:focus, .se-input:focus, .us-input:focus, .rt-input:focus {
+  border-color: #ff3b30 !important;
+}
+.fm-btn-cancel, .rm-btn-cancel, .se-btn-cancel, .us-btn-cancel, .rt-btn-cancel {
+  background: #2c2c2e !important;
+  color: #aeaeb2 !important;
+}
+.fm-btn-submit, .rm-btn-submit, .se-btn-submit, .us-btn-submit, .rt-btn-submit {
+  background: #ff3b30 !important;
+  color: #ffffff !important;
+}
+
+/* Detail Panels */
+.se-detail-card, .se-map-card, .us-detail-card, .nt-detail-card, .rt-detail-card {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+.se-detail-title, .se-map-title, .us-detail-title, .rt-detail-title {
+  color: #ffffff !important;
+  border-bottom: 1px solid #2c2c2e !important;
+}
+.se-detail-info-label, .us-detail-info-label, .rt-detail-info-label {
+  color: #8e8e93 !important;
+}
+.se-detail-info-val, .us-detail-info-val, .rt-detail-info-val {
+  color: #ffffff !important;
+}
+.se-legend-txt, .rt-legend-txt {
+  color: #aeaeb2 !important;
+}
+
+/* ── Specific Overrides for Personnel (pe-), Customer (cu-), Account (ac-), UserManagement (um-) ── */
+
+.um-wrapper, .pe-wrapper, .cu-wrapper, .ac-wrapper {
+  background-color: #0c0c0e !important;
+  color: #f3f4f6 !important;
+}
+
+.um-title, .pe-title, .cu-title, .ac-title {
+  color: #ffffff !important;
+}
+
+.pe-stat-card, .cu-stat-card, .ac-stat-card,
+.pe-table-card, .cu-table-card, .ac-table-card {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.pe-stat-label, .cu-stat-label,
+.pe-stat-value, .cu-stat-value {
+  color: #ffffff !important;
+}
+
+.pe-stat-label, .cu-stat-label {
+  color: #8e8e93 !important;
+}
+
+.pe-table, .cu-table, .ac-table {
+  background: #161619 !important;
+  color: #e5e5ea !important;
+}
+
+.pe-table th, .cu-table th, .ac-table th {
+  background: #1c1c1e !important;
+  color: #aeaeb2 !important;
+  border-bottom: 1px solid #2c2c2e !important;
+}
+
+.pe-table td, .cu-table td, .ac-table td {
+  border-bottom: 1px solid #2c2c2e !important;
+  color: #e5e5ea !important;
+}
+
+.pe-table tbody tr:hover, .cu-table tbody tr:hover, .ac-table tbody tr:hover {
+  background: #1e1e24 !important;
+}
+
+/* Text and values in cells */
+.pe-user-name, .pe-user-pos, .pe-user-cinema, .pe-user-phone, .pe-user-email,
+.cu-user-name, .cu-user-phone, .cu-user-email,
+.ac-user-name, .ac-user-phone, .ac-user-email {
+  color: #ffffff !important;
+}
+
+/* Inputs and Select fields */
+.pe-search-input, .pe-filter-select,
+.cu-search-input, .cu-filter-select,
+.ac-search-input, .ac-filter-select {
+  background-color: #161619 !important;
+  border: 1.5px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+
+/* Dropdown styling */
+select.pe-filter-select option,
+select.cu-filter-select option,
+select.ac-filter-select option {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+}
+
+/* Buttons */
+.pe-btn-add, .cu-btn-add, .ac-btn-add {
+  background: #ff3b30 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.25) !important;
+}
+.pe-btn-add:hover, .cu-btn-add:hover {
+  background: #e02d24 !important;
+}
+
+/* Tabs */
+.um-tabbar {
+  border-bottom-color: #2c2c2e !important;
+}
+.um-tab:hover {
+  background: #1c1c1e !important;
+  color: #ffffff !important;
+}
+
+/* Customer widgets and cards */
+.cu-list-card, .cu-widget-card {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.cu-widget-title, .cu-legend-val {
+  color: #ffffff !important;
+  border-bottom-color: #2c2c2e !important;
+}
+
+.cu-legend-label {
+  color: #aeaeb2 !important;
+}
+
+.cu-filter-bar, .cu-pagination-footer {
+  border-bottom-color: #2c2c2e !important;
+  border-top-color: #2c2c2e !important;
+}
+
+.cu-btn-reset {
+  background: #2c2c2e !important;
+  color: #ffffff !important;
+  border: 1px solid #3a3a3c !important;
+}
+.cu-btn-reset:hover {
+  background: #3a3a3c !important;
+}
+
+.cu-page-btn {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  color: #aeaeb2 !important;
+}
+.cu-page-btn:hover:not(:disabled) {
+  background: #2c2c2e !important;
+  color: #ffffff !important;
+}
+.cu-page-btn:disabled {
+  background: #1c1c1e !important;
+  color: #555555 !important;
+  border-color: #2c2c2e !important;
+}
+
+/* VIP description text styling */
+.cu-activity-title, .cu-group-name {
+  color: #ffffff !important;
+}
+.cu-activity-desc, .cu-group-count {
+  color: #aeaeb2 !important;
+}
+
+/* Info list text inside widget cards */
+.cu-widget-card div, .cu-widget-card span, .cu-widget-card p {
+  color: inherit;
+}
+
+/* ── Specific Overrides for Showtime Management (lc-) ── */
+
+.lc-wrapper {
+  background-color: #0c0c0e !important;
+  color: #f3f4f6 !important;
+  min-height: 100vh;
+  margin: -24px !important;
+  padding: 32px !important;
+}
+
+.lc-title, .lc-section-label {
+  color: #ffffff !important;
+}
+
+.lc-stat-card, .lc-section-block, .lc-calendar-toolbar, .lc-calendar-board, .lc-calendar-empty {
+  background: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.lc-stat-label {
+  color: #8e8e93 !important;
+}
+
+.lc-stat-value {
+  color: #ffffff !important;
+}
+
+/* Tabs & Chips */
+.lc-cinema-tab, .lc-movie-chip {
+  background: #2c2c2e !important;
+  border: 1px solid #3a3a3c !important;
+  color: #aeaeb2 !important;
+}
+.lc-cinema-tab:hover, .lc-movie-chip:hover {
+  background: #3a3a3c !important;
+  color: #ffffff !important;
+}
+.lc-cinema-tab--active, .lc-movie-chip--active {
+  background: #ff3b30 !important;
+  border-color: #ff3b30 !important;
+  color: #ffffff !important;
+}
+.lc-chip-count {
+  background: #1c1c1e !important;
+  color: #aeaeb2 !important;
+}
+
+/* Inputs and Selects */
+.lc-cinema-search-input, .lc-movie-search-input, .lc-date-input, .lc-status-select {
+  background-color: #1c1c1e !important;
+  border: 1.5px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+.lc-cinema-search-input:focus, .lc-movie-search-input:focus {
+  background-color: #1c1c1e !important;
+  border-color: #ff3b30 !important;
+}
+
+/* Buttons */
+.lc-btn-add {
+  background: #ff3b30 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.25) !important;
+}
+.lc-btn-add:hover {
+  background: #e02d24 !important;
+}
+
+.lc-clear-btn, .lc-back-btn, .lc-calendar-today-btn, .lc-page-btn {
+  background: #2c2c2e !important;
+  border: 1px solid #3a3a3c !important;
+  color: #ffffff !important;
+}
+.lc-clear-btn:hover, .lc-calendar-today-btn:hover {
+  background: #3a3a3c !important;
+}
+
+/* Calendar Grid */
+.lc-calendar-header-row, .lc-calendar-time-cell {
+  background: #1c1c1e !important;
+  border-color: #2c2c2e !important;
+  color: #aeaeb2 !important;
+}
+
+.lc-calendar-cell {
+  background: #161619 !important;
+  border-color: #2c2c2e !important;
+}
+.lc-calendar-cell:hover {
+  background: #1e1e24 !important;
+}
+
+.lc-calendar-event {
+  background: #2c2c2e !important;
+  border: 1px solid #3a3a3c !important;
+  color: #ffffff !important;
+}
+.lc-calendar-event:hover {
+  background: #3a3a3c !important;
+}
+
+/* Today header highlight in dark mode */
+.lc-calendar-day-head--today {
+  background: #2d1c1c !important;
+  border-bottom: 2px solid #ff3b30 !important;
+}
+
+/* General clean up of borders in the calendar board */
+.lc-calendar-board * {
+  border-color: #2c2c2e !important;
+}
+
+/* Event text contrast improvements */
+.lc-event-time {
+  color: #ff9f0a !important; /* Bright neon orange */
+}
+
+.lc-event-title {
+  color: #ffffff !important; /* Pure white */
+}
+
+.lc-event-meta {
+  color: #aeaeb2 !important; /* Light silver/gray */
+}
+
+.lc-event-price {
+  color: #30d158 !important; /* Bright neon green */
+}
+
+/* Movie chips and cinema tabs text visibility overrides */
+.lc-chip-title {
+  color: #e5e5ea !important; /* Light gray text for readable chips */
+}
+
+.lc-movie-chip:hover .lc-chip-title {
+  color: #ffffff !important;
+}
+
+.lc-movie-chip--active .lc-chip-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.lc-cinema-tab {
+  background: #2c2c2e !important;
+  border: 1px solid #3a3a3c !important;
+  color: #aeaeb2 !important;
+}
+
+.lc-cinema-tab--active {
+  background: #ff3b30 !important;
+  border-color: #ff3b30 !important;
+  color: #ffffff !important;
+}
+
+.lc-date-input, .lc-status-select {
+  background-color: #161619 !important;
+  border: 1px solid #2c2c2e !important;
+  color: #ffffff !important;
+}
+
+.lc-clear-btn {
+  background: #2c2c2e !important;
+  border: 1px solid #3a3a3c !important;
+  color: #ffffff !important;
+}
+.lc-clear-btn:hover {
+  background: #ff3b30 !important;
+  border-color: #ff3b30 !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar and Topbar text contrast fixes (override global button color inheritance) */
+aside button, aside button *,
+header button, header button * {
+  color: #ffffff !important;
+}
+
+/* Exception: Staff BanVe screen buttons inside aside should keep dark text */
+.bv-root aside button,
+.bv-root aside button *,
+.bv-showtime-btn,
+.bv-showtime-btn *,
+.bv-method-btn,
+.bv-method-btn * {
+  color: #111827 !important;
+}
+
+.bv-showtime-btn.active,
+.bv-showtime-btn.active * {
+  color: #ffffff !important;
+}
+
+.bv-method-btn.active,
+.bv-method-btn.active * {
+  color: #065f46 !important;
+}
+
+.bv-food-add-btn,
+.bv-food-add-btn * {
+  color: #065f46 !important;
+}
+
+
+
+
+
+
+
+

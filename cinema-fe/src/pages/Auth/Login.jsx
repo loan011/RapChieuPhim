@@ -1,144 +1,125 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
-
+import { Link } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { MdEmail, MdLockOutline, MdOutlineShield } from "react-icons/md";
+import { FcGoogle } from "react-icons/fc";
+import { useLogin } from "./useLogin";
 import "../../styles/Login.css";
 
-import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { loginApi, saveAuthData } from "../../services/authService";
-
 function Login() {
-  const navigate = useNavigate();
-
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  function getRole(data) {
-    return (
-      data?.user?.role ||
-      data?.user?.Role ||
-      data?.User?.role ||
-      data?.User?.Role ||
-      localStorage.getItem("role") ||
-      ""
-    );
-  }
-
-  async function handleLogin(e) {
-    e.preventDefault();
-
-    const email = e.target.email.value.trim();
-    const password = e.target.password.value.trim();
-
-    setError("");
-
-    if (!email) return setError("Vui lòng nhập email!");
-    if (!password) return setError("Vui lòng nhập mật khẩu!");
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-      return setError("Email không đúng định dạng!");
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await loginApi(email, password);
-
-      saveAuthData(data);
-
-      alert("Đăng nhập thành công!");
-
-      const role = getRole(data);
-
-      if (role === "Admin") {
-        navigate("/admin", { replace: true });
-      } else if (role === "Staff") {
-        navigate("/staff", { replace: true });
-      } else {
-        navigate("/movies", { replace: true });
-      }
-    } catch (err) {
-      console.error(err);
-      setError(
-        err.message ||
-          "Không kết nối được tới server. Vui lòng kiểm tra API đã chạy chưa."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    error,
+    loading,
+    showPassword,
+    toggleShowPassword,
+    handleLogin,
+    handleGoogleLogin,
+  } = useLogin();
 
   return (
-    <div className="auth-page">
-      <Link to="/" className="back-home-btn" title="Về trang chủ">
-        🏠
-      </Link>
-
-      <div className="auth-box-page">
-        <div className="auth-tabs">
-          <button type="button" className="active">
-            ĐĂNG NHẬP
-          </button>
-
-          <Link to="/register">ĐĂNG KÝ</Link>
+    <div className="login-wrapper">
+      <div className="login-container">
+        
+        {/* Left Side */}
+        <div className="login-left">
+          <div className="login-brand">
+            <h1>Cinemas <span>HCM</span></h1>
+            <p>TRẢI NGHIỆM PHIM ĐỈNH CAO</p>
+          </div>
+          
+          <div className="login-welcome">
+            <div className="welcome-icon">🎬</div>
+            <h2>Chào mừng bạn<br/>trở lại!</h2>
+            <p>Đăng nhập để đặt vé, theo dõi lịch chiếu và nhận ưu đãi hấp dẫn từ Cinemas HCM.</p>
+          </div>
+          
+          <img src="/images/login-illustration.png" alt="Cinema Illustration" className="login-illustration" />
         </div>
 
-        <form className="login-form" onSubmit={handleLogin}>
-          <label>Email</label>
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            autoComplete="email"
-          />
-
-          <label>Mật khẩu</label>
-
-          <div className="password-wrapper">
-            <input
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Mật khẩu"
-              autoComplete="current-password"
-            />
-
-            <button
-              type="button"
-              className="password-eye"
-              onClick={() => setShowPassword(!showPassword)}
-              title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
+        {/* Right Side */}
+        <div className="login-right">
+          <div className="login-tabs">
+            <button type="button" className="tab active">
+               <MdEmail style={{ marginRight: 6 }} /> ĐĂNG NHẬP
             </button>
+            <Link to="/register" className="tab">
+               <svg style={{ marginRight: 6 }} width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+               </svg>
+               ĐĂNG KÝ
+            </Link>
           </div>
 
-          {error && (
-            <p
-              style={{
-                color: "red",
-                fontSize: "14px",
-                marginTop: "10px",
-                marginBottom: "10px",
-              }}
-            >
-              {error}
-            </p>
-          )}
+          <form className="login-form-content" onSubmit={handleLogin}>
+            <div className="form-group">
+              <label>EMAIL</label>
+              <div className="input-with-icon">
+                <MdEmail className="input-icon" />
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Nhập email của bạn"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
-          <Link to="/forgot-password" className="forgot">
-            Quên mật khẩu?
-          </Link>
+            <div className="form-group">
+              <label>MẬT KHẨU</label>
+              <div className="input-with-icon">
+                <MdLockOutline className="input-icon" />
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Nhập mật khẩu"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="eye-btn"
+                  onClick={toggleShowPassword}
+                  title="Hiển thị mật khẩu"
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            </div>
 
-          <button className="blue-btn" type="submit" disabled={loading}>
-            {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN"}
-          </button>
+            {error && <div className="login-error-text" style={{ color: "#dc2626", fontSize: "0.85rem", marginTop: "-10px", marginBottom: "10px" }}>{error}</div>}
 
-          <button type="button" className="pink-btn">
-            ĐĂNG NHẬP BẰNG GOOGLE
-          </button>
-        </form>
+            <div className="login-links">
+              <Link to="/forgot-password">Quên mật khẩu?</Link>
+            </div>
+
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN →"}
+            </button>
+
+            <div className="login-or">
+              <span>HOẶC</span>
+            </div>
+
+            <button type="button" className="btn-google" onClick={handleGoogleLogin}>
+              <FcGoogle size={20} />
+              ĐĂNG NHẬP BẰNG GOOGLE
+            </button>
+
+            <div className="login-secure-text">
+              <MdOutlineShield size={16} /> Thông tin của bạn được bảo mật tuyệt đối
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
   );

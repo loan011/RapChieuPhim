@@ -1,28 +1,84 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  MdDashboard,
-  MdMovie,
-  MdCalendarMonth,
   MdConfirmationNumber,
   MdReceiptLong,
-  MdPersonOutline,
+  MdFastfood,
+  MdQrCodeScanner,
   MdMenu,
   MdLogout,
+  MdLocalActivity,
+  MdBarChart,
 } from "react-icons/md";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getUser } from "../services/authService";
+import { getCinemaList } from "../pages/Admin/Cinema/cinemaService";
+import { getEmployeeById } from "../pages/Admin/Personnel/employeeService";
 
 const navItems = [
-  { to: "/staff/dashboard", label: "Dashboard", icon: <MdDashboard /> },
-  { to: "/staff/phim", label: "Phim", icon: <MdMovie /> },
-  { to: "/staff/suat-chieu", label: "Suat Chieu", icon: <MdCalendarMonth /> },
-  { to: "/staff/ban-ve", label: "Ban Ve", icon: <MdConfirmationNumber /> },
-  { to: "/staff/hoa-don", label: "Hoa Don", icon: <MdReceiptLong /> },
-  { to: "/staff/khach-hang", label: "Khach Hang", icon: <MdPersonOutline /> },
+  { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
+  { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
+  { to: "/staff/combo", label: "Đồ ăn", icon: <MdFastfood /> },
+  { to: "/staff/quet-qr", label: "Quét QR Vé", icon: <MdQrCodeScanner /> },
+  { to: "/staff/quet-qr-do-an", label: "Quét QR Đồ ăn", icon: <MdFastfood /> },
+  { to: "/staff/quan-ly-do-an", label: "Quản lý Đồ ăn", icon: <MdReceiptLong /> },
+  { to: "/staff/doanh-thu", label: "Doanh thu ngày", icon: <MdBarChart /> },
 ];
 
 export default function StaffLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [branchName, setBranchName] = useState("Đang tải...");
+
+  const user = getUser();
+
+  useEffect(() => {
+    async function loadBranchName() {
+      try {
+        let cId = user?.cinemaId ?? user?.CinemaId;
+        
+        // Nếu API thiếu cinemaId, tìm trong mappings fallback do Admin phân quyền
+        if (!cId) {
+          const email = user?.email ?? user?.Email;
+          if (email) {
+            const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+            cId = mappings[email];
+          }
+        }
+
+        // TỰ ĐỘNG FETCH CHI NHÁNH TỪ PROFILE NẾU VẪN KHÔNG TÌM THẤY (dành cho Staff đăng nhập ở máy mới)
+        if (!cId) {
+          const uId = user?.userId ?? user?.UserId ?? user?.id ?? user?.Id;
+          if (uId) {
+            try {
+              const uData = await getEmployeeById(uId);
+              cId = uData?.cinemaId ?? uData?.CinemaId;
+            } catch (e) {
+              console.warn("Không thể fetch profile Staff:", e);
+            }
+          }
+        }
+
+        if (cId) {
+          // Gắn ngược lại vào localStorage để các trang như Quản Lý Vé, Doanh Thu lọc đúng chi nhánh
+          if (user && !user.cinemaId && !user.CinemaId) {
+            user.cinemaId = cId;
+            localStorage.setItem("user", JSON.stringify(user));
+          }
+
+          const cinemas = await getCinemaList();
+          const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cId));
+          if (found) {
+            setBranchName(found.cinemaName ?? found.CinemaName ?? "T&M Cinema");
+            return;
+          }
+        }
+        setBranchName("T&M Cinema");
+      } catch (e) {
+        setBranchName("T&M Cinema");
+      }
+    }
+    loadBranchName();
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -40,7 +96,7 @@ export default function StaffLayout() {
         <div className="flex items-center gap-2 px-3 py-4 border-b border-gray-700">
           <MdConfirmationNumber className="text-green-400 text-2xl shrink-0" />
           {sidebarOpen && (
-            <span className="text-sm font-bold leading-tight">T&M Staff</span>
+            <span className="text-sm font-bold leading-tight truncate">{branchName}</span>
           )}
         </div>
 
@@ -68,7 +124,7 @@ export default function StaffLayout() {
           className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors"
         >
           <MdLogout className="text-lg shrink-0" />
-          {sidebarOpen && <span>Dang Xuat</span>}
+          {sidebarOpen && <span>Đăng xuất</span>}
         </button>
       </aside>
 
@@ -81,7 +137,7 @@ export default function StaffLayout() {
             <MdMenu className="text-2xl" />
           </button>
           <span className="text-gray-700 font-semibold text-sm">
-            He Thong Nhan Vien Rap Chieu Phim T&M
+            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - {branchName}
           </span>
         </header>
 

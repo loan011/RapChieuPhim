@@ -1,0 +1,19 @@
+/* CSS styling for QR Food scan page */
+.staff-qr-food-container {
+  padding: 4px;
+}
+
+/* Force video to cover container to remove black bars naturally */
+#reader-food video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+#reader-food {
+  border: none !important;
+}
+
+.text-orange-850 {
+  color: #c2410c;
+}

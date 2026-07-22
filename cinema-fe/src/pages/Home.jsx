@@ -1,580 +1,730 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import CustomerProfileDropdown from "../components/CustomerProfileDropdown";
 import "../styles/Home.css";
 
-const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+import {
+  HOME_TEXT as T,
+  useHome,
+  getAreaId,
+  getAreaName,
+  getCinemaId,
+  getCinemaName,
+  getMovieId,
+  getMovieTitle,
+  getMovieDescription,
+  getMovieDuration,
+  getMovieDirector,
+  getMovieActors,
+  getMovieLanguage,
+  getMovieReleaseDate,
+  getMoviePoster,
+  getMovieTrailer,
+  getShowtimeId,
+  getStartHour,
+  getShowtimeStatus,
+  isBookable,
+  findRoomByShowtime,
+  findCinemaByRoom,
+  getRoomName,
+  getShowDate,
+  getRoomCinemaId,
+} from "./usehome";
 
-function formatDateVN(date) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm} - ${dayNames[date.getDay()]}`;
+// Helper to convert minutes (e.g., "113 phút" or 113) to "1h 53m"
+function formatDuration(durationStr) {
+  if (!durationStr) return "";
+  const mins = parseInt(durationStr);
+  if (isNaN(mins)) return String(durationStr);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function createDateRange(startDate, total = 8) {
-  return Array.from({ length: total }, (_, index) => {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + index);
-    return formatDateVN(d);
-  });
+// Helper to get movie genre/categories
+function getMovieGenre(movie) {
+  const directCategory = movie?.categoryName || movie?.CategoryName || movie?.genre || movie?.Genre;
+  if (directCategory) return directCategory;
+
+  const rawCategoryArray = movie?.categories || movie?.Categories || movie?.movieCategories || movie?.MovieCategories || movie?.categoryList || movie?.CategoryList;
+  if (Array.isArray(rawCategoryArray)) {
+    return rawCategoryArray.map(item => item?.categoryName || item?.CategoryName || item?.name || item?.Name).filter(Boolean).join(", ");
+  }
+  if (rawCategoryArray?.$values && Array.isArray(rawCategoryArray.$values)) {
+    return rawCategoryArray.$values.map(item => item?.categoryName || item?.CategoryName || item?.name || item?.Name).filter(Boolean).join(", ");
+  }
+
+  return "Đang cập nhật";
 }
 
-/* =========================
-   SHOWTIMES THEO PHIM
-========================= */
-
-const showtimesByMovie = {
-  doraemon: {
-    "02/06 - T3": [
-      { time: "14:00", seats: 159 },
-      { time: "16:00", seats: 168 },
-      { time: "18:00", seats: 167 },
-      { time: "19:00", seats: 127 },
-      { time: "20:00", seats: 137 },
-      { time: "22:00", seats: 170, late: true },
-    ],
-    "03/06 - T4": [
-      { time: "09:00", seats: 131 },
-      { time: "11:00", seats: 136 },
-      { time: "13:00", seats: 136 },
-      { time: "14:00", seats: 170 },
-      { time: "16:00", seats: 170 },
-      { time: "17:10", seats: 136 },
-      { time: "18:00", seats: 170 },
-      { time: "19:00", seats: 136 },
-      { time: "20:00", seats: 167 },
-      { time: "22:00", seats: 170, late: true },
-    ],
-    "04/06 - T5": [
-      { time: "10:00", seats: 150 },
-      { time: "13:30", seats: 160 },
-      { time: "16:00", seats: 170 },
-      { time: "19:00", seats: 140 },
-      { time: "22:00", seats: 170, late: true },
-    ],
-  },
-
-  oc: {
-    "03/06 - T4": [
-      { time: "08:45", seats: 120 },
-      { time: "10:00", seats: 150 },
-      { time: "11:00", seats: 130 },
-      { time: "15:30", seats: 100 },
-      { time: "20:30", seats: 90 },
-    ],
-    "04/06 - T5": [
-      { time: "09:30", seats: 140 },
-      { time: "13:00", seats: 120 },
-      { time: "16:30", seats: 110 },
-      { time: "21:00", seats: 95 },
-    ],
-  },
-
-  temple: {
-    "02/06 - T3": [
-      { time: "18:15", seats: 70 },
-      { time: "21:00", seats: 134 },
-      { time: "23:15", seats: 76, late: true },
-    ],
-    "03/06 - T4": [
-      { time: "09:30", seats: 170 },
-      { time: "13:20", seats: 78 },
-      { time: "15:00", seats: 136 },
-      { time: "18:15", seats: 80 },
-      { time: "21:00", seats: 136 },
-      { time: "23:10", seats: 136, late: true },
-    ],
-    "04/06 - T5": [
-      { time: "16:45", seats: 80 },
-      { time: "22:45", seats: 177, late: true },
-    ],
-    "05/06 - T6": [
-      { time: "18:30", seats: 120 },
-      { time: "21:30", seats: 110 },
-    ],
-    "06/06 - T7": [
-      { time: "19:00", seats: 100 },
-      { time: "22:00", seats: 90, late: true },
-    ],
-  },
-
-  kuman: {
-    "02/06 - T3": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "03/06 - T4": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "04/06 - T5": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "05/06 - T6": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "06/06 - T7": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "07/06 - CN": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "08/06 - T2": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-    "09/06 - T3": [
-      { time: "17:05", seats: 136 },
-      { time: "23:00", seats: 130, late: true },
-    ],
-  },
-
-  maxo: {
-    "06/06 - T7": [
-      { time: "09:30", seats: 170 },
-      { time: "10:30", seats: 80 },
-      { time: "12:30", seats: 80 },
-      { time: "14:00", seats: 170 },
-      { time: "16:00", seats: 170 },
-      { time: "18:00", seats: 170 },
-      { time: "18:45", seats: 136 },
-      { time: "20:00", seats: 170 },
-      { time: "20:45", seats: 136 },
-      { time: "22:00", seats: 170, late: true },
-      { time: "22:45", seats: 136, late: true },
-    ],
-    "07/06 - CN": [
-      { time: "09:30", seats: 170 },
-      { time: "12:30", seats: 80 },
-      { time: "14:00", seats: 170 },
-      { time: "16:00", seats: 170 },
-      { time: "18:00", seats: 170 },
-      { time: "20:00", seats: 170 },
-      { time: "22:00", seats: 170, late: true },
-    ],
-    "08/06 - T2": [
-      { time: "10:30", seats: 80 },
-      { time: "14:00", seats: 170 },
-      { time: "16:00", seats: 170 },
-      { time: "18:45", seats: 136 },
-      { time: "20:45", seats: 136 },
-      { time: "22:45", seats: 136, late: true },
-    ],
-    "09/06 - T3": [
-      { time: "09:30", seats: 170 },
-      { time: "12:30", seats: 80 },
-      { time: "16:00", seats: 170 },
-      { time: "18:00", seats: 170 },
-      { time: "20:00", seats: 170 },
-      { time: "22:00", seats: 170, late: true },
-    ],
-  },
-};
-
-/* =========================
-   DATA PHIM
-========================= */
-
-const movies = [
-  {
-    id: "doraemon",
-    sectionClass: "",
-    title:
-      "Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển - Phiên Bản Mới",
-    shortName: "Doraemon",
-    meta: "🏷 Hoạt hình   ⏱ 101 phút",
-    format: "2D LỒNG TIẾNG",
-    trailer: "https://www.youtube.com/embed/OFNUhDb-FDo?start=2",
-    detailTitle:
-      "Phim Điện Ảnh Doraemon: Nobita Và Lâu Đài Dưới Đáy Biển - Phiên Bản Mới",
-    description:
-      "Trong kỳ nghỉ hè, Nobita và các bạn tranh cãi về việc đi cắm trại ở đâu. Theo ý kiến của Doraemon, họ quyết định cắm trại giữa đại dương. Sử dụng những món đồ bí mật, nhóm bạn tận hưởng chuyến cắm trại dưới đáy biển và gặp gỡ nhiều sinh vật khác nhau.",
-    details: [
-      ["Đạo diễn:", "Tetsuo Yajima"],
-      [
-        "Diễn viên:",
-        "Wasabi Mizuta, Megumi Oohara, Yumi Kakazu, Subaru Kimura, Tomokazu Seki",
-      ],
-      ["Thể loại:", "Hoạt hình"],
-      ["Thời lượng:", "101 phút"],
-      ["Ngôn ngữ:", "Tiếng Việt"],
-      ["Ngày khởi chiếu:", "22/05/2026"],
-    ],
-  },
-
-  {
-    id: "oc",
-    sectionClass: "oc-section",
-    title: "Ốc Mượn Hồn",
-    shortName: "Ốc Mượn Hồn",
-    meta: "🏷 Bí ẩn, Tâm lý   ⏱ 109 phút",
-    format: "2D PHỤ ĐỀ",
-    trailer: "https://www.youtube.com/embed/89AseidRuPc",
-    detailTitle: "Ốc Mượn Hồn",
-    description:
-      "Câu chuyện kể về Quân – một người chồng đau khổ khi vợ qua đời trong một tai nạn bất ngờ. Hạnh phúc tưởng chừng được hồi sinh khi linh hồn vợ anh “trở về” trong thân xác của cô đồng nghiệp, nhưng bí mật kinh hoàng dần xuất hiện.",
-    details: [
-      ["Đạo diễn:", "Đinh Tuấn Vũ"],
-      [
-        "Diễn viên:",
-        "Quốc Trường, Tiểu Vy, Anh Phạm, Yên Đan, Anh Đức, Lương Gia Huy, Nguyễn Văn Chung",
-      ],
-      ["Thể loại:", "Bí ẩn, Tâm lý"],
-      ["Thời lượng:", "109 phút"],
-      ["Ngôn ngữ:", "Tiếng Việt"],
-      ["Ngày khởi chiếu:", "01/06/2026"],
-    ],
-  },
-
-  {
-    id: "temple",
-    sectionClass: "temple-section",
-    title: "Ngôi Đền Kỳ Quái 5",
-    shortName: "Ngôi Đền Kỳ Quái 5",
-    meta: "🏷 Kinh dị, Hài hước   ⏱ 118 phút",
-    format: "2D PHỤ ĐỀ",
-    trailer: "https://www.youtube.com/embed/lEJcARUiApo?start=2",
-    detailTitle: "Ngôi Đền Kỳ Quái 5",
-    description:
-      "Thương hiệu Kinh dị - Hài Thái Lan ăn khách nhất đã trở lại. Một năm sau khi đánh bại hồn ma Nak Tinn, nhóm bạn của Balloon và First chưa kịp tận hưởng cuộc sống bình yên thì một linh hồn báo thù bất ngờ quay trở lại và săn đuổi họ.",
-    details: [
-      ["Đạo diễn:", "Phontharis Chotkijsadarsopon"],
-      [
-        "Diễn viên:",
-        "Aim Witthawat Rattanaboonbaramee, James Bhuripat Vejvongsatechawat, Meen Phiravich Attachitsataporn, Tar Atiwat Saengtien, Kuan Denkhun Ngam-net",
-      ],
-      ["Thể loại:", "Kinh dị, Hài hước"],
-      ["Thời lượng:", "118 phút"],
-      ["Ngôn ngữ:", "Tiếng Thái"],
-      ["Ngày khởi chiếu:", "29/05/2026"],
-    ],
-  },
-
-  {
-    id: "kuman",
-    sectionClass: "kuman-section",
-    title: "Kumanthong: Ác Quỷ Dẫn Đường",
-    shortName: "Kumanthong",
-    meta: "🏷 Kinh dị   ⏱ 110 phút",
-    format: "2D PHỤ ĐỀ",
-    trailer: "https://www.youtube.com/embed/wQA8c-v5daM",
-    detailTitle: "Kumanthong: Ác Quỷ Dẫn Đường",
-    description:
-      "Một người mẹ đơn thân, vì tương lai của đứa con trai gần như mù lòa, quyết liều mình băng qua khu rừng ma ám trong đêm tối. Nhưng khi một tà linh từ Alas Roban bắt đầu chiếm hữu đứa trẻ, cô buộc phải đối mặt với những thế lực siêu nhiên kinh hoàng và bước vào hành trình tìm kiếm sự cứu rỗi tâm linh trước khi mất đi tất cả.",
-    details: [
-      ["Đạo diễn:", "Đang cập nhật"],
-      ["Diễn viên:", "Padung Songsang, Kapol Thongplub, Nicky Na Chat Juntapun"],
-      ["Thể loại:", "Kinh dị"],
-      ["Thời lượng:", "110 phút"],
-      ["Ngôn ngữ:", "Tiếng Indonesia - Phụ đề"],
-      ["Ngày khởi chiếu:", "29/05/2026"],
-    ],
-  },
-
-  {
-    id: "maxo",
-    sectionClass: "ma-xo-section",
-    title: "Ma Xó",
-    shortName: "Ma Xó",
-    meta: "🏷 Kinh dị   ⏱ 102 phút",
-    format: "2D PHỤ ĐỀ",
-    trailer: "https://www.youtube.com/embed/UE6Qo-uPCjQ",
-    detailTitle: "Ma Xó",
-    description:
-      "Trong cái nghèo cùng cực và nỗi sợ mất con sau một lần sảy thai, cuộc sống của vợ chồng Phú và Thảo trở nên tăm tối hơn bao giờ hết khi bà Thuận qua đời vì không có tiền chữa bệnh. Giữa lúc tuyệt vọng, Thảo nghe lời bà Tánh thực hiện nghi thức thỉnh “vong cô hồn” về làm ma xó để trấn giữ ngôi nhà và bảo vệ thai nhi. Khi thực thể trong xó nhà bắt đầu “đòi nợ”, Thảo mới bàng hoàng nhận ra thứ cô rước về là một cơn ác mộng không có đường lui.",
-    details: [
-      ["Đạo diễn:", "Phan Bá Hỷ"],
-      [
-        "Diễn viên:",
-        "Lê Khánh, Tín Nguyễn, Avin Lu, NSƯT Hạnh Thúy, Nguyễn Sỹ Hậu, Gi A Nguyễn, Leona Khánh Tiên",
-      ],
-      ["Thể loại:", "Kinh dị"],
-      ["Thời lượng:", "102 phút"],
-      ["Ngôn ngữ:", "Tiếng Việt"],
-      ["Ngày khởi chiếu:", "05/06/2026"],
-    ],
-  },
-];
+// Helper to get movie age rating
+function getMovieAge(movie) {
+  return (
+    movie?.ageRating ||
+    movie?.AgeRating ||
+    movie?.age ||
+    movie?.Age ||
+    movie?.rated ||
+    movie?.Rated ||
+    movie?.rating ||
+    movie?.Rating ||
+    "P"
+  );
+}
 
 function Home() {
-  const navigate = useNavigate();
-  const [startDate, setStartDate] = useState(new Date(2026, 5, 2));
-  const [selectedDate, setSelectedDate] = useState("02/06 - T3");
-  const [selectedTime, setSelectedTime] = useState({});
-  const [showDetail, setShowDetail] = useState({});
+  const {
+    dates,
+    selectedDate,
+    selectedCinemaId,
+    selectedAreaId,
+    areas,
+    cinemas,
+    movies,
+    showtimes,
+    rooms,
+    loading,
+    userEmail,
+    handleDateClick,
+    handleAreaChange,
+    handleCinemaChange,
+    handleSelectTime,
+    isPreviousDateDisabled,
+  } = useHome();
+
+  // Additional filter states
+  const [selectedMovieId, setSelectedMovieId] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState("");
+  const [selectedShowtimeType, setSelectedShowtimeType] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedTrailer, setSelectedTrailer] = useState(null);
 
-  const dates = createDateRange(startDate);
-  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  // Collect all unique genres from available movies
+  const availableGenres = useMemo(() => {
+    const genresSet = new Set();
+    movies.forEach((m) => {
+      const gStr = getMovieGenre(m);
+      if (gStr && gStr !== "Đang cập nhật") {
+        gStr.split(",").forEach((g) => {
+          genresSet.add(g.trim());
+        });
+      }
+    });
+    return Array.from(genresSet).sort();
+  }, [movies]);
 
-const userEmail =
-  localStorage.getItem("userEmail") ||
-  localStorage.getItem("email") ||
-  savedUser.email ||
-  savedUser.Email;
+  // List of movies currently showing on selected date
+  const availableMoviesForSelect = useMemo(() => {
+    // Find all movies that have showtimes on this date
+    const movieIdsWithShowtimes = new Set();
+    showtimes.forEach((st) => {
+      if (getShowDate(st) === selectedDate) {
+        const movieId = st?.movieId ?? st?.MovieId ?? st?.movie?.movieId ?? st?.movie?.MovieId;
+        if (movieId) movieIdsWithShowtimes.add(String(movieId));
+      }
+    });
+    return movies.filter(m => movieIdsWithShowtimes.has(String(getMovieId(m))));
+  }, [movies, showtimes, selectedDate]);
 
-  const showingMovies = movies.filter((movie) => {
-    return (showtimesByMovie[movie.id]?.[selectedDate] || []).length > 0;
-  });
+  // Filtered showtimes based on date and selected cinema/area
+  const filteredShowtimes = useMemo(() => {
+    const now = new Date();
+    return showtimes.filter((st) => {
+      const showDate = getShowDate(st);
+      const status = getShowtimeStatus(st);
 
-  const hasMovies = showingMovies.length > 0;
+      const matchDate = selectedDate ? showDate === selectedDate : true;
+      if (!matchDate) return false;
 
-  const selectedMovie = movies.find((movie) => selectedTime[movie.id]);
+      const room = findRoomByShowtime(st, rooms);
+      if (!room) return false;
 
-  const selectedMessage = selectedMovie
-    ? `Suất chiếu ${selectedMovie.shortName}: ${selectedDate} lúc ${
-        selectedTime[selectedMovie.id]
-      }`
-    : "Suất chiếu muộn từ 22h00";
+      const cinema = findCinemaByRoom(room, cinemas);
+      if (!cinema) return false;
 
-  function resetSelection() {
-    setSelectedTime({});
-    setShowDetail({});
-    setSelectedTrailer(null);
-  }
+      const roomCinemaId = room?.cinemaId ?? room?.CinemaId;
+      const cinemaAreaId = cinema?.areaId ?? cinema?.AreaId;
 
-  function changeDateRange(days) {
-    const nextStart = new Date(startDate);
-    nextStart.setDate(nextStart.getDate() + days);
+      const matchCinema = selectedCinemaId ? String(roomCinemaId) === String(selectedCinemaId) : true;
+      if (!matchCinema) return false;
 
-    const firstDateText = formatDateVN(nextStart);
+      const matchArea = selectedAreaId ? String(cinemaAreaId) === String(selectedAreaId) : true;
+      if (!matchArea) return false;
 
-    setStartDate(nextStart);
-    setSelectedDate(firstDateText);
-    resetSelection();
-  }
+      const notCanceled = status !== "Hủy";
+      if (!notCanceled) return false;
 
-  function handleSelectTime(movieId, time) {
-    navigate(`/booking?movie=${movieId}&time=${time}`);
-  }
+      // Filter by format (2D, 3D, IMAX)
+      const roomName = getRoomName(room).toLowerCase();
+      if (selectedFormat) {
+        if (selectedFormat === "IMAX" && !roomName.includes("imax")) return false;
+        if (selectedFormat === "3D" && !roomName.includes("3d")) return false;
+        if (selectedFormat === "2D" && (roomName.includes("imax") || roomName.includes("3d"))) return false;
+      }
 
-  function toggleDetail(movieId) {
-    setShowDetail((prev) => ({
-      ...prev,
-      [movieId]: !prev[movieId],
-    }));
-  }
+      // Filter by showtime slot (Suất chiếu)
+      if (selectedShowtimeType) {
+        const hour = getStartHour(st); // e.g., "14:30"
+        if (selectedShowtimeType === "morning" && (hour < "08:00" || hour >= "12:00")) return false;
+        if (selectedShowtimeType === "afternoon" && (hour < "12:00" || hour >= "18:00")) return false;
+        if (selectedShowtimeType === "evening" && (hour < "18:00" || hour >= "24:00")) return false;
+      }
+
+      const startTimeStr = st?.startTime ?? st?.StartTime ?? "";
+      // Allow customer to book tickets up to 5 minutes past start time
+      const notPast = startTimeStr ? (new Date(startTimeStr).getTime() + 5 * 60 * 1000 >= now.getTime()) : true;
+
+      return notPast;
+    });
+  }, [showtimes, rooms, cinemas, selectedDate, selectedCinemaId, selectedAreaId, selectedFormat, selectedShowtimeType]);
+
+  // Group showtimes by movie and apply movie filters (search, genre, movieSelect)
+  const filteredGroupedMovies = useMemo(() => {
+    return movies
+      .map((movie) => {
+        const movieId = getMovieId(movie);
+        const title = getMovieTitle(movie).toLowerCase();
+        const genre = getMovieGenre(movie).toLowerCase();
+
+        // Filter by specific movie dropdown selection
+        if (selectedMovieId && String(movieId) !== String(selectedMovieId)) {
+          return null;
+        }
+
+        // Filter by movie genre dropdown selection
+        if (selectedGenre && !genre.includes(selectedGenre.toLowerCase())) {
+          return null;
+        }
+
+        // Filter by search query
+        if (searchQuery && !title.includes(searchQuery.toLowerCase().trim())) {
+          return null;
+        }
+
+        // Filter showtimes of this movie
+        const movieShowtimes = filteredShowtimes
+          .filter((showtime) => {
+            const stMovieId = showtime?.movieId ?? showtime?.MovieId ?? showtime?.movie?.movieId ?? showtime?.movie?.MovieId;
+            return String(stMovieId) === String(movieId);
+          })
+          .sort((a, b) => getStartHour(a).localeCompare(getStartHour(b)));
+
+        if (movieShowtimes.length === 0) return null;
+
+        return {
+          movie,
+          showtimes: movieShowtimes,
+        };
+      })
+      .filter(Boolean);
+  }, [movies, filteredShowtimes, selectedMovieId, selectedGenre, searchQuery]);
+
+  // Helper to group movie showtimes by Cinema
+  const groupMovieShowtimesByCinema = (movieShowtimes) => {
+    const grouped = {};
+    movieShowtimes.forEach((st) => {
+      const room = findRoomByShowtime(st, rooms);
+      if (!room) return;
+      const cinema = findCinemaByRoom(room, cinemas);
+      if (!cinema) return;
+
+      const cinemaId = getRoomCinemaId(room) || getCinemaId(cinema);
+      const cinemaName = getCinemaName(cinema);
+
+      if (!grouped[cinemaId]) {
+        grouped[cinemaId] = {
+          cinemaName,
+          slots: []
+        };
+      }
+      grouped[cinemaId].slots.push(st);
+    });
+    return Object.values(grouped);
+  };
 
   return (
-    <div className="beta-page">
-      {userEmail ? (
-        <div className="top-login">
-    <CustomerProfileDropdown />
-  </div>
-      ) : (
-        <div className="top-login">
-          <Link to="/login">Đăng nhập</Link>
-          <span> | </span>
-          <Link to="/register">Đăng ký</Link>
-          <span> GB</span>
+    <div className="beta-page showtimes-page">
+      {/* Header Bar */}
+      <div className="movie-top-login">
+        <div className="top-login-content">
+          {userEmail ? (
+            <CustomerProfileDropdown />
+          ) : (
+            <div className="auth-links">
+              <Link to="/login">Đăng nhập</Link>
+              <span> | </span>
+              <Link to="/register">Đăng ký</Link>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <header className="beta-header">
-        <div className="logo">
-          <span>Cinemas HCM</span>
+      <header className="movie-header">
+        <div className="movie-logo-container">
+          <Link to="/" className="movie-logo">
+            <span>Cinemas</span><b>HCM</b>
+          </Link>
         </div>
 
-        <select className="cinema-select">
-          <option>Chọn rạp HCM</option>
-          <option>CGV Vincom Đồng Khởi</option>
-          <option>CGV Crescent Mall</option>
-          <option>CGV Sư Vạn Hạnh</option>
-          <option>Lotte Cinema Nam Sài Gòn</option>
-          <option>Galaxy Nguyễn Du</option>
-          <option>Galaxy Tân Bình</option>
-          <option>Cinestar Quốc Thanh</option>
-          <option>Beta Cinemas TP.HCM</option>
-          <option>Mega GS Cao Thắng</option>
-        </select>
-
-        <nav>
-          <Link to="/movies">PHIM</Link>
-          <Link to="/">LỊCH CHIẾU THEO RẠP</Link>
-          <Link to="/cinema">RẠP</Link>
-          <Link to="/ticket-price">GIÁ VÉ</Link>
-          <a href="#news">TIN MỚI VÀ ƯU ĐÃI</a>
-          <a href="#franchise">NHƯỢNG QUYỀN</a>
-          <a href="#member">THÀNH VIÊN</a>
+        <nav className="movie-nav">
+          <Link to="/showtimes" className="active">Lịch chiếu</Link>
+          <Link to="/">Phim</Link>
+          <Link to="/ticket-price">Giá vé</Link>
         </nav>
+
+
       </header>
 
-      <main className="content">
-        <section className="calendar-wrapper">
-          <button className="calendar-arrow" onClick={() => changeDateRange(-8)}>
-            ‹
-          </button>
+      <main className="content sch-content">
+        <div className="sch-container">
 
-          <div className="date-list">
-            {dates.map((date, index) => (
-              <div
-                className={selectedDate === date ? "date active-date" : "date"}
-                key={index}
-                onClick={() => {
-                  setSelectedDate(date);
-                  resetSelection();
-                }}
-              >
-                <strong>{date.split("/")[0]}</strong>
-                <span>/{date.split("/")[1]}</span>
+          {/* 1. Date range horizontal selector */}
+          <section className="calendar-wrapper sch-calendar-wrapper">
+            <div className="date-list-container">
+              <div className="date-list sch-date-list">
+                {dates.map((date, idx) => {
+                  const isToday = idx === 0;
+                  const dateLabel = isToday ? "Hôm nay" : date.weekDay;
+                  const isActive = selectedDate === date.iso;
+                  return (
+                    <button
+                      key={date.iso}
+                      type="button"
+                      className={`date sch-date-tab-btn ${isActive ? "active-date" : ""}`}
+                      onClick={() => handleDateClick(date.iso)}
+                    >
+                      <strong className="sch-tab-day">{dateLabel}</strong>
+                      <span className="sch-tab-date">{date.day}/{date.month}</span>
+                    </button>
+                  );
+                })}
+                
+                <div className="date-select-other sch-other-date-wrap">
+                  <input
+                    type="date"
+                    id="sch-date-picker-input"
+                    value={selectedDate}
+                    onChange={(e) => handleDateClick(e.target.value)}
+                    style={{
+                      opacity: 0,
+                      position: "absolute",
+                      width: 0,
+                      height: 0,
+                      pointerEvents: "none"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="other-date-btn sch-other-date-btn"
+                    onClick={() => {
+                      const el = document.getElementById("sch-date-picker-input");
+                      if (el && typeof el.showPicker === "function") el.showPicker();
+                    }}
+                  >
+                    📅 Chọn ngày khác
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          </section>
 
-          <button className="calendar-arrow" onClick={() => changeDateRange(8)}>
-            ›
-          </button>
-        </section>
-
-        <hr />
-
-        {hasMovies && (
-          <>
-            <div className="note">
-              <span></span>
-              {selectedMessage}
+          {/* 2. Six multi-filter dropdown grid */}
+          <section className="sch-filter-grid">
+            {/* Filter 1: Chọn Rạp */}
+            <div className="sch-filter-item">
+              <label className="sch-filter-label">Chọn rạp</label>
+              <select
+                className="sch-filter-select"
+                value={selectedCinemaId}
+                onChange={(e) => handleCinemaChange(e.target.value)}
+              >
+                <option value="">Tất cả rạp</option>
+                {cinemas.map((cinema) => (
+                  <option key={getCinemaId(cinema)} value={getCinemaId(cinema)}>
+                    {getCinemaName(cinema)}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {showingMovies.map((movie) => {
-              const times = showtimesByMovie[movie.id][selectedDate];
+            {/* Filter 2: Chọn Phim */}
+            <div className="sch-filter-item">
+              <label className="sch-filter-label">Chọn phim</label>
+              <select
+                className="sch-filter-select"
+                value={selectedMovieId}
+                onChange={(e) => setSelectedMovieId(e.target.value)}
+              >
+                <option value="">Tất cả phim</option>
+                {availableMoviesForSelect.map((m) => (
+                  <option key={getMovieId(m)} value={getMovieId(m)}>
+                    {getMovieTitle(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              return (
-                <section
-                  className={`movie-section ${movie.sectionClass}`}
-                  key={movie.id}
-                >
-                  <div className="poster-wrap video-wrap">
-                    <iframe
-                      src={movie.trailer}
-                      title={`${movie.shortName} Trailer`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    ></iframe>
-                  </div>
+            {/* Filter 3: Định dạng */}
+            <div className="sch-filter-item">
+              <label className="sch-filter-label">Định dạng</label>
+              <select
+                className="sch-filter-select"
+                value={selectedFormat}
+                onChange={(e) => setSelectedFormat(e.target.value)}
+              >
+                <option value="">Tất cả</option>
+                <option value="2D">2D</option>
+                <option value="3D">3D</option>
+                <option value="IMAX">IMAX</option>
+              </select>
+            </div>
 
-                  <div className="movie-info">
-                    <h1 className="movie-title">{movie.title}</h1>
+            {/* Filter 4: Suất chiếu */}
+            <div className="sch-filter-item">
+              <label className="sch-filter-label">Suất chiếu</label>
+              <select
+                className="sch-filter-select"
+                value={selectedShowtimeType}
+                onChange={(e) => setSelectedShowtimeType(e.target.value)}
+              >
+                <option value="">Tất cả</option>
+                <option value="morning">Sáng (08:00 - 12:00)</option>
+                <option value="afternoon">Chiều (12:00 - 18:00)</option>
+                <option value="evening">Tối (18:00 - 24:00)</option>
+              </select>
+            </div>
 
-                    <p className="meta">{movie.meta}</p>
+            {/* Filter 5: Chọn thể loại phim (MỚI) */}
+            <div className="sch-filter-item">
+              <label className="sch-filter-label">Chọn thể loại phim</label>
+              <select
+                className="sch-filter-select"
+                value={selectedGenre}
+                onChange={(e) => setSelectedGenre(e.target.value)}
+              >
+                <option value="">Tất cả thể loại</option>
+                {availableGenres.map((genre) => (
+                  <option key={genre} value={genre}>
+                    {genre}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                    <div className="movie-action-ribbon">
-                      <button onClick={() => toggleDetail(movie.id)}>
-                        🎟 {showDetail[movie.id] ? "Ẩn chi tiết" : "Chi tiết"}
-                      </button>
+            {/* Filter 6: Tìm kiếm theo tên phim (MỚI) */}
+            <div className="sch-filter-item sch-search-item">
+              <label className="sch-filter-label">Tìm kiếm tên phim</label>
+              <div className="sch-search-input-wrapper">
+                <input
+                  type="text"
+                  className="sch-search-input"
+                  placeholder="Nhập tên phim cần tìm..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="sch-search-clear-btn"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
 
-                      <span></span>
+          {/* 3. Movie showtimes list */}
+          {loading && (
+            <div className="sch-loading">Đang tải lịch chiếu phim...</div>
+          )}
 
-                      <button onClick={() => setSelectedTrailer(movie)}>
-                        Trailer
-                      </button>
+          {!loading && filteredGroupedMovies.length > 0 && (
+            <div className="sch-movie-list">
+              {filteredGroupedMovies.map(({ movie, showtimes: movieShowtimes }) => {
+                const movieId = getMovieId(movie);
+                const subtitles = movie?.subtitles ?? movie?.Subtitles ?? "Phụ đề";
+                const ageLimit = getMovieAge(movie) || "P";
+                
+                // Get grouped showtimes by Cinema for this movie
+                const cinemaGroups = groupMovieShowtimesByCinema(movieShowtimes);
 
-                      <span></span>
-
-                      <Link to={`/booking?movie=${movie.id}`} style={{
-                        flex: 1,
-                        height: "100%",
-                        background: "none",
-                        border: "none",
-                        color: "white",
-                        fontSize: "16px",
-                        font: "inherit",
-                        fontWeight: "800",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        textDecoration: "none"
-                      }}>
-                        Mua vé
-                      </Link>
+                return (
+                  <article className="sch-movie-card" key={movieId}>
+                    {/* Column 1: Poster with duration overlay */}
+                    <div className="sch-card-poster-col">
+                      <img
+                        src={getMoviePoster(movie)}
+                        alt={getMovieTitle(movie)}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/img/no-image.png";
+                        }}
+                      />
+                      <span className="sch-duration-tag">
+                        {formatDuration(getMovieDuration(movie))}
+                      </span>
                     </div>
 
-                    {showDetail[movie.id] && (
-                      <div className="movie-detail-box">
-                        <h2>{movie.detailTitle}</h2>
-
-                        <p>{movie.description}</p>
-
-                        {movie.details.map((row, index) => (
-                          <div className="detail-row" key={index}>
-                            <b>{row[0]}</b>
-                            <span>{row[1]}</span>
-                          </div>
-                        ))}
+                    {/* Column 2: Movie Info */}
+                    <div className="sch-card-info-col">
+                      <h2 className="sch-movie-title">{getMovieTitle(movie)}</h2>
+                      
+                      <div className="sch-badges-row">
+                        <span className={`sch-badge sch-badge-age-${String(ageLimit).toLowerCase().replace("+", "")}`}>
+                          {ageLimit}
+                        </span>
+                        <span className="sch-badge sch-badge-format">
+                          2D
+                        </span>
+                        <span className="sch-badge sch-badge-lang">
+                          {subtitles}
+                        </span>
                       </div>
-                    )}
 
-                    <h3>{movie.format}</h3>
+                      <p className="sch-movie-genre">
+                        {getMovieGenre(movie)}
+                      </p>
 
-                    <div className="time-list">
-                      {times.map((item, index) => (
-                        <div
-                          className={item.late ? "time late" : "time"}
-                          key={index}
-                        >
-                          <button
-                            className={
-                              selectedTime[movie.id] === item.time
-                                ? "selected-time"
-                                : ""
-                            }
-                            onClick={() => handleSelectTime(movie.id, item.time)}
-                          >
-                            {item.time}
-                          </button>
+                      <button
+                        type="button"
+                        className="sch-detail-btn"
+                        onClick={() => setSelectedTrailer(movie)}
+                        style={{
+                          marginTop: "8px",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          color: "#fff",
+                          border: "1px solid rgba(255, 255, 255, 0.15)",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          alignSelf: "flex-start",
+                          display: "inline-block",
+                          width: "fit-content"
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = "rgba(255, 255, 255, 0.18)";
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.15)";
+                        }}
+                      >
+                        Chi tiết
+                      </button>
+                    </div>
 
-                          <p>{item.seats} ghế trống</p>
+                    {/* Column 3: Showtimes grouped by Cinema */}
+                    <div className="sch-card-times-col">
+                      {cinemaGroups.map((group) => (
+                        <div className="sch-cinema-group" key={group.cinemaName}>
+                          <h4 className="sch-cinema-name">{group.cinemaName}</h4>
+                          <div className="sch-slots-grid">
+                            {group.slots.map((st) => {
+                              const startHour = getStartHour(st);
+                              const disabled = !isBookable(getShowtimeStatus(st));
+                              return (
+                                <button
+                                  key={getShowtimeId(st)}
+                                  type="button"
+                                  className="sch-slot-btn"
+                                  disabled={disabled}
+                                  onClick={() => handleSelectTime(movie, st)}
+                                >
+                                  {startHour}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Styled arrow chevron indicating booking */}
+                    <div className="sch-card-chevron">
+                      ›
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
 
-                    {selectedTime[movie.id] && (
-                      <p className="selected-text">
-                        Bạn đã chọn {movie.shortName}: {selectedDate} lúc{" "}
-                        {selectedTime[movie.id]}
-                      </p>
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </>
-        )}
-
-        {!hasMovies && (
-          <p className="selected-text">Ngày này chưa có lịch chiếu phim.</p>
-        )}
+          {!loading && filteredGroupedMovies.length === 0 && (
+            <div className="sch-no-results">
+              Không tìm thấy phim hoặc suất chiếu nào phù hợp với bộ lọc của bạn.
+            </div>
+          )}
+        </div>
       </main>
-
+      {/* Detail Modal (Trailer & Info) */}
       {selectedTrailer && (
-        <div className="trailer-overlay">
-          <div className="trailer-modal">
+        <div 
+          className="trailer-overlay" 
+          onClick={() => setSelectedTrailer(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1200
+          }}
+        >
+          <div 
+            className="trailer-modal" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              background: "#111",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "12px",
+              width: "850px",
+              maxWidth: "90%",
+              padding: "24px",
+              position: "relative",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.8)",
+              color: "#fff"
+            }}
+          >
             <button
+              type="button"
               className="trailer-close"
               onClick={() => setSelectedTrailer(null)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "transparent",
+                border: "none",
+                color: "#999",
+                fontSize: "32px",
+                cursor: "pointer",
+                transition: "color 0.2s"
+              }}
+              onMouseOver={(e) => e.target.style.color = "#fff"}
+              onMouseOut={(e) => e.target.style.color = "#999"}
             >
-              ×
+              &times;
             </button>
+            
+            <h2 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#fff", marginBottom: "16px", borderBottom: "1px solid rgba(255, 255, 255, 0.1)", paddingBottom: "12px" }}>
+              CHI TIẾT PHIM: {getMovieTitle(selectedTrailer)}
+            </h2>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Top Side: Video Trailer (Large screen format) */}
+              <div style={{ position: "relative", width: "100%", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255, 255, 255, 0.1)", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)" }}>
+                {getMovieTrailer(selectedTrailer) ? (
+                  <iframe
+                    src={getEmbedUrl(getMovieTrailer(selectedTrailer))}
+                    title={`Trailer ${getMovieTitle(selectedTrailer)}`}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    style={{ width: "100%", aspectRatio: "16/9", border: "none", display: "block", background: "#000" }}
+                  ></iframe>
+                ) : (
+                  <div style={{ width: "100%", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.03)" }}>
+                    🎬 Phim này chưa có trailer chính thức.
+                  </div>
+                )}
+              </div>
 
-            <h2>TRAILER - {selectedTrailer.title}</h2>
+              {/* Bottom Side: Split Grid for Info & Metadata */}
+              <div className="detail-modal-split" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", color: "#fff" }}>
+                {/* Left Side: Description */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <h4 style={{ fontSize: "1rem", fontWeight: "800", color: "#e50914", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    NỘI DUNG PHIM
+                  </h4>
+                  <div 
+                    className="detail-modal-desc" 
+                    style={{ 
+                      fontSize: "0.9rem", 
+                      color: "rgba(255,255,255,0.75)", 
+                      lineHeight: "1.6", 
+                      margin: 0, 
+                      maxHeight: "190px", 
+                      overflowY: "auto",
+                      paddingRight: "8px",
+                      textAlign: "justify",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    {selectedTrailer.description || selectedTrailer.Description || "Chưa có thông tin nội dung mô tả của bộ phim này."}
+                  </div>
+                </div>
 
-            <hr />
-
-            <iframe
-              src={selectedTrailer.trailer}
-              title={`Trailer ${selectedTrailer.title}`}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-            ></iframe>
+                {/* Right Side: Metadata list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(255, 255, 255, 0.03)", padding: "16px", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.06)", justifyContent: "center" }}>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🏷️ Thể loại:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieGenre(selectedTrailer)}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🎬 Đạo diễn:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.director || selectedTrailer.Director || "Đang cập nhật"}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>⏱️ Thời lượng:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieDuration(selectedTrailer)}</span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🔞 Độ tuổi:</span> 
+                    <span style={{ background: "#e50914", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "800", display: "inline-block" }}>
+                      {getMovieAge(selectedTrailer)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📅 Khởi chiếu:</span> 
+                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieReleaseDate(selectedTrailer)}</span>
+                  </div>
+                  {selectedTrailer.language && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🗣️ Ngôn ngữ:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.language}</span>
+                    </div>
+                  )}
+                  {selectedTrailer.subtitles && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📝 Phụ đề:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.subtitles}</span>
+                    </div>
+                  )}
+                  {(selectedTrailer.actors || selectedTrailer.Actors) && (
+                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>👥 Diễn viên:</span> 
+                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.actors || selectedTrailer.Actors}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function getEmbedUrl(url) {
+  if (!url) return "";
+  let videoId = "";
+  if (url.includes("youtube.com/watch?v=")) {
+    videoId = url.split("v=")[1]?.split("&")[0];
+  } else if (url.includes("youtu.be/")) {
+    videoId = url.split("youtu.be/")[1]?.split("?")[0];
+  } else if (url.includes("youtube.com/embed/")) {
+    return url;
+  }
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
 }
 
 export default Home;
