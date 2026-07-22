@@ -495,6 +495,11 @@ header button, header button * {
   color: #ffffff !important;
 }
 
+header button.staff-hamburger,
+header button.staff-hamburger * {
+  color: #374151 !important;
+}
+
 /* Exception: Staff BanVe screen buttons inside aside should keep dark text */
 .bv-root aside button,
 .bv-root aside button *,

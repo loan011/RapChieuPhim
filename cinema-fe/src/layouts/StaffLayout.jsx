@@ -45,7 +45,7 @@ export default function StaffLayout() {
   });
 
   const [selectedShift, setSelectedShift] = useState("Ca 1 (08:00 - 16:00)");
-  const [inputCash, setInputCash] = useState(500000);
+  const [inputCash, setInputCash] = useState("500000");
   const [timeError, setTimeError] = useState("");
 
   const user = getUser();
@@ -143,6 +143,12 @@ export default function StaffLayout() {
 
   // Kích hoạt ca làm việc
   function handleStartShift() {
+    const cashVal = Number(inputCash);
+    if (inputCash === "" || isNaN(cashVal) || cashVal < 0) {
+      setTimeError("Số tiền mặt bàn giao đầu ca phải lớn hơn hoặc bằng 0!");
+      return;
+    }
+
     const validationErr = validateShiftTime(selectedShift);
     if (validationErr) {
       setTimeError(validationErr);
@@ -153,7 +159,7 @@ export default function StaffLayout() {
     const newState = {
       status: "STARTED",
       shiftName: selectedShift,
-      initialCash: Number(inputCash),
+      initialCash: cashVal,
       startedAt: new Date().toISOString()
     };
     localStorage.setItem("staff_shift_state", JSON.stringify(newState));
@@ -206,7 +212,10 @@ export default function StaffLayout() {
             <input
               type="number"
               value={inputCash}
-              onChange={(e) => setInputCash(Number(e.target.value))}
+              onChange={(e) => {
+                setInputCash(e.target.value);
+                setTimeError("");
+              }}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
               placeholder="500000"
             />
@@ -272,7 +281,7 @@ export default function StaffLayout() {
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 z-45 md:hidden transition-opacity duration-200 cursor-pointer"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-200 cursor-pointer"
         />
       )}
 
@@ -325,7 +334,7 @@ export default function StaffLayout() {
         <header className="bg-white border-b border-gray-200 flex items-center gap-3 px-4 py-3 shrink-0">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="text-gray-500 hover:text-gray-800 focus:outline-none"
+            className="staff-hamburger text-gray-500 hover:text-gray-800 focus:outline-none"
           >
             <MdMenu className="text-2xl" />
           </button>
