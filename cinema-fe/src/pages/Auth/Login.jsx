@@ -108,7 +108,7 @@ function Login() {
             </div>
 
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG NHẬP BẰNG TÀI KHOẢN →"}
+              {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG NHẬP"}
             </button>
 
             <div className="login-or">

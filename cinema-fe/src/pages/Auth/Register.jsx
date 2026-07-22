@@ -220,7 +220,7 @@ function Register() {
             {error && <div className="login-error-text" style={{ color: "#dc2626", fontSize: "0.85rem", marginTop: "-10px", marginBottom: "10px" }}>{error}</div>}
 
             <button type="submit" className="btn-primary" disabled={loading || !form.policy}>
-              {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ TÀI KHOẢN →"}
+              {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ"}
             </button>
 
             <div className="login-or">
