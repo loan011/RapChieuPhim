@@ -208,7 +208,7 @@ export default function BaoCao() {
       <div className="bc-header">
         <div className="bc-title-group">
           <h2>
-            <MdAssignment style={{ color: "#10b981" }} /> Quản Lý Báo Cáo Kết Ca Staff
+            <MdAssignment style={{ color: "#10b981" }} /> Quản Lý Báo Cáo Kết Ca 
           </h2>
         </div>
         <button

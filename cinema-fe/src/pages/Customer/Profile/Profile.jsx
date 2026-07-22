@@ -162,15 +162,6 @@ export default function Profile() {
 
             <div className="profile-form-actions">
               <button
-                type="button"
-                className="profile-reset-btn"
-                onClick={handleReset}
-              >
-                <MdRefresh className="profile-btn-icon" />
-                Đặt lại
-              </button>
-
-              <button
                 type="submit"
                 className="profile-save-btn"
                 disabled={loading}

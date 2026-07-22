@@ -810,11 +810,10 @@ export default function RoomAdmin() {
                     onChange={handleRoomChange}
                     className="rm-input"
                   >
-                    {roomStatusOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
+                    <option value="true">Hoạt động</option>
+                    {isEditingRoom && (
+                      <option value="false">Ngừng hoạt động</option>
+                    )}
                   </select>
                 </div>
 

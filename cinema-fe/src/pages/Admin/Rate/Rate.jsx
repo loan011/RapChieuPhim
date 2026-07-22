@@ -250,19 +250,7 @@ export default function Rate() {
             </div>
           </div>
 
-          <div className="lc-filter-dark-group">
-            <label>&nbsp;</label>
-            <div className="lc-filter-dark-input-wrap">
-              <input
-                type="text"
-                className="lc-filter-dark-input"
-                placeholder="Tìm kiếm chi nhánh..."
-                value={cinemaSearch}
-                onChange={(e) => setCinemaSearch(e.target.value)}
-              />
-              <MdSearch className="lc-filter-dark-icon-right" size={18} />
-            </div>
-          </div>
+
 
           <div className="lc-filter-dark-group">
             <label>Tìm theo phim</label>

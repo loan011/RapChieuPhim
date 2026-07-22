@@ -289,7 +289,6 @@ export default function Ticket() {
                 className="ticket-detail-modal-qr-section"
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
               >
-                <span className="room-entry-label">Mã:</span>
                 <div
                   className="detail-qr-code-wrapper"
                   data-darkreader-ignore="true"

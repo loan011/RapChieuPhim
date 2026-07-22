@@ -17,8 +17,6 @@ import { getCinemaList } from "../Cinema/cinemaService";
 
 export const STATUS_OPTIONS = [
   "Đang chiếu",
-  "Sắp chiếu",
-  "Chiếu sớm",
   "Đã chiếu"
 ];
 

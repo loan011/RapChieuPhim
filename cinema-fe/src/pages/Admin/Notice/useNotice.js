@@ -17,10 +17,6 @@ export const NOTICE_TARGET_OPTIONS = [
     value: "customers",
     label: "Chỉ khách hàng",
   },
-  {
-    value: "staff",
-    label: "Chỉ nhân viên",
-  },
 ];
 
 export const NOTICE_TYPE_OPTIONS = [
