@@ -68,6 +68,13 @@ export default function StaffLayout() {
     };
   }, []);
 
+  // Tự động đóng sidebar drawer trên di động / máy tính bảng mỗi khi chuyển trang
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     async function loadBranchName() {
       try {
@@ -302,21 +309,16 @@ export default function StaffLayout() {
             <NavLink
               key={item.to}
               to={item.to}
-              onClick={() => {
-                if (window.innerWidth < 768) {
-                  setSidebarOpen(false);
-                }
-              }}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 mx-1 rounded text-sm transition-colors ${
+                `flex items-center gap-3 px-3.5 py-3 mx-1.5 rounded-xl text-sm font-semibold transition-all touch-manipulation select-none ${
                   isActive
-                    ? "bg-green-600 text-white"
-                    : "text-gray-300 hover:bg-gray-700"
+                    ? "bg-green-600 text-white shadow-md shadow-green-900/30 font-bold"
+                    : "text-gray-300 hover:bg-gray-700/80 active:bg-gray-700"
                 }`
               }
             >
-              <span className="text-lg shrink-0">{item.icon}</span>
-              {sidebarOpen && <span className="truncate">{item.label}</span>}
+              <span className="text-xl shrink-0 pointer-events-none">{item.icon}</span>
+              {sidebarOpen && <span className="truncate pointer-events-none">{item.label}</span>}
             </NavLink>
           ))}
         </nav>
