@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { fetchActiveTicketPricings } from "../Ticket/ticketPriceService";
 
 import {
   getCinemas,
@@ -532,8 +533,6 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
     return explicitPrice;
   }
 
-  const basePrice = Number(getShowtimeBasePrice(selectedShowtime));
-
   const roomId = getShowtimeRoomId(selectedShowtime);
   
   // 1. Try to find the room in rooms array
@@ -544,43 +543,8 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
     room = selectedShowtime.room || selectedShowtime.Room;
   }
 
-  const type = String(getSeatType(seat)).toLowerCase();
-  const isVip = type.includes("vip");
-  const isCouple = type.includes("sweetbox") || type.includes("couple") || type.includes("đôi");
-
-  let finalPrice = null;
-
-  // We can get cinemaId and roomName either from the resolved room, or directly from the showtime!
-  let cId = "";
-  let rName = "";
-
-  if (room) {
-    cId = getRoomCinemaId(room);
-    rName = getRoomName(room);
-  }
-
-  // Fallback to showtime direct attributes if room properties weren't fully resolved
-  if (!cId && selectedShowtime) {
-    cId = selectedShowtime.cinemaId ??
-          selectedShowtime.CinemaId ??
-          selectedShowtime.room?.cinemaId ??
-          selectedShowtime.room?.CinemaId ??
-          selectedShowtime.Room?.cinemaId ??
-          selectedShowtime.Room?.CinemaId ??
-          selectedShowtime.room?.cinema?.cinemaId ??
-          selectedShowtime.Room?.Cinema?.CinemaId ??
-          "";
-  }
-
-  if (!rName && selectedShowtime) {
-    rName = selectedShowtime.roomName ??
-            selectedShowtime.RoomName ??
-            selectedShowtime.room?.roomName ??
-            selectedShowtime.Room?.roomName ??
-            selectedShowtime.room?.RoomName ??
-            selectedShowtime.Room?.RoomName ??
-            "";
-  }
+  const roomType = String(room?.roomType ?? room?.RoomType ?? selectedShowtime?.roomType ?? selectedShowtime?.RoomType ?? "2D").trim();
+  const seatType = String(getSeatType(seat)).trim();
 
   let isWeekend = false;
   const dateStr = getShowtimeDate(selectedShowtime);
@@ -591,38 +555,89 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
       isWeekend = day === 0 || day === 6;
     }
   }
+  const dayType = isWeekend ? "Weekend" : "Weekday";
 
-  if (cId && rName) {
-    let priceKey = "";
-    if (isCouple) {
-      priceKey = isWeekend ? `room_price_cp_we_c${cId}_r${rName}` : `room_price_cp_wd_c${cId}_r${rName}`;
-    } else if (isVip) {
-      priceKey = isWeekend ? `room_price_vip_we_c${cId}_r${rName}` : `room_price_vip_wd_c${cId}_r${rName}`;
-    } else {
-      priceKey = isWeekend ? `room_price_std_we_c${cId}_r${rName}` : `room_price_std_wd_c${cId}_r${rName}`;
+  // Try to find matching pricing from backend cached active_ticket_pricings
+  try {
+    const cachedPricingsStr = localStorage.getItem("active_ticket_pricings");
+    if (cachedPricingsStr) {
+      const pricings = JSON.parse(cachedPricingsStr);
+      const pricingList = Array.isArray(pricings) ? pricings : (pricings?.$values || pricings?.data || []);
+      
+      const matched = pricingList.find(p => {
+        const pRoomType = String(p.roomType || p.RoomType || "").toLowerCase().trim();
+        const pSeatType = String(p.seatType || p.SeatType || "").toLowerCase().trim();
+        const pDayType = String(p.dayType || p.DayType || "").toLowerCase().trim();
+        
+        const roomTypeLower = roomType.toLowerCase();
+        const isRoomTypeMatch = pRoomType === roomTypeLower || 
+                                 roomTypeLower.includes(pRoomType) || 
+                                 pRoomType.includes(roomTypeLower);
+
+        const seatTypeLower = seatType.toLowerCase();
+        let isSeatTypeMatch = pSeatType === seatTypeLower;
+        if (!isSeatTypeMatch) {
+          if (seatTypeLower.includes("couple") || seatTypeLower.includes("sweetbox") || seatTypeLower.includes("đôi")) {
+            isSeatTypeMatch = pSeatType.includes("couple") || pSeatType.includes("sweetbox") || pSeatType.includes("đôi");
+          } else if (seatTypeLower.includes("vip")) {
+            isSeatTypeMatch = pSeatType.includes("vip");
+          } else {
+            isSeatTypeMatch = pSeatType.includes("standard") || (!pSeatType.includes("vip") && !pSeatType.includes("couple") && !pSeatType.includes("sweetbox") && !pSeatType.includes("đôi"));
+          }
+        }
+        
+        const isDayTypeMatch = pDayType === dayType.toLowerCase();
+        return isRoomTypeMatch && isSeatTypeMatch && isDayTypeMatch;
+      });
+
+      if (matched) {
+        const priceVal = Number(matched.price ?? matched.Price ?? 0);
+        if (priceVal > 0) {
+          const type = seatType.toLowerCase();
+          const isCouple = type.includes("sweetbox") || type.includes("couple") || type.includes("đôi");
+          return isCouple ? priceVal / 2 : priceVal;
+        }
+      }
     }
+  } catch (e) {
+    console.error("Lỗi parse active_ticket_pricings:", e);
+  }
 
-    const storedPriceStr = localStorage.getItem(priceKey);
-    if (storedPriceStr) {
-      const cleaned = storedPriceStr.replace(/\./g, "").trim();
-      const parsed = Number(cleaned);
-      if (!isNaN(parsed) && parsed > 0) {
-        finalPrice = isCouple ? parsed / 2 : parsed;
+  // Fallback to legacy room price local storage or hardcoded defaults
+  const isCouple = seatType.toLowerCase().includes("sweetbox") || seatType.toLowerCase().includes("couple") || seatType.toLowerCase().includes("đôi");
+  const isVip = seatType.toLowerCase().includes("vip");
+
+  if (room) {
+    const cId = getRoomCinemaId(room);
+    const rName = getRoomName(room);
+    if (cId && rName) {
+      let priceKey = "";
+      if (isCouple) {
+        priceKey = isWeekend ? `room_price_cp_we_c${cId}_r${rName}` : `room_price_cp_we_c${cId}_r${rName}`;
+      } else if (isVip) {
+        priceKey = isWeekend ? `room_price_vip_we_c${cId}_r${rName}` : `room_price_vip_wd_c${cId}_r${rName}`;
+      } else {
+        priceKey = isWeekend ? `room_price_std_we_c${cId}_r${rName}` : `room_price_std_wd_c${cId}_r${rName}`;
+      }
+
+      const storedPriceStr = localStorage.getItem(priceKey);
+      if (storedPriceStr) {
+        const cleaned = storedPriceStr.replace(/\./g, "").trim();
+        const parsed = Number(cleaned);
+        if (!isNaN(parsed) && parsed > 0) {
+          return isCouple ? parsed / 2 : parsed;
+        }
       }
     }
   }
 
-  if (finalPrice === null) {
-    if (isCouple) {
-      return isWeekend ? 80000 : 65000;
-    }
-    if (isVip) {
-      return isWeekend ? 120000 : 90000;
-    }
-    return isWeekend ? 90000 : 70000;
+  if (isCouple) {
+    return isWeekend ? 80000 : 65000;
   }
-
-  return finalPrice;
+  if (isVip) {
+    return isWeekend ? 120000 : 90000;
+  }
+  return isWeekend ? 90000 : 70000;
 }
 
 export function groupSeatsByRow(seats) {
@@ -966,6 +981,11 @@ export function useBooking() {
       setBookingError("");
 
       try {
+        // Fetch active ticket pricings in background and store in localStorage
+        fetchActiveTicketPricings()
+          .then(p => localStorage.setItem("active_ticket_pricings", JSON.stringify(p)))
+          .catch(e => console.error("Error caching active ticket pricings:", e));
+
         const data = await loadBookingInitialData({
           movieParam,
           showtimeParam,

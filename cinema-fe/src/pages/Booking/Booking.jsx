@@ -501,7 +501,16 @@ export default function Booking() {
 
               <div className="summary-row-item bk-sidebar-row">
                 <span className="bk-row-icon">🎬</span>
-                <span className="bk-row-val">Định dạng: 2D</span>
+                <span className="bk-row-val">
+                  Định dạng:{" "}
+                  {selectedRoom?.roomType ||
+                    selectedRoom?.RoomType ||
+                    selectedShowtime?.room?.roomType ||
+                    selectedShowtime?.room?.RoomType ||
+                    selectedShowtime?.Room?.roomType ||
+                    selectedShowtime?.Room?.RoomType ||
+                    "2D"}
+                </span>
               </div>
             </div>
 

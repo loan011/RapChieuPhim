@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getMovieList } from "../../Admin/Film/movieService";
 import { getShowtimeDetailList } from "../../Admin/Rate/showtimeService";
 import { getTicketList, updateTicket } from "../../Admin/Ticket/ticketService";
+import { fetchActiveTicketPricings } from "../../Ticket/ticketPriceService";
 import {
   getSeatsByRoomId,
   getAvailableSeats,
@@ -295,11 +296,16 @@ export function useBanVe() {
         setLoading(true);
         setError("");
 
-        const [movieList, showtimeList, foodList] = await Promise.all([
+        const [movieList, showtimeList, foodList, activePricings] = await Promise.all([
           getMovieList(),
           getShowtimeDetailList(),
           getCombosAndFoodsList(),
+          fetchActiveTicketPricings().catch(() => null)
         ]);
+
+        if (activePricings) {
+          localStorage.setItem("active_ticket_pricings", JSON.stringify(activePricings));
+        }
 
         setMovies(Array.isArray(movieList) ? movieList : []);
         setAllShowtimes(Array.isArray(showtimeList) ? showtimeList : []);
