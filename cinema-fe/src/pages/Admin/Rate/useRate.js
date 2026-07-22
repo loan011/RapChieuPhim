@@ -645,35 +645,42 @@ export function generateBatchShowtimes(batchForm, movies, rooms, existingList) {
   );
 
   generated.forEach((item, idx) => {
-    // 1. So sánh với các suất chiếu đã có trong CSDL
+    // 1. So sánh với các suất chiếu đã có trong CSDL (sử dụng đối tượng Date để xử lý chính xác qua ngày/qua đêm)
     for (const ex of existingInRoom) {
-      const exDate = getShowDate(ex);
-      if (exDate === item.showDate) {
+      const exStart = new Date(ex.startTime || ex.StartTime);
+      const exEnd = new Date(ex.endTime || ex.EndTime);
+      if (isNaN(exStart.getTime()) || isNaN(exEnd.getTime())) continue;
+
+      // Cộng thêm 15 phút dọn phòng cho suất chiếu hiện có trên hệ thống (Clean time buffer)
+      const exEndWithBuffer = new Date(exEnd.getTime() + 15 * 60 * 1000);
+
+      const itemStart = new Date(`${item.showDate}T${item.startHour}:00`);
+      const itemEnd = new Date(itemStart.getTime() + totalShowMins * 60 * 1000);
+
+      if (itemStart < exEndWithBuffer && exStart < itemEnd) {
+        item.isConflict = true;
         const exStartStr = getStartHour(ex);
         const exEndStr = getEndHour(ex);
-        const exStartMins = timeToMinutes(exStartStr);
-        let exEndMins = timeToMinutes(exEndStr);
-        if (exEndMins <= exStartMins) exEndMins += 1440;
-
-        if (item.startMins < exEndMins && exStartMins < item.endMins) {
-          item.isConflict = true;
-          item.conflictReason = `Trùng với suất "${getShowtimeMovieTitle(ex, movies)}" (${exStartStr} - ${exEndStr}) đã có trên hệ thống!`;
-          break;
-        }
+        item.conflictReason = `Trùng với suất "${getShowtimeMovieTitle(ex, movies)}" (${exStartStr} - ${exEndStr}) đã có trên hệ thống!`;
+        break;
       }
     }
 
     // 2. So sánh với các suất khác vừa sinh trong đợt này
     if (!item.isConflict) {
+      const itemStart = new Date(`${item.showDate}T${item.startHour}:00`);
+      const itemEnd = new Date(itemStart.getTime() + totalShowMins * 60 * 1000);
+
       for (let j = 0; j < generated.length; j++) {
         if (idx === j) continue;
         const other = generated[j];
-        if (other.showDate === item.showDate) {
-          if (item.startMins < other.endMins && other.startMins < item.endMins) {
-            item.isConflict = true;
-            item.conflictReason = `Trùng giờ với suất ${other.startHour} - ${other.endHour} trong danh sách sinh tự động!`;
-            break;
-          }
+        const otherStart = new Date(`${other.showDate}T${other.startHour}:00`);
+        const otherEnd = new Date(otherStart.getTime() + totalShowMins * 60 * 1000);
+
+        if (itemStart < otherEnd && otherStart < itemEnd) {
+          item.isConflict = true;
+          item.conflictReason = `Trùng giờ với suất ${other.startHour} - ${other.endHour} trong danh sách sinh tự động!`;
+          break;
         }
       }
     }

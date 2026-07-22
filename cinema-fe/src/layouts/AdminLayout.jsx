@@ -147,18 +147,6 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Search Bar */}
-            <div className="relative w-48 sm:w-64">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <MdSearch className="text-gray-400 text-lg" />
-              </span>
-              <input
-                type="text"
-                placeholder="Tìm kiếm..."
-                className="w-full pl-9 pr-4 py-1.5 bg-[#2c2c2e]/60 border border-[#2c2c2e]/80 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#ff3b30] focus:border-[#ff3b30] transition-all"
-              />
-            </div>
-
             {/* Notification Bell */}
             <div className="relative">
               <button 

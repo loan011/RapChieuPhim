@@ -7,7 +7,7 @@ export async function getDailyRevenue(date) {
   const headers = getAuthHeaders();
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
 
   let payments = [];
   let bookings = [];

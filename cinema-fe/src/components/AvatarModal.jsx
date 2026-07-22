@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { MdClose, MdCloudUpload, MdFileUpload, MdSave } from "react-icons/md";
+import { updateProfile } from "../pages/Admin/User/userService";
 import "../styles/Customer/AvatarModal.css";
 
 export default function AvatarModal({ open, onClose, onSaved }) {
@@ -32,27 +33,34 @@ export default function AvatarModal({ open, onClose, onSaved }) {
     reader.readAsDataURL(file);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!changed) return;
-    const oldUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const email = (
-      oldUser.email ||
-      oldUser.Email ||
-      localStorage.getItem("userEmail") ||
-      localStorage.getItem("email") ||
-      ""
-    ).trim().toLowerCase();
-    
-    const updated = { ...oldUser, avatarUrl: preview };
-    localStorage.setItem("user", JSON.stringify(updated));
-    localStorage.setItem("avatarUrl", preview);
-    if (email) {
-      localStorage.setItem(`user_avatar_${email}`, preview);
+    try {
+      await updateProfile({ avatarUrl: preview });
+      
+      const oldUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const email = (
+        oldUser.email ||
+        oldUser.Email ||
+        localStorage.getItem("userEmail") ||
+        localStorage.getItem("email") ||
+        ""
+      ).trim().toLowerCase();
+      
+      const updated = { ...oldUser, avatarUrl: preview };
+      localStorage.setItem("user", JSON.stringify(updated));
+      localStorage.setItem("avatarUrl", preview);
+      if (email) {
+        localStorage.setItem(`user_avatar_${email}`, preview);
+      }
+      window.dispatchEvent(new Event("avatarUpdated"));
+      if (onSaved) onSaved(preview);
+      onClose();
+      setChanged(false);
+    } catch (err) {
+      console.error("Lỗi cập nhật avatar:", err);
+      alert(err?.message || "Cập nhật ảnh đại diện thất bại!");
     }
-    window.dispatchEvent(new Event("avatarUpdated"));
-    if (onSaved) onSaved(preview);
-    onClose();
-    setChanged(false);
   }
 
   function handleClose() {
