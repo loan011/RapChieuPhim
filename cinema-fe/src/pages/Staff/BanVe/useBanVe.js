@@ -215,10 +215,6 @@ export function useBanVe() {
 
   const handleSetIsStudent = (checked) => {
     setIsStudent(checked);
-    if (checked) {
-      setAppliedDiscount(null);
-      setDiscountCodeInput("");
-    }
   };
 
   const handleApplyDiscount = async () => {
@@ -239,7 +235,6 @@ export function useBanVe() {
       );
       if (valid) {
         setAppliedDiscount(valid);
-        setIsStudent(false);
       } else {
         alert("Mã ưu đãi không hợp lệ hoặc đã hết hạn!");
         setAppliedDiscount(null);
@@ -738,16 +733,16 @@ export function useBanVe() {
   }, [selectedSeats, selectedShowtime, isStudent, studentCount]);
 
   const promoDiscountAmount = useMemo(() => {
-    if (!appliedDiscount || isStudent) return 0;
+    if (!appliedDiscount) return 0;
     if (ticketSubtotal < appliedDiscount.minOrderAmount) return 0;
     
     let totalDiscount = appliedDiscount.discountType === "Percent"
       ? Math.round((ticketSubtotal * appliedDiscount.discountValue) / 100)
       : appliedDiscount.discountValue;
-    return Math.min(totalDiscount, ticketSubtotal);
-  }, [ticketSubtotal, appliedDiscount, isStudent]);
+    return Math.min(totalDiscount, ticketSubtotal - studentDiscountAmount);
+  }, [ticketSubtotal, appliedDiscount, studentDiscountAmount]);
 
-  const finalDiscountAmount = isStudent ? studentDiscountAmount : promoDiscountAmount;
+  const finalDiscountAmount = studentDiscountAmount + promoDiscountAmount;
 
   const totalAmount = useMemo(() => {
     return (ticketSubtotal - finalDiscountAmount) + foodTotalAmount;
@@ -837,10 +832,15 @@ export function useBanVe() {
       // NẾU CHỌN THANH TOÁN TIỀN MẶT
       if (paymentMethod === "Cash") {
         try {
-          const pNotes = isStudent 
-          ? `[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)` 
-          : appliedDiscount 
-            ? `[Mã ưu đãi ${appliedDiscount.discountCode}]`
+          let pNotesList = [];
+          if (isStudent) {
+            pNotesList.push(`[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)`);
+          }
+          if (appliedDiscount) {
+            pNotesList.push(`[Mã ưu đãi ${appliedDiscount.discountCode}]`);
+          }
+          const pNotes = pNotesList.length > 0
+            ? pNotesList.join(" + ")
             : `Thanh toan tien mat tai quay cho booking ${bookedIds.join(", ")}`;
 
           const paymentPayload = {
@@ -877,7 +877,8 @@ export function useBanVe() {
           customerPhone: customer.phone || "",
           totalAmount,
           ticketSubtotal,
-          studentDiscountAmount: finalDiscountAmount,
+          studentDiscountAmount: studentDiscountAmount,
+          promoDiscountAmount: promoDiscountAmount,
           isStudent,
           studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
           appliedDiscount,
@@ -910,10 +911,15 @@ export function useBanVe() {
       // Gọi API Payments sau khi tạo Booking thành công
       let qrCodeUrlToUse = "";
       try {
-        const pNotes = isStudent 
-        ? `[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)` 
-        : appliedDiscount 
-          ? `[Mã ưu đãi ${appliedDiscount.discountCode}]`
+        let pNotesList = [];
+        if (isStudent) {
+          pNotesList.push(`[HS/SV-15%] Ưu đãi HS/SV (${Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length)} vé)`);
+        }
+        if (appliedDiscount) {
+          pNotesList.push(`[Mã ưu đãi ${appliedDiscount.discountCode}]`);
+        }
+        const pNotes = pNotesList.length > 0
+          ? pNotesList.join(" + ")
           : `Thanh toán QR qua MOMO/VNPAY`;
 
         const paymentPayload = {
@@ -991,7 +997,8 @@ export function useBanVe() {
         customerPhone: customer.phone || "",
         totalAmount,
         ticketSubtotal,
-        studentDiscountAmount: finalDiscountAmount,
+        studentDiscountAmount: studentDiscountAmount,
+        promoDiscountAmount: promoDiscountAmount,
         isStudent,
         studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
         appliedDiscount,

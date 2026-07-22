@@ -29,7 +29,9 @@ const navItems = [
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return typeof window !== "undefined" ? window.innerWidth >= 768 : true;
+  });
   const [branchName, setBranchName] = useState("Đang tải...");
 
   // Quản lý trạng thái ca làm việc
@@ -174,7 +176,7 @@ export default function StaffLayout() {
   let mainContent;
   if (isSalesPath && shiftState.status === "NOT_STARTED") {
     mainContent = (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 md:p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-4 md:my-8">
         <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-4 animate-pulse">
           <MdPlayCircleOutline style={{ fontSize: '2.5rem' }} />
         </div>
@@ -228,7 +230,7 @@ export default function StaffLayout() {
     );
   } else if (isSalesPath && shiftState.status === "ENDED") {
     mainContent = (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 md:p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-4 md:my-8">
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-4">
           <MdLockOutline style={{ fontSize: '2.5rem' }} />
         </div>
@@ -265,11 +267,19 @@ export default function StaffLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 overflow-hidden relative">
+      {/* Backdrop for mobile */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/50 z-45 md:hidden transition-opacity duration-200 cursor-pointer"
+        />
+      )}
+
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-14"
-        } bg-gray-800 text-white flex flex-col transition-all duration-200 shrink-0`}
+          sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 md:translate-x-0 md:w-14"
+        } bg-gray-800 text-white flex flex-col transition-all duration-200 shrink-0 fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0`}
       >
         <div className="flex items-center gap-2 px-3 py-4 border-b border-gray-700">
           <MdConfirmationNumber className="text-green-400 text-2xl shrink-0" />
@@ -283,6 +293,11 @@ export default function StaffLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setSidebarOpen(false);
+                }
+              }}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 mx-1 rounded text-sm transition-colors ${
                   isActive
@@ -306,20 +321,22 @@ export default function StaffLayout() {
         </button>
       </aside>
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden w-full">
         <header className="bg-white border-b border-gray-200 flex items-center gap-3 px-4 py-3 shrink-0">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="text-gray-500 hover:text-gray-800"
+            className="text-gray-500 hover:text-gray-800 focus:outline-none"
           >
             <MdMenu className="text-2xl" />
           </button>
-          <span className="text-gray-700 font-semibold text-sm">
-            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - {branchName}
+          <span className="text-gray-700 font-semibold text-xs md:text-sm truncate">
+            <span className="hidden md:inline">Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - </span>
+            <span className="md:hidden font-bold">T&M - </span>
+            {branchName}
           </span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
           {mainContent}
         </main>
       </div>
