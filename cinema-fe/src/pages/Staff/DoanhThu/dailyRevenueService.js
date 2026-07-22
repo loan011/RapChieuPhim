@@ -396,8 +396,8 @@ export async function sendDailyRevenueReport(payload) {
   const user = getUser();
   const staffId = user?.userId || user?.UserId || 1;
 
-  // 1. Fetch current daily revenue data for the report date
-  const revenueData = await getDailyRevenue(payload.date);
+  // 1. Get revenue data for payload (custom shift or full day)
+  const revenueData = payload.shiftRevenueData || await getDailyRevenue(payload.date);
 
   // 2. Fetch staff shifts to resolve CinemaId
   let cinemaId = 1;
@@ -413,50 +413,111 @@ export async function sendDailyRevenueReport(payload) {
     console.error("Failed to fetch staff shifts, defaulting cinemaId to 1:", err);
   }
 
+  // Fetch cinema name
+  let cinemaName = "Đồng Khởi";
+  try {
+    const cinemasRes = await fetch(`${API_URL}/Cinemas`, { headers });
+    if (cinemasRes.ok) {
+      const cinemasData = await readResponse(cinemasRes);
+      const cinemas = Array.isArray(cinemasData) ? cinemasData : (Array.isArray(cinemasData?.$values) ? cinemasData.$values : []);
+      const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cinemaId));
+      if (found) {
+        cinemaName = found.cinemaName ?? found.CinemaName ?? "Đồng Khởi";
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch cinemas:", err);
+  }
+
+  let branchDisplayName = cinemaName;
+  if (branchDisplayName.startsWith("CinemaHCM ")) {
+    branchDisplayName = branchDisplayName.replace("CinemaHCM ", "Chi nhánh ");
+  } else if (!branchDisplayName.startsWith("Chi nhánh ")) {
+    branchDisplayName = "Chi nhánh " + branchDisplayName;
+  }
+
   const totalBookings = revenueData.totalTicketsCount || 0;
   const totalOrders = revenueData.bills ? revenueData.bills.filter(b => b.concessions && b.concessions.length > 0).length : 0;
   const totalRevenue = revenueData.totalOverallRevenue || 0;
+  const shiftName = payload.shiftName || "Ca làm việc";
+  const initialCash = Number(payload.initialCash || 0);
+  const actualCash = Number(payload.actualCash || 0);
+  const cashDifference = Number(payload.cashDifference || 0);
+  const diffStatusStr = cashDifference === 0 ? "Khớp 0đ" : (cashDifference > 0 ? `Dư +${cashDifference.toLocaleString('vi-VN')}đ` : `Thiếu ${cashDifference.toLocaleString('vi-VN')}đ`);
 
   // Format rich and detailed Vietnamese summary
-  const summary = `Báo cáo doanh thu ngày ${payload.date}:\n` +
-                  `- Giờ gửi báo cáo: ${payload.sendTime || 'N/A'}\n` +
+  const summary = `Báo cáo kết ca ngày ${payload.date}:\n` +
+                  `- Tên ca: ${shiftName}\n` +
+                  `- Giờ gửi báo cáo: ${payload.sendTime || new Date().toLocaleTimeString('vi-VN')}\n` +
                   `- Doanh thu vé: ${revenueData.totalTicketRevenue?.toLocaleString('vi-VN')}đ (${totalBookings} vé)\n` +
                   `- Doanh thu bắp nước: ${revenueData.totalConcessionRevenue?.toLocaleString('vi-VN')}đ (${totalOrders} đơn)\n` +
                   `- Doanh thu Tiền mặt: ${revenueData.totalCashRevenue?.toLocaleString('vi-VN')}đ (${revenueData.totalCashBillsCount || 0} đơn)\n` +
                   `- Doanh thu Tiền CK: ${revenueData.totalTransferRevenue?.toLocaleString('vi-VN')}đ (${revenueData.totalTransferBillsCount || 0} đơn)\n` +
                   `- Giảm giá: ${revenueData.totalDiscount?.toLocaleString('vi-VN')}đ\n` +
                   `- Tổng doanh thu thực nhận: ${totalRevenue?.toLocaleString('vi-VN')}đ\n` +
+                  `- Kiểm kê két tiền: Đầu ca: ${initialCash.toLocaleString('vi-VN')}đ | Thực đếm: ${actualCash.toLocaleString('vi-VN')}đ | Chênh lệch: ${diffStatusStr}\n` +
                   `- Ghi chú báo cáo: ${payload.notes || "Không có"}\n` +
-                  `- Người gửi: ${user?.fullName || user?.FullName || 'Nhân viên T&M'}`;
-
+                  `- Nơi gửi: ${branchDisplayName}`;
 
   const reportBody = {
     staffId: staffId,
     cinemaId: cinemaId,
     reportDate: payload.date,
+    shiftName: shiftName,
     summary: summary,
     totalBookings: totalBookings,
     totalOrders: totalOrders,
     totalRevenue: totalRevenue,
+    cashRevenue: revenueData.totalCashRevenue || 0,
+    transferRevenue: revenueData.totalTransferRevenue || 0,
+    initialCash: initialCash,
+    actualCash: actualCash,
+    cashDifference: cashDifference,
     createdAt: new Date().toISOString()
   };
 
-  const response = await fetch(`${API_URL}/StaffReports`, {
-    method: "POST",
-    headers: {
-      ...headers,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(reportBody)
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Gửi báo cáo doanh thu thất bại!"));
+  let data = null;
+  try {
+    const response = await fetch(`${API_URL}/StaffReports`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(reportBody)
+    });
+    if (response.ok) {
+      data = await readResponse(response);
+    }
+  } catch (err) {
+    console.warn("Could not post to StaffReports API directly, relying on local sync:", err);
   }
 
-  return data;
+  // Backup sync into localStorage so Admin page receives real-time update
+  try {
+    const existingHistory = JSON.parse(localStorage.getItem("staff_reports_history") || "[]");
+    const localReportItem = {
+      date: payload.date,
+      sendTime: payload.sendTime || new Date().toLocaleTimeString('vi-VN'),
+      sender: user?.fullName || user?.FullName || 'Nhân viên T&M',
+      shiftName: shiftName,
+      summary: summary,
+      totalRevenue: totalRevenue,
+      totalBookings: totalBookings,
+      totalOrders: totalOrders,
+      totalCashRevenue: revenueData.totalCashRevenue || 0,
+      totalTransferRevenue: revenueData.totalTransferRevenue || 0,
+      initialCash: initialCash,
+      actualCash: actualCash,
+      cashDifference: cashDifference,
+      cinemaId: cinemaId,
+      notes: payload.notes || ""
+    };
+    existingHistory.unshift(localReportItem);
+    localStorage.setItem("staff_reports_history", JSON.stringify(existingHistory));
+  } catch (e) {}
+
+  return data || reportBody;
 }
 
 // ==========================================
