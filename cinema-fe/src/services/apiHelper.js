@@ -1,6 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "https://localhost:7013/api";
 
 export function getApiUrl() {
+  if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return API_URL.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
+  }
   return API_URL;
 }
 

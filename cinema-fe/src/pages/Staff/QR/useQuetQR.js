@@ -6,7 +6,7 @@ export function useQuetQR() {
   const [ticketDetails, setTicketDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState([]);
-  const [statusMessage, setStatusMessage] = useState(null);
+  const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
     loadAllTickets();
@@ -29,104 +29,27 @@ export function useQuetQR() {
     setTicketDetails(null);
 
     let cleanCode = code.trim();
-    try {
-      if (cleanCode.includes("%")) {
-        cleanCode = decodeURIComponent(cleanCode);
-      }
-    } catch (e) {}
-
-    // Tự động bóc tách mã vé nếu quét ra link web dạng /ticket-info/TICxxxxx hoặc chuỗi VE:...
+    // Tự động bóc tách mã vé nếu quét ra link web dạng /ticket-info/TICxxxxx
     if (cleanCode.includes("/ticket-info/")) {
       const parts = cleanCode.split("/ticket-info/");
       cleanCode = parts[parts.length - 1];
     } else if (cleanCode.includes("data=VE:")) {
       const match = cleanCode.match(/data=VE:([^|&]+)/);
       if (match) cleanCode = match[1];
-    } else if (cleanCode.includes("VE:")) {
-      const match = cleanCode.match(/VE:([^|&]+)/);
+    } else if (cleanCode.startsWith("VE:")) {
+      const match = cleanCode.match(/VE:([^|]+)/);
       if (match) cleanCode = match[1];
     }
 
-    // Xử lý trường hợp cleanCode có chứa nhiều mã vé phân cách bởi dấu phẩy
-    const codeCandidates = cleanCode
-      .split(/[,;\s]+/)
-      .map((c) => c.trim())
-      .filter(Boolean);
-
     try {
-      let found = null;
+      // 1. Tìm trực tiếp từ API bằng mã vé để đảm bảo tính thời gian thực và độ chính xác 100%
+      let found = await fetchTicketByCode(cleanCode);
 
-      // 1. Thử tra cứu từng candidate qua API Ticket hoặc API Booking
-      for (const cand of codeCandidates) {
-        if (!cand) continue;
-
-        // a) Thử gọi API tra cứu vé trực tiếp
-        let res = await fetchTicketByCode(cand);
-
-        // b) Nếu chưa tìm thấy (VD: cand có dạng BK45 hoặc số 45), thử tra cứu theo BookingId
-        if (!res) {
-          const numericId = cand.replace(/\D/g, "");
-          if (numericId) {
-            const booking = await fetchBookingById(numericId);
-            if (booking) {
-              const bTickets = booking.tickets || booking.Tickets || [];
-              const firstT = Array.isArray(bTickets) ? (bTickets[0] || {}) : {};
-              res = {
-                ...firstT,
-                ticketId: firstT.ticketId || firstT.TicketId || booking.bookingId || booking.BookingId,
-                ticketCode: firstT.ticketCode || firstT.TicketCode || `BK${booking.bookingId || booking.BookingId}`,
-                bookingId: booking.bookingId || booking.BookingId,
-                movieTitle: booking.movieTitle || booking.showTime?.movie?.title || booking.showtime?.movie?.title || "—",
-                roomName: booking.roomName || booking.showTime?.room?.roomName || booking.showtime?.room?.roomName || "—",
-                seatCode: booking.seatCode || booking.seatNumber || (booking.seat ? `${booking.seat.seatRow || ""}${booking.seat.seatNumber || ""}` : "—"),
-                customerName: booking.customerName || booking.userName || booking.user?.fullName || "—",
-                price: booking.totalAmount || booking.price || 0,
-                status: firstT.status || firstT.Status || booking.status || booking.Status || "Active",
-                startTime: booking.startTime || booking.showtime?.startTime,
-                endTime: booking.endTime || booking.showtime?.endTime
-              };
-            }
-          }
-        }
-
-        if (res) {
-          found = res;
-          break;
-        }
-      }
-
-      // 2. Dự phòng: Tìm cục bộ trong danh sách `tickets`
+      // 2. Dự phòng: Tìm cục bộ nếu API trả về lỗi hoặc null
       if (!found) {
-        found = tickets.find((t) => {
-          const ticketCodeStr =
-            t.ticketCode ||
-            t.TicketCode ||
-            t.code ||
-            t.Code ||
-            `VE${t.ticketId || t.TicketId || t.id || t.Id}`;
-
-          const bIdStr = String(t.bookingId ?? t.BookingId ?? t.id ?? t.Id ?? "");
-
-          const isDirectMatch = codeCandidates.some((cand) => {
-            const candLower = cand.toLowerCase();
-            const numericCand = cand.replace(/\D/g, "");
-            return (
-              candLower === String(ticketCodeStr).toLowerCase() ||
-              (numericCand && numericCand === bIdStr) ||
-              candLower === `bk${bIdStr}`.toLowerCase()
-            );
-          });
-
-          if (isDirectMatch) return true;
-
-          if (Array.isArray(t.ticketCodes)) {
-            return t.ticketCodes.some((tc) =>
-              codeCandidates.some(
-                (cand) => cand.toLowerCase() === String(tc).toLowerCase()
-              )
-            );
-          }
-          return false;
+        found = tickets.find(t => {
+          const c = t.ticketCode || t.code || `VE${t.ticketId || t.id}`;
+          return c.toLowerCase() === cleanCode.toLowerCase();
         });
       }
 

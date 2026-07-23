@@ -8,7 +8,7 @@ export function useQuetQRDoAn() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState([]); // For simulation
-  const [statusMessage, setStatusMessage] = useState(null);
+  const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
     loadAllTickets();
@@ -32,12 +32,6 @@ export function useQuetQRDoAn() {
     setOrders([]);
 
     let cleanCode = code.trim();
-    try {
-      if (cleanCode.includes("%")) {
-        cleanCode = decodeURIComponent(cleanCode);
-      }
-    } catch (e) {}
-
     // Tự động bóc tách mã vé nếu quét ra link web dạng /ticket-info/TICxxxxx
     if (cleanCode.includes("/ticket-info/")) {
       const parts = cleanCode.split("/ticket-info/");
@@ -45,52 +39,16 @@ export function useQuetQRDoAn() {
     } else if (cleanCode.includes("data=VE:")) {
       const match = cleanCode.match(/data=VE:([^|&]+)/);
       if (match) cleanCode = match[1];
-    } else if (cleanCode.includes("VE:")) {
-      const match = cleanCode.match(/VE:([^|&]+)/);
+    } else if (cleanCode.startsWith("VE:")) {
+      const match = cleanCode.match(/VE:([^|]+)/);
       if (match) cleanCode = match[1];
     }
-
-    const codeCandidates = cleanCode
-      .split(/[,;\s]+/)
-      .map((c) => c.trim())
-      .filter(Boolean);
 
     try {
       // 1. Thử tìm thông tin vé bằng code
       let ticket = null;
-      for (const cand of codeCandidates) {
-        if (!cand) continue;
-        if (!cand.toUpperCase().startsWith("CB") && !cand.toUpperCase().startsWith("BILL")) {
-          let res = await fetchTicketByCode(cand);
-          if (!res) {
-            const numericId = cand.replace(/\D/g, "");
-            if (numericId) {
-              const booking = await fetchBookingById(numericId);
-              if (booking) {
-                const bTickets = booking.tickets || booking.Tickets || [];
-                const firstT = Array.isArray(bTickets) ? (bTickets[0] || {}) : {};
-                res = {
-                  ...firstT,
-                  ticketId: firstT.ticketId || firstT.TicketId || booking.bookingId || booking.BookingId,
-                  ticketCode: firstT.ticketCode || firstT.TicketCode || `BK${booking.bookingId || booking.BookingId}`,
-                  bookingId: booking.bookingId || booking.BookingId,
-                  movieTitle: booking.movieTitle || booking.showTime?.movie?.title || booking.showtime?.movie?.title || "—",
-                  roomName: booking.roomName || booking.showTime?.room?.roomName || booking.showtime?.room?.roomName || "—",
-                  seatCode: booking.seatCode || booking.seatNumber || (booking.seat ? `${booking.seat.seatRow || ""}${booking.seat.seatNumber || ""}` : "—"),
-                  customerName: booking.customerName || booking.userName || booking.user?.fullName || "—",
-                  price: booking.totalAmount || booking.price || 0,
-                  status: firstT.status || firstT.Status || booking.status || booking.Status || "Active",
-                  startTime: booking.startTime || booking.showtime?.startTime,
-                  endTime: booking.endTime || booking.showtime?.endTime
-                };
-              }
-            }
-          }
-          if (res) {
-            ticket = res;
-            break;
-          }
-        }
+      if (!cleanCode.toUpperCase().startsWith("CB") && !cleanCode.toUpperCase().startsWith("BILL")) {
+        ticket = await fetchTicketByCode(cleanCode);
       }
 
       if (ticket) {

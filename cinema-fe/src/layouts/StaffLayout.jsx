@@ -29,9 +29,7 @@ const navItems = [
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    return typeof window !== "undefined" ? window.innerWidth >= 768 : true;
-  });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [branchName, setBranchName] = useState("Đang tải...");
 
   // Quản lý trạng thái ca làm việc
@@ -45,7 +43,7 @@ export default function StaffLayout() {
   });
 
   const [selectedShift, setSelectedShift] = useState("Ca 1 (08:00 - 16:00)");
-  const [inputCash, setInputCash] = useState("500000");
+  const [inputCash, setInputCash] = useState(500000);
   const [timeError, setTimeError] = useState("");
 
   const user = getUser();
@@ -67,13 +65,6 @@ export default function StaffLayout() {
       window.removeEventListener("shiftStateChange", handleStateUpdate);
     };
   }, []);
-
-  // Tự động đóng sidebar drawer trên di động / máy tính bảng mỗi khi chuyển trang
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setSidebarOpen(false);
-    }
-  }, [location.pathname]);
 
   useEffect(() => {
     async function loadBranchName() {
@@ -150,12 +141,6 @@ export default function StaffLayout() {
 
   // Kích hoạt ca làm việc
   function handleStartShift() {
-    const cashVal = Number(inputCash);
-    if (inputCash === "" || isNaN(cashVal) || cashVal < 0) {
-      setTimeError("Số tiền mặt bàn giao đầu ca phải lớn hơn hoặc bằng 0!");
-      return;
-    }
-
     const validationErr = validateShiftTime(selectedShift);
     if (validationErr) {
       setTimeError(validationErr);
@@ -166,7 +151,7 @@ export default function StaffLayout() {
     const newState = {
       status: "STARTED",
       shiftName: selectedShift,
-      initialCash: cashVal,
+      initialCash: Number(inputCash),
       startedAt: new Date().toISOString()
     };
     localStorage.setItem("staff_shift_state", JSON.stringify(newState));
@@ -189,7 +174,7 @@ export default function StaffLayout() {
   let mainContent;
   if (isSalesPath && shiftState.status === "NOT_STARTED") {
     mainContent = (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 md:p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-4 md:my-8">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
         <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-4 animate-pulse">
           <MdPlayCircleOutline style={{ fontSize: '2.5rem' }} />
         </div>
@@ -219,10 +204,7 @@ export default function StaffLayout() {
             <input
               type="number"
               value={inputCash}
-              onChange={(e) => {
-                setInputCash(e.target.value);
-                setTimeError("");
-              }}
+              onChange={(e) => setInputCash(Number(e.target.value))}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
               placeholder="500000"
             />
@@ -246,7 +228,7 @@ export default function StaffLayout() {
     );
   } else if (isSalesPath && shiftState.status === "ENDED") {
     mainContent = (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 md:p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-4 md:my-8">
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-4">
           <MdLockOutline style={{ fontSize: '2.5rem' }} />
         </div>
@@ -283,19 +265,11 @@ export default function StaffLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden relative">
-      {/* Backdrop for mobile */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-200 cursor-pointer"
-        />
-      )}
-
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       <aside
         className={`${
-          sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 md:translate-x-0 md:w-14"
-        } bg-gray-800 text-white flex flex-col transition-all duration-200 shrink-0 fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0`}
+          sidebarOpen ? "w-64" : "w-14"
+        } bg-gray-800 text-white flex flex-col transition-all duration-200 shrink-0`}
       >
         <div className="flex items-center gap-2 px-3 py-4 border-b border-gray-700">
           <MdConfirmationNumber className="text-green-400 text-2xl shrink-0" />
@@ -309,45 +283,53 @@ export default function StaffLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => {
+                if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                  setSidebarOpen(false);
+                }
+              }}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-3 mx-1.5 rounded-xl text-sm font-semibold transition-all touch-manipulation select-none ${
+                `flex items-center gap-3 px-3.5 py-3 mx-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   isActive
                     ? "bg-green-600 text-white shadow-md shadow-green-900/30 font-bold"
                     : "text-gray-300 hover:bg-gray-700/80 active:bg-gray-700"
                 }`
               }
             >
-              <span className="text-xl shrink-0 pointer-events-none">{item.icon}</span>
-              {sidebarOpen && <span className="truncate pointer-events-none">{item.label}</span>}
+              <span className="text-xl shrink-0">{item.icon}</span>
+              {sidebarOpen && <span className="truncate">{item.label}</span>}
             </NavLink>
           ))}
         </nav>
 
         <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.innerWidth < 1024) {
+              setSidebarOpen(false);
+            }
+            handleLogout();
+          }}
+          className="flex items-center gap-3 px-3 py-3 mx-1 mb-2 rounded text-sm text-gray-300 hover:bg-red-700 hover:text-white transition-colors cursor-pointer"
         >
           <MdLogout className="text-lg shrink-0" />
           {sidebarOpen && <span>Đăng xuất</span>}
         </button>
       </aside>
 
-      <div className="flex flex-col flex-1 overflow-hidden w-full">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <header className="bg-white border-b border-gray-200 flex items-center gap-3 px-4 py-3 shrink-0">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="staff-hamburger text-gray-500 hover:text-gray-800 focus:outline-none"
+            className="text-gray-500 hover:text-gray-800"
           >
             <MdMenu className="text-2xl" />
           </button>
-          <span className="text-gray-700 font-semibold text-xs md:text-sm truncate">
-            <span className="hidden md:inline">Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - </span>
-            <span className="md:hidden font-bold">T&M - </span>
-            {branchName}
+          <span className="text-gray-700 font-semibold text-sm">
+            Hệ Thống Nhân Viên Rạp Chiếu Phim T&M - {branchName}
           </span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
+        <main className="flex-1 overflow-y-auto p-6">
           {mainContent}
         </main>
       </div>
