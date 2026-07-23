@@ -14,6 +14,8 @@ import {
   releaseSeat,
   getCombos,
 } from "./bookingService.js";
+import { getDiscountList } from "../Admin/Discount/discountService";
+import { INITIAL_DISCOUNTS, getStoredDiscounts } from "../Admin/Discount/useDiscount";
 
 /* =========================
    LOCAL USER
@@ -1198,6 +1200,47 @@ export function useBooking() {
     );
   }, [selectedSeats, selectedShowtime, rooms]);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountError, setDiscountError] = useState("");
+  const [discountSuccess, setDiscountSuccess] = useState("");
+  const [availableDiscounts, setAvailableDiscounts] = useState(() => {
+    return getStoredDiscounts().filter((d) => d.isActive !== false);
+  });
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+
+  useEffect(() => {
+    async function loadDiscounts() {
+      try {
+        const list = await getDiscountList();
+        if (Array.isArray(list) && list.length > 0) {
+          const activeList = list.filter((d) => d.isActive !== false);
+          setAvailableDiscounts(activeList);
+        } else {
+          const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
+          setAvailableDiscounts(stored);
+        }
+      } catch (err) {
+        const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
+        setAvailableDiscounts(stored);
+      }
+    }
+
+    loadDiscounts();
+
+    function handleSync() {
+      const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
+      setAvailableDiscounts(stored);
+    }
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("discountsUpdated", handleSync);
+    return () => {
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("discountsUpdated", handleSync);
+    };
+  }, []);
+
   const totalCombosAmount = useMemo(() => {
     return selectedCombos.reduce(
       (sum, item) => sum + Number(item.price) * Number(item.quantity),
@@ -1205,9 +1248,118 @@ export function useBooking() {
     );
   }, [selectedCombos]);
 
-  const finalTotalAmount = useMemo(() => {
+  const rawTotalAmount = useMemo(() => {
     return totalAmount + totalCombosAmount;
   }, [totalAmount, totalCombosAmount]);
+
+  const discountAmount = useMemo(() => {
+    if (!appliedDiscount || rawTotalAmount <= 0) return 0;
+
+    const minOrder = Number(appliedDiscount.minOrderAmount || 0);
+    if (minOrder > 0 && rawTotalAmount < minOrder) {
+      return 0;
+    }
+
+    // Determine applicable base amount according to Admin Scope
+    let applicableBase = rawTotalAmount;
+    const scope = (appliedDiscount.scope || "").toLowerCase();
+    if (scope.includes("vé") || scope.includes("film") || scope.includes("phim")) {
+      applicableBase = totalAmount;
+    } else if (scope.includes("đồ ăn") || scope.includes("combo") || scope.includes("thức ăn")) {
+      applicableBase = totalCombosAmount;
+    }
+
+    if (applicableBase <= 0) return 0;
+
+    let calc = 0;
+    if (appliedDiscount.discountType === "Percent") {
+      calc = (applicableBase * Number(appliedDiscount.discountValue || 0)) / 100;
+      const maxAmt = Number(appliedDiscount.maxDiscountAmount || 0);
+      if (maxAmt > 0) {
+        calc = Math.min(calc, maxAmt);
+      }
+    } else {
+      calc = Number(appliedDiscount.discountValue || 0);
+    }
+
+    return Math.min(calc, applicableBase);
+  }, [appliedDiscount, rawTotalAmount, totalAmount, totalCombosAmount]);
+
+  const finalTotalAmount = useMemo(() => {
+    return Math.max(0, rawTotalAmount - discountAmount);
+  }, [rawTotalAmount, discountAmount]);
+
+  function handleApplyCoupon(inputCode) {
+    const code = (inputCode || couponInput).trim().toUpperCase();
+    setDiscountError("");
+    setDiscountSuccess("");
+
+    if (!code) {
+      setDiscountError("Vui lòng nhập mã giảm giá.");
+      return;
+    }
+
+    const disc = availableDiscounts.find(
+      (d) => (d.discountCode || "").toUpperCase() === code
+    );
+
+    if (!disc) {
+      setDiscountError(`Mã giảm giá "${code}" không tồn tại hoặc đã hết hạn.`);
+      return;
+    }
+
+    if (disc.isActive === false) {
+      setDiscountError(`Mã giảm giá "${code}" hiện đang bị tạm dừng.`);
+      return;
+    }
+
+    // Kiểm tra số lượt sử dụng toàn hệ thống
+    if (disc.maxUsageTotal > 0 && (disc.usedCount || 0) >= disc.maxUsageTotal) {
+      setDiscountError(`Mã giảm giá "${code}" đã hết tổng lượt sử dụng trên hệ thống.`);
+      return;
+    }
+
+    const now = new Date();
+    if (disc.startDate && new Date(disc.startDate) > now) {
+      setDiscountError(`Mã giảm giá "${code}" chưa đến thời gian áp dụng.`);
+      return;
+    }
+
+    if (disc.endDate && new Date(disc.endDate) < now) {
+      setDiscountError(`Mã giảm giá "${code}" đã hết hạn sử dụng.`);
+      return;
+    }
+
+    const minOrder = Number(disc.minOrderAmount || 0);
+    if (minOrder > 0 && rawTotalAmount < minOrder) {
+      setDiscountError(
+        `Mã "${code}" chỉ áp dụng cho đơn hàng từ ${minOrder.toLocaleString("vi-VN")}đ trở lên.`
+      );
+      return;
+    }
+
+    // Kiểm tra phạm vi dịch vụ
+    const scope = (disc.scope || "").toLowerCase();
+    if ((scope.includes("vé") || scope.includes("phim")) && totalAmount <= 0) {
+      setDiscountError(`Mã "${code}" chỉ áp dụng khi có đặt Vé xem phim.`);
+      return;
+    }
+    if ((scope.includes("đồ ăn") || scope.includes("combo")) && totalCombosAmount <= 0) {
+      setDiscountError(`Mã "${code}" chỉ áp dụng khi mua Đồ ăn & Combo.`);
+      return;
+    }
+
+    setAppliedDiscount(disc);
+    setDiscountSuccess(`Áp dụng thành công mã "${code}"!`);
+    setShowVoucherModal(false);
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedDiscount(null);
+    setCouponInput("");
+    setDiscountError("");
+    setDiscountSuccess("");
+  }
 
   const groupedSeats = groupSeatsByRow(allSeats);
   const rowsKeys = Object.keys(groupedSeats).sort();
@@ -1297,6 +1449,9 @@ export function useBooking() {
         state: {
           bookingIds: bookedIds.map(Number),
           totalAmount: finalTotalAmount,
+          rawTotalAmount,
+          discountAmount,
+          appliedDiscount,
           movie,
           selectedCinemaId,
           selectedDateIso,
@@ -1356,5 +1511,18 @@ export function useBooking() {
     finalTotalAmount,
     updateComboQuantity,
     handleConfirmBooking,
+
+    // Customer Coupon states
+    couponInput,
+    setCouponInput,
+    appliedDiscount,
+    discountAmount,
+    discountError,
+    discountSuccess,
+    availableDiscounts,
+    showVoucherModal,
+    setShowVoucherModal,
+    handleApplyCoupon,
+    handleRemoveCoupon,
   };
 }

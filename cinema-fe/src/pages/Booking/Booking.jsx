@@ -122,6 +122,19 @@ export default function Booking() {
     finalTotalAmount,
     updateComboQuantity,
     handleConfirmBooking,
+
+    // Customer Coupon states
+    couponInput,
+    setCouponInput,
+    appliedDiscount,
+    discountAmount,
+    discountError,
+    discountSuccess,
+    availableDiscounts,
+    showVoucherModal,
+    setShowVoucherModal,
+    handleApplyCoupon,
+    handleRemoveCoupon,
   } = useBooking();
 
   const formatTime = (seconds) => {
@@ -562,16 +575,22 @@ export default function Booking() {
                 </div>
               )}
 
+              {discountAmount > 0 && (
+                <div className="bk-price-row" style={{ color: "#22c55e" }}>
+                  <span>Giảm giá ({appliedDiscount?.discountCode})</span>
+                  <strong>-{discountAmount.toLocaleString("vi-VN")}đ</strong>
+                </div>
+              )}
             </div>
 
             <div className="summary-divider"></div>
 
             {/* Total calculation */}
             <div className="summary-total-price-box bk-sidebar-total">
-              <span>Tổng thanh toán</span>
+              <span>Tổng tạm tính</span>
               <h2 className="bk-total-price">
                 {selectedSeats.length > 0
-                  ? finalTotalAmount.toLocaleString("vi-VN") + "đ"
+                  ? totalAmount.toLocaleString("vi-VN") + "đ"
                   : "0đ"}
               </h2>
             </div>
@@ -806,21 +825,78 @@ export default function Booking() {
               })}
             </div>
 
+            {/* Customer Coupon Block inside Checkout Modal */}
+            <div className="bk-sidebar-coupon-block" style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <div className="bk-coupon-header">
+                <span>MÃ GIẢM GIÁ / VOUCHER</span>
+                {availableDiscounts.length > 0 && (
+                  <button
+                    type="button"
+                    className="bk-show-vouchers-btn"
+                    onClick={() => setShowVoucherModal(true)}
+                  >
+                    🎟️ Chọn voucher
+                  </button>
+                )}
+              </div>
+
+              {!appliedDiscount ? (
+                <div className="bk-coupon-input-wrap">
+                  <input
+                    type="text"
+                    className="bk-coupon-input"
+                    placeholder="Nhập mã (VD: SUMMER20)"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  />
+                  <button
+                    type="button"
+                    className="bk-coupon-apply-btn"
+                    onClick={() => handleApplyCoupon(couponInput)}
+                    disabled={!couponInput.trim()}
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              ) : (
+                <div className="bk-coupon-applied-card">
+                  <div className="bk-coupon-applied-info">
+                    <span className="bk-coupon-applied-code">🏷️ {appliedDiscount.discountCode}</span>
+                    <span className="bk-coupon-applied-val">
+                      -{discountAmount.toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="bk-coupon-remove-btn"
+                    onClick={handleRemoveCoupon}
+                    title="Gỡ mã giảm giá"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {discountError && <div className="bk-coupon-error">{discountError}</div>}
+              {discountSuccess && <div className="bk-coupon-success">{discountSuccess}</div>}
+            </div>
+
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 paddingTop: "16px",
+                marginTop: "16px",
                 borderTop: "1px solid rgba(255,255,255,0.1)",
               }}
             >
               <div>
                 <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }}>
-                  Tiền bắp nước thêm:
+                  Tổng tiền thanh toán ({selectedSeats.length}x ghế{totalCombosAmount > 0 ? " + combo" : ""}):
                 </span>
-                <h3 style={{ margin: 0, color: "#e50914", fontWeight: "800" }}>
-                  {totalCombosAmount.toLocaleString("vi-VN")}đ
+                <h3 style={{ margin: 0, color: "#e50914", fontWeight: "800", fontSize: "1.3rem" }}>
+                  {finalTotalAmount.toLocaleString("vi-VN")}đ
                 </h3>
               </div>
 
@@ -859,6 +935,76 @@ export default function Booking() {
                   XÁC NHẬN & ĐẶT VÉ
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Selection Modal */}
+      {showVoucherModal && (
+        <div className="bk-voucher-modal-overlay" onClick={() => setShowVoucherModal(false)}>
+          <div className="bk-voucher-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "800", color: "#fff" }}>🎟️ Chọn Mã Ưu Đãi</h3>
+              <button
+                type="button"
+                onClick={() => setShowVoucherModal(false)}
+                style={{ background: "none", border: "none", color: "#aaa", fontSize: "18px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "60vh", overflowY: "auto" }}>
+              {availableDiscounts.length > 0 ? (
+                availableDiscounts.map((disc) => {
+                  const minOrder = Number(disc.minOrderAmount || 0);
+                  const currentTotal = totalAmount + totalCombosAmount;
+                  const isEligible = currentTotal >= minOrder;
+                  const isSelected = appliedDiscount?.discountCode === disc.discountCode;
+
+                  return (
+                    <div
+                      key={disc.discountId || disc.discountCode}
+                      className="bk-voucher-item"
+                      style={{
+                        opacity: isEligible ? 1 : 0.65,
+                        border: isSelected ? "1px solid #22c55e" : "1px dashed rgba(229, 9, 20, 0.5)",
+                        background: isSelected ? "rgba(34, 197, 94, 0.1)" : "rgba(255, 255, 255, 0.03)",
+                      }}
+                    >
+                      <div style={{ flex: 1, paddingRight: "12px" }}>
+                        <div className="bk-voucher-code">🏷️ {disc.discountCode}</div>
+                        <div className="bk-voucher-desc">
+                          {disc.programName || disc.description}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#aaa", marginTop: "4px" }}>
+                          Mức giảm: <strong>{disc.discountType === "Percent" ? `${disc.discountValue}%` : `${Number(disc.discountValue).toLocaleString("vi-VN")}đ`}</strong>
+                          {minOrder > 0 ? ` (Đơn tối thiểu ${minOrder.toLocaleString("vi-VN")}đ)` : ""}
+                        </div>
+                        {!isEligible && (
+                          <div style={{ fontSize: "10px", color: "#f87171", marginTop: "2px" }}>
+                            * Đơn hàng chưa đạt mức tối thiểu {minOrder.toLocaleString("vi-VN")}đ
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="bk-coupon-apply-btn"
+                        style={{ padding: "6px 14px", fontSize: "12px" }}
+                        onClick={() => handleApplyCoupon(disc.discountCode)}
+                      >
+                        {isSelected ? "Đã dùng" : "Áp dụng"}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>
+                  Chưa có mã giảm giá nào sẵn có.
+                </div>
+              )}
             </div>
           </div>
         </div>

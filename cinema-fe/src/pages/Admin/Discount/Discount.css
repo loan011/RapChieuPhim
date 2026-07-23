@@ -1,0 +1,589 @@
+/* ═══════════════════════════════════════════════
+   Quản Lý Mã Giảm Giá – Discount.css
+   ═══════════════════════════════════════════════ */
+
+.dc-wrapper {
+  padding: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+/* Header */
+.dc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dc-title-group h4 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+
+.dc-subtitle {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.dc-btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #e50914, #b20710);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 22px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.dc-btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.6);
+}
+
+/* Stats Cards */
+.dc-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dc-stat-card {
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dc-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.dc-stat-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.dc-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* Filter Bar */
+.dc-filter-bar {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.dc-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+}
+
+.dc-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.dc-search-input {
+  width: 100%;
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 11px 14px 11px 42px;
+  color: #fff;
+  font-size: 0.875rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.dc-search-input:focus {
+  border-color: #e50914;
+}
+
+.dc-select-filter {
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 11px 16px;
+  color: #fff;
+  font-size: 0.875rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.dc-select-filter option {
+  background-color: #18181c;
+  color: #fff;
+}
+
+.dc-select-filter:focus {
+  border-color: #e50914;
+}
+
+/* Table Container */
+.dc-table-card {
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dc-table-wrapper {
+  overflow-x: auto;
+}
+
+.dc-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  min-width: 1050px;
+}
+
+.dc-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.dc-table td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #ddd;
+  vertical-align: middle;
+}
+
+.dc-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Code Badge */
+.dc-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(229, 9, 20, 0.15);
+  border: 1px dashed rgba(229, 9, 20, 0.6);
+  color: #ff4d4d;
+  font-family: monospace;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.dc-program-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+/* Discount Type Badge & Value Block */
+.dc-discount-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.dc-type-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.dc-type-badge.type-percent {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.dc-type-badge.type-fixed {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.dc-value-text {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #22c55e;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dc-scope-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.dc-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.dc-subtext {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Status Badges */
+.dc-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.dc-status-badge.status-active {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dc-status-badge.status-upcoming {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.dc-status-badge.status-expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dc-status-badge.status-inactive {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+/* Actions */
+.dc-actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.dc-icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dc-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.dc-icon-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.dc-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.dc-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dc-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: 0.3s;
+  border-radius: 20px;
+}
+
+.dc-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .dc-toggle-slider {
+  background-color: #22c55e;
+}
+
+input:checked + .dc-toggle-slider:before {
+  transform: translateX(18px);
+}
+
+/* Empty State */
+.dc-empty {
+  padding: 48px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Modal Overlay */
+.dc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.dc-modal-card {
+  background: #16161a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+  color: #fff;
+  position: relative;
+}
+
+.dc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dc-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0;
+  color: #fff;
+}
+
+.dc-modal-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #aaa;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.dc-modal-close:hover {
+  background: #e50914;
+  color: #fff;
+}
+
+/* Modal Form Cards for Sections */
+.dc-form-section-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.dc-section-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #e50914;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dc-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dc-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dc-form-group.full-width {
+  grid-column: span 2;
+}
+
+.dc-form-group label {
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dc-input {
+  background: #202026;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: #fff;
+  font-size: 0.88rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.dc-input option {
+  background-color: #202026;
+  color: #ffffff;
+  padding: 8px;
+}
+
+.dc-input:focus {
+  border-color: #e50914;
+  background: #26262d;
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.25);
+}
+
+.dc-field-hint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+}
+
+.dc-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dc-btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 11px 22px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dc-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dc-btn-save {
+  background: linear-gradient(135deg, #e50914, #b20710);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 11px 26px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+  transition: all 0.2s;
+}
+
+.dc-btn-save:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.6);
+}
+
+.dc-error-msg {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}

@@ -146,6 +146,12 @@ export default function Payment() {
                 </div>
               </div>
             )}
+            {bookingData.discountAmount > 0 && (
+              <div className="detail-row" style={{ color: "#22c55e", fontSize: "0.9rem", marginTop: "8px" }}>
+                <span>Giảm giá ({bookingData.appliedDiscount?.discountCode || "Voucher"}):</span>
+                <strong>-{bookingData.discountAmount.toLocaleString("vi-VN")}đ</strong>
+              </div>
+            )}
             <hr className="divider" />
             <div className="detail-row total-row">
               <span>TỔNG TIỀN:</span>

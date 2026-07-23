@@ -16,6 +16,7 @@ import {
   MdFastfood,
   MdDashboard,
   MdAssignment,
+  MdLocalOffer,
 } from "react-icons/md";
 import { useState, useEffect } from "react";
 import { getApiUrl, getAuthHeaders, readResponse } from "../services/apiHelper";
@@ -26,6 +27,7 @@ const navItems = [
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",            label: "Suất Chiếu",             icon: <MdCalendarMonth /> },
+  { to: "/admin/ma-giam-gia",           label: "Mã Giảm Giá",            icon: <MdLocalOffer /> },
   { to: "/admin/bao-cao",               label: "Báo Cáo",                icon: <MdAssignment /> },
   { to: "/admin/thong-bao",             label: "Thông Báo",              icon: <MdNotifications /> },
   { to: "/admin/do-an",                 label: "Đồ Ăn & Combo",          icon: <MdFastfood /> },

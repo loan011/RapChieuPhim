@@ -32,6 +32,7 @@ import Ghe from "./pages/Admin/Seat/Seat";
 import ThongBao from "./pages/Admin/Notice/Notice";
 import Food from "./pages/Admin/Food/Food";
 import BaoCao from "./pages/Admin/BaoCao/BaoCao";
+import Discount from "./pages/Admin/Discount/Discount";
 
 import StaffLayout from "./layouts/StaffLayout";
 import StaffBanVe from "./pages/Staff/BanVe/BanVe";
@@ -157,6 +158,7 @@ function App() {
           <Route path="rap-chieu" element={<Navigate to="/admin/phong-chieu" replace />} />
           <Route path="suat-chieu" element={<SuatChieu />} />
           <Route path="ghe" element={<Navigate to="/admin/phong-chieu" replace />} />
+          <Route path="ma-giam-gia" element={<Discount />} />
           <Route path="do-an" element={<Food />} />
           <Route path="bao-cao" element={<BaoCao />} />
           <Route path="thong-bao" element={<ThongBao />} />

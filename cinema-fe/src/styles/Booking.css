@@ -741,3 +741,186 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
   margin: auto !important;
 }
+
+/* Customer Discount Coupon Block in Booking Sidebar */
+.bk-sidebar-coupon-block {
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bk-coupon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.bk-show-vouchers-btn {
+  background: transparent;
+  border: none;
+  color: #ff4d4d;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.bk-show-vouchers-btn:hover {
+  color: #e50914;
+}
+
+.bk-coupon-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+
+.bk-coupon-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  outline: none;
+}
+
+.bk-coupon-input:focus {
+  border-color: #e50914;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bk-coupon-apply-btn {
+  background: linear-gradient(135deg, #e50914, #b20710);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bk-coupon-apply-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.bk-coupon-apply-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
+.bk-coupon-applied-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px dashed rgba(34, 197, 94, 0.5);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.bk-coupon-applied-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bk-coupon-applied-code {
+  font-size: 12px;
+  font-weight: 800;
+  color: #4ade80;
+}
+
+.bk-coupon-applied-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.bk-coupon-remove-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border: none;
+  color: #f87171;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.bk-coupon-error {
+  font-size: 11px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.bk-coupon-success {
+  font-size: 11px;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+/* Voucher List Modal */
+.bk-voucher-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.bk-voucher-modal-card {
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 450px;
+  padding: 20px;
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.bk-voucher-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bk-voucher-code {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ff4d4d;
+}
+
+.bk-voucher-desc {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 2px;
+}
