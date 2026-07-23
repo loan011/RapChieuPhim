@@ -381,15 +381,19 @@ export function useDiscount() {
     try {
       let updatedList = [];
       if (editId !== null) {
-        await updateDiscount(editId, payload).catch((err) => {
-          console.warn("API update fail, updating state locally:", err);
-        });
+        try {
+          await updateDiscount(editId, payload);
+        } catch (apiErr) {
+          console.warn("Lỗi API Cập nhật, vẫn lưu đồng bộ ứng dụng:", apiErr);
+        }
         updatedList = discounts.map((d) => (String(d.discountId) === String(editId) ? { ...d, ...payload, discountId: editId } : d));
       } else {
-        const created = await createDiscount(payload).catch((err) => {
-          console.warn("API create fail, adding to state locally:", err);
-          return null;
-        });
+        let created = null;
+        try {
+          created = await createDiscount(payload);
+        } catch (apiErr) {
+          console.warn("Lỗi API Tạo mới, vẫn lưu đồng bộ ứng dụng:", apiErr);
+        }
         const newItem = created || {
           ...payload,
           discountId: Date.now(),

@@ -21,6 +21,7 @@ import {
   getSeatPrice,
 } from "../../Booking/usebooking.js";
 import { getApiUrl, getAuthHeaders, readResponse } from "../../../services/apiHelper";
+import { getStoredDiscounts } from "../../Admin/Discount/useDiscount";
 
 /* =========================
    SEAT HELPER
@@ -210,39 +211,116 @@ export function useBanVe() {
   const [currentPaymentId, setCurrentPaymentId] = useState(null);
   const [isStudent, setIsStudent] = useState(false);
   const [studentCount, setStudentCount] = useState(1);
-  const [discountCodeInput, setDiscountCodeInput] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(null);
 
   const handleSetIsStudent = (checked) => {
     setIsStudent(checked);
   };
 
-  const handleApplyDiscount = async () => {
-    if (!discountCodeInput.trim()) {
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [availableDiscounts, setAvailableDiscounts] = useState(() => {
+    return getStoredDiscounts().filter((d) => d.isActive !== false);
+  });
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+
+  useEffect(() => {
+    async function loadDiscounts() {
+      try {
+        const res = await fetch(`${getApiUrl()}/Discounts`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const list = await readResponse(res);
+          if (Array.isArray(list) && list.length > 0) {
+            setAvailableDiscounts(list.filter((d) => d.isActive !== false));
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Lỗi API fetch Discounts tại POS, dùng dữ liệu lưu trữ:", err);
+      }
+      setAvailableDiscounts(getStoredDiscounts().filter((d) => d.isActive !== false));
+    }
+
+    loadDiscounts();
+
+    function handleSync() {
+      setAvailableDiscounts(getStoredDiscounts().filter((d) => d.isActive !== false));
+    }
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("discountsUpdated", handleSync);
+    return () => {
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("discountsUpdated", handleSync);
+    };
+  }, []);
+
+  const handleApplyDiscount = async (customCode) => {
+    const codeToApply = (customCode || discountCodeInput).trim().toUpperCase();
+    if (!codeToApply) {
       setAppliedDiscount(null);
       return;
     }
+
+    // Tim trong availableDiscounts hoac fetch tu API
+    let discountsList = availableDiscounts;
     try {
       const res = await fetch(`${getApiUrl()}/Discounts`, { headers: getAuthHeaders() });
-      const discounts = await readResponse(res);
-      const codeToApply = discountCodeInput.trim().toUpperCase();
-      const valid = discounts.find(
-        (d) =>
-          d.discountCode === codeToApply &&
-          d.isActive &&
-          new Date(d.startDate) <= new Date() &&
-          (!d.endDate || new Date(d.endDate) >= new Date())
-      );
-      if (valid) {
-        setAppliedDiscount(valid);
-      } else {
-        alert("Mã ưu đãi không hợp lệ hoặc đã hết hạn!");
-        setAppliedDiscount(null);
+      if (res.ok) {
+        const data = await readResponse(res);
+        if (Array.isArray(data) && data.length > 0) {
+          discountsList = data;
+        }
       }
-    } catch (error) {
-      console.error("Lỗi áp dụng mã:", error);
-      alert("Lỗi kiểm tra mã!");
+    } catch (e) {
+      // Fallback dung stored discounts
     }
+
+    const now = new Date();
+    const valid = discountsList.find(
+      (d) => (d.discountCode || "").toUpperCase() === codeToApply
+    );
+
+    if (!valid) {
+      alert(`Mã giảm giá "${codeToApply}" không tồn tại!`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    if (valid.isActive === false) {
+      alert(`Mã giảm giá "${codeToApply}" hiện đang bị tạm dừng.`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    if (valid.startDate && new Date(valid.startDate) > now) {
+      alert(`Mã giảm giá "${codeToApply}" chưa đến thời gian áp dụng.`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    if (valid.endDate && new Date(valid.endDate) < now) {
+      alert(`Mã giảm giá "${codeToApply}" đã hết hạn sử dụng.`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    const totalBill = ticketSubtotal + foodTotalAmount;
+    const minOrder = Number(valid.minOrderAmount || 0);
+    if (minOrder > 0 && totalBill < minOrder) {
+      alert(`Mã "${codeToApply}" chỉ áp dụng cho đơn hàng từ ${minOrder.toLocaleString("vi-VN")}đ trở lên.`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    if (valid.maxUsageTotal > 0 && (valid.usedCount || 0) >= valid.maxUsageTotal) {
+      alert(`Mã "${codeToApply}" đã hết tổng lượt sử dụng trên hệ thống.`);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setAppliedDiscount(valid);
+    setDiscountCodeInput(valid.discountCode);
+    setShowVoucherModal(false);
   };
 
   const removeDiscount = () => {
@@ -1288,6 +1366,9 @@ export function useBanVe() {
     discountCodeInput,
     setDiscountCodeInput,
     appliedDiscount,
+    availableDiscounts,
+    showVoucherModal,
+    setShowVoucherModal,
     handleApplyDiscount,
     removeDiscount,
     ticketSubtotal,

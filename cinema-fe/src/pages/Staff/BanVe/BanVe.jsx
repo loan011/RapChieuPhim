@@ -166,6 +166,9 @@ export default function StaffBanVe() {
     discountCodeInput,
     setDiscountCodeInput,
     appliedDiscount,
+    availableDiscounts,
+    showVoucherModal,
+    setShowVoucherModal,
     handleApplyDiscount,
     removeDiscount,
     ticketSubtotal,
@@ -594,22 +597,33 @@ export default function StaffBanVe() {
 
               {/* Nhập mã ưu đãi */}
               <div className="mt-2.5 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
-                <label className="block text-sm font-bold text-blue-800 mb-1.5">
-                  🎟️ Mã giảm giá / Ưu đãi
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-sm font-bold text-blue-800">
+                    🎟️ Mã giảm giá / Ưu đãi
+                  </label>
+                  {availableDiscounts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowVoucherModal(true)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                    >
+                      🎟️ Danh sách mã ({availableDiscounts.length})
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Nhập mã..."
                     value={discountCodeInput}
-                    onChange={(e) => setDiscountCodeInput(e.target.value)}
+                    onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
                     disabled={appliedDiscount !== null}
                     className="flex-1 border border-blue-200 rounded-xl px-3 py-1.5 text-sm font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case min-w-0"
                   />
                   {!appliedDiscount ? (
                     <button
                       type="button"
-                      onClick={handleApplyDiscount}
+                      onClick={() => handleApplyDiscount()}
                       className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       Áp dụng
@@ -624,9 +638,9 @@ export default function StaffBanVe() {
                     </button>
                   )}
                 </div>
-                {appliedDiscount && ticketSubtotal > 0 && (
-                  <div className="mt-2 pl-1 text-xs font-bold text-blue-700 flex justify-between">
-                    <span>Mã {appliedDiscount.discountCode} đã áp dụng:</span>
+                {appliedDiscount && (
+                  <div className="mt-2 pl-1 text-xs font-bold text-blue-700 flex justify-between items-center">
+                    <span>Mã <strong>{appliedDiscount.discountCode}</strong> ({appliedDiscount.programName || appliedDiscount.discountType}):</span>
                     <span className="font-extrabold text-sm text-red-600">-{formatMoney(studentDiscountAmount)} đ</span>
                   </div>
                 )}
@@ -814,6 +828,90 @@ export default function StaffBanVe() {
               >
                 Xác nhận
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal chọn Voucher dành cho Nhân viên Bán vé tại Quầy Chi Nhánh */}
+      {showVoucherModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99999] flex items-center justify-center p-4" onClick={() => setShowVoucherModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-4">
+              <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                🎟️ Danh Sách Ưu Đãi Admin ({availableDiscounts.length})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowVoucherModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {availableDiscounts.length > 0 ? (
+                availableDiscounts.map((disc) => {
+                  const minOrder = Number(disc.minOrderAmount || 0);
+                  const totalBill = ticketSubtotal + foodTotalAmount;
+                  const isEligible = totalBill >= minOrder;
+                  const isSelected = appliedDiscount?.discountCode === disc.discountCode;
+
+                  return (
+                    <div
+                      key={disc.discountId || disc.discountCode}
+                      className={`p-3.5 rounded-xl border transition-all flex justify-between items-center gap-3 ${
+                        isSelected
+                          ? "border-green-500 bg-green-50/70"
+                          : isEligible
+                          ? "border-blue-200 bg-blue-50/30 hover:border-blue-400"
+                          : "border-gray-200 bg-gray-50 opacity-60"
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
+                            🏷️ {disc.discountCode}
+                          </span>
+                          <span className="text-xs font-bold text-gray-500">
+                            {disc.discountType === "Percent" ? `Giảm ${disc.discountValue}%` : `Giảm ${formatMoney(disc.discountValue)}đ`}
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-gray-700 mt-1 truncate">
+                          {disc.programName || disc.description}
+                        </p>
+                        {minOrder > 0 && (
+                          <p className="text-[11px] font-medium text-gray-500 mt-0.5">
+                            Đơn tối thiểu: <strong>{formatMoney(minOrder)}đ</strong>
+                          </p>
+                        )}
+                        {!isEligible && (
+                          <p className="text-[10px] font-bold text-red-500 mt-0.5">
+                            * Chưa đủ điều kiện đơn tối thiểu ({formatMoney(minOrder)}đ)
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyDiscount(disc.discountCode)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex-shrink-0 ${
+                          isSelected
+                            ? "bg-green-600 text-white"
+                            : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+                        }`}
+                      >
+                        {isSelected ? "Đã dùng" : "Áp dụng"}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-sm font-bold text-gray-400">
+                  Không có mã giảm giá nào sẵn có từ Admin.
+                </div>
+              )}
             </div>
           </div>
         </div>
