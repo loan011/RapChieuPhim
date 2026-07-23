@@ -12,8 +12,6 @@ export const PAGE_SIZE = 15;
 export const STATUS_OPTIONS = [
   "Đang chiếu",
   "Sắp chiếu",
-  "Đã chiếu",
-  "Chiếu sớm",
 ];
 
 export const EMPTY_FORM = {
@@ -28,6 +26,7 @@ export const EMPTY_FORM = {
   trailerUrl: "",
   ageRating: "P",
   description: "",
+  actors: "",
   language: "",
   subtitles: "",
 };
@@ -415,6 +414,7 @@ export function useFilm() {
         trailerUrl: movie?.trailerUrl ?? movie?.TrailerUrl ?? movie?.trailerURL ?? movie?.TrailerURL ?? null,
         ageRating: getMovieAgeRating(movie),
         description: movie?.description ?? movie?.Description ?? "",
+        actors: movie?.actors ?? movie?.Actors ?? "",
         language: movie?.language ?? movie?.Language ?? "",
         subtitles: movie?.subtitles ?? movie?.Subtitles ?? "",
       };
@@ -488,6 +488,7 @@ export function useFilm() {
       trailerUrl: movie?.trailerUrl ?? movie?.TrailerUrl ?? movie?.trailerURL ?? movie?.TrailerURL ?? "",
       ageRating: getMovieAgeRating(movie),
       description: movie?.description ?? movie?.Description ?? "",
+      actors: movie?.actors ?? movie?.Actors ?? "",
       language: movie?.language ?? movie?.Language ?? "",
       subtitles: movie?.subtitles ?? movie?.Subtitles ?? "",
     });
@@ -514,7 +515,7 @@ export function useFilm() {
     const { name, value } = e.target;
     
     let finalValue = value;
-    if (["title", "director", "language"].includes(name)) {
+    if (["title", "director", "actors", "language"].includes(name)) {
       finalValue = capitalizeWords(finalValue);
     }
 
@@ -673,6 +674,7 @@ export function useFilm() {
       trailerUrl: form.trailerUrl.trim() || null,
       ageRating: form.ageRating,
       description: form.description.trim(),
+      actors: form.actors.trim(),
       language: form.language.trim(),
       subtitles: form.subtitles.trim(),
     };

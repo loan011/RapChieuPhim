@@ -93,23 +93,28 @@ export function useNotice() {
       try {
         setLoading(true);
         const data = await getNotificationsForCustomer();
+        const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
         // Chuẩn hóa và map dữ liệu trả về từ API
         let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
         if (list.length === 0) {
-          setNotices(INITIAL_NOTICES);
+          setNotices(INITIAL_NOTICES.map(n => ({ ...n, unread: !readIds.includes(n.id) })));
         } else {
-          setNotices(list.map((n) => ({
-            id: n.notificationId || n.id,
-            type: n.type || "info",
-            title: n.title || "Thông báo mới",
-            body: n.message || n.body || "",
-            time: n.createdAt ? String(n.createdAt).split("T")[0] : "Vừa xong",
-            unread: n.unread ?? true,
-          })));
+          setNotices(list.map((n) => {
+            const nId = n.notificationId || n.id;
+            return {
+              id: nId,
+              type: n.type || "info",
+              title: n.title || "Thông báo mới",
+              body: n.content || n.message || n.body || "",
+              time: n.createdAt ? String(n.createdAt).split("T")[0] : "Vừa xong",
+              unread: !readIds.includes(nId),
+            };
+          }));
         }
       } catch (err) {
         console.error("Lỗi lấy thông báo, sử dụng dữ liệu mặc định:", err);
-        setNotices(INITIAL_NOTICES);
+        const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
+        setNotices(INITIAL_NOTICES.map(n => ({ ...n, unread: !readIds.includes(n.id) })));
       } finally {
         setLoading(false);
       }
@@ -126,6 +131,11 @@ export function useNotice() {
   const filteredNotices = filterNoticesByTab(notices, activeTab);
 
   function markRead(id) {
+    const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
+    if (!readIds.includes(id)) {
+      readIds.push(id);
+      localStorage.setItem("readNotices", JSON.stringify(readIds));
+    }
     setNotices((prev) =>
       prev.map((notice) =>
         notice.id === id ? { ...notice, unread: false } : notice
@@ -134,6 +144,12 @@ export function useNotice() {
   }
 
   function markAllRead() {
+    const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
+    notices.forEach((n) => {
+      if (!readIds.includes(n.id)) readIds.push(n.id);
+    });
+    localStorage.setItem("readNotices", JSON.stringify(readIds));
+    
     setNotices((prev) =>
       prev.map((notice) => ({
         ...notice,

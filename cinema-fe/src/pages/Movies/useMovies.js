@@ -583,6 +583,27 @@ export function getMovieTrailer(movie) {
   return convertYoutubeToEmbed(trailer);
 }
 
+export function isMovieUpcoming(movie) {
+  if (!movie) return false;
+  const status = (movie.status || movie.Status || movie.movieStatus || movie.MovieStatus || "").toLowerCase();
+  const rawRelease = movie.releaseDate || movie.ReleaseDate || movie.release_date || movie.startDate || movie.StartDate || movie.openingDate || movie.OpeningDate || movie.premiereDate || movie.PremiereDate;
+  
+  if (status.includes("sắp chiếu") || status === "coming") {
+    if (rawRelease) {
+      const releaseDate = new Date(rawRelease);
+      releaseDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!isNaN(releaseDate.getTime()) && releaseDate > today) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* =========================
    HOOK MOVIES
 ========================= */

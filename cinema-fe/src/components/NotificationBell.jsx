@@ -14,16 +14,20 @@ export default function NotificationBell() {
     try {
       const data = await getNotificationsForCustomer();
       let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+      const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
       if (list.length > 0) {
         setNotices(
-          list.map((n) => ({
-            id: n.notificationId || n.NotificationId || n.id || Math.random(),
-            type: n.type || n.Type || "info",
-            title: n.title || n.Title || "Thông báo hệ thống",
-            body: n.content || n.Content || n.message || n.Message || n.body || "",
-            time: n.createdAt || n.CreatedAt ? String(n.createdAt || n.CreatedAt).replace("T", " ").slice(0, 16) : "Mới xong",
-            unread: n.unread ?? true,
-          }))
+          list.map((n) => {
+            const nId = n.notificationId || n.NotificationId || n.id || Math.random();
+            return {
+              id: nId,
+              type: n.type || n.Type || "info",
+              title: n.title || n.Title || "Thông báo hệ thống",
+              body: n.content || n.Content || n.message || n.Message || n.body || "",
+              time: n.createdAt || n.CreatedAt ? String(n.createdAt || n.CreatedAt).replace("T", " ").slice(0, 16) : "Mới xong",
+              unread: !readIds.includes(nId),
+            };
+          })
         );
       }
     } catch (err) {
@@ -50,10 +54,22 @@ export default function NotificationBell() {
   const unreadCount = notices.filter((n) => n.unread).length;
 
   function markAllRead() {
+    const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
+    notices.forEach((n) => {
+      if (!readIds.includes(n.id)) readIds.push(n.id);
+    });
+    localStorage.setItem("readNotices", JSON.stringify(readIds));
+
     setNotices((prev) => prev.map((n) => ({ ...n, unread: false })));
   }
 
   function markRead(id) {
+    const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
+    if (!readIds.includes(id)) {
+      readIds.push(id);
+      localStorage.setItem("readNotices", JSON.stringify(readIds));
+    }
+
     setNotices((prev) =>
       prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
     );

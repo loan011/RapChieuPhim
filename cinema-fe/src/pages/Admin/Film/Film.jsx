@@ -328,16 +328,28 @@ export default function Film() {
                   </div>
                 </div>
 
-                {/* Đạo diễn */}
-                <div className="fm-field">
-                  <label className="fm-label">Đạo diễn</label>
-                  <input
-                    type="text"
-                    name="director"
-                    value={form.director}
-                    onChange={handleChange}
-                    className="fm-input"
-                  />
+                {/* Đạo diễn + Diễn viên */}
+                <div className="fm-field-row">
+                  <div className="fm-field">
+                    <label className="fm-label">Đạo diễn</label>
+                    <input
+                      type="text"
+                      name="director"
+                      value={form.director}
+                      onChange={handleChange}
+                      className="fm-input"
+                    />
+                  </div>
+                  <div className="fm-field">
+                    <label className="fm-label">Tên diễn viên</label>
+                    <input
+                      type="text"
+                      name="actors"
+                      value={form.actors}
+                      onChange={handleChange}
+                      className="fm-input"
+                    />
+                  </div>
                 </div>
 
                 {/* Ngôn ngữ + Phụ đề */}

@@ -120,7 +120,6 @@ export default function Profile() {
                       {isEmailField && (
                         <span className="profile-disabled-badge">
                           <MdLock className="profile-lock-icon" />
-                          Không thể sửa
                         </span>
                       )}
                     </label>

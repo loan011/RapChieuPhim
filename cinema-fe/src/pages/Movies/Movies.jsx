@@ -16,6 +16,7 @@ import {
   getMovieDuration,
   getMovieReleaseDate,
   getMovieTrailer,
+  isMovieUpcoming,
 } from "./useMovies";
 
 import {
@@ -30,6 +31,9 @@ import {
   getShowDate,
   createDateRange,
 } from "../usehome";
+
+import RatingModal from "../../components/RatingModal";
+import { computeAccurateRating } from "../../services/reviewService";
 
 function Movies() {
   const {
@@ -51,6 +55,8 @@ function Movies() {
   } = useMovies();
 
   const [selectedMovieForShowtimes, setSelectedMovieForShowtimes] = useState(null);
+  const [selectedMovieForRating, setSelectedMovieForRating] = useState(null);
+  const [ratingVersion, setRatingVersion] = useState(0);
   const [modalAreaId, setModalAreaId] = useState("");
   const [modalDate, setModalDate] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -347,8 +353,8 @@ function Movies() {
               <div className="movie-scroll-list" ref={nowShowingRef}>
                 {filteredMoviesNow.map((movie, index) => {
                   const movieId = getMovieId(movie);
-                  // Generate an elegant international standard rating out of 10
-                  const ratingVal = (8 + (movieId % 17) / 10).toFixed(1);
+                  const defaultBase = (8 + (movieId % 17) / 10).toFixed(1);
+                  const accurateStats = computeAccurateRating(movieId, defaultBase);
 
                   return (
                     <div className="movie-card-style" key={movieId || index}>
@@ -362,7 +368,17 @@ function Movies() {
                           }}
                         />
                         <span className="movie-age-style">{getMovieAge(movie)}</span>
-                        <span className="movie-rating-badge">★ {ratingVal}</span>
+                        <span 
+                          className="movie-rating-badge"
+                          title="Bấm để xem & đánh giá phim"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMovieForRating(movie);
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          ★ {accurateStats.avgRating}
+                        </span>
                         <button
                           type="button"
                           className="play-btn"
@@ -406,6 +422,13 @@ function Movies() {
                           onClick={() => openTrailer(movie)}
                         >
                           Chi tiết
+                        </button>
+                        <button
+                          type="button"
+                          className="rate-card-btn"
+                          onClick={() => setSelectedMovieForRating(movie)}
+                        >
+                          ⭐ Đánh giá
                         </button>
                       </div>
                     </div>
@@ -630,6 +653,55 @@ function Movies() {
                       🎟️ ĐẶT VÉ NGAY
                     </button>
                   )}
+                  
+                  {!isMovieUpcoming(selectedTrailer) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetMovie = selectedTrailer;
+                        closeTrailer();
+                        setSelectedMovieForRating(targetMovie);
+                      }}
+                      style={{ 
+                        marginTop: "8px", 
+                        padding: "10px 0", 
+                        fontSize: "13.5px", 
+                        fontWeight: "800", 
+                        background: "rgba(245, 158, 11, 0.15)", 
+                        borderRadius: "6px",
+                        border: "1px solid rgba(245, 158, 11, 0.5)",
+                        color: "#f59e0b",
+                        cursor: "pointer",
+                        width: "100%",
+                        textAlign: "center",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.background = "#f59e0b";
+                        e.target.style.color = "#000";
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.background = "rgba(245, 158, 11, 0.15)";
+                        e.target.style.color = "#f59e0b";
+                      }}
+                    >
+                      ⭐ ĐÁNH GIÁ PHIM
+                    </button>
+                  ) : (
+                    <div style={{
+                      marginTop: "8px", 
+                      padding: "9px 0", 
+                      fontSize: "12.5px", 
+                      fontWeight: "600", 
+                      background: "rgba(255, 255, 255, 0.04)", 
+                      borderRadius: "6px",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      color: "rgba(255, 255, 255, 0.4)",
+                      textAlign: "center"
+                    }}>
+                      🔒 Phim chưa khởi chiếu (Chưa mở đánh giá)
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -711,6 +783,15 @@ function Movies() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Movie Rating Modal */}
+      {selectedMovieForRating && (
+        <RatingModal
+          movie={selectedMovieForRating}
+          onClose={() => setSelectedMovieForRating(null)}
+          onRatingUpdated={() => setRatingVersion((v) => v + 1)}
+        />
       )}
     </div>
   );
