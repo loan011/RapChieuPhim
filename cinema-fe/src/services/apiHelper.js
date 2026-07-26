@@ -8,6 +8,63 @@ export function getApiUrl() {
 }
 
 /**
+ * In-memory cache manager for GET requests with TTL & promise deduplication
+ */
+const memoryCache = new Map();
+const pendingRequests = new Map();
+
+export function clearApiCache(urlPattern = null) {
+  if (!urlPattern) {
+    memoryCache.clear();
+    return;
+  }
+  for (const key of memoryCache.keys()) {
+    if (key.includes(urlPattern)) {
+      memoryCache.delete(key);
+    }
+  }
+}
+
+export async function cachedFetch(url, options = {}, ttlMs = 60000) {
+  const method = (options.method || "GET").toUpperCase();
+  if (method !== "GET") {
+    // Invalidate cache on mutations
+    clearApiCache();
+    const response = await fetch(url, options);
+    return readResponse(response);
+  }
+
+  const cacheKey = url;
+  const now = Date.now();
+  const cached = memoryCache.get(cacheKey);
+
+  if (cached && now - cached.timestamp < ttlMs) {
+    return cached.data;
+  }
+
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+        ...options,
+      });
+      const data = await readResponse(response);
+      memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+      return data;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+
+  pendingRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
+}
+
+/**
  * Khi server trả về 401 (token hết hạn hoặc không hợp lệ),
  * tự động xóa token và chuyển về trang đăng nhập.
  */

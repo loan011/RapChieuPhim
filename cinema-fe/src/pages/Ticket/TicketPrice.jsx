@@ -128,71 +128,54 @@ function TicketPrice() {
                 <table className="price-table">
                   <thead>
                     <tr>
-                      <th className="th-left">LOẠI GHẾ</th>
-                      {activeColumns.map(col => (
-                        <th key={col}>{col}</th>
-                      ))}
+                      <th className="th-left">LOẠI HÌNH</th>
+                      <th>GIÁ THƯỜNG</th>
+                      <th>GIÁ VIP</th>
+                      <th>GIÁ COUPLE</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Row 1: Ghế Thường */}
                     <tr>
                       <td className="td-seat-type">
-                        <div className="seat-cell">
-                          <span className="seat-cell-icon red-seat-icon">🛋️</span>
-                          <div className="seat-cell-text">
-                            <strong>GHẾ THƯỜNG</strong>
-                            <span>(Standard)</span>
-                          </div>
-                        </div>
+                        <span className="format-badge-pill" style={{ background: "#334155", color: "#fff", padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>2D</span>
                       </td>
-                      {activeColumns.map(col => (
-                        <td key={col} className="td-price-val">
-                          {formatMoney(basePrices[col]?.std)}
-                        </td>
-                      ))}
+                      <td className="td-price-val"><strong>70k / 90k</strong></td>
+                      <td className="td-price-val"><strong>90k / 120k</strong></td>
+                      <td className="td-price-val"><strong>130k / 160k</strong></td>
                     </tr>
-
-                    {/* Row 2: Ghế VIP */}
                     <tr>
                       <td className="td-seat-type">
-                        <div className="seat-cell">
-                          <span className="seat-cell-icon yellow-seat-icon">🛋️</span>
-                          <div className="seat-cell-text">
-                            <strong>GHẾ VIP</strong>
-                            <span>(VIP)</span>
-                          </div>
-                        </div>
+                        <span className="format-badge-pill" style={{ background: "#334155", color: "#fff", padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>3D</span>
                       </td>
-                      {activeColumns.map(col => (
-                        <td key={col} className="td-price-val">
-                          {formatMoney(basePrices[col]?.vip)}
-                        </td>
-                      ))}
+                      <td className="td-price-val"><strong>70k / 90k</strong></td>
+                      <td className="td-price-val"><strong>90k / 120k</strong></td>
+                      <td className="td-price-val"><strong>130k / 160k</strong></td>
                     </tr>
-
-                    {/* Row 3: Ghế Couple */}
                     <tr>
                       <td className="td-seat-type">
-                        <div className="seat-cell">
-                          <span className="seat-cell-icon pink-seat-icon">🛋️</span>
-                          <div className="seat-cell-text">
-                            <strong>GHẾ COUPLE</strong>
-                            <span>(Couple)</span>
-                          </div>
-                        </div>
+                        <span className="format-badge-pill" style={{ background: "#8b5cf6", color: "#fff", padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>IMAX</span>
                       </td>
-                      {activeColumns.map(col => (
-                        <td key={col} className="td-price-val">
-                          {formatMoney(basePrices[col]?.cp)}
-                        </td>
-                      ))}
+                      <td className="td-price-val"><strong>150k / 180k</strong></td>
+                      <td className="td-price-val"><strong>180k / 220k</strong></td>
+                      <td className="td-price-val"><strong>130k / 160k</strong></td>
+                    </tr>
+                    <tr>
+                      <td className="td-seat-type">
+                        <span className="format-badge-pill" style={{ background: "#334155", color: "#fff", padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>4DX</span>
+                      </td>
+                      <td className="td-price-val"><strong>70k / 90k</strong></td>
+                      <td className="td-price-val"><strong>90k / 120k</strong></td>
+                      <td className="td-price-val"><strong>130k / 160k</strong></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               
-              <p className="ticket-vat-note">* Giá vé đã bao gồm VAT.</p>
+              <div style={{ marginTop: "16px", background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: "8px", borderLeft: "4px solid #f97316" }}>
+                <p style={{ color: "#f97316", fontWeight: "bold", marginBottom: "4px", fontSize: "13px" }}>⏰ Khung giờ áp dụng giá vé:</p>
+                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>07:00 - 21:00</strong>: Áp dụng giá bên trái (Ví dụ: 70k, 90k, 150k)</p>
+                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>21:00 - 00:00</strong>: Áp dụng giá bên phải (Ví dụ: 90k, 120k, 180k)</p>
+              </div>
             </div>
 
             {/* Right Box: Notes & Golden Hours */}
@@ -220,26 +203,7 @@ function TicketPrice() {
                 </ul>
               </section>
 
-              {/* Box 2: Giờ vàng */}
-              <section className="ticket-gold-panel">
-                <div className="gold-title-row">
-                  <span className="gold-icon">⏰</span>
-                  <h3>GIỜ VÀNG</h3>
-                </div>
-                <p className="gold-desc">Ưu đãi giá vé đặc biệt trong khung giờ vàng.</p>
-                
-                <div className="gold-promo-box">
-                  <div className="gold-promo-text">
-                    <strong>Thứ 2 - Thứ 6</strong>
-                    <span>Trước 17:00</span>
-                  </div>
-                  <div className="gold-promo-badge">
-                    -20%
-                  </div>
-                </div>
-                
-                <p className="gold-footer-note">Không áp dụng cho ngày lễ và suất chiếu đặc biệt.</p>
-              </section>
+
             </div>
           </div>
         )}

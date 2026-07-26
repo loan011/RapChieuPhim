@@ -40,11 +40,15 @@ export default function Dashboard() {
     return formatMoney(val) + ' đ';
   };
 
-  const moviePieData = movieStats.map(m => ({ 
-    name: m.movieTitle, 
-    value: m.totalRevenue, 
-    percent: m.revenueContributionPercentage 
-  }));
+  const totalMoviesRevSum = movieStats.reduce((sum, m) => sum + (m.totalRevenue || 0), 0);
+  const moviePieData = movieStats.map(m => {
+    const calcPct = totalMoviesRevSum > 0 ? Number(((m.totalRevenue / totalMoviesRevSum) * 100).toFixed(1)) : 0;
+    return {
+      name: m.movieTitle,
+      value: m.totalRevenue,
+      percent: Math.min(100, calcPct)
+    };
+  });
 
   const foodPieData = chartData?.foodDistributions || [];
   const totalFoodRevenueStr = formatBillion(chartData?.totalFoodRevenue || 0);
@@ -66,16 +70,33 @@ export default function Dashboard() {
       {/* HEADER SECTION */}
       <div className="dashboard-header-bar">
         <div className="dashboard-header-right">
-          <div className="quick-date-buttons" style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
-            <button onClick={() => handleQuickDate('today')} style={{ padding: '6px 12px', border: '1px solid #2c2c2e', borderRadius: '6px', background: timeFilter === new Date().toISOString().split('T')[0] ? 'rgba(255, 59, 48, 0.15)' : '#1c1c1e', color: timeFilter === new Date().toISOString().split('T')[0] ? '#ff3b30' : '#9ca3af', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem' }}>Hôm nay</button>
-            <button onClick={() => handleQuickDate('week')} style={{ padding: '6px 12px', border: '1px solid #2c2c2e', borderRadius: '6px', background: timeFilter === 'week' ? 'rgba(255, 59, 48, 0.15)' : '#1c1c1e', color: timeFilter === 'week' ? '#ff3b30' : '#9ca3af', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem' }}>Tuần này</button>
-            <button onClick={() => handleQuickDate('month')} style={{ padding: '6px 12px', border: '1px solid #2c2c2e', borderRadius: '6px', background: timeFilter === 'month' ? 'rgba(255, 59, 48, 0.15)' : '#1c1c1e', color: timeFilter === 'month' ? '#ff3b30' : '#9ca3af', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem' }}>Tháng này</button>
-          </div>
+          <select
+            value={['week', 'last_week', 'month', 'last_month', 'today'].includes(timeFilter) ? timeFilter : 'today'}
+            onChange={(e) => setTimeFilter(e.target.value)}
+            style={{
+              padding: '7px 14px',
+              border: '1px solid #2c2c2e',
+              borderRadius: '8px',
+              background: '#1c1c1e',
+              color: '#f4f4f5',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.88rem',
+              outline: 'none',
+              marginRight: '16px'
+            }}
+          >
+            <option value="today">Hôm nay</option>
+            <option value="week">Tuần này</option>
+            <option value="last_week">Tuần trước</option>
+            <option value="month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
+          </select>
           <div className="dashboard-date-picker">
             <i className="fi fi-rr-calendar"></i>
             <input 
               type="date" 
-              value={timeFilter !== 'week' && timeFilter !== 'month' ? timeFilter : ''} 
+              value={!['week', 'last_week', 'month', 'last_month', 'today'].includes(timeFilter) ? timeFilter : ''} 
               onChange={e => setTimeFilter(e.target.value)}
               style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', color: '#d1d5db', cursor: 'pointer' }}
             />
@@ -196,7 +217,15 @@ export default function Dashboard() {
                     <td>
                       <div className="movie-cell">
                         <strong>{idx + 1}</strong>
-                        <img src={m.posterUrl || 'https://via.placeholder.com/50'} alt="poster" className="movie-poster-mock" />
+                        <img
+                          src={m.posterUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=100&auto=format&fit=crop'}
+                          alt="poster"
+                          className="movie-poster-mock"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=100&auto=format&fit=crop';
+                          }}
+                        />
                         <div>
                           <span className="movie-title">{m.movieTitle}</span>
                           <span className="movie-date">{m.movieStatus}</span>
@@ -286,7 +315,7 @@ export default function Dashboard() {
           )}
 
           {/* Chart 2 */}
-          {(activeTab === 'Tổng quan' || activeTab === 'Đồ ăn & Combo') && (
+          {activeTab === 'Đồ ăn & Combo' && (
             <div className="donut-card" style={{ flex: activeTab === 'Tổng quan' ? 'none' : 1, width: '100%' }}>
               <h6>Tỷ lệ doanh thu đồ ăn</h6>
               {foodPieData.length === 0 ? (

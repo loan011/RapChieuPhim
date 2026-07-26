@@ -23,7 +23,7 @@ import { getApiUrl, getAuthHeaders, readResponse } from "../services/apiHelper";
 
 const navItems = [
   { to: "/admin/dashboard",             label: "Doanh Thu",              icon: <MdDashboard /> },
-  { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Người Dùng",    icon: <MdPeople /> },
+  { to: "/admin/quan-ly-nguoi-dung",    label: "Quản Lý Chi Nhánh",     icon: <MdPeople /> },
   { to: "/admin/phim",                  label: "Phim",                   icon: <MdMovie /> },
   { to: "/admin/phong-chieu",           label: "Phòng Chiếu & Ghế",      icon: <MdMeetingRoom /> },
   { to: "/admin/suat-chieu",            label: "Suất Chiếu",             icon: <MdCalendarMonth /> },

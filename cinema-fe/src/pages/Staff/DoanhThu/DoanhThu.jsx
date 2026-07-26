@@ -20,9 +20,12 @@ import {
   MdAccessTime,
   MdAccountBalanceWallet,
   MdCheck,
-  MdWarning
+  MdWarning,
+  MdRefresh,
+  MdCancel
 } from "react-icons/md";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
+import TicketExchangeModal from "../../../components/TicketExchangeModal";
 import "./DoanhThu.css";
 
 export default function DoanhThu() {
@@ -45,20 +48,29 @@ export default function DoanhThu() {
 
   // Trạng thái hóa đơn chi tiết được chọn
   const [selectedBill, setSelectedBill] = useState(null);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
 
-  // Tìm kiếm theo mã hóa đơn
+  // Tìm kiếm theo mã hóa đơn & Lọc trạng thái (Tất cả / Thành công / Đã Hủy)
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
 
   // Gọi API lấy dữ liệu mỗi khi date thay đổi
   useEffect(() => {
     fetchData();
+    window.addEventListener("paymentsUpdated", fetchData);
+    window.addEventListener("ticketsUpdated", fetchData);
+    window.addEventListener("bookingsUpdated", fetchData);
+    return () => {
+      window.removeEventListener("paymentsUpdated", fetchData);
+      window.removeEventListener("ticketsUpdated", fetchData);
+      window.removeEventListener("bookingsUpdated", fetchData);
+    };
   }, [date]);
 
   async function fetchData() {
     try {
       setLoading(true);
       setError("");
-      setSearchQuery(""); // Reset search query when switching date
       const data = await getDailyRevenue(date);
       setReportData(data);
     } catch (err) {
@@ -70,11 +82,30 @@ export default function DoanhThu() {
     }
   }
 
+  function getBillCancelledTime(bill) {
+    if (!bill) return "";
+    const code = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").trim();
+    let stored = localStorage.getItem("cancelled_time_" + code) || localStorage.getItem("cancelled_time_" + bill.billCode);
+    if (!stored && bill.tickets?.[0]?.bookingId) {
+      stored = localStorage.getItem("cancelled_time_booking_" + bill.tickets[0].bookingId);
+    }
+    if (stored) return stored;
+
+    try {
+      const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+      const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === code.toLowerCase());
+      if (found) {
+        if (found.cancelledTimeStr) return found.cancelledTimeStr;
+        if (found.cancelledAt) return new Date(found.cancelledAt).toLocaleString("vi-VN");
+      }
+    } catch(e) {}
+
+    return bill.paymentDate ? new Date(bill.paymentDate).toLocaleString("vi-VN") : "Đã hủy";
+  }
+
   // Lọc danh sách hóa đơn theo Ca được chọn
   const shiftBills = useMemo(() => {
     if (!reportData?.bills) return [];
-    if (selectedShiftFilter === "ALL") return reportData.bills;
-
     return reportData.bills.filter(bill => {
       if (!bill.paymentDate) return true;
       const hours = new Date(bill.paymentDate).getHours();
@@ -87,12 +118,29 @@ export default function DoanhThu() {
     });
   }, [reportData, selectedShiftFilter]);
 
-  // Danh sách hóa đơn sau khi áp dụng cả lọc Ca & Tìm kiếm
+  // Danh sách hóa đơn sau khi áp dụng cả lọc Ca, Tìm kiếm & Lọc trạng thái
   const filteredBills = useMemo(() => {
-    return shiftBills.filter(bill =>
-      bill.billCode.toLowerCase().includes(searchQuery.toLowerCase().trim())
-    );
-  }, [shiftBills, searchQuery]);
+    return shiftBills.filter(bill => {
+      const matchSearch = bill.billCode.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      if (!matchSearch) return false;
+
+      const statusStr = String(bill.status || bill.paymentStatus || bill.tickets?.[0]?.status || "").toLowerCase();
+      let isCancelled = bill.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
+
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const tCode = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").toLowerCase();
+        const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+        if (found && String(found.status || "").toLowerCase().includes("cancel")) {
+          isCancelled = true;
+        }
+      } catch (e) {}
+
+      if (selectedStatusFilter === "PAID") return !isCancelled;
+      if (selectedStatusFilter === "CANCELLED") return isCancelled;
+      return true;
+    });
+  }, [shiftBills, searchQuery, selectedStatusFilter]);
 
   // Thống kê doanh thu theo Ca được chọn
   const currentShiftMetrics = useMemo(() => {
@@ -120,6 +168,20 @@ export default function DoanhThu() {
     let transferCount = 0;
 
     for (const b of shiftBills) {
+      const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
+      let isCancelled = b.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
+
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
+        const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+        if (found && String(found.status || "").toLowerCase().includes("cancel")) {
+          isCancelled = true;
+        }
+      } catch (e) {}
+
+      if (isCancelled) continue; // 🛑 Bỏ qua hóa đơn đã hủy khi tính Tổng Doanh Thu
+
       ticketRev += b.ticketSubtotal || 0;
       concessionRev += b.concessionSubtotal || 0;
       discount += b.discountAmt || 0;
@@ -136,6 +198,18 @@ export default function DoanhThu() {
       }
     }
 
+    const activeBillsCount = shiftBills.filter(b => {
+      const s = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
+      if (b.isCancelled || s.includes("cancel") || s.includes("hủy") || s.includes("refund")) return false;
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
+        const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+        if (found && String(found.status || "").toLowerCase().includes("cancel")) return false;
+      } catch(e) {}
+      return true;
+    }).length;
+
     return {
       totalTicketRevenue: ticketRev,
       totalConcessionRevenue: concessionRev,
@@ -146,7 +220,7 @@ export default function DoanhThu() {
       totalTransferRevenue: transferRev,
       totalCashBillsCount: cashCount,
       totalTransferBillsCount: transferCount,
-      billsCount: shiftBills.length
+      billsCount: activeBillsCount
     };
   }, [shiftBills]);
 
@@ -186,6 +260,20 @@ export default function DoanhThu() {
     let transferCount = 0;
 
     for (const b of billsForShift) {
+      const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
+      let isCancelled = b.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
+
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
+        const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+        if (found && String(found.status || "").toLowerCase().includes("cancel")) {
+          isCancelled = true;
+        }
+      } catch (e) {}
+
+      if (isCancelled) continue; // 🛑 Bỏ qua hóa đơn đã hủy khi tính Tổng Doanh Thu
+
       ticketRev += b.ticketSubtotal || 0;
       concessionRev += b.concessionSubtotal || 0;
       discount += b.discountAmt || 0;
@@ -232,19 +320,6 @@ export default function DoanhThu() {
       }
     } catch (e) {}
 
-    // Kiểm tra thời gian kết ca (chỉ được thực hiện khi qua khung giờ ca đó)
-    const todayStr = now.toLocaleDateString("en-CA");
-    if (date === todayStr) {
-      if (defaultShift.includes("Ca 1") && currentHour < 16) {
-        alert("Không thể thực hiện kết ca. Ca 1 chỉ được phép gửi báo cáo từ 16:00 trở đi.");
-        return;
-      }
-      if (defaultShift.includes("Ca 2") && currentHour >= 8 && currentHour < 24) {
-        alert("Không thể thực hiện kết ca. Ca 2 chỉ được phép gửi báo cáo từ 24:00 (00:00 ngày hôm sau) trở đi.");
-        return;
-      }
-    }
-
     setShiftForReport(defaultShift);
 
     const timeStr = now.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -258,21 +333,6 @@ export default function DoanhThu() {
 
   // Đổi Ca trong modal kết ca
   function handleShiftChangeInModal(newShift) {
-    // Kiểm tra thời gian nếu đổi ca trong modal
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
-    if (date === todayStr) {
-      const currentHour = now.getHours();
-      if (newShift.includes("Ca 1") && currentHour < 16) {
-        alert("Ca 1 chỉ được phép kết ca từ 16:00 trở đi.");
-        return;
-      }
-      if (newShift.includes("Ca 2")) {
-        alert("Ca 2 chỉ được phép kết ca từ 24:00 (00:00 ngày hôm sau) trở đi.");
-        return;
-      }
-    }
-
     setShiftForReport(newShift);
     const metrics = getShiftMetricsByName(newShift);
     setActualCash(initialCash + metrics.totalCashRevenue);
@@ -299,20 +359,6 @@ export default function DoanhThu() {
   async function handleSendReport(e) {
     e.preventDefault();
     if (!reportData) return;
-
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
-    if (date === todayStr) {
-      const currentHour = now.getHours();
-      if (shiftForReport.includes("Ca 1") && currentHour < 16) {
-        alert("Không thể gửi báo cáo. Ca 1 chỉ được phép kết ca từ 16:00 trở đi.");
-        return;
-      }
-      if (shiftForReport.includes("Ca 2")) {
-        alert("Không thể gửi báo cáo. Ca 2 chỉ được phép gửi báo cáo từ 24:00 (00:00 ngày hôm sau) trở đi.");
-        return;
-      }
-    }
 
     const isFullDayReport = shiftForReport.includes("Cả ngày") || shiftForReport.includes("Cả Ngày") || shiftForReport.includes("Full Day");
     const modalShiftMetrics = getShiftMetricsByName(shiftForReport);
@@ -615,12 +661,52 @@ export default function DoanhThu() {
 
             {/* DANH SÁCH CHI TIẾT CÁC HÓA ĐƠN TRONG NGÀY/CA */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-2 border-b border-gray-50">
-                <h5 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                  <span className="w-1.5 h-5 bg-green-600 rounded-full"></span>
-                  Chi Tiết Các Hóa Đơn ({searchQuery ? `${filteredBills.length} / ${shiftBills.length}` : shiftBills.length})
-                </h5>
-                <div className="relative w-full sm:w-64">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 pb-2 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h5 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                    <span className="w-1.5 h-5 bg-green-600 rounded-full"></span>
+                    Chi Tiết Các Hóa Đơn ({filteredBills.length})
+                  </h5>
+
+                  {/* STATUS FILTER TABS */}
+                  <div className="flex bg-gray-100 p-1 rounded-xl gap-1 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatusFilter("ALL")}
+                      className={`px-3 py-1 rounded-lg transition-all ${
+                        selectedStatusFilter === "ALL"
+                          ? "bg-white text-gray-800 shadow-xs"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      Tất Cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatusFilter("PAID")}
+                      className={`px-3 py-1 rounded-lg transition-all ${
+                        selectedStatusFilter === "PAID"
+                          ? "bg-emerald-600 text-white shadow-xs"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      🟢 Thành Công
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatusFilter("CANCELLED")}
+                      className={`px-3 py-1 rounded-lg transition-all ${
+                        selectedStatusFilter === "CANCELLED"
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      🔴 Đã Hủy Vé
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative w-full sm:w-60">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-lg">
                     <MdSearch />
                   </span>
@@ -658,89 +744,147 @@ export default function DoanhThu() {
                         </td>
                       </tr>
                     ) : (
-                      filteredBills.map((bill) => (
-                        <tr key={bill.paymentId} className="hover:bg-gray-50/50 transition-colors">
-                          {/* Mã HĐ */}
-                          <td className="px-4 py-3.5 font-bold text-gray-800">{bill.billCode}</td>
-                          
-                          {/* Thời Gian */}
-                          <td className="px-4 py-3.5 text-gray-500">
-                            {new Date(bill.paymentDate).toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })}
-                          </td>
-                          
-                          {/* Khách Hàng */}
-                          <td className="px-4 py-3.5">
-                            <div className="font-medium text-gray-805">{bill.customerName}</div>
-                            {bill.customerEmail && bill.customerEmail !== "Tại quầy" && bill.customerEmail !== "N/A" && (
-                              <div className="text-[11px] text-gray-400">{bill.customerEmail}</div>
-                            )}
-                          </td>
+                      filteredBills.map((bill) => {
+                        const statusStr = String(bill.status || bill.paymentStatus || bill.tickets?.[0]?.status || "").toLowerCase();
+                        let isCancelled = statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
+                        
+                        // Check local stored tickets for cancel status
+                        try {
+                          const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+                          const tCode = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").toLowerCase();
+                          const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+                          if (found && String(found.status || "").toLowerCase().includes("cancel")) {
+                            isCancelled = true;
+                          }
+                        } catch (e) {}
 
-                          {/* Vé (Ghế) */}
-                          <td className="px-4 py-3.5">
-                            {bill.tickets.length > 0 ? (
-                              <div className="space-y-1">
-                                <div className="font-medium text-gray-700 truncate max-w-[150px]" title={bill.tickets[0].movieTitle}>
-                                  {bill.tickets[0].movieTitle}
+                        const isCash = String(bill.paymentMethod || "").toLowerCase().includes("cash") || String(bill.paymentMethod || "").includes("tiền mặt");
+
+                        return (
+                          <tr key={bill.paymentId} className={`transition-colors ${isCancelled ? "bg-red-50/30 text-gray-500" : "hover:bg-gray-50/50"}`}>
+                            {/* Mã HĐ */}
+                            <td className="px-4 py-3.5 font-bold text-gray-800">
+                              {bill.billCode}
+                            </td>
+                            
+                            {/* Thời Gian */}
+                            <td className="px-4 py-3.5 text-gray-500">
+                              <div>
+                                {new Date(bill.paymentDate).toLocaleTimeString("vi-VN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </div>
+                              {isCancelled && (
+                                <div className="text-[10px] font-bold text-red-600 flex items-center gap-0.5 mt-0.5">
+                                  <MdCancel className="text-[11px]" /> Hủy: {getBillCancelledTime(bill).split(" ")[0] || getBillCancelledTime(bill)}
                                 </div>
-                                <div className="flex flex-wrap gap-1">
-                                  {bill.tickets.map(t => (
-                                    <span key={t.bookingId} className="bg-green-50 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border border-green-100">
-                                      {t.seatNumber}
-                                    </span>
+                              )}
+                            </td>
+                            
+                            {/* Khách Hàng */}
+                            <td className="px-4 py-3.5">
+                              <div className="font-medium text-gray-805">{bill.customerName}</div>
+                              {bill.customerEmail && bill.customerEmail !== "Tại quầy" && bill.customerEmail !== "N/A" && (
+                                <div className="text-[11px] text-gray-400">{bill.customerEmail}</div>
+                              )}
+                            </td>
+
+                            {/* Vé (Ghế) */}
+                            <td className="px-4 py-3.5">
+                              {bill.tickets.length > 0 ? (
+                                <div className="space-y-1">
+                                  <div className="font-medium text-gray-700 truncate max-w-[150px]" title={bill.tickets[0].movieTitle}>
+                                    {bill.tickets[0].movieTitle}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {bill.tickets.map(t => (
+                                      <span key={t.bookingId} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border ${isCancelled ? "bg-red-100 text-red-600 border-red-200 line-through" : "bg-green-50 text-green-700 border-green-100"}`}>
+                                        {t.seatNumber}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-xs">Không mua vé</span>
+                              )}
+                            </td>
+                            
+                            {/* Nước / Combo */}
+                            <td className="px-4 py-3.5 text-xs">
+                              {bill.concessions.length > 0 ? (
+                                <div className="text-gray-600 space-y-0.5 max-w-[150px] truncate" title={bill.concessions.map(c => `${c.name} (x${c.quantity})`).join(", ")}>
+                                  {bill.concessions.map((c, idx) => (
+                                    <div key={idx}>
+                                      • {c.name} <span className="font-bold text-gray-800">x{c.quantity}</span>
+                                    </div>
                                   ))}
                                 </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 italic text-xs">Không mua vé</span>
-                            )}
-                          </td>
-                          
-                          {/* Nước / Combo */}
-                          <td className="px-4 py-3.5 text-xs">
-                            {bill.concessions.length > 0 ? (
-                              <div className="text-gray-600 space-y-0.5 max-w-[150px] truncate" title={bill.concessions.map(c => `${c.name} (x${c.quantity})`).join(", ")}>
-                                {bill.concessions.map((c, idx) => (
-                                  <div key={idx}>
-                                    • {c.name} <span className="font-bold text-gray-800">x{c.quantity}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 italic text-xs">Không mua nước</span>
-                            )}
-                          </td>
-                          
-                          {/* Phương thức thanh toán */}
-                          <td className="px-4 py-3.5">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider ${
-                              bill.paymentMethod === "Cash" || bill.paymentMethod === "Tiền mặt"
-                                ? "bg-amber-50 text-amber-700 border border-amber-100"
-                                : "bg-blue-50 text-blue-700 border border-blue-100"
-                            }`}>
-                              {bill.paymentMethod === "Cash" ? "Tiền mặt" : bill.paymentMethod}
-                            </span>
-                          </td>
+                              ) : (
+                                <span className="text-gray-400 italic text-xs">Không mua nước</span>
+                              )}
+                            </td>
+                            
+                            {/* Phương thức thanh toán */}
+                            <td className="px-4 py-3.5">
+                              {isCancelled ? (
+                                <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 border border-red-200 uppercase">
+                                  ĐÃ HỦY (ĐÃ HOÀN TIỀN)
+                                </span>
+                              ) : (
+                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider ${
+                                  isCash
+                                    ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                    : "bg-blue-50 text-blue-700 border border-blue-100"
+                                }`}>
+                                  {bill.paymentMethod === "Cash" ? "Tiền mặt" : bill.paymentMethod}
+                                </span>
+                              )}
+                            </td>
 
-                          {/* Tổng Tiền */}
-                          <td className="px-4 py-3.5 text-right font-bold text-green-700">
-                            {formatVND(bill.totalAmount)}
-                          </td>
+                            {/* Tổng Tiền */}
+                            <td className={`px-4 py-3.5 text-right font-bold ${isCancelled ? "text-red-400 line-through" : "text-green-700"}`}>
+                              {formatVND(bill.totalAmount)}
+                            </td>
 
-                          {/* Hành Động */}
-                          <td className="px-4 py-3.5 text-center">
-                            <button
-                              onClick={() => setSelectedBill(bill)}
-                              className="text-xs font-semibold text-green-700 hover:text-green-800 hover:bg-green-50 px-2.5 py-1 rounded-lg transition-colors border border-green-200"
-                            >
-                              Xem hóa đơn
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                            {/* Hành Động */}
+                            <td className="px-4 py-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedBill(bill)}
+                                  className="text-xs font-bold text-green-700 hover:text-green-800 hover:bg-green-100/70 bg-green-50/80 px-2.5 py-1.5 rounded-lg transition-all border border-green-300 shrink-0 shadow-2xs"
+                                >
+                                  Xem
+                                </button>
+
+                                {isCancelled ? (
+                                  <span className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700 border border-red-200 shrink-0">
+                                    ❌ Đã Hủy
+                                  </span>
+                                ) : (
+                                  isCash && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const code = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").trim();
+                                        setShowExchangeModal(true);
+                                        setTimeout(() => {
+                                          window.dispatchEvent(new CustomEvent("openExchangeModalWithCode", { detail: code }));
+                                        }, 100);
+                                      }}
+                                      className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 bg-red-50 hover:shadow-md px-2.5 py-1.5 rounded-lg transition-all border border-red-300 flex items-center gap-1 shrink-0 cursor-pointer"
+                                      title="Hủy hóa đơn / vé & Hoàn tiền mặt"
+                                    >
+                                      <MdCancel className="text-sm" /> Hủy vé
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1006,11 +1150,22 @@ export default function DoanhThu() {
                       <span className="font-bold">{selectedBill.billCode}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Thời gian:</span>
+                      <span className="text-gray-400">Thời gian mua:</span>
                       <span>
                         {new Date(selectedBill.paymentDate).toLocaleString("vi-VN")}
                       </span>
                     </div>
+
+                    {/* Hiển thị Thời gian hủy hóa đơn nếu đã hủy */}
+                    {(selectedBill.isCancelled || String(selectedBill.status || "").toLowerCase().includes("cancel")) && (
+                      <div className="flex justify-between text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200 my-1">
+                        <span className="flex items-center gap-1">
+                          <MdCancel className="text-sm" /> Thời gian hủy:
+                        </span>
+                        <span>{getBillCancelledTime(selectedBill)}</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between">
                       <span className="text-gray-400">Thanh toán:</span>
                       <span className="font-semibold">{selectedBill.paymentMethod === "Cash" ? "Tiền mặt" : selectedBill.paymentMethod}</span>
@@ -1158,6 +1313,13 @@ export default function DoanhThu() {
           </div>,
           document.body
         )}
+
+      {/* Ticket Exchange / Cancel Modal */}
+      <TicketExchangeModal
+        isOpen={showExchangeModal}
+        onClose={() => setShowExchangeModal(false)}
+        onRefreshData={fetchData}
+      />
     </div>
   );
 }

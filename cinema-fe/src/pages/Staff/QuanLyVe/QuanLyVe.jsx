@@ -10,6 +10,7 @@ import {
   MdDateRange
 } from "react-icons/md";
 import { useState } from "react";
+import TicketExchangeModal from "../../../components/TicketExchangeModal";
 
 function formatDateTime(rawDate) {
   if (!rawDate) return "Chưa rõ";
@@ -55,6 +56,7 @@ export default function StaffQuanLyVe() {
   } = useQuanLyVe();
 
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -81,13 +83,22 @@ export default function StaffQuanLyVe() {
         <h4 className="font-bold text-2xl text-gray-800 flex items-center gap-2">
           <MdConfirmationNumber className="text-green-600" /> Quản Lý Vé
         </h4>
-        <button 
-          onClick={fetchData}
-          disabled={loading}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
-        >
-          {loading ? "Đang tải..." : "🔄 Tải lại danh sách"}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            type="button"
+            onClick={() => setShowExchangeModal(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-extrabold hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            🔄 Đổi / Hủy Vé Tiền Mặt (Quầy)
+          </button>
+          <button 
+            onClick={fetchData}
+            disabled={loading}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+          >
+            {loading ? "Đang tải..." : "🔄 Tải lại danh sách"}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -232,6 +243,13 @@ export default function StaffQuanLyVe() {
           </div>
         )}
       </div>
+
+      {/* Ticket Exchange / Cancel Modal */}
+      <TicketExchangeModal
+        isOpen={showExchangeModal}
+        onClose={() => setShowExchangeModal(false)}
+        onRefreshData={fetchData}
+      />
     </div>
   );
 }

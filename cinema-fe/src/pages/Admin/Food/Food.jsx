@@ -313,23 +313,7 @@ export default function Food() {
             ))}
           </div>
 
-          {/* Alerts Widget */}
-          <div className="fd-widget">
-            <h3>Cảnh báo</h3>
-            {stats.lowStockItems.length === 0 ? (
-              <p style={{ fontSize: 12, color: '#6b7280' }}>Kho hàng đang ổn định.</p>
-            ) : (
-              stats.lowStockItems.slice(0, 3).map((item, index) => (
-                <div key={`${item.itemType || 'item'}-${item.id}-${index}`} className="fd-alert-item">
-                  <MdWarning className="fd-alert-icon" />
-                  <div className="fd-alert-info">
-                    <h5>{item.name}</h5>
-                    <p>Tồn kho chỉ còn {item.quantity} phần</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+
         </div>
       </div>
 

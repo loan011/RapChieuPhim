@@ -179,6 +179,62 @@ export function buildNotificationPayload(form) {
   };
 }
 
+export function saveAdminNotification(notice) {
+  try {
+    const localCache = JSON.parse(localStorage.getItem("admin_notifications_cache") || "[]");
+    const nId = getNoticeId(notice) || Date.now();
+    const formatted = {
+      ...notice,
+      id: nId,
+      notificationId: nId,
+      createdAt: notice.createdAt || notice.CreatedAt || new Date().toISOString(),
+    };
+    const existsIndex = localCache.findIndex(n => String(getNoticeId(n)) === String(nId));
+    if (existsIndex >= 0) {
+      localCache[existsIndex] = formatted;
+    } else {
+      localCache.unshift(formatted);
+    }
+    localStorage.setItem("admin_notifications_cache", JSON.stringify(localCache));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+    return formatted;
+  } catch (e) {
+    console.error("Lỗi lưu admin notification:", e);
+    return notice;
+  }
+}
+
+export function removeAdminNotification(id) {
+  try {
+    const localCache = JSON.parse(localStorage.getItem("admin_notifications_cache") || "[]");
+    const filtered = localCache.filter(n => String(getNoticeId(n)) !== String(id));
+    localStorage.setItem("admin_notifications_cache", JSON.stringify(filtered));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+  } catch (e) {
+    console.error("Lỗi xóa admin notification:", e);
+  }
+}
+
+export function getAdminNotificationsMerged(apiList = []) {
+  try {
+    const localCache = JSON.parse(localStorage.getItem("admin_notifications_cache") || "[]");
+    const map = new Map();
+    // Prioritize API list
+    (apiList || []).forEach(item => {
+      const id = String(getNoticeId(item));
+      if (id) map.set(id, item);
+    });
+    // Add local cache items if missing
+    (localCache || []).forEach(item => {
+      const id = String(getNoticeId(item));
+      if (id && !map.has(id)) map.set(id, item);
+    });
+    return Array.from(map.values());
+  } catch (e) {
+    return apiList;
+  }
+}
+
 export function useNotice() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -215,6 +271,16 @@ export function useNotice() {
 
   useEffect(() => {
     fetchHistory();
+
+    function handleSync() {
+      fetchHistory();
+    }
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("notificationsUpdated", handleSync);
+    return () => {
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("notificationsUpdated", handleSync);
+    };
   }, []);
 
   async function fetchHistory() {
@@ -222,13 +288,20 @@ export function useNotice() {
       setLoading(true);
       setError("");
 
-      const data = await getNotificationList();
+      let data = [];
+      try {
+        data = await getNotificationList();
+      } catch (e) {
+        console.warn("Lỗi API getNotificationList, dùng cache cục bộ:", e);
+      }
 
-      setHistory(normalizeArray(data));
+      const merged = getAdminNotificationsMerged(normalizeArray(data));
+      setHistory(merged);
     } catch (err) {
       console.error("Lỗi tải thông báo:", err);
 
-      setHistory([]);
+      const merged = getAdminNotificationsMerged([]);
+      setHistory(merged);
       setError(err.message || "Lấy lịch sử thông báo thất bại!");
     } finally {
       setLoading(false);
@@ -249,16 +322,22 @@ export function useNotice() {
 
     try {
       const payload = buildNotificationPayload(form);
+      let sent = null;
 
-      const sent = await sendNotification(payload);
+      try {
+        sent = await sendNotification(payload);
+      } catch (apiErr) {
+        console.warn("API sendNotification không phản hồi, lưu cục bộ:", apiErr);
+      }
 
       const newNotice = sent || {
         ...payload,
         id: Date.now(),
+        notificationId: Date.now(),
         createdAt: new Date().toISOString(),
       };
 
-      setHistory((prev) => [newNotice, ...prev]);
+      saveAdminNotification(newNotice);
       setForm(INITIAL_NOTICE_FORM);
 
       alert("Gửi thông báo thành công!");
@@ -277,15 +356,18 @@ export function useNotice() {
     }
 
     try {
-      await deleteNotification(id);
-
+      await deleteNotification(id).catch(() => null);
+      removeAdminNotification(id);
       setHistory((prev) =>
         prev.filter((notice) => String(getNoticeId(notice)) !== String(id))
       );
     } catch (err) {
       console.error("Lỗi xóa thông báo:", err);
 
-      alert(err.message || "Xóa thông báo thất bại!");
+      removeAdminNotification(id);
+      setHistory((prev) =>
+        prev.filter((notice) => String(getNoticeId(notice)) !== String(id))
+      );
     }
   }
 

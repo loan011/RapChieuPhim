@@ -18,18 +18,22 @@ function normalizeArray(data) {
 
 // GET /api/Discounts
 export async function getDiscountList() {
-  const response = await fetch(`${API_URL}/Discounts`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
+  try {
+    const response = await fetch(`${API_URL}/Discounts`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
 
-  const data = await readResponse(response);
+    const data = await readResponse(response);
 
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách mã giảm giá thất bại!"));
+    if (!response.ok) {
+      return [];
+    }
+
+    return normalizeArray(data);
+  } catch (err) {
+    return [];
   }
-
-  return normalizeArray(data);
 }
 
 // GET /api/Discounts/:id

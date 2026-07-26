@@ -1,7 +1,9 @@
 import "./BanVe.css";
 import { useState } from "react";
 import { useBanVe } from "./useBanVe";
-import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning, MdHourglassTop } from "react-icons/md";
+import { MdMovie, MdChair, MdCheckCircle, MdClose, MdSearch, MdRestaurant, MdWarning, MdHourglassTop, MdRefresh } from "react-icons/md";
+import "../../../styles/Booking.css";
+import TicketExchangeModal from "../../../components/TicketExchangeModal";
 
 /* ── QR Payment Modal with confirmation checkbox ── */
 function QrPaymentModal({ paymentQrCode, totalAmount, paymentTicketIds, formatMoney, onCancel, onConfirm }) {
@@ -174,6 +176,8 @@ export default function StaffBanVe() {
     ticketSubtotal,
     studentDiscountAmount,
   } = useBanVe();
+
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
 
   return (
     <div className="bv-root">
@@ -438,6 +442,7 @@ export default function StaffBanVe() {
                 <div className="bv-legend-item"><span className="bv-legend-box legend-vip"></span>VIP</div>
                 <div className="bv-legend-item"><span className="bv-legend-box legend-couple"></span>Couple</div>
                 <div className="bv-legend-item"><span className="bv-legend-box legend-selected"></span>Đang chọn</div>
+                <div className="bv-legend-item"><span className="bv-legend-box legend-holding" style={{ background: "#f97316", borderColor: "#ea580c", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>⏳</span>Đang giữ chỗ</div>
                 <div className="bv-legend-item bv-legend-dim"><span className="bv-legend-box legend-taken"></span>Đã bán</div>
               </div>
             </div>
@@ -465,7 +470,11 @@ export default function StaffBanVe() {
                 <span>Phòng chiếu</span>
                 <strong>
                   {selectedShowtime
-                    ? (selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`)
+                    ? (() => {
+                        const rName = selectedShowtime.roomName || selectedShowtime.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`;
+                        const rType = selectedShowtime.roomType || selectedShowtime.RoomType || selectedShowtime.format || selectedShowtime.Format || selectedShowtime.room?.roomType || selectedShowtime.room?.RoomType || selectedShowtime.room?.type || selectedShowtime.room?.Type || "2D";
+                        return `${rName} (${rType})`;
+                      })()
                     : "—"}
                 </strong>
               </div>
@@ -916,6 +925,7 @@ export default function StaffBanVe() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

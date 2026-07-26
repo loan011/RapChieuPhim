@@ -362,6 +362,8 @@ function Movies() {
                         <img
                           src={getMovieImage(movie)}
                           alt={getMovieTitle(movie)}
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";
@@ -473,6 +475,8 @@ function Movies() {
                         <img
                           src={getMovieImage(movie)}
                           alt={getMovieTitle(movie)}
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop";

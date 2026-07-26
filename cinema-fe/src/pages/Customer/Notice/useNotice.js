@@ -92,24 +92,56 @@ export function useNotice() {
     async function fetchNotices() {
       try {
         setLoading(true);
-        const data = await getNotificationsForCustomer();
+        let data = [];
+        try {
+          data = await getNotificationsForCustomer();
+        } catch (e) {
+          console.warn("Lỗi getNotificationsForCustomer, dùng cache cục bộ:", e);
+        }
+
         const readIds = JSON.parse(localStorage.getItem("readNotices") || "[]");
-        // Chuẩn hóa và map dữ liệu trả về từ API
-        let list = Array.isArray(data) ? data : (data?.$values || data?.data || []);
-        if (list.length === 0) {
-          setNotices(INITIAL_NOTICES.map(n => ({ ...n, unread: !readIds.includes(n.id) })));
-        } else {
-          setNotices(list.map((n) => {
-            const nId = n.notificationId || n.id;
-            return {
+        let apiList = Array.isArray(data) ? data : (data?.$values || data?.data || []);
+
+        const adminCache = JSON.parse(localStorage.getItem("admin_notifications_cache") || "[]");
+
+        const mergedMap = new Map();
+        
+        // Add adminCache items first
+        adminCache.forEach((n) => {
+          const nId = n.notificationId || n.id;
+          if (nId) {
+            mergedMap.set(String(nId), {
               id: nId,
-              type: n.type || "info",
+              type: n.type === "promotion" ? "promo" : (n.type || "info"),
               title: n.title || "Thông báo mới",
               body: n.content || n.message || n.body || "",
               time: n.createdAt ? String(n.createdAt).split("T")[0] : "Vừa xong",
               unread: !readIds.includes(nId),
-            };
-          }));
+            });
+          }
+        });
+
+        // Add API list items
+        apiList.forEach((n) => {
+          const nId = n.notificationId || n.id;
+          if (nId) {
+            mergedMap.set(String(nId), {
+              id: nId,
+              type: n.type === "promotion" ? "promo" : (n.type || "info"),
+              title: n.title || "Thông báo mới",
+              body: n.content || n.message || n.body || "",
+              time: n.createdAt ? String(n.createdAt).split("T")[0] : "Vừa xong",
+              unread: !readIds.includes(nId),
+            });
+          }
+        });
+
+        const mergedArray = Array.from(mergedMap.values());
+
+        if (mergedArray.length === 0) {
+          setNotices(INITIAL_NOTICES.map(n => ({ ...n, unread: !readIds.includes(n.id) })));
+        } else {
+          setNotices(mergedArray);
         }
       } catch (err) {
         console.error("Lỗi lấy thông báo, sử dụng dữ liệu mặc định:", err);
@@ -120,6 +152,16 @@ export function useNotice() {
       }
     }
     fetchNotices();
+
+    function handleSync() {
+      fetchNotices();
+    }
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("notificationsUpdated", handleSync);
+    return () => {
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("notificationsUpdated", handleSync);
+    };
   }, []);
 
   const unreadCount = notices.filter((notice) => notice.unread).length;

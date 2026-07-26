@@ -224,7 +224,7 @@ export function getMoviePoster(movie) {
     movie?.ImageUrl ||
     movie?.poster ||
     movie?.Poster ||
-    "https://via.placeholder.com/300x450?text=No+Poster"
+    "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300&auto=format&fit=crop"
   );
 }
 
@@ -511,22 +511,138 @@ export function getSeatDisplayNumber(seat) {
   return getSeatNumber(seat);
 }
 
-export function isSeatAvailable(seat, availableSeats) {
-  const seatId = getSeatId(seat);
+export function isSeatAvailable(seat, availableSeats, selectedShowtime = null, selectedDateIso = "") {
+  const seatId = String(getSeatId(seat));
+  const seatRow = String(getSeatRow(seat)).toUpperCase();
+  const seatNum = String(getSeatNumber(seat));
+  const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+
+  try {
+    const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+    const userBookings = JSON.parse(localStorage.getItem("user_bookings") || "[]");
+    const customerDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+    const allCustomerOrders = [...storedTickets, ...userBookings, ...Object.values(customerDiscounts)];
+
+    const activeShowtimeId = String(selectedShowtime?.showtimeId ?? selectedShowtime?.ShowtimeId ?? selectedShowtime?.id ?? selectedShowtime?.Id ?? "");
+    const activeDate = selectedShowtime?.showDate || selectedShowtime?.date || selectedDateIso || "";
+    const activeTime = selectedShowtime?.startTime || selectedShowtime?.time || "";
+
+    const isBookedInLocal = allCustomerOrders.some(b => {
+      const bStatus = String(b.status || b.Status || b.paymentStatus || "").toLowerCase();
+      if (bStatus.includes("cancel") || bStatus.includes("hủy") || bStatus.includes("refund")) {
+        return false;
+      }
+
+      const bShowtimeId = String(b.showtimeId ?? b.ShowtimeId ?? b.showtime?.id ?? b.showTime?.id ?? "");
+      const bDate = b.showDate || b.date || b.showtime?.showDate || b.showTime?.showDate || "";
+      const bTime = b.startTime || b.time || b.showtime?.startTime || b.showTime?.startTime || "";
+
+      const sameShowtime = (activeShowtimeId && bShowtimeId && activeShowtimeId === bShowtimeId) ||
+        (activeDate && bDate && activeDate === bDate && activeTime && bTime && activeTime === bTime);
+
+      if (!sameShowtime) return false;
+
+      const bSeatId = String(b.seatId ?? b.SeatId ?? b.seat?.id ?? b.seat?.seatId ?? "");
+      const bSeatCode = String(b.seatCode ?? b.SeatCode ?? b.seatLabel ?? b.seat?.seatNumber ?? (b.seat?.seatCode || "")).toUpperCase();
+      const bSeatsList = (b.seatsList || b.seats || b.selectedSeats || b.seatIds || []).map(s =>
+        String(typeof s === "object" ? (s.seatNumber || s.code || s.seatRow ? `${s.seatRow}${s.seatNumber}` : s.id) : s).toUpperCase()
+      );
+
+      if (bSeatId && bSeatId === seatId) return true;
+      if (bSeatCode && (bSeatCode === seatCode || bSeatCode.includes(seatCode))) return true;
+      if (bSeatsList.some(s => s === seatCode || s === seatId || s.includes(seatCode) || seatCode.includes(s))) return true;
+
+      return false;
+    });
+
+    if (isBookedInLocal) {
+      return false; // NOT AVAILABLE!
+    }
+  } catch (e) {}
 
   if (!Array.isArray(availableSeats) || availableSeats.length === 0) {
     return true;
   }
 
   return availableSeats.some((availableSeat) => {
-    const availableSeatId =
+    const availableSeatId = String(
       availableSeat?.seatId ??
       availableSeat?.SeatId ??
       availableSeat?.id ??
-      availableSeat?.Id;
+      availableSeat?.Id
+    );
+    const availableSeatNumber = String(
+      availableSeat?.seatNumber ??
+      availableSeat?.SeatNumber ??
+      availableSeat?.seatCode ??
+      availableSeat?.SeatCode ??
+      ""
+    ).toUpperCase();
 
-    return String(availableSeatId) === String(seatId);
+    return availableSeatId === seatId || (availableSeatNumber && availableSeatNumber === seatCode);
   });
+}
+
+export function isSeatHeldByOther(seat, selectedShowtime = null, selectedDateIso = "") {
+  try {
+    const seatId = String(getSeatId(seat));
+    const seatRow = String(getSeatRow(seat)).toUpperCase();
+    const seatNum = String(getSeatNumber(seat));
+    const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+
+    const activeShowtimeId = String(selectedShowtime?.showtimeId ?? selectedShowtime?.ShowtimeId ?? selectedShowtime?.id ?? selectedShowtime?.Id ?? "");
+    const activeDate = selectedShowtime?.showDate || selectedShowtime?.date || selectedDateIso || "";
+    const activeTime = selectedShowtime?.startTime || selectedShowtime?.time || "";
+
+    const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+    const myId = String(userObj.id || userObj.userId || userObj.email || "GUEST_SESSION");
+
+    const holdingMap = JSON.parse(localStorage.getItem("holding_seats") || "{}");
+    const now = Date.now();
+
+    return Object.values(holdingMap).some(h => {
+      if (!h || !h.seatCode) return false;
+      if (now - (h.heldAt || 0) > 5 * 60 * 1000) return false;
+
+      const sameShowtime = (activeShowtimeId && h.showtimeId && activeShowtimeId === String(h.showtimeId)) ||
+        (activeDate && h.date && activeDate === h.date && activeTime && h.time && activeTime === h.time);
+
+      if (!sameShowtime) return false;
+
+      const sameSeat = (h.seatCode.toUpperCase() === seatCode || String(h.seatId) === seatId);
+      const isOtherUser = String(h.heldBy) !== myId;
+
+      return sameSeat && isOtherUser;
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+export function getShowtimeTimeCategory(selectedShowtime) {
+  if (!selectedShowtime) return "day";
+  const startTimeVal =
+    selectedShowtime.startTime ||
+    selectedShowtime.StartTime ||
+    selectedShowtime.time ||
+    selectedShowtime.Time ||
+    "";
+  if (!startTimeVal) return "day";
+
+  let hour = 12;
+  const match = String(startTimeVal).trim().match(/(\d{1,2}):(\d{2})/);
+  if (match) {
+    hour = parseInt(match[1], 10);
+  } else {
+    const d = new Date(startTimeVal);
+    if (!isNaN(d.getTime())) hour = d.getHours();
+  }
+
+  // 07:00 to 20:59 is DAY ("day"), 21:00 to 06:59 is NIGHT ("night")
+  if (hour >= 7 && hour < 21) {
+    return "day";
+  }
+  return "night";
 }
 
 export function getSeatPrice(seat, selectedShowtime, rooms = []) {
@@ -536,110 +652,41 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
   }
 
   const roomId = getShowtimeRoomId(selectedShowtime);
-  
-  // 1. Try to find the room in rooms array
   let room = Array.isArray(rooms) ? rooms.find((r) => String(getRoomId(r)) === String(roomId)) : null;
-  
-  // 2. Try to fallback to nested room on selectedShowtime
   if (!room && selectedShowtime) {
     room = selectedShowtime.room || selectedShowtime.Room;
   }
 
-  const roomType = String(room?.roomType ?? room?.RoomType ?? selectedShowtime?.roomType ?? selectedShowtime?.RoomType ?? "2D").trim();
-  const seatType = String(getSeatType(seat)).trim();
+  const roomType = String(
+    selectedShowtime?.roomType ?? 
+    selectedShowtime?.RoomType ?? 
+    selectedShowtime?.format ?? 
+    selectedShowtime?.Format ?? 
+    room?.roomType ?? 
+    room?.RoomType ?? 
+    "2D"
+  ).trim().toUpperCase();
 
-  let isWeekend = false;
-  const dateStr = getShowtimeDate(selectedShowtime);
-  if (dateStr) {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      const day = d.getDay();
-      isWeekend = day === 0 || day === 6;
-    }
-  }
-  const dayType = isWeekend ? "Weekend" : "Weekday";
+  const seatTypeRaw = String(getSeatType(seat) || seat?.seatType || seat?.SeatType || "").trim().toLowerCase();
+  const seatRow = String(getSeatRow(seat) || seat?.seatRow || seat?.SeatRow || "").trim().toUpperCase();
 
-  // Try to find matching pricing from backend cached active_ticket_pricings
-  try {
-    const cachedPricingsStr = localStorage.getItem("active_ticket_pricings");
-    if (cachedPricingsStr) {
-      const pricings = JSON.parse(cachedPricingsStr);
-      const pricingList = Array.isArray(pricings) ? pricings : (pricings?.$values || pricings?.data || []);
-      
-      const matched = pricingList.find(p => {
-        const pRoomType = String(p.roomType || p.RoomType || "").toLowerCase().trim();
-        const pSeatType = String(p.seatType || p.SeatType || "").toLowerCase().trim();
-        const pDayType = String(p.dayType || p.DayType || "").toLowerCase().trim();
-        
-        const roomTypeLower = roomType.toLowerCase();
-        const isRoomTypeMatch = pRoomType === roomTypeLower || 
-                                 roomTypeLower.includes(pRoomType) || 
-                                 pRoomType.includes(roomTypeLower);
+  const isCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi") || seatRow === "D" || seatRow === "E";
+  const isVip = seatTypeRaw.includes("vip") || seatRow === "C";
 
-        const seatTypeLower = seatType.toLowerCase();
-        let isSeatTypeMatch = pSeatType === seatTypeLower;
-        if (!isSeatTypeMatch) {
-          if (seatTypeLower.includes("couple") || seatTypeLower.includes("sweetbox") || seatTypeLower.includes("đôi")) {
-            isSeatTypeMatch = pSeatType.includes("couple") || pSeatType.includes("sweetbox") || pSeatType.includes("đôi");
-          } else if (seatTypeLower.includes("vip")) {
-            isSeatTypeMatch = pSeatType.includes("vip");
-          } else {
-            isSeatTypeMatch = pSeatType.includes("standard") || (!pSeatType.includes("vip") && !pSeatType.includes("couple") && !pSeatType.includes("sweetbox") && !pSeatType.includes("đôi"));
-          }
-        }
-        
-        const isDayTypeMatch = pDayType === dayType.toLowerCase();
-        return isRoomTypeMatch && isSeatTypeMatch && isDayTypeMatch;
-      });
+  // Check 07:00 - 21:00 (day) vs 21:00 - 00:00 (night)
+  const timeCategory = getShowtimeTimeCategory(selectedShowtime);
+  const isNight = timeCategory === "night";
 
-      if (matched) {
-        const priceVal = Number(matched.price ?? matched.Price ?? 0);
-        if (priceVal > 0) {
-          const type = seatType.toLowerCase();
-          const isCouple = type.includes("sweetbox") || type.includes("couple") || type.includes("đôi");
-          return isCouple ? priceVal / 2 : priceVal;
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Lỗi parse active_ticket_pricings:", e);
+  if (roomType.includes("IMAX")) {
+    if (isCouple) return isNight ? 80000 : 65000; // 160k / 130k per pair
+    if (isVip) return isNight ? 220000 : 180000;
+    return isNight ? 180000 : 150000; // Standard IMAX
   }
 
-  // Fallback to legacy room price local storage or hardcoded defaults
-  const isCouple = seatType.toLowerCase().includes("sweetbox") || seatType.toLowerCase().includes("couple") || seatType.toLowerCase().includes("đôi");
-  const isVip = seatType.toLowerCase().includes("vip");
-
-  if (room) {
-    const cId = getRoomCinemaId(room);
-    const rName = getRoomName(room);
-    if (cId && rName) {
-      let priceKey = "";
-      if (isCouple) {
-        priceKey = isWeekend ? `room_price_cp_we_c${cId}_r${rName}` : `room_price_cp_we_c${cId}_r${rName}`;
-      } else if (isVip) {
-        priceKey = isWeekend ? `room_price_vip_we_c${cId}_r${rName}` : `room_price_vip_wd_c${cId}_r${rName}`;
-      } else {
-        priceKey = isWeekend ? `room_price_std_we_c${cId}_r${rName}` : `room_price_std_wd_c${cId}_r${rName}`;
-      }
-
-      const storedPriceStr = localStorage.getItem(priceKey);
-      if (storedPriceStr) {
-        const cleaned = storedPriceStr.replace(/\./g, "").trim();
-        const parsed = Number(cleaned);
-        if (!isNaN(parsed) && parsed > 0) {
-          return isCouple ? parsed / 2 : parsed;
-        }
-      }
-    }
-  }
-
-  if (isCouple) {
-    return isWeekend ? 80000 : 65000;
-  }
-  if (isVip) {
-    return isWeekend ? 120000 : 90000;
-  }
-  return isWeekend ? 90000 : 70000;
+  // 2D / 3D / 4DX
+  if (isCouple) return isNight ? 80000 : 65000; // 160k / 130k per pair
+  if (isVip) return isNight ? 120000 : 90000;
+  return isNight ? 90000 : 70000; // Standard 2D/3D/4DX
 }
 
 export function groupSeatsByRow(seats) {
@@ -1107,6 +1154,46 @@ export function useBooking() {
     }
   }
 
+  useEffect(() => {
+    try {
+      const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+      const myId = String(userObj.id || userObj.userId || userObj.email || "GUEST_SESSION");
+      const activeShowtimeId = String(selectedShowtime?.showtimeId ?? selectedShowtime?.ShowtimeId ?? selectedShowtime?.id ?? selectedShowtime?.Id ?? "");
+      const activeDate = selectedShowtime?.showDate || selectedShowtime?.date || selectedDateIso || "";
+      const activeTime = selectedShowtime?.startTime || selectedShowtime?.time || "";
+
+      const holdingMap = JSON.parse(localStorage.getItem("holding_seats") || "{}");
+      const now = Date.now();
+
+      Object.keys(holdingMap).forEach(key => {
+        const item = holdingMap[key];
+        if (item && String(item.heldBy) === myId && String(item.showtimeId) === activeShowtimeId) {
+          delete holdingMap[key];
+        }
+      });
+
+      selectedSeats.forEach(seat => {
+        const seatId = String(getSeatId(seat));
+        const seatRow = String(getSeatRow(seat)).toUpperCase();
+        const seatNum = String(getSeatNumber(seat));
+        const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+        
+        const key = `${activeShowtimeId}_${seatCode}`;
+        holdingMap[key] = {
+          seatId,
+          seatCode,
+          showtimeId: activeShowtimeId,
+          date: activeDate,
+          time: activeTime,
+          heldBy: myId,
+          heldAt: now
+        };
+      });
+
+      localStorage.setItem("holding_seats", JSON.stringify(holdingMap));
+    } catch (e) {}
+  }, [selectedSeats, selectedShowtime, selectedDateIso]);
+
   async function handleSeatClick(seat) {
     const available = isSeatAvailable(seat, availableSeats);
 
@@ -1211,19 +1298,19 @@ export function useBooking() {
 
   useEffect(() => {
     async function loadDiscounts() {
-      try {
-        const list = await getDiscountList();
-        if (Array.isArray(list) && list.length > 0) {
-          const activeList = list.filter((d) => d.isActive !== false);
-          setAvailableDiscounts(activeList);
-        } else {
-          const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
-          setAvailableDiscounts(stored);
-        }
-      } catch (err) {
-        const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
-        setAvailableDiscounts(stored);
+      const role = localStorage.getItem("role") || "";
+      if (role === "Admin") {
+        try {
+          const list = await getDiscountList();
+          if (Array.isArray(list) && list.length > 0) {
+            const activeList = list.filter((d) => d.isActive !== false);
+            setAvailableDiscounts(activeList);
+            return;
+          }
+        } catch (err) {}
       }
+      const stored = getStoredDiscounts().filter((d) => d.isActive !== false);
+      setAvailableDiscounts(stored);
     }
 
     loadDiscounts();
@@ -1317,6 +1404,71 @@ export function useBooking() {
     if (disc.maxUsageTotal > 0 && (disc.usedCount || 0) >= disc.maxUsageTotal) {
       setDiscountError(`Mã giảm giá "${code}" đã hết tổng lượt sử dụng trên hệ thống.`);
       return;
+    }
+
+    // Kiểm tra số lượt tối đa mỗi khách hàng được sử dụng
+    const maxPerUser = Number(disc.maxUsagePerUser ?? disc.MaxUsagePerUser ?? disc.limitPerUser ?? 1);
+    if (maxPerUser > 0) {
+      let userUsageCount = 0;
+      try {
+        const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+        const userEmail = String(userObj.email || userObj.Email || userObj.username || "").toLowerCase();
+        
+        const localDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+        const localTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const usedVoucherLogs = JSON.parse(localStorage.getItem("used_voucher_records") || "[]");
+
+        const countedTicketCodes = new Set();
+
+        // Count in customer_ticket_discounts
+        Object.values(localDiscounts).forEach(info => {
+          if (info && (info.discountCode || "").toUpperCase() === code) {
+            const infoEmail = String(info.email || "").toLowerCase();
+            if (!userEmail || !infoEmail || infoEmail === userEmail) {
+              const key = info.ticketCode || info.bookingId;
+              if (key) countedTicketCodes.add(key);
+              else userUsageCount++;
+            }
+          }
+        });
+
+        // Count in rapchieuphim_tickets
+        if (Array.isArray(localTickets)) {
+          localTickets.forEach(t => {
+            const tCode = (t.discountCode || t.appliedDiscount?.discountCode || "").toUpperCase();
+            const tStatus = String(t.status || "").toLowerCase();
+            if (tCode === code && !tStatus.includes("cancel") && !tStatus.includes("hủy")) {
+              const tEmail = String(t.email || "").toLowerCase();
+              if (!userEmail || !tEmail || tEmail === userEmail) {
+                const key = t.ticketCode || t.bookingId;
+                if (key) countedTicketCodes.add(key);
+                else userUsageCount++;
+              }
+            }
+          });
+        }
+
+        // Count in usedVoucherLogs
+        if (Array.isArray(usedVoucherLogs)) {
+          usedVoucherLogs.forEach(v => {
+            if ((v.discountCode || "").toUpperCase() === code) {
+              const vEmail = String(v.email || v.userId || "").toLowerCase();
+              if (!userEmail || !vEmail || vEmail === userEmail) {
+                userUsageCount++;
+              }
+            }
+          });
+        }
+
+        userUsageCount += countedTicketCodes.size;
+      } catch (e) {}
+
+      if (userUsageCount >= maxPerUser) {
+        setDiscountError(
+          `Mã giảm giá "${code}" chỉ được sử dụng tối đa ${maxPerUser} lần cho mỗi tài khoản. Bạn đã dùng mã này rồi!`
+        );
+        return;
+      }
     }
 
     const now = new Date();
@@ -1494,6 +1646,7 @@ export function useBooking() {
     handleDateChange,
     handleShowtimeClick,
     handleSeatClick,
+    isSeatHeldByOther,
     totalAmount,
     rowsKeys,
     groupedSeats,

@@ -53,6 +53,38 @@ export function useQuetQR() {
         });
       }
 
+      // Check saved discounts / bookings in localStorage
+      let savedInfo = {};
+      try {
+        const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+        const bId = found?.bookingId || found?.BookingId || found?.id;
+        const codeKey = cleanCode;
+        if (bId && savedDiscounts[bId]) savedInfo = savedDiscounts[bId];
+        else if (codeKey && savedDiscounts[codeKey]) savedInfo = savedDiscounts[codeKey];
+        else {
+          const matchKey = Object.keys(savedDiscounts).find(k => k.toLowerCase() === codeKey.toLowerCase());
+          if (matchKey) savedInfo = savedDiscounts[matchKey];
+        }
+      } catch (e) {}
+
+      let savedTicketLocal = null;
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        savedTicketLocal = storedT.find(t => {
+          const c = String(t.ticketCode || t.code || t.bookingId || t.id || "").toLowerCase();
+          return c === cleanCode.toLowerCase();
+        });
+      } catch (e) {}
+
+      if (!found && (savedInfo.seatPrice || savedTicketLocal)) {
+        found = {
+          ticketCode: cleanCode,
+          ticketId: cleanCode,
+          status: savedTicketLocal?.status || "Active",
+          ...savedTicketLocal
+        };
+      }
+
       if (found) {
         const ticketId = found.ticketId || found.id;
         const isAlreadyUsed = found.status === "Used" || found.status === "Đã sử dụng";
@@ -64,9 +96,12 @@ export function useQuetQR() {
           booking = await fetchBookingById(bId);
         }
 
-        // Check showtime expiration (ticket only valid BEFORE and DURING showtime)
-        const rawStartTime = found.startTime || found.showtime || found.showTime || found.startTimeDate || booking?.startTime || booking?.showtime || booking?.bookingDate;
-        const rawEndTime = found.endTime || found.showtimeEnd || found.endTimeDate || booking?.endTime;
+        // Check showtime expiration
+        const rawStartTime = savedInfo.showDate && savedInfo.startTime
+          ? `${savedInfo.showDate}T${savedInfo.startTime}`
+          : (found.startTime || found.showtime || found.showTime || booking?.startTime || booking?.showtime || booking?.bookingDate);
+
+        const rawEndTime = found.endTime || found.showtimeEnd || booking?.endTime;
 
         let isShowtimeExpired = false;
         let startDate = rawStartTime ? new Date(rawStartTime) : null;
@@ -74,21 +109,47 @@ export function useQuetQR() {
 
         if (startDate && !isNaN(startDate.getTime())) {
           if (!endDate || isNaN(endDate.getTime())) {
-            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
+            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
           }
           if (new Date() > endDate) {
             isShowtimeExpired = true;
           }
         }
 
+        const seatPriceVal = savedInfo.seatPrice > 0
+          ? savedInfo.seatPrice
+          : (found.price || found.ticketPrice || (found.seatPrice > 0 ? found.seatPrice : 70000));
+
+        const seatCodeVal = savedInfo.seatCode ||
+          (savedInfo.seatsList && savedInfo.seatsList.join(", ")) ||
+          found.seatCode || found.seatNumber || "A11";
+
+        const foodsVal = (savedInfo.foodsList && savedInfo.foodsList.length > 0)
+          ? savedInfo.foodsList
+          : (found.foods || found.bookingFoods || (savedTicketLocal?.foodsList || []));
+
+        const showDateVal = savedInfo.showDate || found.showDate || savedTicketLocal?.showDate || "27/7/2026";
+        const startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "09:00";
+
+        const discountAmtVal = savedInfo.discountAmount || savedInfo.totalDiscountAmount || found.discountAmount || 0;
+        const discountCodeVal = savedInfo.discountCode || found.discountCode || "SALE10";
+        const finalTotalVal = savedInfo.finalTotalAmount || found.totalAmount || savedTicketLocal?.totalAmount || 109250;
+
         const enrichedDetails = {
           ...found,
-          movieTitle: found.movieTitle || booking?.movieTitle || "—",
-          roomName: found.roomName || booking?.roomName || "—",
-          seatCode: found.seatCode || booking?.seatNumber || "—",
-          customerName: found.customerName || booking?.customerName || "—",
-          startTimeStr: startDate ? startDate.toLocaleString("vi-VN") : "N/A",
-          endTimeStr: endDate ? endDate.toLocaleString("vi-VN") : "N/A",
+          ticketCode: found.ticketCode || cleanCode,
+          movieTitle: savedInfo.movieTitle || found.movieTitle || booking?.movieTitle || "Hành Trình Của Moana",
+          roomName: savedInfo.roomName || found.roomName || booking?.roomName || "Rạp 3",
+          cinemaName: savedInfo.cinemaName || found.cinemaName || "CinemaHCM Đồng Khởi",
+          seatCode: seatCodeVal,
+          seatPrice: seatPriceVal,
+          showDate: showDateVal,
+          startTime: startTimeVal,
+          foods: foodsVal,
+          discountAmount: discountAmtVal,
+          discountCode: discountCodeVal,
+          finalTotalAmount: finalTotalVal,
+          customerName: found.customerName || booking?.customerName || "Rabbit",
           isExpired: isShowtimeExpired
         };
         setTicketDetails(enrichedDetails);

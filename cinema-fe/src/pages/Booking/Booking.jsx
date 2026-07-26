@@ -106,6 +106,7 @@ export default function Booking() {
     handleDateChange,
     handleShowtimeClick,
     handleSeatClick,
+    isSeatHeldByOther,
     totalAmount,
     rowsKeys,
     groupedSeats,
@@ -197,8 +198,8 @@ export default function Booking() {
           const seatId1 = getSeatId(seat);
           const seatId2 = getSeatId(nextSeat);
 
-          const available1 = isSeatAvailable(seat, availableSeats);
-          const available2 = isSeatAvailable(nextSeat, availableSeats);
+          const available1 = isSeatAvailable(seat, availableSeats, selectedShowtime, selectedDateIso);
+          const available2 = isSeatAvailable(nextSeat, availableSeats, selectedShowtime, selectedDateIso);
           const available = available1 && available2;
 
           const selected1 = selectedSeats.some(s => String(getSeatId(s)) === String(seatId1));
@@ -246,12 +247,15 @@ export default function Booking() {
 
       // Standard seat node
       const seatId = getSeatId(seat);
-      const available = isSeatAvailable(seat, availableSeats);
+      const available = isSeatAvailable(seat, availableSeats, selectedShowtime, selectedDateIso);
+      const isHeldByOther = !available ? false : (typeof isSeatHeldByOther === "function" && isSeatHeldByOther(seat, selectedShowtime, selectedDateIso));
       const selected = selectedSeats.some(s => String(getSeatId(s)) === String(seatId));
 
       let seatClass = "seat-node";
       if (!available) {
         seatClass += " taken";
+      } else if (isHeldByOther) {
+        seatClass += " holding";
       } else if (selected) {
         seatClass += " selected";
       } else {
@@ -263,11 +267,21 @@ export default function Booking() {
           key={seatId}
           type="button"
           className={seatClass}
+          style={isHeldByOther ? { background: "#f97316", borderColor: "#ea580c", color: "#fff", cursor: "pointer" } : {}}
           disabled={!available}
-          onClick={() => handleSeatClick(seat)}
-          title={`${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(seat, selectedShowtime, rooms).toLocaleString("vi-VN")}đ)`}
+          onClick={async () => {
+            if (!available) return;
+            if (isHeldByOther) {
+              alert("Ghế này đang được người khác giữ chỗ! Vui lòng chọn ghế khác.");
+              return;
+            }
+            handleSeatClick(seat);
+          }}
+          title={isHeldByOther ? "Ghế này đang được người khác giữ chỗ!" : `${getSeatLabel(seat)} (${seatType} - ${getSeatPrice(seat, selectedShowtime, rooms).toLocaleString("vi-VN")}đ)`}
         >
-          {selected ? (
+          {isHeldByOther ? (
+            <span style={{ fontSize: "11px", fontWeight: "bold" }}>⏳</span>
+          ) : selected ? (
             <span className="selected-checkmark">✓</span>
           ) : !available ? (
             <span className="seat-lock-icon">🔒</span>
@@ -418,6 +432,13 @@ export default function Booking() {
                     <span>
                       Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ
                     </span>
+                  </div>
+
+                  <div className="legend-item">
+                    <div className="seat-node legend-box holding" style={{ background: "#f97316", borderColor: "#ea580c", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "bold" }}>⏳</span>
+                    </div>
+                    <span>Ghế đang giữ chỗ</span>
                   </div>
 
                   <div className="legend-item">

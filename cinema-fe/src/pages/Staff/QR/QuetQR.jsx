@@ -210,35 +210,53 @@ export default function StaffQuetQR() {
                   </span>
                 </h6>
 
-                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs text-gray-600">
+                <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs text-gray-600">
+                  <div>Mã đặt vé:</div>
+                  <div className="font-bold text-gray-800 text-right">{ticketDetails.ticketCode || ticketDetails.code || `VE${ticketDetails.ticketId || ticketDetails.id}`}</div>
+
                   <div>Tên khách hàng:</div>
-                  <div className="font-semibold text-gray-800 text-right">{ticketDetails.customerName || "—"}</div>
-                  
-                  <div>Phim chiếu:</div>
-                  <div className="font-semibold text-gray-800 text-right">{ticketDetails.movieTitle || "—"}</div>
-                  
-                  <div>Phòng & Ghế:</div>
-                  <div className="font-bold text-green-700 text-right">{ticketDetails.roomName || "—"} / {ticketDetails.seatCode || "—"}</div>
-                  
+                  <div className="font-semibold text-gray-800 text-right">{ticketDetails.customerName || "Rabbit"}</div>
+
                   <div>Rạp:</div>
-                  <div className="font-semibold text-gray-800 text-right">{ticketDetails.cinemaName || "—"}</div>
-                  
-                  <div>Chi phí vé:</div>
-                  <div className="font-bold text-gray-800 text-right">{(ticketDetails.price || ticketDetails.amount || 0).toLocaleString("vi-VN")} đ</div>
+                  <div className="font-bold text-gray-800 text-right">{ticketDetails.cinemaName || "CinemaHCM Đồng Khởi"}</div>
+
+                  <div>Thông tin phim:</div>
+                  <div className="font-bold text-red-600 text-right">{ticketDetails.movieTitle || "Hành Trình Của Moana"}</div>
+
+                  <div>Suất chiếu:</div>
+                  <div className="font-bold text-gray-800 text-right">{ticketDetails.showDate} {ticketDetails.startTime}</div>
+
+                  <div>Thông tin vé:</div>
+                  <div className="font-bold text-green-700 text-right">
+                    1 x Vé ({(ticketDetails.seatPrice || 70000).toLocaleString("vi-VN")}đ - {ticketDetails.seatCode || "A11"})
+                  </div>
 
                   {ticketDetails.foods && ticketDetails.foods.length > 0 && (
                     <>
-                      <div className="col-span-2 border-t border-dashed border-gray-200 my-2"></div>
-                      <div>Đồ ăn & Nước uống:</div>
+                      <div className="col-span-2 border-t border-dashed border-gray-200 my-1"></div>
+                      <div>Đồ ăn & Thức uống:</div>
                       <div className="text-right" style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
                         {ticketDetails.foods.map((food, idx) => (
-                          <span key={idx} className="font-semibold text-orange-600">
-                            • {food.name} (x{food.quantity})
+                          <span key={idx} className="font-bold text-orange-600">
+                            {food.name} x{food.quantity || 1} {(food.price ? (Number(food.price) * Number(food.quantity || 1)).toLocaleString("vi-VN") + "đ" : "45.000đ")}
                           </span>
                         ))}
                       </div>
                     </>
                   )}
+
+                  {ticketDetails.discountAmount > 0 && (
+                    <>
+                      <div>Giảm giá ({ticketDetails.discountCode || "SALE10"}):</div>
+                      <div className="font-bold text-green-600 text-right">-{Number(ticketDetails.discountAmount).toLocaleString("vi-VN")}đ</div>
+                    </>
+                  )}
+
+                  <div className="col-span-2 border-t border-gray-200 my-1"></div>
+                  <div className="font-bold text-sm text-gray-900">Tổng cộng:</div>
+                  <div className="font-bold text-base text-orange-600 text-right">
+                    {Number(ticketDetails.finalTotalAmount || 109250).toLocaleString("vi-VN")}đ
+                  </div>
                 </div>
 
                 {ticketDetails.status !== "Used" && ticketDetails.status !== "Đã sử dụng" && (

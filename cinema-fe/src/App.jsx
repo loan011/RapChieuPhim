@@ -1,172 +1,204 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-import Home from "./pages/Home";
-
-import Login from "./pages/Auth/Login";
-import Register from "./pages/Auth/Register";
-import Movies from "./pages/Movies/Movies";
-import ForgotPassword from "./pages/Auth/ForgotPassword";
-import ChangePassword from "./pages/Auth/ChangePassword";
-import TicketPrice from "./pages/Ticket/TicketPrice";
-import Booking from "./pages/Booking/Booking";
-import Payment from "./pages/Payment/Payment.jsx";
-import TicketInfo from "./pages/Ticket/TicketInfo";
-
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import CustomerProfile from "./pages/Customer/Profile/Profile";
-import VeCuaToi from "./pages/Customer/Ticket/Ticket";
-import LichSuDatVe from "./pages/Customer/History/History";
-import CustomerThongBao from "./pages/Customer/Notice/Notice";
-import CustomerDoiMatKhau from "./pages/Customer/ChangePassword/ChangePassword";
-import CustomerProfileLayout from "./layouts/CustomerProfileLayout";
+// Lazy-loaded Public / Customer pages
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Auth/Login"));
+const Register = lazy(() => import("./pages/Auth/Register"));
+const Movies = lazy(() => import("./pages/Movies/Movies"));
+const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"));
+const ChangePassword = lazy(() => import("./pages/Auth/ChangePassword"));
+const TicketPrice = lazy(() => import("./pages/Ticket/TicketPrice"));
+const Booking = lazy(() => import("./pages/Booking/Booking"));
+const Payment = lazy(() => import("./pages/Payment/Payment.jsx"));
+const TicketInfo = lazy(() => import("./pages/Ticket/TicketInfo"));
 
-import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard/Dashboard";
-import UserManagement from "./pages/Admin/UserManagement/UserManagement";
-import Phim from "./pages/Admin/Film/Film";
-import PhongChieu from "./pages/Admin/Room/Room";
-import RapChieu from "./pages/Admin/Cinema/Cinema";
-import SuatChieu from "./pages/Admin/Rate/Rate";
-import Ghe from "./pages/Admin/Seat/Seat";
-import ThongBao from "./pages/Admin/Notice/Notice";
-import Food from "./pages/Admin/Food/Food";
-import BaoCao from "./pages/Admin/BaoCao/BaoCao";
-import Discount from "./pages/Admin/Discount/Discount";
+// Lazy-loaded Customer Profile pages
+const CustomerProfile = lazy(() => import("./pages/Customer/Profile/Profile"));
+const VeCuaToi = lazy(() => import("./pages/Customer/Ticket/Ticket"));
+const LichSuDatVe = lazy(() => import("./pages/Customer/History/History"));
+const CustomerThongBao = lazy(() => import("./pages/Customer/Notice/Notice"));
+const CustomerDoiMatKhau = lazy(() => import("./pages/Customer/ChangePassword/ChangePassword"));
+const CustomerProfileLayout = lazy(() => import("./layouts/CustomerProfileLayout"));
 
-import StaffLayout from "./layouts/StaffLayout";
-import StaffBanVe from "./pages/Staff/BanVe/BanVe";
-import StaffQuanLyVe from "./pages/Staff/QuanLyVe/QuanLyVe";
-import StaffCombo from "./pages/Staff/Combo/Combo";
-import StaffQuetQR from "./pages/Staff/QR/QuetQR";
-import StaffQuetQRDoAn from "./pages/Staff/QuetQRDoAn/QuetQRDoAn";
-import StaffHoSo from "./pages/Staff/HoSo/HoSo";
-import StaffDoanhThu from "./pages/Staff/DoanhThu/DoanhThu";
-import StaffQuanLyDoAn from "./pages/Staff/QuanLyDoAn/QuanLyDoAn";
+// Lazy-loaded Admin pages
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+const Dashboard = lazy(() => import("./pages/Admin/Dashboard/Dashboard"));
+const UserManagement = lazy(() => import("./pages/Admin/UserManagement/UserManagement"));
+const Phim = lazy(() => import("./pages/Admin/Film/Film"));
+const PhongChieu = lazy(() => import("./pages/Admin/Room/Room"));
+const SuatChieu = lazy(() => import("./pages/Admin/Rate/Rate"));
+const ThongBao = lazy(() => import("./pages/Admin/Notice/Notice"));
+const Food = lazy(() => import("./pages/Admin/Food/Food"));
+const BaoCao = lazy(() => import("./pages/Admin/BaoCao/BaoCao"));
+const Discount = lazy(() => import("./pages/Admin/Discount/Discount"));
+
+// Lazy-loaded Staff pages
+const StaffLayout = lazy(() => import("./layouts/StaffLayout"));
+const StaffBanVe = lazy(() => import("./pages/Staff/BanVe/BanVe"));
+const StaffQuanLyVe = lazy(() => import("./pages/Staff/QuanLyVe/QuanLyVe"));
+const StaffCombo = lazy(() => import("./pages/Staff/Combo/Combo"));
+const StaffQuetQR = lazy(() => import("./pages/Staff/QR/QuetQR"));
+const StaffQuetQRDoAn = lazy(() => import("./pages/Staff/QuetQRDoAn/QuetQRDoAn"));
+const StaffHoSo = lazy(() => import("./pages/Staff/HoSo/HoSo"));
+const StaffDoanhThu = lazy(() => import("./pages/Staff/DoanhThu/DoanhThu"));
+const StaffQuanLyDoAn = lazy(() => import("./pages/Staff/QuanLyDoAn/QuanLyDoAn"));
+
+function LoadingFallback() {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      backgroundColor: "#0d0d0f",
+      color: "#ffffff"
+    }}>
+      <div style={{
+        width: "48px",
+        height: "48px",
+        border: "4px solid rgba(229, 9, 20, 0.2)",
+        borderTop: "4px solid #e50914",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite"
+      }} />
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/change-password" element={<ChangePassword />} />
-        <Route path="/ticket-info/:ticketCode" element={<TicketInfo />} />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/ticket-info/:ticketCode" element={<TicketInfo />} />
 
-        {/* Customer routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <Movies />
-            </ProtectedRoute>
-          }
-        />
+          {/* Customer routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <Movies />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/movies"
-          element={<Navigate to="/" replace />}
-        />
+          <Route
+            path="/movies"
+            element={<Navigate to="/" replace />}
+          />
 
-        <Route
-          path="/showtimes"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/showtimes"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/ticket-price"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <TicketPrice />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/ticket-price"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <TicketPrice />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/booking"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <Booking />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/booking"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <Booking />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/payment"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <Payment />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/payment"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <Payment />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/customer"
-          element={
-            <ProtectedRoute allowedRoles={["Customer"]}>
-              <CustomerProfileLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="profile" element={<CustomerProfile />} />
-          <Route path="ve-cua-toi" element={<VeCuaToi />} />
-          <Route path="lich-su" element={<LichSuDatVe />} />
-          <Route path="thong-bao" element={<CustomerThongBao />} />
-          <Route path="doi-mat-khau" element={<CustomerDoiMatKhau />} />
-        </Route>
+          <Route
+            path="/customer"
+            element={
+              <ProtectedRoute allowedRoles={["Customer"]}>
+                <CustomerProfileLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="profile" element={<CustomerProfile />} />
+            <Route path="ve-cua-toi" element={<VeCuaToi />} />
+            <Route path="lich-su" element={<LichSuDatVe />} />
+            <Route path="thong-bao" element={<CustomerThongBao />} />
+            <Route path="doi-mat-khau" element={<CustomerDoiMatKhau />} />
+          </Route>
 
-        {/* Staff routes */}
-        <Route
-          path="/staff"
-          element={
-            <ProtectedRoute allowedRoles={["Staff"]}>
-              <StaffLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="ban-ve" replace />} />
-          <Route path="ban-ve" element={<StaffBanVe />} />
-          <Route path="quan-ly-ve" element={<StaffQuanLyVe />} />
-          <Route path="combo" element={<StaffCombo />} />
-          <Route path="quet-qr" element={<StaffQuetQR />} />
-          <Route path="quet-qr-do-an" element={<StaffQuetQRDoAn />} />
-          <Route path="quan-ly-do-an" element={<StaffQuanLyDoAn />} />
-          <Route path="ho-so" element={<StaffHoSo />} />
-          <Route path="doanh-thu" element={<StaffDoanhThu />} />
-        </Route>
+          {/* Staff routes */}
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute allowedRoles={["Staff"]}>
+                <StaffLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="ban-ve" replace />} />
+            <Route path="ban-ve" element={<StaffBanVe />} />
+            <Route path="quan-ly-ve" element={<StaffQuanLyVe />} />
+            <Route path="combo" element={<StaffCombo />} />
+            <Route path="quet-qr" element={<StaffQuetQR />} />
+            <Route path="quet-qr-do-an" element={<StaffQuetQRDoAn />} />
+            <Route path="quan-ly-do-an" element={<StaffQuanLyDoAn />} />
+            <Route path="ho-so" element={<StaffHoSo />} />
+            <Route path="doanh-thu" element={<StaffDoanhThu />} />
+          </Route>
 
-        {/* Admin routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={["Admin"]}>
-              <AdminLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
-          <Route path="phim" element={<Phim />} />
-          <Route path="phong-chieu" element={<PhongChieu />} />
-          <Route path="rap-chieu" element={<Navigate to="/admin/phong-chieu" replace />} />
-          <Route path="suat-chieu" element={<SuatChieu />} />
-          <Route path="ghe" element={<Navigate to="/admin/phong-chieu" replace />} />
-          <Route path="ma-giam-gia" element={<Discount />} />
-          <Route path="do-an" element={<Food />} />
-          <Route path="bao-cao" element={<BaoCao />} />
-          <Route path="thong-bao" element={<ThongBao />} />
-        </Route>
+          {/* Admin routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="quan-ly-nguoi-dung" element={<UserManagement />} />
+            <Route path="phim" element={<Phim />} />
+            <Route path="phong-chieu" element={<PhongChieu />} />
+            <Route path="rap-chieu" element={<Navigate to="/admin/phong-chieu" replace />} />
+            <Route path="suat-chieu" element={<SuatChieu />} />
+            <Route path="ghe" element={<Navigate to="/admin/phong-chieu" replace />} />
+            <Route path="ma-giam-gia" element={<Discount />} />
+            <Route path="do-an" element={<Food />} />
+            <Route path="bao-cao" element={<BaoCao />} />
+            <Route path="thong-bao" element={<ThongBao />} />
+          </Route>
 
-        {/* Wrong path */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Wrong path */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

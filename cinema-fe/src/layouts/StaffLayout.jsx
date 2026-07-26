@@ -118,24 +118,8 @@ export default function StaffLayout() {
     navigate("/login");
   }
 
-  // Hàm kiểm tra thời gian vào ca (trước 15 phút)
+  // Hàm kiểm tra thời gian vào ca (Cho phép kích hoạt bất cứ lúc nào)
   function validateShiftTime(shift) {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const totalMinutes = hours * 60 + minutes;
-
-    if (shift.includes("Ca 1")) {
-      // Cho phép: 07:45 -> 16:00 (465 -> 960)
-      if (totalMinutes < 465 || totalMinutes > 960) {
-        return `Không thể mở khóa. Ca 1 chỉ được phép kích hoạt từ 07:45 đến 16:00. Hiện tại là ${now.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}.`;
-      }
-    } else if (shift.includes("Ca 2")) {
-      // Cho phép: 15:45 -> 24:00 (945 -> 1440)
-      if (totalMinutes < 945 || totalMinutes > 1440) {
-        return `Không thể mở khóa. Ca 2 chỉ được phép kích hoạt từ 15:45 đến 24:00. Hiện tại là ${now.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}.`;
-      }
-    }
     return null;
   }
 
@@ -199,16 +183,7 @@ export default function StaffLayout() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Số Tiền Mặt Bàn Giao Đầu Ca (VNĐ)</label>
-            <input
-              type="number"
-              value={inputCash}
-              onChange={(e) => setInputCash(Number(e.target.value))}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
-              placeholder="500000"
-            />
-          </div>
+
 
           {timeError && (
             <div className="p-3.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-semibold flex items-start gap-2">
@@ -253,9 +228,10 @@ export default function StaffLayout() {
 
           <button
             onClick={handleResetShift}
-            className="w-full bg-gray-800 text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-900 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md"
+            style={{ color: '#ffffff', backgroundColor: '#16a34a' }}
+            className="w-full text-white bg-green-600 py-3.5 rounded-xl text-base font-bold hover:bg-green-700 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-green-200 cursor-pointer"
           >
-            Mở Ca Làm Việc Mới
+            🔓 Mở Ca Làm Việc Mới
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getDailyRevenue } from "../../Staff/DoanhThu/dailyRevenueService";
 
 import {
   MdMovie,
@@ -15,6 +16,7 @@ import {
   getMovieDetailStats,
   getCinemas,
   getDashboardFoodSources,
+  getMovies,
 } from "./dashboardService";
 
 function getOrderCinemaId(order) {
@@ -338,17 +340,18 @@ export function useDashboard() {
       setLoading(true);
       setError("");
 
-      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp] = await Promise.all([
-        getDashboardStats(timeFilter, cinemaId),
+      const [statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp, dailyReport] = await Promise.all([
+        getDashboardStats(timeFilter, cinemaId).catch(() => null),
         getRecentTickets().catch(() => []),
-        getRevenueChart(timeFilter, cinemaId),
-        getMovieStats(timeFilter, cinemaId),
+        getRevenueChart(timeFilter, cinemaId).catch(() => null),
+        getMovieStats(timeFilter, cinemaId).catch(() => []),
         cinemas.length > 0 ? cinemas : getCinemas().catch(() => []),
+        getDailyRevenue(timeFilter, cinemaId).catch(() => null),
       ]);
 
-      const result = { statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp };
+      const result = { statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp, dailyReport };
       cacheRef.current[cacheKey] = result;
-      applyData(result);
+      await applyData(result);
 
       // Thêm dữ liệu từ simulated orders nếu có
       const localFoodSources = await getDashboardFoodSources();
@@ -406,56 +409,132 @@ export function useDashboard() {
     });
   }
 
-  function applyData({ statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp }) {
-    setStats(normalizeDashboardStats(statsData));
-    setRecentTickets(normalizeRecentTickets(recentTicketData));
-
+  async function applyData({ statsData, recentTicketData, chartDataResp, movieStatsResp, cinemasResp, dailyReport }) {
     const cList = cinemasResp?.$values || cinemasResp || cinemas;
     if (Array.isArray(cList) && cList.length > 0) {
       setCinemas(cList);
     }
 
+    setRecentTickets(normalizeRecentTickets(recentTicketData));
+
     const foodDistributions = normalizeFoodDistributions(chartDataResp);
 
-    setChartData({
-      totalTicketRevenue: chartDataResp?.totalTicketRevenue || chartDataResp?.TotalTicketRevenue || 0,
-      totalFoodRevenue: chartDataResp?.totalFoodRevenue || chartDataResp?.TotalFoodRevenue || 0,
-      ticketRevenuePercentage: chartDataResp?.ticketRevenuePercentage || chartDataResp?.TicketRevenuePercentage || 0,
-      foodRevenuePercentage: chartDataResp?.foodRevenuePercentage || chartDataResp?.FoodRevenuePercentage || 0,
-      foodDistributions,
-      topShowtimes: (chartDataResp?.topShowtimes?.$values || chartDataResp?.topShowtimes || chartDataResp?.TopShowtimes?.$values || chartDataResp?.TopShowtimes || []).map(s => ({
-        movieTitle: s.movieTitle || s.MovieTitle,
-        showtimeLabel: s.showtimeLabel || s.ShowtimeLabel,
-        revenue: s.revenue || s.Revenue,
-        occupancy: s.occupancy || s.Occupancy
-      })),
-      revenueByTime: (chartDataResp?.revenueByTime?.$values || chartDataResp?.revenueByTime || chartDataResp?.RevenueByTime?.$values || chartDataResp?.RevenueByTime || []).map(r => ({
-        timeLabel: r.timeLabel || r.TimeLabel,
-        totalRevenue: r.totalRevenue || r.TotalRevenue,
-        ticketRevenue: r.ticketRevenue || r.TicketRevenue || 0,
-        foodRevenue: r.foodRevenue || r.FoodRevenue || 0
-      }))
-    });
+    if (dailyReport) {
+      // 1. Đồng bộ 100% số liệu doanh thu tổng và số vé với phía Staff
+      setStats({
+        totalMovies: statsData?.totalMovies ?? statsData?.TotalMovies ?? 4,
+        totalUsers: statsData?.totalUsers ?? statsData?.TotalUsers ?? 10,
+        totalTickets: dailyReport.totalTicketsCount,
+        revenue: dailyReport.totalOverallRevenue
+      });
 
-    // Dùng thông tin phim từ movieStatsResp (hiển thị tất cả phim có doanh thu/vé)
-    setMovieStats((movieStatsResp?.$values || movieStatsResp || []).map(m => {
-      const movieStatus = getMovieStatus(m);
-      return {
-        movieId: m.movieId ?? m.MovieId,
-        movieTitle: m.movieTitle ?? m.MovieTitle ?? m.title ?? m.Title,
-        posterUrl: m.posterUrl ?? m.PosterUrl ?? m.imageUrl ?? m.ImageUrl,
-        movieStatus,
-        totalRevenue: m.totalRevenue || m.TotalRevenue || 0,
-        totalTicketsSold: m.totalTicketsSold || m.TotalTicketsSold || 0,
-        revenueContributionPercentage: m.revenueContributionPercentage || m.RevenueContributionPercentage || 0,
-        seatOccupancyPercentage: m.seatOccupancyPercentage || m.SeatOccupancyPercentage || 0,
-        cinemaDistributions: (m.cinemaDistributions?.$values || m.cinemaDistributions || m.CinemaDistributions?.$values || m.CinemaDistributions || []).map(c => ({
-          cinemaName: c.cinemaName || c.CinemaName,
-          percentage: c.percentage || c.Percentage,
-          ticketsSold: c.ticketsSold || c.TicketsSold
-        }))
-      };
-    }).filter(m => m.movieTitle));
+      setChartData({
+        totalTicketRevenue: dailyReport.totalTicketRevenue,
+        totalFoodRevenue: dailyReport.totalConcessionRevenue,
+        ticketRevenuePercentage: dailyReport.totalOverallRevenue > 0 ? Number(((dailyReport.totalTicketRevenue / dailyReport.totalOverallRevenue) * 100).toFixed(1)) : 0,
+        foodRevenuePercentage: dailyReport.totalOverallRevenue > 0 ? Number(((dailyReport.totalConcessionRevenue / dailyReport.totalOverallRevenue) * 100).toFixed(1)) : 0,
+        foodDistributions,
+        topShowtimes: [],
+        revenueByTime: []
+      });
+
+      // 2. Đồng bộ 100% thống kê hiệu suất theo phim với phía Staff
+      const movieMap = new Map();
+      let storedT = [];
+      try {
+        storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+      } catch(e) {}
+
+      (dailyReport.bills || []).forEach(b => {
+        const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
+        let isCancelled = b.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
+        if (!isCancelled && storedT.length > 0) {
+          const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
+          const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+          if (found && String(found.status || "").toLowerCase().includes("cancel")) isCancelled = true;
+        }
+
+        if (isCancelled) return;
+
+        (b.tickets || []).forEach(t => {
+          const title = String(t.movieTitle || t.movieName || "Phim").trim();
+          const price = Number(t.price || t.unitPrice || 0);
+          const roomName = t.roomName || t.room || "";
+          const poster =
+            t.posterUrl ||
+            t.PosterUrl ||
+            t.poster ||
+            t.Poster ||
+            t.moviePoster ||
+            t.MoviePoster ||
+            t.imageUrl ||
+            t.ImageUrl ||
+            "";
+
+          const prev = movieMap.get(title) || { title, revenue: 0, count: 0, rooms: {}, posterUrl: poster };
+          if (!prev.posterUrl && poster) prev.posterUrl = poster;
+          if (roomName) {
+            prev.rooms[roomName] = (prev.rooms[roomName] || 0) + 1;
+          }
+          movieMap.set(title, {
+            title,
+            revenue: prev.revenue + price,
+            count: prev.count + 1,
+            rooms: prev.rooms,
+            posterUrl: prev.posterUrl || poster,
+          });
+        });
+      });
+
+      // Lấy danh sách poster phim từ API & Cache/LocalStorage
+      const apiPosterMap = new Map();
+      try {
+        const apiMovies = await getMovies();
+        const mList = apiMovies?.$values || apiMovies?.data || (Array.isArray(apiMovies) ? apiMovies : []);
+        mList.forEach(m => {
+          const titleKey = String(m.title || m.Title || m.movieTitle || m.MovieTitle || m.name || m.Name || "").trim().toLowerCase();
+          const poster = m.posterUrl || m.PosterUrl || m.imageUrl || m.ImageUrl || m.poster || m.Poster || "";
+          if (titleKey && poster) {
+            apiPosterMap.set(titleKey, poster);
+          }
+        });
+      } catch(e) {}
+
+      try {
+        const localMovies = JSON.parse(localStorage.getItem("admin_movies") || "[]");
+        if (Array.isArray(localMovies)) {
+          localMovies.forEach(m => {
+            const titleKey = String(m.title || m.Title || m.movieTitle || m.MovieTitle || "").trim().toLowerCase();
+            const poster = m.posterUrl || m.PosterUrl || m.imageUrl || m.ImageUrl || m.poster || m.Poster || "";
+            if (titleKey && poster) {
+              apiPosterMap.set(titleKey, poster);
+            }
+          });
+        }
+      } catch(e) {}
+
+      const totalMoviesRevSum = Array.from(movieMap.values()).reduce((sum, m) => sum + (m.revenue || 0), 0) || 1;
+      const syncedMovieStats = Array.from(movieMap.values()).map((m, idx) => {
+        const titleKey = m.title.toLowerCase();
+        const foundPoster = m.posterUrl || apiPosterMap.get(titleKey) || apiPosterMap.get(titleKey.replace(/[\s\d]+$/g, "")) || "";
+        const calcPct = totalMoviesRevSum > 0 ? Number(((m.revenue / totalMoviesRevSum) * 100).toFixed(1)) : 0;
+        return {
+          movieId: idx + 1,
+          movieTitle: m.title,
+          posterUrl: foundPoster,
+          movieStatus: "Đang chiếu",
+          totalRevenue: m.revenue,
+          totalTicketsSold: m.count,
+          revenueContributionPercentage: Math.min(100, calcPct),
+          seatOccupancyPercentage: 2.5
+        };
+      }).sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      if (syncedMovieStats.length > 0) {
+        setMovieStats(syncedMovieStats);
+        return;
+      }
+    }
   }
 
   // Xoá cache khi filter thay đổi

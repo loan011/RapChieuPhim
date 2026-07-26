@@ -35,7 +35,7 @@ export default function UserManagement() {
             <MdPeople />
           </span>
           <div>
-            <h4 className="um-title">Quản Lý Người Dùng</h4>
+            <h4 className="um-title">Quản Lý Chi Nhánh</h4>
           </div>
         </div>
       </div>

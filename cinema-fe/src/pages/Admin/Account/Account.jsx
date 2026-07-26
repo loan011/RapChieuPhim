@@ -32,42 +32,46 @@ export default function TaiKhoan() {
           </h5>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Họ và Tên</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Họ và Tên</label>
               <input
                 type="text"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
                 value={profileForm.name}
                 onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Email</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Email</label>
               <input
                 type="email"
                 required
                 disabled
-                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-300 font-medium cursor-not-allowed"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold cursor-not-allowed"
                 value={profileForm.email}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Số Điện Thoại</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Số Điện Thoại</label>
               <input
                 type="text"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-[#ff3b30] transition-all duration-200"
                 value={profileForm.phone}
                 onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vai Trò</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Vai Trò</label>
               <input 
                 type="text" 
-                className="w-full border border-[#2c2c2e]/60 rounded-xl px-4 py-2.5 text-sm bg-[#2c2c2e]/80 text-gray-300 font-medium cursor-not-allowed" 
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold cursor-not-allowed" 
                 value="Quản trị viên" 
                 disabled 
               />
@@ -90,31 +94,34 @@ export default function TaiKhoan() {
           </h5>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Mật Khẩu Hiện Tại</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Mật Khẩu Hiện Tại</label>
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.currentPassword}
                 onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Mật Khẩu Mới</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Mật Khẩu Mới</label>
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.newPassword}
                 onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Xác Nhận Mật Khẩu Mới</label>
+              <label className="block text-xs font-bold text-gray-200 uppercase tracking-wider mb-1.5">Xác Nhận Mật Khẩu Mới</label>
               <input
                 type="password"
                 required
-                className="w-full bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl px-4 py-2.5 text-sm text-gray-100 font-medium focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
+                style={{ color: "#ffffff", backgroundColor: "#252529", opacity: 1, WebkitTextFillColor: "#ffffff" }}
+                className="w-full border border-[#44444c] rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-[#ffd60a] transition-all duration-200"
                 value={pwForm.confirmPassword}
                 onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
               />

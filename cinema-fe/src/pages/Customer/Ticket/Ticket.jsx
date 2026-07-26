@@ -382,6 +382,12 @@ export default function Ticket() {
                     </div>
                   );
                 })()}
+                {selectedTicket.discountAmount > 0 && (
+                  <div className="detail-info-row" style={{ color: "#22c55e", fontWeight: "600" }}>
+                    <span className="info-label">Giảm giá ({selectedTicket.discountCode || "Mã ưu đãi"}):</span>
+                    <span className="info-value">-{selectedTicket.discountAmount.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                )}
                 <div className="detail-info-row total">
                   <span className="info-label">Tổng cộng:</span>
                   <span className="info-value total-price">{selectedTicket.price}</span>

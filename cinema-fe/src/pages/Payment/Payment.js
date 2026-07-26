@@ -28,6 +28,72 @@ export function usePayment() {
       return () => clearTimeout(timer);
     } else {
       setNewTicketIds(bookingData.bookingIds);
+
+      // Lưu vết thông tin chi tiết vé, mã giảm giá và ngày giờ suất chiếu vào localStorage cho các mã vé này
+      try {
+        const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+        const perBookingDiscount = (bookingData.discountAmount || 0) / (bookingData.bookingIds.length || 1);
+        const codeStr = bookingData.appliedDiscount?.discountCode || "VOUCHER";
+        
+        const showDateVal =
+          bookingData.selectedDateIso ||
+          bookingData.selectedShowtime?.showDate ||
+          bookingData.selectedShowtime?.ShowDate ||
+          bookingData.selectedShowtime?.date ||
+          bookingData.selectedShowtime?.Date ||
+          "";
+
+        const startTimeVal =
+          bookingData.selectedShowtime?.startTime ||
+          bookingData.selectedShowtime?.StartTime ||
+          bookingData.selectedShowtime?.time ||
+          bookingData.selectedShowtime?.Time ||
+          "";
+
+        const seatCount = bookingData.bookingIds?.length || bookingData.selectedSeats?.length || 1;
+        const combosTotal = (bookingData.selectedCombos || []).reduce(
+          (sum, c) => sum + (Number(c.price || c.unitPrice || 0) * Number(c.quantity || 1)),
+          0
+        );
+        const rawTot = bookingData.rawTotalAmount || bookingData.totalAmount || 0;
+        const calcSeatPrice = Math.max(
+          0,
+          Math.round((rawTot - combosTotal) / seatCount)
+        );
+        const resolvedSeatPrice = calcSeatPrice > 0 ? calcSeatPrice : Number(bookingData.selectedShowtime?.basePrice || 70000);
+
+        const formattedFoods = (bookingData.selectedCombos || []).map(c => ({
+          name: c.name || c.comboName || c.foodName || "Món ăn",
+          quantity: Number(c.quantity || 1),
+          price: Number(c.price || c.unitPrice || 0)
+        }));
+
+        const cinemaIdVal =
+          bookingData.selectedCinemaId ||
+          bookingData.selectedShowtime?.cinemaId ||
+          bookingData.selectedShowtime?.CinemaId ||
+          "";
+
+        bookingData.bookingIds.forEach((bId) => {
+          const existing = savedDiscounts[bId] || {};
+          savedDiscounts[bId] = {
+            ...existing,
+            discountAmount: perBookingDiscount,
+            discountCode: codeStr,
+            totalDiscountAmount: bookingData.discountAmount || 0,
+            finalTotalAmount: bookingData.totalAmount,
+            rawTotalAmount: bookingData.rawTotalAmount,
+            seatPrice: resolvedSeatPrice,
+            foodsList: formattedFoods.length > 0 ? formattedFoods : existing.foodsList,
+            showDate: showDateVal || existing.showDate,
+            startTime: startTimeVal || existing.startTime,
+            cinemaId: cinemaIdVal || existing.cinemaId,
+          };
+        });
+        localStorage.setItem("customer_ticket_discounts", JSON.stringify(savedDiscounts));
+      } catch (e) {
+        console.error("Lỗi lưu discount info:", e);
+      }
     }
   }, [bookingData, navigate]);
 

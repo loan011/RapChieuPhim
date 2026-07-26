@@ -5,6 +5,61 @@ import {
   updateDiscount,
   deleteDiscount,
 } from "./discountService";
+import { saveAdminNotification } from "../Notice/useNotice";
+import { sendNotification } from "../Notice/notificationService";
+
+async function autoCreateNotificationFromDiscount(discountData) {
+  try {
+    const code = (discountData.discountCode || "").toUpperCase();
+    const name = discountData.programName || discountData.description || code;
+    const valueStr = discountData.discountType === "Percent"
+      ? `${discountData.discountValue}%`
+      : `${Number(discountData.discountValue || 0).toLocaleString("vi-VN")}đ`;
+
+    const title = `🎁 Ưu đãi mới: ${code} - ${name}`;
+    const content = `Hệ thống vừa cập nhật/phát hành mã giảm giá "${code}" (Giảm ${valueStr}). Áp dụng cho ${discountData.scope || "tất cả dịch vụ"}. Nhập mã khi đặt vé hoặc mua đồ ăn để nhận ưu đãi!`;
+
+    const noticePayload = {
+      title,
+      target: "all",
+      type: "promotion",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
+    let sent = null;
+    try {
+      sent = await sendNotification(noticePayload);
+    } catch (e) {
+      console.warn("API sendNotification auto-create notice error:", e);
+    }
+
+    const localCache = JSON.parse(localStorage.getItem("admin_notifications_cache") || "[]");
+    const existingIndex = localCache.findIndex(n =>
+      (n.content && n.content.includes(`"${code}"`)) ||
+      (n.title && n.title.includes(code))
+    );
+
+    const nId = existingIndex >= 0 ? (localCache[existingIndex].id || localCache[existingIndex].notificationId) : Date.now();
+
+    const finalNotice = sent || {
+      ...noticePayload,
+      id: nId,
+      notificationId: nId,
+    };
+
+    if (existingIndex >= 0) {
+      localCache[existingIndex] = { ...localCache[existingIndex], ...finalNotice };
+    } else {
+      localCache.unshift(finalNotice);
+    }
+
+    localStorage.setItem("admin_notifications_cache", JSON.stringify(localCache));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+  } catch (err) {
+    console.error("Lỗi tự động tạo/cập nhật thông báo từ mã giảm giá:", err);
+  }
+}
 
 export const LOCAL_STORAGE_KEY = "rapchieuphim_discounts_data";
 
@@ -386,7 +441,9 @@ export function useDiscount() {
         } catch (apiErr) {
           console.warn("Lỗi API Cập nhật, vẫn lưu đồng bộ ứng dụng:", apiErr);
         }
-        updatedList = discounts.map((d) => (String(d.discountId) === String(editId) ? { ...d, ...payload, discountId: editId } : d));
+        const updatedItem = { ...payload, discountId: editId };
+        updatedList = discounts.map((d) => (String(d.discountId) === String(editId) ? updatedItem : d));
+        await autoCreateNotificationFromDiscount(updatedItem);
       } else {
         let created = null;
         try {
@@ -400,6 +457,7 @@ export function useDiscount() {
           usedCount: 0,
         };
         updatedList = [newItem, ...discounts];
+        await autoCreateNotificationFromDiscount(newItem);
       }
       setDiscounts(updatedList);
       saveStoredDiscounts(updatedList);

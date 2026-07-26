@@ -85,7 +85,7 @@ export default function Payment() {
               <h3>{getMovieTitle(movie)}</h3>
               <p className="movie-meta-item">📅 Ngày: <strong>{selectedDateIso}</strong></p>
               <p className="movie-meta-item">⏰ Suất chiếu: <strong>{selectedShowtime ? getShowtimeHour(selectedShowtime) : ""}</strong></p>
-              <p className="movie-meta-item">📍 Rạp: <strong>{displayCinema}</strong></p>
+              <p className="movie-meta-item">📍 Rạp: <strong>{displayCinema}{selectedShowtime ? ` - ${selectedShowtime.roomName || selectedShowtime.RoomName || "Phòng chiếu"} (${selectedShowtime.roomType || selectedShowtime.RoomType || selectedShowtime.format || selectedShowtime.Format || selectedShowtime.room?.roomType || selectedShowtime.room?.RoomType || "2D"})` : ""}</strong></p>
             </div>
           </div>
 

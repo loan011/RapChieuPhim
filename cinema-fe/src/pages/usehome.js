@@ -64,14 +64,39 @@ function getAuthHeaders() {
   };
 }
 
-export async function fetchApi(path) {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: getAuthHeaders(),
-  });
+const homeMemoryCache = new Map();
+const homePendingRequests = new Map();
 
-  const data = await readResponse(response);
+export async function fetchApi(path, ttlMs = 60000) {
+  const url = `${API_URL}${path}`;
+  const now = Date.now();
+  const cached = homeMemoryCache.get(path);
 
-  return normalizeArray(data);
+  if (cached && now - cached.timestamp < ttlMs) {
+    return cached.data;
+  }
+
+  if (homePendingRequests.has(path)) {
+    return homePendingRequests.get(path);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
+
+      const data = await readResponse(response);
+      const normalized = normalizeArray(data);
+      homeMemoryCache.set(path, { timestamp: Date.now(), data: normalized });
+      return normalized;
+    } finally {
+      homePendingRequests.delete(path);
+    }
+  })();
+
+  homePendingRequests.set(path, fetchPromise);
+  return fetchPromise;
 }
 
 /* =========================

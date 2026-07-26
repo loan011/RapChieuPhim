@@ -1,4 +1,4 @@
-﻿import "./User.css";
+import "./User.css";
 import { createPortal } from "react-dom";
 
 import {
@@ -45,7 +45,7 @@ export default function NguoiDung() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h4 className="font-bold text-xl">Quản Lý Người Dùng</h4>
+        <h4 className="font-bold text-xl">Quản Lý Chi Nhánh</h4>
 
         <button
           className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"

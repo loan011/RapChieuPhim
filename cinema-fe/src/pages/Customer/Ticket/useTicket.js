@@ -247,14 +247,23 @@ export function useTicket() {
               booking.combos ?? booking.Combos ?? 
               [];
 
-            const parsedFoods = normalizeFoodsList(rawFoods, catalogs);
-            // totalAmount của booking là tiền vé. Tiền đồ ăn/combo được cộng
-            // riêng ở tổng thanh toán phía dưới.
-            const itemPrice = explicitSeatPrice > 0
-              ? explicitSeatPrice
-              : rawBookingAmount;
-
             const currentBId = t.bookingId ?? booking.bookingId ?? booking.BookingId ?? t.id ?? t.Id;
+            let savedInfo = {};
+            if (typeof window !== "undefined") {
+              try {
+                const savedDiscountsMap = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+                if (currentBId && savedDiscountsMap[currentBId]) savedInfo = savedDiscountsMap[currentBId];
+                else if (ticketCode && savedDiscountsMap[ticketCode]) savedInfo = savedDiscountsMap[ticketCode];
+              } catch(e) {}
+            }
+
+            const itemPrice = savedInfo.seatPrice > 0
+              ? savedInfo.seatPrice
+              : (rawBookingAmount > 0 ? rawBookingAmount : explicitSeatPrice);
+
+            const parsedFoods = (savedInfo.foodsList && savedInfo.foodsList.length > 0)
+              ? savedInfo.foodsList
+              : normalizeFoodsList(rawFoods, catalogs);
 
             if (existingGroup) {
               if (seatLabel && !existingGroup.seatsList.includes(seatLabel)) {
@@ -312,18 +321,72 @@ export function useTicket() {
               const showTimeObj = booking.showTime ?? booking.showtime ?? booking.ShowTime ?? booking.Showtime;
               const bookingDate = t.bookingDate ?? t.BookingDate ?? booking.bookingDate ?? booking.BookingDate;
               
-              // 1. Xác định Ngày Chiếu (showDate): Ưu tiên của suất chiếu, rồi tới vé, cuối cùng mới là ngày đặt
-              const rawDateVal = showTimeObj?.showDate ?? showTimeObj?.ShowDate ?? t.showDate ?? t.ShowDate ?? bookingDate;
+              let savedShowDate = "";
+              let savedStartTime = "";
+              if (typeof window !== "undefined") {
+                try {
+                  const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+                  const bIds = t.bookingIds || [t.bookingId || t.id];
+                  for (const bId of bIds) {
+                    if (savedDiscounts[bId]) {
+                      if (savedDiscounts[bId].showDate) savedShowDate = savedDiscounts[bId].showDate;
+                      if (savedDiscounts[bId].startTime) savedStartTime = savedDiscounts[bId].startTime;
+                    }
+                  }
+                } catch (e) {}
+              }
+
+              // 1. Xác định Ngày Chiếu (showDate): Ưu tiên vết đặt hàng từ trang mua vé, rồi đến API, cuối cùng mới là ngày tạo
+              const rawDateVal =
+                (savedShowDate || null) ??
+                showTimeObj?.showDate ??
+                showTimeObj?.ShowDate ??
+                showTimeObj?.date ??
+                showTimeObj?.Date ??
+                showTimeObj?.showtimeDate ??
+                showTimeObj?.ShowtimeDate ??
+                t.showDate ??
+                t.ShowDate ??
+                booking.showDate ??
+                booking.ShowDate ??
+                t.date ??
+                t.Date ??
+                bookingDate;
               
-              // 2. Xác định Giờ Chiếu (startTime): Tránh lấy đè lên showDate
-              const rawTimeVal = showTimeObj?.startTime ?? showTimeObj?.StartTime ?? t.startTime ?? t.StartTime ?? t.showTime ?? t.ShowTime ?? booking.showTime ?? booking.ShowTime ?? "00:00";
+              // 2. Xác định Giờ Chiếu (startTime)
+              const rawTimeVal =
+                (savedStartTime || null) ??
+                showTimeObj?.startTime ??
+                showTimeObj?.StartTime ??
+                showTimeObj?.time ??
+                showTimeObj?.Time ??
+                t.startTime ??
+                t.StartTime ??
+                t.showTime ??
+                t.ShowTime ??
+                booking.showTime ??
+                booking.ShowTime ??
+                "00:00";
 
               let formattedDate = "Chưa rõ";
-              let d = new Date(rawDateVal);
-              if (!isNaN(d.getTime())) {
-                formattedDate = d.toLocaleDateString("vi-VN");
-              } else if (rawDateVal) {
-                formattedDate = String(rawDateVal).split("T")[0];
+              let datePartForCompare = "";
+              if (rawDateVal) {
+                const str = String(rawDateVal).trim();
+                const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (match) {
+                  const [, y, m, d] = match;
+                  formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+                  datePartForCompare = `${y}-${m}-${d}`;
+                } else {
+                  const dt = new Date(rawDateVal);
+                  if (!isNaN(dt.getTime())) {
+                    const y = dt.getFullYear();
+                    const m = String(dt.getMonth() + 1).padStart(2, "0");
+                    const d = String(dt.getDate()).padStart(2, "0");
+                    formattedDate = `${dt.getDate()}/${dt.getMonth() + 1}/${y}`;
+                    datePartForCompare = `${y}-${m}-${d}`;
+                  }
+                }
               }
 
               let formattedTime = "";
@@ -339,12 +402,11 @@ export function useTicket() {
                 formattedTime = timePart;
               }
 
-              // 3. Tính toán xem suất chiếu đã trôi qua chưa (so với thời điểm hiện tại)
+              // 3. Tính toán xem suất chiếu đã trôi qua chưa (dựa trên giờ địa phương, không lệch UTC)
               let isPast = false;
-              if (!isNaN(d.getTime())) {
+              if (datePartForCompare) {
                 try {
-                  const datePart = d.toISOString().split("T")[0];
-                  const showtimeDateTime = new Date(`${datePart}T${timePart}:00`);
+                  const showtimeDateTime = new Date(`${datePartForCompare}T${timePart}:00`);
                   if (!isNaN(showtimeDateTime.getTime()) && showtimeDateTime.getTime() < new Date().getTime()) {
                     isPast = true;
                   }
@@ -354,7 +416,6 @@ export function useTicket() {
               }
 
               // 4. Xác định Trạng thái hiển thị (status)
-              // Chỉ chuyển sang "đã hủy" nếu có trạng thái hủy, ngược lại phân loại theo thời gian chiếu (đã chiếu -> watched, chưa chiếu -> upcoming)
               let finalStatus = "upcoming";
               if (isCancelled) {
                 finalStatus = "cancelled";
@@ -370,7 +431,57 @@ export function useTicket() {
                 (sum, food) => sum + (Number(food.price || 0) * Number(food.quantity || 0)),
                 0
               );
-              const totalPriceAmount = ticketPriceAmount + foodPriceAmount;
+              const rawTotalAmount = ticketPriceAmount + foodPriceAmount;
+
+              // Trích xuất số tiền giảm giá từ API backend hoặc từ vết lưu ở localStorage
+              const bookingObj = t.booking || t;
+              let discountAmount = Number(
+                t.discountAmount ??
+                t.DiscountAmount ??
+                bookingObj.discountAmount ??
+                bookingObj.DiscountAmount ??
+                t.discount ??
+                t.Discount ??
+                bookingObj.discount ??
+                bookingObj.Discount ??
+                0
+              );
+              let discountCode =
+                t.discountCode ??
+                t.DiscountCode ??
+                bookingObj.discountCode ??
+                bookingObj.DiscountCode ??
+                "";
+
+              let savedFinalAmount = null;
+
+              if (typeof window !== "undefined") {
+                try {
+                  const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+                  const bIds = t.bookingIds || [];
+                  for (const bId of bIds) {
+                    if (savedDiscounts[bId]) {
+                      if (!discountAmount) {
+                        discountAmount += Number(savedDiscounts[bId].discountAmount || savedDiscounts[bId].totalDiscountAmount || 0);
+                      }
+                      discountCode = discountCode || savedDiscounts[bId].discountCode;
+                      if (savedDiscounts[bId].finalTotalAmount) {
+                        savedFinalAmount = Number(savedDiscounts[bId].finalTotalAmount);
+                      }
+                    }
+                  }
+                  if (!discountAmount && savedDiscounts[ticketCode]) {
+                    discountAmount = Number(savedDiscounts[ticketCode].discountAmount || savedDiscounts[ticketCode].totalDiscountAmount || 0);
+                    discountCode = savedDiscounts[ticketCode].discountCode;
+                    if (savedDiscounts[ticketCode].finalTotalAmount) {
+                      savedFinalAmount = Number(savedDiscounts[ticketCode].finalTotalAmount);
+                    }
+                  }
+                } catch (e) {}
+              }
+
+              const calculatedFinal = Math.max(0, rawTotalAmount - discountAmount);
+              const finalTotalAmount = savedFinalAmount !== null ? savedFinalAmount : calculatedFinal;
 
               return {
                 id: ticketCode,
@@ -389,7 +500,10 @@ export function useTicket() {
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,
                 ticketPrice: ticketPriceAmount.toLocaleString("vi-VN") + "đ",
-                price: totalPriceAmount.toLocaleString("vi-VN") + "đ",
+                rawPrice: rawTotalAmount.toLocaleString("vi-VN") + "đ",
+                discountAmount: discountAmount,
+                discountCode: discountCode,
+                price: finalTotalAmount.toLocaleString("vi-VN") + "đ",
                 status: finalStatus,
                 foods: t.foodsList || [],
                 bookingIds: t.bookingIds || [],

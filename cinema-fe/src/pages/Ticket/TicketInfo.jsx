@@ -260,6 +260,20 @@ export default function TicketInfo() {
           </div>
 
           {/* Tổng tiền thanh toán */}
+          {(Number(ticket.discountAmount || ticket.DiscountAmount || 0) > 0) && (
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "8px",
+              fontSize: "0.85rem",
+              color: "#10b981",
+              fontWeight: "600"
+            }}>
+              <span>Giảm giá ({ticket.discountCode || ticket.DiscountCode || "Mã ưu đãi"}):</span>
+              <span>-{Number(ticket.discountAmount || ticket.DiscountAmount).toLocaleString("vi-VN")}đ</span>
+            </div>
+          )}
           <div style={{
             display: "flex",
             justifyContent: "space-between",

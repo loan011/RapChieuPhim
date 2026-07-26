@@ -318,6 +318,55 @@ export function useBanVe() {
       return;
     }
 
+    // Kiểm tra số lượt tối đa mỗi khách hàng được sử dụng
+    const maxPerUser = Number(valid.maxUsagePerUser ?? valid.MaxUsagePerUser ?? valid.limitPerUser ?? 1);
+    if (maxPerUser > 0) {
+      let userUsageCount = 0;
+      try {
+        const localDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+        const localTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        const usedVoucherLogs = JSON.parse(localStorage.getItem("used_voucher_records") || "[]");
+
+        const countedTicketCodes = new Set();
+
+        Object.values(localDiscounts).forEach(info => {
+          if (info && (info.discountCode || "").toUpperCase() === codeToApply) {
+            const key = info.ticketCode || info.bookingId;
+            if (key) countedTicketCodes.add(key);
+            else userUsageCount++;
+          }
+        });
+
+        if (Array.isArray(localTickets)) {
+          localTickets.forEach(t => {
+            const tCode = (t.discountCode || t.appliedDiscount?.discountCode || "").toUpperCase();
+            const tStatus = String(t.status || "").toLowerCase();
+            if (tCode === codeToApply && !tStatus.includes("cancel") && !tStatus.includes("hủy")) {
+              const key = t.ticketCode || t.bookingId;
+              if (key) countedTicketCodes.add(key);
+              else userUsageCount++;
+            }
+          });
+        }
+
+        if (Array.isArray(usedVoucherLogs)) {
+          usedVoucherLogs.forEach(v => {
+            if ((v.discountCode || "").toUpperCase() === codeToApply) {
+              userUsageCount++;
+            }
+          });
+        }
+
+        userUsageCount += countedTicketCodes.size;
+      } catch (e) {}
+
+      if (userUsageCount >= maxPerUser) {
+        alert(`Mã "${codeToApply}" chỉ được sử dụng tối đa ${maxPerUser} lần cho mỗi khách hàng. Mã này đã được dùng trước đó.`);
+        setAppliedDiscount(null);
+        return;
+      }
+    }
+
     setAppliedDiscount(valid);
     setDiscountCodeInput(valid.discountCode);
     setShowVoucherModal(false);
@@ -625,6 +674,12 @@ export function useBanVe() {
     }
 
     loadSeats();
+    window.addEventListener("ticketsUpdated", loadSeats);
+    window.addEventListener("bookingsUpdated", loadSeats);
+    return () => {
+      window.removeEventListener("ticketsUpdated", loadSeats);
+      window.removeEventListener("bookingsUpdated", loadSeats);
+    };
   }, [selectedShowtime]);
 
   /* =========================
@@ -662,20 +717,83 @@ export function useBanVe() {
   ========================= */
 
   function isSeatBooked(seat) {
-    const seatId = getSeatId(seat);
+    const seatId = String(getSeatId(seat));
+    const seatRow = String(extractSeatRow(seat)).toUpperCase();
+    const seatNum = String(extractSeatNumber(seat));
+    const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+
+    // Check if this seat was explicitly cancelled or released
+    try {
+      const releasedSeats = JSON.parse(localStorage.getItem("cancelled_seat_codes") || "[]").map(s => String(s).toUpperCase());
+      if (releasedSeats.some(rs => rs === seatCode || rs === seatId || rs.includes(seatCode) || seatCode === rs)) {
+        return false; // Force seat to be RELEASED and AVAILABLE!
+      }
+    } catch (e) {}
+
+    // Check if seat is booked in customer tickets or user_bookings localStorage
+    try {
+      const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+      const userBookings = JSON.parse(localStorage.getItem("user_bookings") || "[]");
+      const customerDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+      const allCustomerOrders = [...storedTickets, ...userBookings, ...Object.values(customerDiscounts)];
+
+      const activeShowtimeId = String(selectedShowtime?.showtimeId ?? selectedShowtime?.ShowtimeId ?? selectedShowtime?.id ?? selectedShowtime?.Id ?? "");
+      const activeDate = selectedShowtime?.showDate || selectedShowtime?.date || selectedDateIso || "";
+      const activeTime = selectedShowtime?.startTime || selectedShowtime?.time || "";
+
+      const isBookedInLocal = allCustomerOrders.some(b => {
+        const bStatus = String(b.status || b.Status || b.paymentStatus || "").toLowerCase();
+        if (bStatus.includes("cancel") || bStatus.includes("hủy") || bStatus.includes("refund")) {
+          return false;
+        }
+
+        const bShowtimeId = String(b.showtimeId ?? b.ShowtimeId ?? b.showtime?.id ?? b.showTime?.id ?? "");
+        const bDate = b.showDate || b.date || b.showtime?.showDate || b.showTime?.showDate || "";
+        const bTime = b.startTime || b.time || b.showtime?.startTime || b.showTime?.startTime || "";
+
+        const sameShowtime = (activeShowtimeId && bShowtimeId && activeShowtimeId === bShowtimeId) ||
+          (activeDate && bDate && activeDate === bDate && activeTime && bTime && activeTime === bTime);
+
+        if (!sameShowtime) return false;
+
+        const bSeatId = String(b.seatId ?? b.SeatId ?? b.seat?.id ?? b.seat?.seatId ?? "");
+        const bSeatCode = String(b.seatCode ?? b.SeatCode ?? b.seatLabel ?? b.seat?.seatNumber ?? (b.seat?.seatCode || "")).toUpperCase();
+        const bSeatsList = (b.seatsList || b.seats || b.selectedSeats || b.seatIds || []).map(s =>
+          String(typeof s === "object" ? (s.seatNumber || s.code || s.seatRow ? `${s.seatRow}${s.seatNumber}` : s.id) : s).toUpperCase()
+        );
+
+        if (bSeatId && bSeatId === seatId) return true;
+        if (bSeatCode && (bSeatCode === seatCode || bSeatCode.includes(seatCode))) return true;
+        if (bSeatsList.some(s => s === seatCode || s === seatId || s.includes(seatCode) || seatCode.includes(s))) return true;
+
+        return false;
+      });
+
+      if (isBookedInLocal) {
+        return true; // MARKED AS BOOKED!
+      }
+    } catch (e) {}
 
     if (!Array.isArray(availableSeats) || availableSeats.length === 0) {
       return false;
     }
 
     return !availableSeats.some((availableSeat) => {
-      const availableSeatId =
+      const availableSeatId = String(
         availableSeat?.seatId ??
         availableSeat?.SeatId ??
         availableSeat?.id ??
-        availableSeat?.Id;
+        availableSeat?.Id
+      );
+      const availableSeatNumber = String(
+        availableSeat?.seatNumber ??
+        availableSeat?.SeatNumber ??
+        availableSeat?.seatCode ??
+        availableSeat?.SeatCode ??
+        ""
+      ).toUpperCase();
 
-      return String(availableSeatId) === String(seatId);
+      return availableSeatId === seatId || (availableSeatNumber && availableSeatNumber === seatCode);
     });
   }
 
