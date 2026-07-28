@@ -494,13 +494,23 @@ export function getSeatNumber(seat) {
 }
 
 export function getSeatType(seat) {
-  return (
+  const type = String(
     seat?.seatType ||
     seat?.SeatType ||
     seat?.type ||
     seat?.Type ||
-    "standard"
-  );
+    ""
+  ).toLowerCase();
+
+  if (type.includes("vip")) return "vip";
+  if (type.includes("couple") || type.includes("sweetbox") || type.includes("đôi")) return "couple";
+  if (type.includes("standard") || type.includes("thường") || type === "normal") return "standard";
+
+  const row = String(getSeatRow(seat) || "").toUpperCase();
+  if (row === "G" || row === "H") return "couple";
+  if (row === "D" || row === "E" || row === "F") return "vip";
+
+  return type || "standard";
 }
 
 export function getSeatLabel(seat) {
@@ -670,8 +680,19 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
   const seatTypeRaw = String(getSeatType(seat) || seat?.seatType || seat?.SeatType || "").trim().toLowerCase();
   const seatRow = String(getSeatRow(seat) || seat?.seatRow || seat?.SeatRow || "").trim().toUpperCase();
 
-  const isCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi") || seatRow === "D" || seatRow === "E";
-  const isVip = seatTypeRaw.includes("vip") || seatRow === "C";
+  const isExplicitVip = seatTypeRaw.includes("vip");
+  const isExplicitCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi");
+
+  let isVip = isExplicitVip;
+  let isCouple = isExplicitCouple;
+
+  if (!isVip && !isCouple) {
+    if (seatRow === "G" || seatRow === "H") {
+      isCouple = true;
+    } else if (seatRow === "D" || seatRow === "E" || seatRow === "F") {
+      isVip = true;
+    }
+  }
 
   // Check 07:00 - 21:00 (day) vs 21:00 - 00:00 (night)
   const timeCategory = getShowtimeTimeCategory(selectedShowtime);

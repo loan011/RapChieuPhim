@@ -18,11 +18,9 @@ import { getMyProfile } from "../pages/Admin/Personnel/employeeService";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
-  { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
   { to: "/staff/combo", label: "Đồ ăn", icon: <MdFastfood /> },
   { to: "/staff/quet-qr", label: "Quét QR Vé", icon: <MdQrCodeScanner /> },
   { to: "/staff/quet-qr-do-an", label: "Quét QR Đồ ăn", icon: <MdFastfood /> },
-  { to: "/staff/quan-ly-do-an", label: "Quản lý Đồ ăn", icon: <MdReceiptLong /> },
   { to: "/staff/doanh-thu", label: "Doanh thu ngày và kết ca", icon: <MdBarChart /> },
 ];
 
@@ -118,9 +116,44 @@ export default function StaffLayout() {
     navigate("/login");
   }
 
-  // Hàm kiểm tra thời gian vào ca (Cho phép kích hoạt bất cứ lúc nào)
+  // Hàm kiểm tra thời gian vào ca
   function validateShiftTime(shift) {
+    const now = new Date();
+    const totalMinutes = now.getHours() * 60 + now.getMinutes();
+    const timeStr = now.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' });
+
+    if (shift.includes("Ca 1")) {
+      // Ca 1 (08:00 - 16:00): Cho phép mở từ 07:45 đến 16:00
+      if (totalMinutes < 7 * 60 + 45 || totalMinutes > 16 * 60) {
+        return `Không thể kích hoạt Ca 1. Ca 1 chỉ được mở từ 07:45 đến 16:00. Hiện tại: ${timeStr}.`;
+      }
+    } else if (shift.includes("Ca 2")) {
+      // Nếu Ca 1 vẫn đang chạy (STARTED) chưa kết ca -> Không cho mở Ca 2
+      const isCa1Active = shiftState?.status === "STARTED" && shiftState?.shiftName?.includes("Ca 1");
+      if (isCa1Active) {
+        return `Ca 1 đang hoạt động và chưa kết ca. Vui lòng kết ca Ca 1 trước khi mở Ca 2!`;
+      }
+
+      // Nếu Ca 1 đã kết ca (ENDED) -> Cho phép mở Ca 2 ngay lập tức (kể cả trễ sau 16:00)
+      const ca1Ended = shiftState?.status === "ENDED" && shiftState?.shiftName?.includes("Ca 1");
+      const ca1EndedFlag = localStorage.getItem("ca1_ended_at");
+      if (ca1Ended || ca1EndedFlag) return null;
+
+      // Nếu Ca 1 chưa từng mở hôm nay: Ca 2 chỉ mở từ 15:45
+      if (totalMinutes < 15 * 60 + 45) {
+        return `Không thể kích hoạt Ca 2. Ca 2 chỉ được mở từ 15:45 (hoặc ngay sau khi Ca 1 kết ca). Hiện tại: ${timeStr}.`;
+      }
+    }
     return null;
+  }
+
+  // Hàm kiểm tra xem ca hiện tại có đang trong giờ bán hàng không
+  function isInShiftHours() {
+    if (!shiftState?.shiftName || shiftState?.status !== "STARTED") return true;
+    
+    // Khi ca đã được KÍCH HOẠT (STARTED), nhân viên được phép bán hàng liên tục 
+    // cho đến khi thực hiện thao tác Kết Ca (kể cả trường hợp Ca 1 tăng ca / trễ giờ qua 16:00).
+    return true;
   }
 
   // Kích hoạt ca làm việc
@@ -153,6 +186,7 @@ export default function StaffLayout() {
   }
 
   const isSalesPath = location.pathname.includes("/staff/ban-ve") || location.pathname.includes("/staff/combo");
+  const inShiftHours = isInShiftHours();
 
   // Quyết định nội dung hiển thị trong main view
   let mainContent;
@@ -233,6 +267,26 @@ export default function StaffLayout() {
           >
             🔓 Mở Ca Làm Việc Mới
           </button>
+        </div>
+      </div>
+    );
+  } else if (isSalesPath && shiftState.status === "STARTED" && !inShiftHours) {
+    const shiftEnd = shiftState.shiftName?.includes("Ca 1") ? "16:00" : "24:00";
+    const shiftStart = shiftState.shiftName?.includes("Ca 1") ? "08:00" : "16:00";
+    mainContent = (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
+        <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mb-4">
+          <MdLockOutline style={{ fontSize: '2.5rem' }} />
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Ngoài Giờ Bán Vé</h3>
+        <p className="text-sm text-gray-500 text-center mb-4 px-4">
+          <strong>{shiftState.shiftName}</strong> chỉ được phép bán vé trong khung giờ <strong>{shiftStart} – {shiftEnd}</strong>.
+        </p>
+        <p className="text-sm text-gray-500 text-center px-4">
+          Hiện tại ngoài giờ làm việc của ca này. Vui lòng quay lại đúng khung giờ để tiếp tục bán vé.
+        </p>
+        <div className="mt-6 px-6 py-3 bg-orange-50 rounded-xl border border-orange-100 text-orange-700 text-sm font-semibold">
+          🕐 Giờ bán vé: {shiftStart} – {shiftEnd}
         </div>
       </div>
     );

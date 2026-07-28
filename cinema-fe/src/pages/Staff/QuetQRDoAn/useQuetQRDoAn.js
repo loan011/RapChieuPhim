@@ -58,12 +58,23 @@ export function useQuetQRDoAn() {
           booking = await fetchBookingById(bookingId);
         }
 
+        // Xác định mua tại quầy hay online dựa vào userId
+        const userId = ticket.userId || ticket.UserId || booking?.userId || booking?.UserId;
+        const isCounterSale = !userId || userId === 0;
+
+        // Nếu là online thì lấy tên khách hàng thật, mua tại quầy thì để null
+        const resolvedCustomerName = isCounterSale
+          ? null
+          : (ticket.customerName || ticket.userName || booking?.customerName || booking?.userName || booking?.fullName || null);
+
         setTicketDetails({
           ...ticket,
           movieTitle: ticket.movieTitle || booking?.movieTitle || "—",
           roomName: ticket.roomName || booking?.roomName || "—",
-          seatCode: ticket.seatCode || booking?.seatNumber || "—",
-          customerName: ticket.customerName || booking?.customerName || "—"
+          seatCode: ticket.seatCode || ticket.seatNumber || booking?.seatNumber || booking?.seatCode || "—",
+          customerName: resolvedCustomerName,
+          isCounterSale,
+          dateBooked: ticket.bookingDate || ticket.orderDate || ticket.createdAt || booking?.bookingDate || booking?.createdAt || booking?.orderDate || null,
         });
 
         // Check showtime expiration for ticket food (only valid BEFORE and DURING showtime)
@@ -106,10 +117,18 @@ export function useQuetQRDoAn() {
           } else {
             const mappedOrders = bookingOrders.map(o => {
               const isCompleted = localStorage.getItem("food_pickup_status_" + o.orderId) === "Completed";
+              // Normalize tên món và số lượng từ nhiều field khác nhau của API
+              const items = Array.isArray(o.orderItems) ? o.orderItems
+                : Array.isArray(o.items) ? o.items
+                : Array.isArray(o.foods) ? o.foods
+                : Array.isArray(o.$values) ? o.$values
+                : [];
               return {
                 ...o,
-                status: isCompleted ? "Completed" : "Pending",
-                isExpired: isShowtimeExpired
+                status: isCompleted ? "Completed" : (o.status || "Pending"),
+                isExpired: isShowtimeExpired,
+                // Nếu order có items con thì flatten ra, nếu không thì giữ nguyên
+                _items: items.length > 0 ? items : [o],
               };
             });
             

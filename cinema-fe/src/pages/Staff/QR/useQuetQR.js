@@ -118,22 +118,32 @@ export function useQuetQR() {
 
         const seatPriceVal = savedInfo.seatPrice > 0
           ? savedInfo.seatPrice
-          : (found.price || found.ticketPrice || (found.seatPrice > 0 ? found.seatPrice : 70000));
+          : (found.price || found.ticketPrice || found.seatPrice || 0);
 
         const seatCodeVal = savedInfo.seatCode ||
           (savedInfo.seatsList && savedInfo.seatsList.join(", ")) ||
-          found.seatCode || found.seatNumber || "A11";
+          found.seatCode || found.seatNumber || "";
 
         const foodsVal = (savedInfo.foodsList && savedInfo.foodsList.length > 0)
           ? savedInfo.foodsList
           : (found.foods || found.bookingFoods || (savedTicketLocal?.foodsList || []));
 
-        const showDateVal = savedInfo.showDate || found.showDate || savedTicketLocal?.showDate || "27/7/2026";
-        const startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "09:00";
+        const showDateVal = savedInfo.showDate || found.showDate || savedTicketLocal?.showDate || "";
+        const startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "";
 
         const discountAmtVal = savedInfo.discountAmount || savedInfo.totalDiscountAmount || found.discountAmount || 0;
-        const discountCodeVal = savedInfo.discountCode || found.discountCode || "SALE10";
-        const finalTotalVal = savedInfo.finalTotalAmount || found.totalAmount || savedTicketLocal?.totalAmount || 109250;
+        const discountCodeVal = savedInfo.discountCode || found.discountCode || "";
+
+        // Tính tổng tiền đúng: giá vé + đồ ăn - giảm giá
+        const foodsTotal = foodsVal.reduce((sum, f) => sum + (Number(f.price || 0) * Number(f.quantity || 1)), 0);
+        const computedTotal = seatPriceVal + foodsTotal - Number(discountAmtVal);
+        const finalTotalVal = savedInfo.finalTotalAmount > 0
+          ? savedInfo.finalTotalAmount
+          : (found.totalAmount > 0
+            ? found.totalAmount
+            : (savedTicketLocal?.totalAmount > 0
+              ? savedTicketLocal.totalAmount
+              : (computedTotal > 0 ? computedTotal : seatPriceVal)));
 
         const enrichedDetails = {
           ...found,
