@@ -37,6 +37,7 @@ import {
   getCinemaName,
   getRoomCinemaId
 } from "../Seat/useSeat";
+import { updateSeat } from "../Seat/seatService";
 
 export default function RoomAdmin() {
   // ── 1. Room Hook ──
@@ -89,12 +90,22 @@ export default function RoomAdmin() {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null);
 
+  // ── Layout Editor States ──
+  const [showLayoutEditor, setShowLayoutEditor] = useState(false);
+  const [layoutRowTypes, setLayoutRowTypes] = useState({});
+  const [seatOverrides, setSeatOverrides] = useState({});
+  const [editMode, setEditMode] = useState('row');
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [layoutError, setLayoutError] = useState('');
+
   const [priceStdWeekday, setPriceStdWeekday] = useState("");
   const [priceStdWeekend, setPriceStdWeekend] = useState("");
   const [priceVipWeekday, setPriceVipWeekday] = useState("");
   const [priceVipWeekend, setPriceVipWeekend] = useState("");
   const [priceCoupleWeekday, setPriceCoupleWeekday] = useState("");
   const [priceCoupleWeekend, setPriceCoupleWeekend] = useState("");
+  const [syncAllRooms, setSyncAllRooms] = useState(false);
 
   // Sync price forms with current modal mode
   useEffect(() => {
@@ -156,7 +167,9 @@ export default function RoomAdmin() {
     e.preventDefault();
     const cId = roomForm.cinemaId;
     const rName = roomForm.roomName;
+    const currentRoomType = roomForm.roomType || "2D";
     
+    // Luôn lưu giá cho phòng hiện tại
     localStorage.setItem(`room_price_std_wd_c${cId}_r${rName}`, priceStdWeekday);
     localStorage.setItem(`room_price_std_we_c${cId}_r${rName}`, priceStdWeekend);
     localStorage.setItem(`room_price_vip_wd_c${cId}_r${rName}`, priceVipWeekday);
@@ -164,8 +177,197 @@ export default function RoomAdmin() {
     localStorage.setItem(`room_price_cp_wd_c${cId}_r${rName}`, priceCoupleWeekday);
     localStorage.setItem(`room_price_cp_we_c${cId}_r${rName}`, priceCoupleWeekend);
 
+    // Nếu chọn đồng bộ cho tất cả các phòng cùng loại trong chi nhánh này
+    if (syncAllRooms && rooms && rooms.length > 0) {
+      rooms.forEach(room => {
+        const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
+        const type = room?.roomType ?? room?.RoomType ?? "2D";
+        const name = room?.roomName ?? room?.RoomName ?? "";
+        
+        // Cùng chi nhánh và cùng loại hình phòng (ví dụ: 2D, 3D, IMAX, 4DX)
+        if (String(roomCinemaId) === String(cId) && String(type).toUpperCase() === String(currentRoomType).toUpperCase()) {
+          localStorage.setItem(`room_price_std_wd_c${cId}_r${name}`, priceStdWeekday);
+          localStorage.setItem(`room_price_std_we_c${cId}_r${name}`, priceStdWeekend);
+          localStorage.setItem(`room_price_vip_wd_c${cId}_r${name}`, priceVipWeekday);
+          localStorage.setItem(`room_price_vip_we_c${cId}_r${name}`, priceVipWeekend);
+          localStorage.setItem(`room_price_cp_wd_c${cId}_r${name}`, priceCoupleWeekday);
+          localStorage.setItem(`room_price_cp_we_c${cId}_r${name}`, priceCoupleWeekend);
+        }
+      });
+    }
+
     await handleRoomSubmit(e);
   };
+
+  // ── Layout Editor: detect future-booked seats ──
+  const seatsWithFutureBookings = useMemo(() => {
+    const ids = new Set();
+    try {
+      const tickets = JSON.parse(localStorage.getItem('rapchieuphim_tickets') || '[]');
+      const now = new Date();
+      tickets.forEach(t => {
+        const d = new Date(t.showtimeDate || t.date || t.showDate || '');
+        if (!isNaN(d) && d > now) {
+          const sId = String(t.seatId || t.SeatId || '');
+          if (sId) ids.add(sId);
+          const code = String(t.seatCode || t.seatNumber || t.seat || '').toUpperCase();
+          if (code) ids.add(code);
+        }
+      });
+    } catch(e) {}
+    return ids;
+  }, [showLayoutEditor]);
+
+  function isSeatBooked(seat) {
+    return seatsWithFutureBookings.has(String(getSeatId(seat) || '')) ||
+           seatsWithFutureBookings.has(getSeatCode(seat).toUpperCase());
+  }
+
+  function openLayoutEditor() {
+    const rowTypes = {};
+    activeLayout.forEach(row => {
+      const types = new Set(row.seats.map(s => String(getSeatType(s) || 'Standard').toLowerCase()));
+      rowTypes[row.rowName] = types.size === 1 ? [...types][0] : 'mixed';
+    });
+    setLayoutRowTypes(rowTypes);
+    setSeatOverrides({});
+    setEditMode('row');
+    setExpandedRow(null);
+    setLayoutError('');
+    setShowLayoutEditor(true);
+  }
+
+  function getEffectiveSeatType(seat) {
+    const sId = String(getSeatId(seat) || '');
+    return seatOverrides[sId]?.type ?? String(getSeatType(seat) || 'Standard').toLowerCase();
+  }
+
+  function getEffectiveSeatStatus(seat) {
+    const sId = String(getSeatId(seat) || '');
+    if (seatOverrides[sId]?.status !== undefined) return seatOverrides[sId].status;
+    const isActive = seat?.isActive ?? seat?.IsActive;
+    return isActive === false ? 'maintenance' : 'active';
+  }
+
+  function getRowDisplayType(row) {
+    const types = new Set();
+    row.seats.forEach(s => {
+      const sId = String(getSeatId(s) || '');
+      types.add(seatOverrides[sId]?.type ?? String(getSeatType(s) || 'Standard').toLowerCase());
+    });
+    if (layoutRowTypes[row.rowName] && layoutRowTypes[row.rowName] !== 'mixed') {
+      const allMatch = row.seats.every(s => {
+        const t = seatOverrides[String(getSeatId(s) || '')]?.type;
+        return !t || t === layoutRowTypes[row.rowName];
+      });
+      if (!allMatch) return 'mixed';
+    }
+    return types.size > 1 ? 'mixed' : ([...types][0] || 'standard');
+  }
+
+  function handleSeatTypeOverride(row, seat, newType) {
+    if (newType === 'couple') {
+      const seatNum = Number(getSeatNumber(seat)) || 0;
+      const adj = row.seats.find(s => { const n = Number(getSeatNumber(s)); return n === seatNum-1 || n === seatNum+1; });
+      if (!adj) { setLayoutError(`Ghế ${getSeatCode(seat)}: Couple phải chọn 2 ghế liền nhau.`); return; }
+      const adjId = String(getSeatId(adj) || '');
+      const sId = String(getSeatId(seat) || '');
+      setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), type:'couple' }, [adjId]: { ...(prev[adjId]||{}), type:'couple' } }));
+      setLayoutError('');
+      return;
+    }
+    setLayoutError('');
+    const sId = String(getSeatId(seat) || '');
+    setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), type: newType } }));
+  }
+
+  function handleSeatStatusOverride(seat, newStatus) {
+    if ((newStatus === 'maintenance' || newStatus === 'inactive') && isSeatBooked(seat)) {
+      setLayoutError(`Ghế ${getSeatCode(seat)} có vé tương lai, không thể thay đổi trạng thái.`);
+      return;
+    }
+    setLayoutError('');
+    const sId = String(getSeatId(seat) || '');
+    setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), status: newStatus } }));
+  }
+
+  async function handleSaveLayoutRowTypes() {
+    setLayoutSaving(true);
+    setLayoutError('');
+    try {
+      const seats = selectedRoomSeats || [];
+      const typeMap = { standard:'Standard', vip:'VIP', couple:'Couple', sweetbox:'Couple', maintenance:'Standard' };
+      const statusMap = { active:true, maintenance:false, inactive:false };
+      const changeLog = [];
+      const now = new Date().toISOString();
+
+      // Build list of seats that need updating
+      const toUpdate = [];
+      for (const seat of seats) {
+        const row = String(getSeatRow(seat)).toUpperCase();
+        const sId = String(getSeatId(seat) || '');
+        if (!sId) continue;
+
+        const override = seatOverrides[sId];
+        const rowType = layoutRowTypes[row];
+        const oldType = String(getSeatType(seat) || 'Standard');
+        const oldActive = seat?.isActive ?? seat?.IsActive ?? true;
+
+        // Determine new type
+        const newTypeLower = override?.type ?? (rowType && rowType !== 'mixed' ? rowType : null);
+        const newType = newTypeLower ? (typeMap[newTypeLower] || oldType) : oldType;
+
+        // Determine new status
+        let newActive = oldActive;
+        if (override?.status !== undefined) {
+          if ((override.status==='maintenance' || override.status==='inactive') && isSeatBooked(seat))
+            throw new Error(`Ghe ${getSeatCode(seat)} co ve tuong lai, khong the thay doi trang thai.`);
+          newActive = statusMap[override.status] ?? oldActive;
+        }
+
+        if (newType !== oldType || newActive !== oldActive) {
+          changeLog.push({ seatCode: getSeatCode(seat), oldType, newType, oldActive, newActive, changedAt: now });
+          toUpdate.push({ seat, newType, newActive });
+        }
+      }
+
+      if (toUpdate.length === 0) {
+        setShowLayoutEditor(false);
+        return;
+      }
+
+      // Call API for each changed seat
+      for (const { seat, newType, newActive } of toUpdate) {
+        const sId = getSeatId(seat);
+        const seatRow = getSeatRow(seat);
+        const seatNumber = String(seat?.seatNumber ?? seat?.SeatNumber ?? seat?.col ?? '');
+        const roomId = seat?.roomId ?? seat?.RoomId ?? seat?.room?.roomId ?? seat?.Room?.roomId;
+        await updateSeat(sId, {
+          seatId: sId,
+          roomId: Number(roomId),
+          seatRow: seatRow,
+          seatNumber: seatNumber,
+          seatType: newType,
+          isActive: newActive,
+        });
+      }
+
+      // Ghi lich su thay doi
+      if (changeLog.length > 0) {
+        let hist = [];
+        try { hist = JSON.parse(localStorage.getItem('rapchieuphim_seat_history') || '[]'); } catch(e) {}
+        hist.unshift(...changeLog);
+        localStorage.setItem('rapchieuphim_seat_history', JSON.stringify(hist.slice(0, 200)));
+      }
+
+      setShowLayoutEditor(false);
+      window.location.reload();
+    } catch(err) {
+      setLayoutError(err.message || 'Co loi xay ra khi luu.');
+    } finally {
+      setLayoutSaving(false);
+    }
+  }
   
   const getRoomPriceText = (room, type) => {
     const cId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
@@ -637,6 +839,23 @@ export default function RoomAdmin() {
               <MdAdd size={20} /> Thêm ghế mới
             </button>
 
+            <button
+              onClick={openLayoutEditor}
+              style={{
+                padding: "12px", fontSize: "0.95rem",
+                background: "rgba(99,102,241,0.15)",
+                border: "1.5px solid rgba(99,102,241,0.5)",
+                color: "#a5b4fc", borderRadius: "10px",
+                display: "flex", alignItems: "center", gap: "8px",
+                cursor: "pointer", width: "100%", justifyContent: "center",
+                fontWeight: 600, transition: "all 0.2s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; }}
+            >
+              <MdEdit size={18} /> Chỉnh sửa sơ đồ ghế
+            </button>
+
             {/* Seat detail if selected */}
             <div className="rm-side-card" style={{ flex: 1 }}>
               <h6 className="rm-side-title">
@@ -885,6 +1104,20 @@ export default function RoomAdmin() {
                       />
                     </div>
                   </div>
+                  
+                  {/* Đồng bộ giá cho tất cả các phòng cùng loại */}
+                  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input
+                      type="checkbox"
+                      id="syncAllRooms"
+                      checked={syncAllRooms}
+                      onChange={(e) => setSyncAllRooms(e.target.checked)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                    <label htmlFor="syncAllRooms" style={{ fontSize: "0.83rem", color: "#e2e8f0", cursor: "pointer", userSelect: "none" }}>
+                      Đồng bộ giá này cho tất cả phòng cùng loại ({roomForm.roomType || "2D"}) của chi nhánh
+                    </label>
+                  </div>
                 </div>
 
                 <div className="rm-modal-actions">
@@ -1026,6 +1259,240 @@ export default function RoomAdmin() {
           </div>,
           document.body
         )}
+
+      {/* ── Layout Editor Modal (Advanced) ── */}
+      {showLayoutEditor && createPortal(
+        <div className="rm-modal-overlay" onClick={() => setShowLayoutEditor(false)}>
+          <div
+            className="rm-modal-box"
+            style={{ maxWidth: 680, width: "96%", maxHeight: "92vh", display: "flex", flexDirection: "column" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="rm-modal-header" style={{ flexShrink: 0 }}>
+              <h5 className="rm-modal-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <MdEdit size={20} style={{ color: "#818cf8" }} />
+                Chỉnh sửa sơ đồ ghế
+                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "#9ca3af", marginLeft: 4 }}>
+                  — {rooms.find(r => String(getRoomId(r)) === selectedRoomId)?.roomName ?? ""}
+                </span>
+              </h5>
+              <button className="rm-modal-close" onClick={() => setShowLayoutEditor(false)}>
+                <MdClose size={22} />
+              </button>
+            </div>
+
+            {/* Mode Tabs */}
+            <div style={{ display: "flex", gap: 8, padding: "8px 20px 0", flexShrink: 0 }}>
+              {[{ id: "row", label: "Chỉnh theo hàng" }, { id: "seat", label: "Chỉnh từng ghế" }].map(tab => (
+                <button key={tab.id} onClick={() => setEditMode(tab.id)} style={{
+                  padding: "7px 18px", borderRadius: 8, border: "none", cursor: "pointer",
+                  fontSize: "0.85rem", fontWeight: 600,
+                  background: editMode === tab.id ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.06)",
+                  color: editMode === tab.id ? "#fff" : "#9ca3af", transition: "all 0.2s"
+                }}>{tab.label}</button>
+              ))}
+              <div style={{ marginLeft: "auto", fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                {activeLayout.length} hàng · {activeLayout.reduce((s, r) => s + (r.seats?.length || 0), 0)} ghế
+              </div>
+            </div>
+
+            {/* Error Banner */}
+            {layoutError && (
+              <div style={{ margin: "10px 20px 0", padding: "8px 14px", borderRadius: 8,
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.4)",
+                color: "#fca5a5", fontSize: "0.82rem", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                <span>{layoutError}</span>
+                <button onClick={() => setLayoutError("")} style={{ marginLeft: "auto", background: "none", border: "none", color: "#fca5a5", cursor: "pointer", flexShrink: 0 }}>X</button>
+              </div>
+            )}
+
+            {/* Content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+
+              {/* ROW MODE */}
+              {editMode === "row" && (() => {
+                const TC = { standard:"#6b7280", vip:"#eab308", couple:"#ec4899", mixed:"#a78bfa", maintenance:"#9ca3af" };
+                const OPTS = [
+                  { value:"standard", label:"Thuong (Standard)" },
+                  { value:"vip", label:"VIP" },
+                  { value:"couple", label:"Couple" },
+                  { value:"maintenance", label:"Bao tri (tat ca)" }
+                ];
+                return (
+                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <thead>
+                      <tr style={{ background:"rgba(255,255,255,0.04)", position:"sticky", top:0 }}>
+                        <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Hàng</th>
+                        <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Ghế</th>
+                        <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Loại hiện tại</th>
+                        <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Đổi loại hàng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeLayout.map((row, i) => {
+                        const dt = getRowDisplayType(row);
+                        const rv = layoutRowTypes[row.rowName] || dt;
+                        const col = TC[dt] || "#6b7280";
+                        const dtLabel = dt==="mixed"?"Hon hop":dt==="standard"?"Thuong":dt==="vip"?"VIP":dt==="couple"?"Couple":"Bao tri";
+                        return (
+                          <tr key={row.rowName} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background: i%2===0?"transparent":"rgba(255,255,255,0.02)" }}>
+                            <td style={{ padding:"10px 10px" }}>
+                              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
+                                width:30, height:30, borderRadius:7, background:`${col}20`, border:`1.5px solid ${col}50`,
+                                color:col, fontWeight:700, fontSize:"0.9rem" }}>{row.rowName}</span>
+                            </td>
+                            <td style={{ padding:"10px 10px", color:"#9ca3af", fontSize:"0.85rem" }}>{row.seats?.length||0}</td>
+                            <td style={{ padding:"10px 10px" }}>
+                              <span style={{ fontSize:"0.82rem", color:col, fontWeight:600 }}>{dtLabel}</span>
+                            </td>
+                            <td style={{ padding:"10px 10px" }}>
+                              <select
+                                value={rv==="mixed"?"":rv}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setLayoutRowTypes(prev => ({ ...prev, [row.rowName]: val }));
+                                  setSeatOverrides(prev => {
+                                    const next = { ...prev };
+                                    row.seats.forEach(s => { delete next[String(getSeatId(s)||"")]; });
+                                    return next;
+                                  });
+                                  setLayoutError("");
+                                }}
+                                style={{ background:"#1f2937", border:"1.5px solid #374151", color:"#e2e8f0",
+                                  borderRadius:7, padding:"5px 10px", fontSize:"0.83rem", cursor:"pointer", outline:"none" }}
+                              >
+                                {dt==="mixed" && <option value="">— giu nguyen —</option>}
+                                {OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              })()}
+
+              {/* SEAT MODE */}
+              {editMode === "seat" && (() => {
+                const TC = { standard:"#6b7280", vip:"#eab308", couple:"#ec4899", maintenance:"#9ca3af" };
+                return (
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {activeLayout.map(row => {
+                      const isExp = expandedRow === row.rowName;
+                      const dt = getRowDisplayType(row);
+                      const rc = dt==="mixed" ? "#a78bfa" : (TC[dt]||"#6b7280");
+                      const ovCount = row.seats.filter(s => seatOverrides[String(getSeatId(s)||"")]).length;
+                      const dtLabel = dt==="mixed"?"Hon hop":dt==="standard"?"Thuong":dt==="vip"?"VIP":"Couple";
+                      return (
+                        <div key={row.rowName} style={{ borderRadius:10, border:"1px solid rgba(255,255,255,0.08)", overflow:"hidden" }}>
+                          <div onClick={() => setExpandedRow(isExp?null:row.rowName)}
+                            style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
+                              background: isExp?"rgba(99,102,241,0.1)":"rgba(255,255,255,0.03)",
+                              cursor:"pointer", userSelect:"none",
+                              borderBottom: isExp?"1px solid rgba(99,102,241,0.3)":"none" }}
+                          >
+                            <span style={{ width:28, height:28, borderRadius:6, display:"inline-flex", alignItems:"center", justifyContent:"center",
+                              background:`${rc}20`, border:`1.5px solid ${rc}50`, color:rc, fontWeight:700, fontSize:"0.88rem" }}>{row.rowName}</span>
+                            <span style={{ color:"#e2e8f0", fontWeight:600, fontSize:"0.88rem" }}>{row.seats?.length||0} ghế</span>
+                            <span style={{ fontSize:"0.8rem", color:rc, fontWeight:600 }}>{dtLabel}</span>
+                            {ovCount > 0 && (
+                              <span style={{ fontSize:"0.75rem", background:"#6366f1", color:"#fff", borderRadius:12, padding:"2px 8px", fontWeight:600 }}>
+                                {ovCount} da sua
+                              </span>
+                            )}
+                            <span style={{ marginLeft:"auto", color:"#6b7280", fontSize:"0.85rem" }}>{isExp?"▲":"▼"}</span>
+                          </div>
+                          {isExp && (
+                            <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:6 }}>
+                              {row.seats.map(seat => {
+                                const sId = String(getSeatId(seat)||"" );
+                                const effType = getEffectiveSeatType(seat);
+                                const effStatus = getEffectiveSeatStatus(seat);
+                                const booked = isSeatBooked(seat);
+                                const hasOv = !!seatOverrides[sId];
+                                const tc = TC[effType]||"#6b7280";
+                                return (
+                                  <div key={sId} style={{ display:"grid", gridTemplateColumns:"52px 1fr 1fr auto",
+                                    gap:8, alignItems:"center", padding:"8px 10px", borderRadius:8,
+                                    background: hasOv?"rgba(99,102,241,0.08)":"rgba(255,255,255,0.02)",
+                                    border:`1px solid ${hasOv?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.06)"}` }}>
+                                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+                                      <span style={{ width:36, height:36, borderRadius:7, display:"inline-flex", alignItems:"center", justifyContent:"center",
+                                        background:`${tc}25`, border:`1.5px solid ${tc}60`, color:tc, fontWeight:700, fontSize:"0.82rem" }}>{getSeatCode(seat)}</span>
+                                      {booked && <span style={{ fontSize:"0.62rem", color:"#f97316", fontWeight:600 }}>Da dat</span>}
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize:"0.7rem", color:"#6b7280", marginBottom:3 }}>Loai ghe</div>
+                                      <select value={effType} onChange={e => handleSeatTypeOverride(row, seat, e.target.value)}
+                                        style={{ background:"#1f2937", border:`1.5px solid ${tc}60`, color:tc,
+                                          borderRadius:6, padding:"4px 8px", fontSize:"0.8rem", fontWeight:600,
+                                          cursor:"pointer", outline:"none", width:"100%" }}>
+                                        <option value="standard">Thuong</option>
+                                        <option value="vip">VIP</option>
+                                        <option value="couple">Couple</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize:"0.7rem", color:"#6b7280", marginBottom:3 }}>Trang thai</div>
+                                      <select value={effStatus} onChange={e => handleSeatStatusOverride(seat, e.target.value)}
+                                        disabled={booked && effStatus !== "active"}
+                                        style={{ background:"#1f2937",
+                                          border:`1.5px solid ${effStatus==="active"?"#10b98160":"#ef444460"}`,
+                                          color: effStatus==="active"?"#34d399":"#f87171",
+                                          borderRadius:6, padding:"4px 8px", fontSize:"0.8rem", fontWeight:600,
+                                          cursor: booked?"not-allowed":"pointer", outline:"none", width:"100%",
+                                          opacity: booked && effStatus!=="active" ? 0.5 : 1 }}>
+                                        <option value="active">Hoat dong</option>
+                                        <option value="maintenance" disabled={booked}>Bao tri</option>
+                                        <option value="inactive" disabled={booked}>Ngung dung</option>
+                                      </select>
+                                    </div>
+                                    {hasOv && (
+                                      <button onClick={() => setSeatOverrides(prev => { const n={...prev}; delete n[sId]; return n; })}
+                                        title="Hoan tac thay doi ghe nay"
+                                        style={{ background:"none", border:"none", color:"#6b7280", cursor:"pointer", fontSize:"1rem", padding:4 }}>↩</button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Note */}
+            <div style={{ flexShrink:0, margin:"0 20px", padding:"7px 12px", borderRadius:8,
+              background:"rgba(234,179,8,0.07)", border:"1px solid rgba(234,179,8,0.2)",
+              fontSize:"0.78rem", color:"#fde047" }}>
+              Ghe Couple phai chon 2 ghe ke nhau · Ghe co ve tuong lai khong the bao tri/ngung · Gia ve da thanh toan khong thay doi
+            </div>
+
+            {/* Actions */}
+            <div className="rm-modal-actions" style={{ flexShrink:0, padding:"14px 20px 18px", margin:0, borderTop:"1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ fontSize:"0.8rem", color:"#6b7280", alignSelf:"center" }}>
+                {Object.keys(seatOverrides).length > 0 && (
+                  <span style={{ color:"#818cf8" }}>{Object.keys(seatOverrides).length} ghe duoc sua rieng</span>
+                )}
+              </div>
+              <button type="button" className="rm-btn-cancel" onClick={() => setShowLayoutEditor(false)} disabled={layoutSaving}>Huy</button>
+              <button type="button" className="rm-btn-submit"
+                style={{ background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", gap:6 }}
+                onClick={handleSaveLayoutRowTypes} disabled={layoutSaving}>
+                {layoutSaving ? "Dang luu..." : <><MdEdit size={16} /> Luu so do</>}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

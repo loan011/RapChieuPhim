@@ -729,12 +729,12 @@ function Movies() {
             
             <div className="modal-filter-row">
               <div className="modal-filter-group">
-                <label>Khu vực:</label>
+                <label>Cinema:</label>
                 <select
                   value={modalAreaId}
                   onChange={(e) => setModalAreaId(e.target.value)}
                 >
-                  <option value="">Tất cả khu vực</option>
+                  <option value="">Tất cả Cinema</option>
                   {areas.map((area) => (
                     <option key={getAreaId(area)} value={getAreaId(area)}>
                       {getAreaName(area)}

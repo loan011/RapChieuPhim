@@ -211,10 +211,137 @@ export function useBanVe() {
   const [currentPaymentId, setCurrentPaymentId] = useState(null);
   const [isStudent, setIsStudent] = useState(false);
   const [studentCount, setStudentCount] = useState(1);
+  const [showStudentVerifyModal, setShowStudentVerifyModal] = useState(false);
+  const [studentVerified, setStudentVerified] = useState(false);
+  const [studentCardInfo, setStudentCardInfo] = useState(null);
 
+  /* ── Đọc số lần dùng HS/SV trong tháng hiện tại từ localStorage ── */
+  function getStudentMonthlyUsage(studentId) {
+    try {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const records = JSON.parse(localStorage.getItem("student_discount_usage") || "[]");
+      return records.filter((r) => {
+        if (r.month !== monthKey) return false;
+        if (studentId && r.studentId && r.studentId !== studentId) return false;
+        return true;
+      }).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /* ── Ghi nhận 1 lượt dùng sau khi đơn thanh toán thành công ── */
+  function recordStudentUsage(bookedIds, cardInfo) {
+    if (!cardInfo) return;
+    try {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const records = JSON.parse(localStorage.getItem("student_discount_usage") || "[]");
+      records.push({
+        month: monthKey,
+        studentId: cardInfo.studentId || "",
+        school: cardInfo.school || "",
+        bookingId: bookedIds ? bookedIds[0] : null,
+        usedAt: now.toISOString(),
+      });
+      localStorage.setItem("student_discount_usage", JSON.stringify(records));
+    } catch (e) {
+      console.warn("recordStudentUsage error:", e);
+    }
+  }
+
+  /* ── Mở modal xác minh khi nhân viên tick checkbox ── */
   const handleSetIsStudent = (checked) => {
-    setIsStudent(checked);
+    if (checked) {
+      // Mở modal xác minh — chưa áp dụng giảm giá ngay
+      setShowStudentVerifyModal(true);
+    } else {
+      // Bỏ check — reset tất cả
+      setIsStudent(false);
+      setStudentVerified(false);
+      setStudentCardInfo(null);
+    }
   };
+
+  /* ── Nhân viên xác nhận thẻ hợp lệ ── */
+  function handleStudentVerifyConfirm(cardInfo) {
+    // cardInfo: { studentId, school, expiryDate, imageUrl }
+    // Validate hạn thẻ dạng tự do
+    if (cardInfo.expiryDate) {
+      const trimmed = cardInfo.expiryDate.trim();
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1; // 1-12
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // TH1: Chỉ nhập Năm (VD: 2027 hoặc 27)
+      if (/^\d{4}$/.test(trimmed)) {
+        const year = Number(trimmed);
+        if (year < currentYear) {
+          return { ok: false, error: "Thẻ sinh viên đã hết hạn! Không thể áp dụng ưu đãi." };
+        }
+      } else if (/^\d{2}$/.test(trimmed)) {
+        const year = Number("20" + trimmed);
+        if (year < currentYear) {
+          return { ok: false, error: "Thẻ sinh viên đã hết hạn! Không thể áp dụng ưu đãi." };
+        }
+      }
+      // TH2: Nhập Tháng/Năm (VD: 12/2027)
+      else if (/^(\d{1,2})[\/\-\.](\d{4})$/.test(trimmed)) {
+        const parts = trimmed.split(/[\/\-\.]/);
+        const month = Number(parts[0]);
+        const year = Number(parts[1]);
+        if (year < currentYear || (year === currentYear && month < currentMonth)) {
+          return { ok: false, error: "Thẻ sinh viên đã hết hạn! Không thể áp dụng ưu đãi." };
+        }
+      }
+      // TH3: Nhập Ngày/Tháng/Năm đầy đủ (VD: 31/12/2027)
+      else if (/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/.test(trimmed)) {
+        const parts = trimmed.split(/[\/\-\.]/);
+        const day = Number(parts[0]);
+        const month = Number(parts[1]) - 1; // 0-11
+        const year = Number(parts[2]);
+        const expiry = new Date(year, month, day, 23, 59, 59, 999);
+        if (expiry < new Date()) {
+          return { ok: false, error: "Thẻ sinh viên đã hết hạn! Không thể áp dụng ưu đãi." };
+        }
+      }
+      // Các trường hợp nhập khác không hợp lệ
+      else {
+        // Fallback thử parse bằng Date gốc
+        const fallbackExpiry = new Date(trimmed);
+        if (!isNaN(fallbackExpiry.getTime())) {
+          fallbackExpiry.setHours(23, 59, 59, 999);
+          if (fallbackExpiry < new Date()) {
+            return { ok: false, error: "Thẻ sinh viên đã hết hạn! Không thể áp dụng ưu đãi." };
+          }
+        }
+      }
+    }
+    // Validate số lần dùng tháng
+    const usedCount = getStudentMonthlyUsage(cardInfo.studentId);
+    if (usedCount >= 3) {
+      return {
+        ok: false,
+        error: `Thẻ sinh viên này đã sử dụng ưu đãi ${usedCount}/3 lần trong tháng. Không thể áp dụng thêm.`,
+      };
+    }
+    // Hợp lệ → áp dụng giảm giá
+    setIsStudent(true);
+    setStudentVerified(true);
+    setStudentCardInfo(cardInfo);
+    setShowStudentVerifyModal(false);
+    return { ok: true };
+  }
+
+  /* ── Hủy xác minh ── */
+  function handleStudentVerifyCancel() {
+    setShowStudentVerifyModal(false);
+    setIsStudent(false);
+    setStudentVerified(false);
+    setStudentCardInfo(null);
+  }
 
   const [discountCodeInput, setDiscountCodeInput] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(null);
@@ -462,6 +589,9 @@ export function useBanVe() {
           
           // Force activate tickets to Active in DB
           await forceActivateTickets(paymentTicketIds);
+          
+          // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
+          recordStaffSaleToLocalStorage(paymentTicketIds, tempReceipt?.totalAmount, "QR");
           
           // Complete checkout on frontend
           setSuccessReceipt(tempReceipt);
@@ -1056,8 +1186,34 @@ export function useBanVe() {
           localStorage.setItem("cash_received_booking_" + bookedIds[0], cashReceived);
         }
 
+        // Ghi nhận rạp chiếu cho các đơn bán tại quầy vào order_cinema_map
+        try {
+          const uObj = JSON.parse(localStorage.getItem("user") || "{}");
+          let staffCid = uObj?.cinemaId ?? uObj?.CinemaId;
+          if (!staffCid && uObj?.email) {
+            try {
+              const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+              staffCid = mappings[uObj.email];
+            } catch(e) {}
+          }
+          const curCid = String(staffCid || selectedShowtime?.cinemaId || selectedShowtime?.CinemaId || uObj?.cinemaId || uObj?.CinemaId || "1");
+          const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+          bookedIds.forEach(id => {
+            map[String(id)] = curCid;
+          });
+          localStorage.setItem("order_cinema_map", JSON.stringify(map));
+        } catch(e) {}
+
         // Force activate tickets to Active state immediately
         await forceActivateTickets(bookedIds);
+
+        // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
+        recordStaffSaleToLocalStorage(bookedIds, totalAmount, "Cash");
+
+        // Ghi nhận lượt dùng HS/SV sau khi thanh toán thành công
+        if (isStudent && studentCardInfo) {
+          recordStudentUsage(bookedIds, studentCardInfo);
+        }
 
         setSuccessReceipt({
           movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
@@ -1089,6 +1245,8 @@ export function useBanVe() {
         setSelectedFoods({});
         setIsStudent(false);
         setStudentCount(1);
+        setStudentVerified(false);
+        setStudentCardInfo(null);
         setAppliedDiscount(null);
         setDiscountCodeInput("");
         setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
@@ -1247,12 +1405,19 @@ export function useBanVe() {
       await forceActivateTickets(paymentTicketIds);
     }
 
+    // Ghi nhận lượt dùng HS/SV sau khi QR xác nhận thành công
+    if (isStudent && studentCardInfo) {
+      recordStudentUsage(paymentTicketIds, studentCardInfo);
+    }
+
     setSuccessReceipt(tempReceipt);
     setShowQrModal(false);
     setPaymentQrCode("");
     setCurrentPaymentId(null);
     setSelectedSeats([]);
     setSelectedFoods({});
+    setStudentVerified(false);
+    setStudentCardInfo(null);
     setCustomer({ name: "Khách vãng lai", phone: "", email: "" });
     const showtimeId = getShowtimeId(selectedShowtime);
     getAvailableSeats(showtimeId)
@@ -1309,6 +1474,94 @@ export function useBanVe() {
       }
     } catch (err) {
       console.error("Force activating tickets failed:", err);
+    }
+  }
+
+  function recordStaffSaleToLocalStorage(bookedIds, totalAmt, paymentMethodStr) {
+    if (!bookedIds || bookedIds.length === 0) return;
+    try {
+      let user = {};
+      try {
+        user = JSON.parse(localStorage.getItem("user") || "{}");
+      } catch (e) {}
+
+      let staffCinemaId = user?.cinemaId ?? user?.CinemaId;
+      if (!staffCinemaId && user?.email) {
+        try {
+          const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+          staffCinemaId = mappings[user.email];
+        } catch(e) {}
+      }
+
+      const curCid = String(
+        staffCinemaId ||
+        selectedShowtime?.cinemaId ||
+        selectedShowtime?.CinemaId ||
+        selectedShowtime?.room?.cinemaId ||
+        selectedShowtime?.Room?.cinemaId ||
+        "1"
+      );
+      const curCName = selectedShowtime?.cinemaName || selectedShowtime?.CinemaName || user?.cinemaName || "";
+
+      const localTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+      const localDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+      const orderCinemaMap = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+
+      const primaryBookingId = bookedIds[0];
+      const seatsStr = selectedSeats.map(s => getSeatCode(s)).join(", ");
+      const foodsListFormatted = selectedFoodsList.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      const ticketRecord = {
+        bookingId: primaryBookingId,
+        bookingIds: bookedIds,
+        ticketCode: String(primaryBookingId),
+        movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
+        showDate: getShowtimeDate(selectedShowtime),
+        showTime: getShowtimeHour(selectedShowtime),
+        roomName: selectedShowtime?.roomName || selectedShowtime?.RoomName || `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
+        seats: seatsStr,
+        cinemaId: curCid,
+        cinemaName: curCName,
+        price: ticketSubtotal,
+        concessionSubtotal: selectedFoodsList.reduce((acc, f) => acc + (Number(f.price || 0) * Number(f.quantity || 1)), 0),
+        ticketSubtotal: ticketSubtotal,
+        totalAmount: Number(totalAmt || totalAmount),
+        finalTotalAmount: Number(totalAmt || totalAmount),
+        paymentMethod: paymentMethodStr === "Cash" ? "TIỀN MẶT" : "CHUYỂN KHOẢN (QR)",
+        status: "Active",
+        createdAt: new Date().toISOString(),
+        paymentDate: new Date().toISOString(),
+        foodsList: foodsListFormatted,
+        isStaffSale: true
+      };
+
+      localTickets.push(ticketRecord);
+      localStorage.setItem("rapchieuphim_tickets", JSON.stringify(localTickets));
+
+      bookedIds.forEach(id => {
+        orderCinemaMap[String(id)] = curCid;
+        localDiscounts[String(id)] = {
+          bookingId: id,
+          cinemaId: curCid,
+          cinemaName: curCName,
+          totalAmount: Number(totalAmt || totalAmount),
+          createdAt: new Date().toISOString()
+        };
+      });
+
+      localStorage.setItem("order_cinema_map", JSON.stringify(orderCinemaMap));
+      localStorage.setItem("customer_ticket_discounts", JSON.stringify(localDiscounts));
+
+      // Bắn sự kiện đồng bộ ngay lập tức cho trang Doanh Thu & Dashboard
+      window.dispatchEvent(new Event("paymentsUpdated"));
+      window.dispatchEvent(new Event("ticketsUpdated"));
+      window.dispatchEvent(new Event("bookingsUpdated"));
+    } catch (e) {
+      console.error("Lỗi đồng bộ vé POS vào local storage:", e);
     }
   }
 
@@ -1481,6 +1734,12 @@ export function useBanVe() {
     setIsStudent: handleSetIsStudent,
     studentCount,
     setStudentCount,
+    showStudentVerifyModal,
+    studentVerified,
+    studentCardInfo,
+    handleStudentVerifyConfirm,
+    handleStudentVerifyCancel,
+    getStudentMonthlyUsage,
     discountCodeInput,
     setDiscountCodeInput,
     appliedDiscount,

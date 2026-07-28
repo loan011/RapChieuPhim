@@ -19,14 +19,26 @@ import {
   getMovies,
 } from "./dashboardService";
 
-function getOrderCinemaId(order) {
+function getOrderCinemaId(order, cinemas = []) {
   if (!order) return "";
   let cid = order.cinemaId ?? order.CinemaId;
   if (cid) return String(cid);
 
+  // Thử map theo tên rạp (ví dụ: b.cinemaName hoặc t.cinemaName)
+  const cName = String(order.cinemaName || order.CinemaName || order.tickets?.[0]?.cinemaName || "").trim().toLowerCase();
+  if (cName && Array.isArray(cinemas)) {
+    const found = cinemas.find(c => String(c.name || c.Name || "").trim().toLowerCase() === cName);
+    if (found) return String(found.cinemaId || found.CinemaId || "");
+  }
+
   if (order.staff) {
     cid = order.staff.cinemaId ?? order.staff.CinemaId ?? order.staff.cinema?.cinemaId ?? order.staff.cinema?.CinemaId;
     if (cid) return String(cid);
+    const staffCname = String(order.staff.cinema?.name || order.staff.cinema?.Name || "").trim().toLowerCase();
+    if (staffCname && Array.isArray(cinemas)) {
+      const found = cinemas.find(c => String(c.name || c.Name || "").trim().toLowerCase() === staffCname);
+      if (found) return String(found.cinemaId || found.CinemaId || "");
+    }
   }
   if (order.Staff) {
     cid = order.Staff.cinemaId ?? order.Staff.CinemaId ?? order.Staff.cinema?.cinemaId ?? order.Staff.cinema?.CinemaId;
@@ -62,7 +74,7 @@ function getOrderCinemaId(order) {
     }
   } catch (e) {}
 
-  return "1";
+  return "";
 }
 
 function buildFoodDistributions(source, timeFilter, cinemaId) {
@@ -420,32 +432,34 @@ export function useDashboard() {
     const foodDistributions = normalizeFoodDistributions(chartDataResp);
 
     if (dailyReport) {
-      // 1. Đồng bộ 100% số liệu doanh thu tổng và số vé với phía Staff
-      setStats({
-        totalMovies: statsData?.totalMovies ?? statsData?.TotalMovies ?? 4,
-        totalUsers: statsData?.totalUsers ?? statsData?.TotalUsers ?? 10,
-        totalTickets: dailyReport.totalTicketsCount,
-        revenue: dailyReport.totalOverallRevenue
-      });
+      // 1. Đồng bộ và tính toán lại 100% số liệu doanh thu tổng và số vé theo rạp được chọn
+      let calcTicketRevenue = 0;
+      let calcFoodRevenue = 0;
+      let calcOverallRevenue = 0;
+      let calcTicketsCount = 0;
 
-      setChartData({
-        totalTicketRevenue: dailyReport.totalTicketRevenue,
-        totalFoodRevenue: dailyReport.totalConcessionRevenue,
-        ticketRevenuePercentage: dailyReport.totalOverallRevenue > 0 ? Number(((dailyReport.totalTicketRevenue / dailyReport.totalOverallRevenue) * 100).toFixed(1)) : 0,
-        foodRevenuePercentage: dailyReport.totalOverallRevenue > 0 ? Number(((dailyReport.totalConcessionRevenue / dailyReport.totalOverallRevenue) * 100).toFixed(1)) : 0,
-        foodDistributions,
-        topShowtimes: [],
-        revenueByTime: []
-      });
-
-      // 2. Đồng bộ 100% thống kê hiệu suất theo phim với phía Staff
-      const movieMap = new Map();
       let storedT = [];
       try {
         storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
       } catch(e) {}
 
-      (dailyReport.bills || []).forEach(b => {
+      const selectedCinemaObj = (cList || []).find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cinemaId));
+      const selectedCinemaName = String(selectedCinemaObj?.name || selectedCinemaObj?.cinemaName || selectedCinemaObj?.Name || selectedCinemaObj?.CinemaName || "").trim().toLowerCase();
+
+      // Lọc và tính tổng tiền cho các hóa đơn khớp chi nhánh
+      const filteredBills = (dailyReport.bills || []).filter(b => {
+        if (cinemaId) {
+          const orderCid = getOrderCinemaId(b, cList);
+          if (orderCid && orderCid !== String(cinemaId)) return false;
+
+          if (!orderCid && selectedCinemaName) {
+            const bName = String(b.cinemaName || b.tickets?.[0]?.cinemaName || "").toLowerCase();
+            if (bName && !bName.includes(selectedCinemaName) && !selectedCinemaName.includes(bName)) {
+              return false;
+            }
+          }
+        }
+
         const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
         let isCancelled = b.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
         if (!isCancelled && storedT.length > 0) {
@@ -453,35 +467,79 @@ export function useDashboard() {
           const found = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
           if (found && String(found.status || "").toLowerCase().includes("cancel")) isCancelled = true;
         }
+        return !isCancelled;
+      });
 
-        if (isCancelled) return;
+      filteredBills.forEach(b => {
+        calcTicketRevenue += b.ticketSubtotal || 0;
+        calcFoodRevenue += b.concessionSubtotal || 0;
+        calcOverallRevenue += b.totalAmount || 0;
+        calcTicketsCount += (b.tickets?.length || 0);
+      });
+
+      setStats({
+        totalMovies: statsData?.totalMovies ?? statsData?.TotalMovies ?? 4,
+        totalUsers: statsData?.totalUsers ?? statsData?.TotalUsers ?? 10,
+        totalTickets: calcTicketsCount,
+        revenue: calcOverallRevenue
+      });
+
+      setChartData({
+        totalTicketRevenue: calcTicketRevenue,
+        totalFoodRevenue: calcFoodRevenue,
+        ticketRevenuePercentage: calcOverallRevenue > 0 ? Number(((calcTicketRevenue / calcOverallRevenue) * 100).toFixed(1)) : 0,
+        foodRevenuePercentage: calcOverallRevenue > 0 ? Number(((calcFoodRevenue / calcOverallRevenue) * 100).toFixed(1)) : 0,
+        foodDistributions,
+        topShowtimes: [],
+        revenueByTime: []
+      });
+
+      // 2. Nhóm theo MovieId — chỉ lấy vé thanh toán thành công, loại vé đã hủy
+      const movieMap = new Map(); // key: movieId (fallback to title)
+
+      filteredBills.forEach(b => {
+        const billDate = b.paymentDate || b.createdAt || "";
 
         (b.tickets || []).forEach(t => {
-          const title = String(t.movieTitle || t.movieName || "Phim").trim();
-          const price = Number(t.price || t.unitPrice || 0);
+          // Loại vé đã hủy ở cấp ticket
+          const tStatus = String(t.status || t.Status || "").toLowerCase();
+          if (tStatus.includes("cancel") || tStatus.includes("hủy") || tStatus.includes("refund")) return;
+
+          const movieId = String(t.movieId ?? t.MovieId ?? t.movieTitle ?? t.movieName ?? "unknown");
+          const title = String(t.movieTitle || t.movieName || t.title || "Phim").trim();
+          const price = Number(t.price || t.unitPrice || t.ticketPrice || 0);
           const roomName = t.roomName || t.room || "";
           const poster =
-            t.posterUrl ||
-            t.PosterUrl ||
-            t.poster ||
-            t.Poster ||
-            t.moviePoster ||
-            t.MoviePoster ||
-            t.imageUrl ||
-            t.ImageUrl ||
-            "";
+            t.posterUrl || t.PosterUrl || t.poster || t.Poster ||
+            t.moviePoster || t.MoviePoster || t.imageUrl || t.ImageUrl || "";
+          const totalSeats = Number(t.totalSeats || t.roomCapacity || 0);
 
-          const prev = movieMap.get(title) || { title, revenue: 0, count: 0, rooms: {}, posterUrl: poster };
+          const prev = movieMap.get(movieId) || {
+            movieId,
+            title,
+            revenue: 0,
+            count: 0,
+            totalSeats: 0,
+            rooms: {},
+            posterUrl: poster,
+            lastDate: ""
+          };
+
           if (!prev.posterUrl && poster) prev.posterUrl = poster;
+          if (!prev.title || prev.title === "Phim") prev.title = title;
+          if (totalSeats > prev.totalSeats) prev.totalSeats = totalSeats;
+
+          // Cập nhật ngày giao dịch gần nhất
+          if (billDate && (!prev.lastDate || billDate > prev.lastDate)) prev.lastDate = billDate;
+
           if (roomName) {
             prev.rooms[roomName] = (prev.rooms[roomName] || 0) + 1;
           }
-          movieMap.set(title, {
-            title,
+
+          movieMap.set(movieId, {
+            ...prev,
             revenue: prev.revenue + price,
             count: prev.count + 1,
-            rooms: prev.rooms,
-            posterUrl: prev.posterUrl || poster,
           });
         });
       });
@@ -494,9 +552,7 @@ export function useDashboard() {
         mList.forEach(m => {
           const titleKey = String(m.title || m.Title || m.movieTitle || m.MovieTitle || m.name || m.Name || "").trim().toLowerCase();
           const poster = m.posterUrl || m.PosterUrl || m.imageUrl || m.ImageUrl || m.poster || m.Poster || "";
-          if (titleKey && poster) {
-            apiPosterMap.set(titleKey, poster);
-          }
+          if (titleKey && poster) apiPosterMap.set(titleKey, poster);
         });
       } catch(e) {}
 
@@ -506,29 +562,49 @@ export function useDashboard() {
           localMovies.forEach(m => {
             const titleKey = String(m.title || m.Title || m.movieTitle || m.MovieTitle || "").trim().toLowerCase();
             const poster = m.posterUrl || m.PosterUrl || m.imageUrl || m.ImageUrl || m.poster || m.Poster || "";
-            if (titleKey && poster) {
-              apiPosterMap.set(titleKey, poster);
-            }
+            if (titleKey && poster) apiPosterMap.set(titleKey, poster);
           });
         }
       } catch(e) {}
 
       const totalMoviesRevSum = Array.from(movieMap.values()).reduce((sum, m) => sum + (m.revenue || 0), 0) || 1;
-      const syncedMovieStats = Array.from(movieMap.values()).map((m, idx) => {
+
+      // Sắp xếp: Doanh thu giảm dần → Tiebreaker 1: vé bán nhiều hơn → 2: tỷ lệ lấp đầy ghế cao hơn → 3: giao dịch gần nhất
+      const sortedMovies = Array.from(movieMap.values()).sort((a, b) => {
+        if (b.revenue !== a.revenue) return b.revenue - a.revenue;
+        if (b.count !== a.count) return b.count - a.count;
+        const occA = a.totalSeats > 0 ? a.count / a.totalSeats : 0;
+        const occB = b.totalSeats > 0 ? b.count / b.totalSeats : 0;
+        if (occB !== occA) return occB - occA;
+        return (b.lastDate || "").localeCompare(a.lastDate || "");
+      });
+
+      const syncedMovieStats = sortedMovies.map((m, idx) => {
         const titleKey = m.title.toLowerCase();
         const foundPoster = m.posterUrl || apiPosterMap.get(titleKey) || apiPosterMap.get(titleKey.replace(/[\s\d]+$/g, "")) || "";
         const calcPct = totalMoviesRevSum > 0 ? Number(((m.revenue / totalMoviesRevSum) * 100).toFixed(1)) : 0;
+        const totalTickets = m.count || 1;
+        const occupancyPct = m.totalSeats > 0 ? Number(((m.count / m.totalSeats) * 100).toFixed(1)) : 2.5;
+
+        const cinemaDistributions = Object.entries(m.rooms || {}).map(([roomName, ticketsSold]) => {
+          const percentage = Number(((ticketsSold / totalTickets) * 100).toFixed(1));
+          return { cinemaName: roomName, ticketsSold, percentage };
+        }).sort((a, b) => b.ticketsSold - a.ticketsSold);
+
         return {
-          movieId: idx + 1,
+          rank: idx + 1, // Thứ hạng Top 1, 2, 3...
+          movieId: m.movieId,
           movieTitle: m.title,
           posterUrl: foundPoster,
           movieStatus: "Đang chiếu",
           totalRevenue: m.revenue,
           totalTicketsSold: m.count,
           revenueContributionPercentage: Math.min(100, calcPct),
-          seatOccupancyPercentage: 2.5
+          seatOccupancyPercentage: occupancyPct,
+          lastTransactionDate: m.lastDate,
+          cinemaDistributions
         };
-      }).sort((a, b) => b.totalRevenue - a.totalRevenue);
+      });
 
       if (syncedMovieStats.length > 0) {
         setMovieStats(syncedMovieStats);

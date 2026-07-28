@@ -204,19 +204,35 @@ export default function Dashboard() {
             <table className="movie-perf-table">
               <thead>
                 <tr>
+                  <th>Hạng</th>
                   <th>Phim</th>
                   <th>Doanh thu (đ)<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>Tổng / %</span></th>
                   <th>Vé đã bán<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>Tổng / %</span></th>
-                  {cinemaId && <th>Tỷ lệ lấp đầy ghế<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>%</span></th>}
-                  {cinemaId && <th>Số vé theo phòng & khu vực<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>% phân bổ</span></th>}
+                  <th>Lấp đầy ghế<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>%</span></th>
+                  {cinemaId && <th>Phòng chiếu<br/><span style={{fontSize:'10px', color:'#d1d5db'}}>% phân bổ</span></th>}
                 </tr>
               </thead>
               <tbody>
-                {movieStats.map((m, idx) => (
-                  <tr key={m.movieId}>
+                {movieStats.map((m) => {
+                  const rank = m.rank || 1;
+                  const rankColors = ['#f59e0b', '#9ca3af', '#b45309'];
+                  const rankLabels = ['🥇', '🥈', '🥉'];
+                  const rankBg = rank <= 3 ? rankColors[rank - 1] : 'transparent';
+                  const rankLabel = rank <= 3 ? rankLabels[rank - 1] : `#${rank}`;
+                  return (
+                  <tr key={m.movieId || m.movieTitle}>
+                    <td style={{ textAlign: 'center', width: '52px' }}>
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: rank <= 3 ? '32px' : '28px', height: rank <= 3 ? '32px' : '28px',
+                        borderRadius: '50%', background: rankBg,
+                        fontSize: rank <= 3 ? '1.2rem' : '0.8rem',
+                        fontWeight: 700, color: rank <= 3 ? '#fff' : '#9ca3af',
+                        boxShadow: rank <= 3 ? `0 0 8px ${rankBg}80` : 'none'
+                      }}>{rankLabel}</div>
+                    </td>
                     <td>
                       <div className="movie-cell">
-                        <strong>{idx + 1}</strong>
                         <img
                           src={m.posterUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=100&auto=format&fit=crop'}
                           alt="poster"
@@ -241,19 +257,17 @@ export default function Dashboard() {
                     </td>
                     <td>
                       <div className="val-with-bar">
-                        <span className="val-text">{formatMoney(m.totalTicketsSold)}</span>
+                        <span className="val-text">{m.totalTicketsSold} vé</span>
                         <span className="val-sub">{m.revenueContributionPercentage}%</span>
                         <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${m.revenueContributionPercentage}%`, background: '#10b981'}}></div></div>
                       </div>
                     </td>
-                    {cinemaId && (
-                      <td>
-                        <div className="val-with-bar">
-                          <span className="val-text">{m.seatOccupancyPercentage}%</span>
-                          <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${m.seatOccupancyPercentage}%`, background: '#8b5cf6'}}></div></div>
-                        </div>
-                      </td>
-                    )}
+                    <td>
+                      <div className="val-with-bar">
+                        <span className="val-text">{m.seatOccupancyPercentage}%</span>
+                        <div className="prog-bar-bg"><div className="prog-bar-fill" style={{width: `${Math.min(100, m.seatOccupancyPercentage)}%`, background: '#8b5cf6'}}></div></div>
+                      </div>
+                    </td>
                     {cinemaId && (
                       <td>
                         <div style={{ fontSize: '0.85rem', color: '#d1d5db', lineHeight: '1.4' }}>
@@ -270,7 +284,8 @@ export default function Dashboard() {
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

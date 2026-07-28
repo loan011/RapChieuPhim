@@ -24,15 +24,75 @@ import {
   MdRefresh,
   MdCancel
 } from "react-icons/md";
+import { getCinemaList } from "../../Admin/Cinema/cinemaService";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
 import TicketExchangeModal from "../../../components/TicketExchangeModal";
 import "./DoanhThu.css";
+
+function getOrderCinemaId(order, cinemas = []) {
+  if (!order) return "";
+  let cid = order.cinemaId ?? order.CinemaId;
+  if (cid) return String(cid);
+
+  // Thử map theo tên rạp (ví dụ: b.cinemaName hoặc t.cinemaName)
+  const cName = String(order.cinemaName || order.CinemaName || order.tickets?.[0]?.cinemaName || "").trim().toLowerCase();
+  if (cName && Array.isArray(cinemas)) {
+    const found = cinemas.find(c => String(c.name || c.Name || "").trim().toLowerCase() === cName);
+    if (found) return String(found.cinemaId || found.CinemaId || "");
+  }
+
+  if (order.staff) {
+    cid = order.staff.cinemaId ?? order.staff.CinemaId ?? order.staff.cinema?.cinemaId ?? order.staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+    const staffCname = String(order.staff.cinema?.name || order.staff.cinema?.Name || "").trim().toLowerCase();
+    if (staffCname && Array.isArray(cinemas)) {
+      const found = cinemas.find(c => String(c.name || c.Name || "").trim().toLowerCase() === staffCname);
+      if (found) return String(found.cinemaId || found.CinemaId || "");
+    }
+  }
+  if (order.Staff) {
+    cid = order.Staff.cinemaId ?? order.Staff.CinemaId ?? order.Staff.cinema?.cinemaId ?? order.Staff.cinema?.CinemaId;
+    if (cid) return String(cid);
+  }
+
+  const booking = order.booking ?? order.Booking;
+  if (booking) {
+    const showtime = booking.showtime ?? booking.Showtime;
+    if (showtime) {
+      cid = showtime.cinemaId ?? showtime.CinemaId;
+      if (cid) return String(cid);
+      const room = showtime.room ?? showtime.Room;
+      if (room) {
+        cid = room.cinemaId ?? room.CinemaId;
+        if (cid) return String(cid);
+      }
+    }
+  }
+
+  // Check order_cinema_map
+  try {
+    const map = JSON.parse(localStorage.getItem("order_cinema_map") || "{}");
+    const oid = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
+    if (oid && map[String(oid)]) return String(map[String(oid)]);
+  } catch(e) {}
+
+  // Fallback nếu order chưa được ghi đè cinemaId
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user && (user.cinemaId || user.CinemaId)) {
+      return String(user.cinemaId || user.CinemaId);
+    }
+  } catch(e) {}
+
+  return "";
+}
 
 export default function DoanhThu() {
   const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cinemas, setCinemas] = useState([]);
 
   // Trạng thái lọc Ca làm việc trên giao diện: "ALL" | "CA1" | "CA2"
   const [selectedShiftFilter, setSelectedShiftFilter] = useState("ALL");
@@ -54,6 +114,37 @@ export default function DoanhThu() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
 
+  // Lấy danh sách rạp chiếu khi component mount
+  useEffect(() => {
+    async function loadCinemas() {
+      try {
+        const list = await getCinemaList();
+        setCinemas(list || []);
+      } catch (err) {
+        console.error("Không thể tải danh sách rạp:", err);
+      }
+    }
+    loadCinemas();
+  }, []);
+
+  // Lấy cinemaId của nhân viên đang đăng nhập (Đọc động để đảm bảo lấy giá trị mới nhất)
+  const getStaffCinemaId = () => {
+    try {
+      const u = JSON.parse(localStorage.getItem("user") || "{}");
+      let cId = u?.cinemaId ?? u?.CinemaId;
+      if (!cId) {
+        const email = u?.email ?? u?.Email;
+        if (email) {
+          const mappings = JSON.parse(localStorage.getItem("staff_cinema_mappings") || "{}");
+          cId = mappings[email];
+        }
+      }
+      return cId ? String(cId) : "";
+    } catch(e) {
+      return "";
+    }
+  };
+
   // Gọi API lấy dữ liệu mỗi khi date thay đổi
   useEffect(() => {
     fetchData();
@@ -71,7 +162,8 @@ export default function DoanhThu() {
     try {
       setLoading(true);
       setError("");
-      const data = await getDailyRevenue(date);
+      const staffCid = getStaffCinemaId();
+      const data = await getDailyRevenue(date, staffCid);
       setReportData(data);
     } catch (err) {
       console.error(err);
@@ -103,10 +195,35 @@ export default function DoanhThu() {
     return bill.paymentDate ? new Date(bill.paymentDate).toLocaleString("vi-VN") : "Đã hủy";
   }
 
-  // Lọc danh sách hóa đơn theo Ca được chọn
+  // Lọc danh sách hóa đơn theo Ca & đúng Chi Nhánh của nhân viên
   const shiftBills = useMemo(() => {
     if (!reportData?.bills) return [];
+    const staffCid = getStaffCinemaId();
+    const staffCinemaObj = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(staffCid));
+    const staffCName = String(staffCinemaObj?.cinemaName || staffCinemaObj?.name || staffCinemaObj?.CinemaName || "").toLowerCase();
+
     return reportData.bills.filter(bill => {
+      // Lọc theo chi nhánh của nhân viên
+      if (staffCid) {
+        const orderCid = getOrderCinemaId(bill, cinemas);
+        if (orderCid && orderCid === String(staffCid)) {
+          // Trùng chính xác ID -> Cho qua
+        } else if (orderCid && orderCid !== String(staffCid)) {
+          return false;
+        } else {
+          // orderCid không xác định -> thử so sánh tên chi nhánh
+          const bName = String(bill.cinemaName || bill.tickets?.[0]?.cinemaName || "").toLowerCase();
+          if (bName && staffCName && (bName.includes(staffCName) || staffCName.includes(bName))) {
+            // Trùng tên rạp -> Cho qua
+          } else if (bName && staffCName && !bName.includes(staffCName) && !staffCName.includes(bName)) {
+            return false;
+          } else if (staffCid) {
+            // Không xác định được mã rạp hay tên rạp khi staffCid được chỉ định -> Loại bỏ để tránh lọt rạp khác
+            return false;
+          }
+        }
+      }
+
       if (!bill.paymentDate) return true;
       const hours = new Date(bill.paymentDate).getHours();
       if (selectedShiftFilter === "CA1") {
@@ -116,7 +233,7 @@ export default function DoanhThu() {
       }
       return true;
     });
-  }, [reportData, selectedShiftFilter]);
+  }, [reportData, selectedShiftFilter, cinemas]);
 
   // Danh sách hóa đơn sau khi áp dụng cả lọc Ca, Tìm kiếm & Lọc trạng thái
   const filteredBills = useMemo(() => {

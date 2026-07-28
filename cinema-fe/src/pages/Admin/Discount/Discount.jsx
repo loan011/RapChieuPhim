@@ -458,7 +458,6 @@ export default function Discount() {
                       onChange={handleFormChange}
                     >
                       <option value="Public">Mã công khai (Dùng chung)</option>
-                      <option value="Private">Phiếu cá nhân (Mã riêng cho từng người)</option>
                     </select>
                   </div>
 
@@ -471,8 +470,6 @@ export default function Discount() {
                       onChange={handleFormChange}
                     >
                       <option value="All">Tất cả khách hàng</option>
-                      <option value="Newbie">Thành viên mới (Newbie)</option>
-                      <option value="VIP">Thành viên VIP / Khách hàng thân thiết</option>
                     </select>
                   </div>
 
@@ -485,10 +482,6 @@ export default function Discount() {
                       onChange={handleFormChange}
                     >
                       <option value="Tất cả dịch vụ">Tất cả dịch vụ</option>
-                      <option value="Vé xem phim">Chỉ áp dụng cho Vé xem phim</option>
-                      <option value="Đồ ăn & Combo">Chỉ áp dụng cho Đồ ăn & Combo</option>
-                      <option value="Chi nhánh Bến Thành">Chi nhánh Bến Thành</option>
-                      <option value="Chi nhánh Đồng Khởi">Chi nhánh Đồng Khởi</option>
                     </select>
                   </div>
 

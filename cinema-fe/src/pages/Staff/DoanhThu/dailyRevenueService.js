@@ -118,8 +118,8 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
           const finalTotal = discountInfo.finalTotalAmount || t.finalTotalAmount || Math.max(0, rawTotal - discountAmount);
 
           const todayStr = getLocalDateStr(new Date());
-          const createdDateVal = t.createdAt || t.bookingDate || discountInfo.createdAt || `${todayStr}T18:00:00`;
-          const cId = t.cinemaId || discountInfo.cinemaId || "1";
+          const createdDateVal = t.paymentDate || t.createdAt || discountInfo.createdAt || t.bookingDate || `${todayStr}T18:00:00`;
+          const cId = t.cinemaId || discountInfo.cinemaId || targetCinemaId || "1";
 
           payments.push({
             paymentId: `LOCAL_P_${bId}`,
@@ -201,6 +201,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
 
     if (targetCinemaId && String(targetCinemaId).trim() !== "") {
       let pCinemaId = "";
+      const pCinemaName = String(p.cinemaName || p.CinemaName || order?.cinemaName || order?.CinemaName || rootBooking?.cinemaName || rootBooking?.CinemaName || "").trim().toLowerCase();
 
       if (p.cinemaId || p.CinemaId) pCinemaId = String(p.cinemaId || p.CinemaId);
 
@@ -257,9 +258,28 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         }
       }
 
-      if (!pCinemaId) pCinemaId = "1";
+      // Lấy tên rạp tương ứng với targetCinemaId để đối chiếu name
+      let targetCinemaName = "";
+      try {
+        const storedCinemas = JSON.parse(localStorage.getItem("rapchieuphim_cinemas") || "[]");
+        const foundT = storedCinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(targetCinemaId));
+        if (foundT) targetCinemaName = String(foundT.name || foundT.cinemaName || foundT.Name || foundT.CinemaName || "").trim().toLowerCase();
+      } catch (e) {}
 
-      return String(pCinemaId) === String(targetCinemaId);
+      // 1. Nếu match ID chính xác
+      if (pCinemaId && String(pCinemaId) === String(targetCinemaId)) return true;
+
+      // 2. Nếu match tên rạp
+      if (pCinemaName && targetCinemaName && (pCinemaName.includes(targetCinemaName) || targetCinemaName.includes(pCinemaName))) return true;
+
+      // 3. Nếu hoá đơn có ghi tên rạp khác với rạp hiện tại -> Bỏ qua
+      if (pCinemaName && targetCinemaName && !pCinemaName.includes(targetCinemaName) && !targetCinemaName.includes(pCinemaName)) return false;
+
+      // 4. Nếu có pCinemaId rõ ràng nhưng khác targetCinemaId -> Bỏ qua
+      if (pCinemaId && String(pCinemaId) !== String(targetCinemaId)) return false;
+
+      // 5. Nếu hoá đơn không thể phân định mã/tên rạp khi đang lọc theo rạp cụ thể -> Loại bỏ
+      return false;
     }
 
     return true;

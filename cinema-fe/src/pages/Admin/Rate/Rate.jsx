@@ -320,9 +320,6 @@ export default function Rate() {
           </div>
 
           <div className="lc-filter-dark-actions">
-            <button type="button" className="lc-btn-dark-clear" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
             <button type="button" className="lc-btn-dark-search">
               <MdSearch size={16} /> Tìm kiếm
             </button>

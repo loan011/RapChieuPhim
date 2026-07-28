@@ -166,17 +166,18 @@ export function buildCinemaPayload(form, areas) {
 }
 
 export function filterCinemaList(list, search) {
-  const keyword = search.trim().toLowerCase();
+  const keyword = (search || "").trim().toLowerCase();
 
   if (!keyword) return list;
 
   return list.filter((cinema) => {
-    const name = getCinemaName(cinema).toLowerCase();
-    const address = getCinemaAddress(cinema).toLowerCase();
-    const areaName = getCinemaAreaName(cinema).toLowerCase();
-    const phone = getCinemaPhone(cinema).toLowerCase();
-    const email = getCinemaEmail(cinema).toLowerCase();
-    const status = getStatusText(getCinemaStatus(cinema)).toLowerCase();
+    const name = String(getCinemaName(cinema) || "").toLowerCase();
+    const address = String(getCinemaAddress(cinema) || "").toLowerCase();
+    const areaName = String(getCinemaAreaName(cinema) || "").toLowerCase();
+    const phone = String(getCinemaPhone(cinema) || "").toLowerCase();
+    const email = String(getCinemaEmail(cinema) || "").toLowerCase();
+    const statusVal = getCinemaStatus(cinema);
+    const status = String(statusVal === "Active" ? "Hoạt động" : statusVal === "Inactive" ? "Ngừng hoạt động" : statusVal || "").toLowerCase();
 
     return (
       name.includes(keyword) ||

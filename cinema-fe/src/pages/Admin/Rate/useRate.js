@@ -1062,21 +1062,60 @@ export function useRate() {
       return;
     }
     if (conflictCount > 0) {
-      setBatchError(`Phát hiện ${conflictCount} suất chiếu bị trùng lịch (màu đỏ)! Vui lòng xóa bớt hoặc điều chỉnh lại giờ chiếu trước khi lưu.`);
+      setBatchError(`Phát hiện ${conflictCount} suất chiếu bị trùng lịch ở Client! Vui lòng xóa bớt hoặc điều chỉnh lại trước khi lưu.`);
       return;
     }
 
     try {
       setBatchSubmitting(true);
 
-      const payloads = batchItems.map((item) => buildShowtimePayload(item));
+      const itemsToSave = [...batchItems];
+      const promises = itemsToSave.map(item => createShowtime(buildShowtimePayload(item)));
+      
+      const results = await Promise.allSettled(promises);
 
-      // Lưu song song tất cả các suất chiếu hợp lệ
-      await Promise.all(payloads.map((p) => createShowtime(p)));
+      let successCount = 0;
+      let failCount = 0;
+      const newConflicts = {};
 
-      closeBatchModal();
+      results.forEach((res, index) => {
+        const item = itemsToSave[index];
+        if (res.status === "fulfilled") {
+          successCount++;
+          // Thêm các suất tạo thành công vào danh sách loại trừ để ẩn khỏi Preview
+          setExcludedBatchIds(prev => {
+            const next = new Set(prev);
+            next.add(item.tempId);
+            return next;
+          });
+        } else {
+          failCount++;
+          // Lưu lỗi/lý do trùng từ backend trả về để hiển thị
+          const errorMsg = res.reason?.message || res.reason || "Phòng chiếu đã có suất chiếu khác trong khung giờ này.";
+          newConflicts[item.tempId] = errorMsg;
+        }
+      });
+
+      // Cập nhật trạng thái lỗi trực tiếp vào các phần tử lỗi trên giao diện
+      if (failCount > 0) {
+        // Chúng ta sẽ cập nhật thông tin trùng lịch của các item thất bại để giao diện tự động bôi đỏ và hiển thị lý do
+        rawBatchItems.forEach(item => {
+          if (newConflicts[item.tempId]) {
+            item.isConflict = true;
+            item.conflictReason = newConflicts[item.tempId];
+          }
+        });
+
+        // Buộc React render lại thông tin conflict mới nhận từ server
+        setBatchForm(prev => ({ ...prev }));
+
+        setBatchError(`Đã tạo thành công ${successCount} suất chiếu. Có ${failCount} suất chiếu bị trùng giờ trên hệ thống (bôi đỏ bên phải), vui lòng xóa hoặc điều chỉnh giờ.`);
+      } else {
+        closeBatchModal();
+        alert(`Đã tạo thành công toàn bộ ${successCount} suất chiếu hàng loạt!`);
+      }
+
       fetchData();
-      alert(`Đã tạo thành công ${payloads.length} suất chiếu hàng loạt!`);
     } catch (err) {
       console.error("Lỗi lưu lịch hàng loạt:", err);
       setBatchError(err?.message || "Lưu danh sách suất chiếu thất bại.");
@@ -1217,6 +1256,8 @@ export function useRate() {
   }
 
   const filtered = useMemo(() => {
+    const kw = movieSearch.trim().toLowerCase();
+
     return showtimesByCinema
       .filter((s) => {
         const matchMovie = selectedMovieId
@@ -1227,14 +1268,18 @@ export function useRate() {
           ? getStatus(s) === filterStatus
           : true;
 
-        return matchMovie && matchStatus;
+        const matchSearch = kw
+          ? getShowtimeMovieTitle(s, movies).toLowerCase().includes(kw)
+          : true;
+
+        return matchMovie && matchStatus && matchSearch;
       })
       .sort((a, b) =>
         `${getShowDate(a)} ${getStartHour(a)}`.localeCompare(
           `${getShowDate(b)} ${getStartHour(b)}`
         )
       );
-  }, [showtimesByCinema, selectedMovieId, filterStatus]);
+  }, [showtimesByCinema, selectedMovieId, filterStatus, movieSearch, movies]);
 
   const today = toDateInputValue(new Date());
 

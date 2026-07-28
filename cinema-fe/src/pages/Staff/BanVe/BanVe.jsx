@@ -95,6 +95,517 @@ function QrPaymentModal({ paymentQrCode, totalAmount, paymentTicketIds, formatMo
   );
 }
 
+/* ════════════════════════════════════════════════════
+   STUDENT VERIFY MODAL
+   Nhân viên xem ảnh thẻ SV + nhập thông tin để xác nhận
+   OCR tự động bằng Tesseract.js
+════════════════════════════════════════════════════ */
+
+/* ── Helper: trích xuất thông tin từ text OCR ── */
+/* ── Phân loại loại thẻ từ text OCR ── */
+function classifyCardType(text) {
+  const t = text.toLowerCase();
+
+  // Từ khoá CHẮC CHẮN là thẻ nhân viên / thẻ đi làm
+  const employeeKeywords = [
+    "chức vụ", "chuc vu", "kỹ sư", "ky su", "giám đốc", "giam doc",
+    "trưởng phòng", "truong phong", "nhân viên", "nhan vien",
+    "ngày làm việc", "ngay lam viec", "ngày vào làm", "date of employment",
+    "employee", "staff id", "company", "công ty", "cong ty",
+    "phòng ban", "phong ban", "department", "position", "chức danh",
+    "đơn vị công tác", "don vi cong tac",
+  ];
+
+  // Từ khoá CHẮC CHẮN là CCCD / CMND (thẻ căn cước)
+  const cccdKeywords = [
+    "căn cước", "can cuoc", "chứng minh nhân dân", "chung minh nhan dan",
+    "cmnd", "cccd", "citizen", "quê quán", "que quan",
+    "nơi thường trú", "noi thuong tru", "nơi đăng ký ktt",
+    "số cccd", "số cmnd", "national id",
+  ];
+
+  // Từ khoá PHẢI CÓ để là thẻ SV / HS
+  const studentKeywords = [
+    "sinh viên", "sinh vien", "student", "học sinh", "hoc sinh",
+    "mssv", "mã số sinh viên", "ma so sinh vien",
+    "ma hs", "mã hs", "mã học sinh",
+    "lớp", "khoa", "ngành", "nganh", "faculty", "major",
+    "trường đại học", "truong dai hoc", "đại học", "dai hoc",
+    "trường cao đẳng", "truong cao dang", "cao đẳng", "cao dang",
+    "trường thpt", "trung học phổ thông", "trung hoc pho thong",
+    "học viện", "hoc vien", "university", "college",
+    "institute", "viện", "thẻ sinh viên", "the sinh vien",
+    "student card", "student id", "school id",
+  ];
+
+  // Phát hiện từ khoá xấu
+  for (const kw of employeeKeywords) {
+    if (t.includes(kw)) return { type: "employee", keyword: kw };
+  }
+  for (const kw of cccdKeywords) {
+    if (t.includes(kw)) return { type: "cccd", keyword: kw };
+  }
+
+  // Phát hiện từ khoá tốt
+  for (const kw of studentKeywords) {
+    if (t.includes(kw)) return { type: "student", keyword: kw };
+  }
+
+  return { type: "unknown", keyword: null };
+}
+
+function extractStudentInfo(text) {
+  const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+  const fullText = lines.join(" ");
+
+  // ── Mã số sinh viên / học sinh ──
+  let studentId = "";
+
+  // 1. Ưu tiên tìm theo nhãn định danh đi kèm (Mã SV, MSSV, Mã số, Student ID, Mã học sinh, Mã số SV...)
+  // Chấp nhận khoảng trắng rác ở giữa các chữ như "M a S V", "M a SV", "M a s o" do OCR nhận diện lỗi font
+  const labeledIdMatch = fullText.match(
+    /(?:m\s*[\u00e3a]\s*s\s*v|m\s*[\u00e3a]\s*s\s*[\u1ed1o]|m\s*s\s*s\s*v|s\s*t\s*u\s*d\s*e\s*n\s*t\s*i\s*d|m\s*[\u00e3a]\s*h\s*s|s\s*[\u1ed1o]\s*t\s*h\u1ebb)[:\s]*([A-Z0-9\.\-\/]{5,20})/i
+  );
+  if (labeledIdMatch) {
+    studentId = labeledIdMatch[1].trim().toUpperCase();
+  }
+
+  // 2. Nếu không tìm thấy nhãn, tìm tất cả các chuỗi có định dạng mã sinh viên phổ biến
+  if (!studentId) {
+    const patterns = [
+      /\b([BNb][1-2]\d{7,9})\b/,                   // B21DCCN001
+      /\b(SV\d{6,10})\b/i,                           // SV001234
+      /\b(HS\d{6,10})\b/i,                           // HS001234
+      /\b([A-Z]{1,4}\d{1,2}\.\d{2,4}\.\d{2,4})\b/, // TV14.101.282
+      /\b([A-Z]{1,3}\d{2,4}[\/\-]\d{2,6})\b/,       // SV21/0045
+      /\b([A-Z0-9]{12,16})\b/i,                     // Chuỗi chữ + số hỗn hợp dài 12-16 ký tự (VD: 177D3403010099)
+      /\b(\d{12,16})\b/,                            // Chuỗi số dài 12-16 chữ số
+      /\b(\d{8,11})\b/,                             // Chuỗi số 8-11 chữ số
+      /\b([A-Z0-9]{8,11})\b/i,                      // Chuỗi chữ + số hỗn hợp 8-11 ký tự
+      /\b(\d{6,7})\b/,                              // 6-7 chữ số
+    ];
+    for (const p of patterns) {
+      const m = fullText.match(p);
+      if (m) { studentId = m[1].toUpperCase(); break; }
+    }
+  }
+
+  // Chuẩn hoá: nếu có dấu hai chấm rác hoặc khoảng trắng thì làm sạch
+  if (studentId) {
+    studentId = studentId.replace(/^[:\s\-\.]+/, "").trim();
+  }
+
+  // ── Hạn thẻ ──
+  let expiryDate = "";
+
+  // 1. Tìm các niên khoá dạng năm (Ví dụ: "2023 - 2027", "Khóa học: 2022-2026", "Hạn dùng: 2027", "Hạn thẻ: 2023 - 2027")
+  const yearIntervalMatch = fullText.match(
+    /(?:kh[o\u00f3a]*a\s*h[o\u1ecdc]*c|h[a\u1ea1n]*n\s*th[\u1ebb]*e|h[a\u1ea1n]*n\s*d\u00f9ng|valid\s*thru|h[a\u1ea1n]*n|expiry|expires?|h\.l|ni\u00ean\s*kh\u00f3a|nien\s*khoa)[:\s]*\d{4}\s*[\-\u2013\u2014]\s*(20\d{2})/i
+  );
+  if (yearIntervalMatch) {
+    expiryDate = yearIntervalMatch[1]; // Điền trực tiếp: "2027"
+  }
+
+  // 2. Tìm định dạng MM/YYYY (Ví dụ: "Hạn dùng: 12/2027")
+  if (!expiryDate) {
+    const monthYearMatch = fullText.match(
+      /(?:h[a\u1ea1n]*n\s*th[\u1ebb]*e|h[a\u1ea1n]*n\s*d\u00f9ng|valid\s*thru|h[a\u1ea1n]*n|expiry|expires?|h\.l|ni\u00ean\s*kh\u00f3a|nien\s*khoa)[:\s]*(\d{1,2})[\/\-\.](20\d{2})/i
+    );
+    if (monthYearMatch) {
+      expiryDate = `${monthYearMatch[1]}/${monthYearMatch[2]}`; // Điền trực tiếp: "12/2027"
+    }
+  }
+
+  // 3. Ưu tiên: dòng có nhãn cụ thể + DD/MM/YYYY đầy đủ
+  if (!expiryDate) {
+    const labeledDateMatch = fullText.match(
+      /(?:c\u00f3 gi\u00e1 tr\u1ecb[\s\S]{0,10}\u0111\u1ebfn|h[a\u1ea1]n th\u1ebb|h[a\u1ea1]n\s*th\u1ebb|h[a\u1ea1]n\s*d\u00f9ng|h[a\u1ea1n]*n|ng[a\u00e0]y h[\u1ebfe\u1ebf]t h[a\u1ea1]n|expired?|expiry|h\.l|ni\u00ean\s*kh\u00f3a|nien\s*khoa)[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/i
+    );
+    if (labeledDateMatch) {
+      expiryDate = `${labeledDateMatch[1]}/${labeledDateMatch[2]}/${labeledDateMatch[3]}`; // Điền: "31/12/2027"
+    }
+  }
+
+  // 4. Fallback: tìm TẤT CẢ ngày DD/MM/YYYY, loại trừ các ngày sinh và chọn hạn thẻ lớn nhất
+  if (!expiryDate) {
+    const birthKeywords = /(?:ng\u00e0y sinh|sinh ng\u00e0y|d\.o\.b|dob|birth|n\u0103m sinh)/i;
+    const allLines = text.split(/\n/);
+    let candidateDates = [];
+
+    for (const line of allLines) {
+      if (birthKeywords.test(line)) {
+        continue;
+      }
+      const matches = [...line.matchAll(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/g)];
+      for (const m of matches) {
+        const d = m[1].padStart(2,"0"), mo = m[2].padStart(2,"0"), y = m[3];
+        if (Number(mo) <= 12 && Number(y) >= 2000) {
+          candidateDates.push({ iso: `${y}-${mo}-${d}`, display: `${d}/${mo}/${y}` });
+        }
+      }
+    }
+
+    if (candidateDates.length > 0) {
+      candidateDates.sort((a, b) => a.iso.localeCompare(b.iso));
+      expiryDate = candidateDates[candidateDates.length - 1].display;
+    }
+  }
+
+
+  // ── Trường học ──
+  let school = "";
+  const schoolKeywords = [
+    /(?:tr[ươ][ờ]ng|university|college|school|vi[eệ]n|cao đ[ẳa]ng|đ[aạ]i h[oọ]c|học viện)[:\s]+([^\n,;]+)/i,
+    /(đ(?:h|ại học)[^\n,;]{3,40})/i,
+    /(university of[^\n,;]{3,40})/i,
+  ];
+  for (const p of schoolKeywords) {
+    const m = fullText.match(p);
+    if (m) {
+      school = m[1].trim().replace(/\s+/g," ");
+      break;
+    }
+  }
+  if (!school) {
+    for (const line of lines) {
+      if (/tr[ươ][ờ]ng|đ[aạ]i\s*h[oọ]c|cao\s*đ[ẳa]ng|vi[eệ]n|university/i.test(line)) {
+        school = line.replace(/^(tr[ươ][ờ]ng|trường:|school:)\s*/i, "").trim();
+        break;
+      }
+    }
+  }
+
+  // Loại bỏ các phần không mong muốn (hạn thẻ, mssv, lớp, khoa...) bị gom nhầm vào tên trường
+  if (school) {
+    const cutKeywords = [
+      /(?:h[aạ]n\s*th\u1ebb|h\u1ea1n\s*d\u1ee5ng|expiry|valid|h\.l|co\s*gia\s*tri)/i,
+      /(?:mssv|m\u00e3\s*s\u1ed1|m\u00e3\s*sv|student\s*id)/i,
+      /(?:l\u1edbp|class)/i,
+      /(?:khoa|faculty|ng\u00e0nh|major)/i,
+      /(?:ng\u00e0y\s*sinh|sinh\s*ng\u00e0y|dob)/i
+    ];
+    for (const kw of cutKeywords) {
+      const idx = school.search(kw);
+      if (idx !== -1) {
+        school = school.substring(0, idx).trim();
+      }
+    }
+    // Loại bỏ các ký tự thừa ở cuối sau khi cắt
+    school = school.replace(/[\-\|:=,\+<\s]+$/, "").trim();
+    // Giới hạn độ dài tên trường học tối đa 80 ký tự để tránh nuốt thông tin
+    if (school.length > 80) {
+      school = school.substring(0, 80).trim();
+    }
+  }
+
+  return { studentId, expiryDate, school };
+}
+
+function StudentVerifyModal({ onConfirm, onCancel, getStudentMonthlyUsage }) {
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [school, setSchool] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState(null); // null | "scanning" | "done" | "failed" | "rejected"
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrLog, setOcrLog] = useState("");
+  const [rotation, setRotation] = useState(0); // Xoay 0, 90, 180, 270
+
+  function handleRotate() {
+    setRotation(prev => (prev + 90) % 360);
+  }
+
+  const hasStudentId = studentId.trim().length > 0;
+  const usedCount = hasStudentId ? getStudentMonthlyUsage(studentId.trim()) : 0;
+  const remaining = Math.max(0, 3 - usedCount);
+
+  async function runOcr(dataUrl) {
+    setOcrStatus("scanning");
+    setOcrProgress(0);
+    setOcrLog("Đang khởi động OCR...");
+    try {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("vie+eng", 1, {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            setOcrProgress(Math.round((m.progress || 0) * 100));
+          }
+          if (m.status) setOcrLog(m.status);
+        },
+      });
+      const { data: { text } } = await worker.recognize(dataUrl);
+      await worker.terminate();
+
+      // ── Bước 1: Phân loại loại thẻ ──
+      const cardType = classifyCardType(text);
+
+      if (cardType.type === "employee") {
+        setOcrStatus("rejected");
+        setOcrLog(`🚫 Đây là thẻ nhân viên/đi làm (phát hiện: "${cardType.keyword}"). Vui lòng cung cấp đúng thẻ sinh viên hoặc học sinh.`);
+        return;
+      }
+
+      if (cardType.type === "cccd") {
+        setOcrStatus("rejected");
+        setOcrLog(`🚫 Đây là CCCD/CMND (phát hiện: "${cardType.keyword}"). Hệ thống chỉ chấp nhận thẻ sinh viên hoặc thẻ học sinh.`);
+        return;
+      }
+
+      if (cardType.type === "unknown") {
+        setOcrStatus("rejected");
+        setOcrLog("⚠️ Không nhận ra thẻ sinh viên/học sinh. Vui lòng tải ảnh thẻ sinh viên hoặc thẻ học sinh hợp lệ.");
+        return;
+      }
+
+      // ── Bước 2: Đúng thẻ SV/HS → trích xuất thông tin ──
+      const extracted = extractStudentInfo(text);
+      if (extracted.studentId) setStudentId(extracted.studentId);
+      if (extracted.expiryDate) setExpiryDate(extracted.expiryDate);
+      if (extracted.school) setSchool(s => s || extracted.school);
+
+      setOcrStatus(extracted.studentId ? "done" : "failed");
+      setOcrLog(extracted.studentId
+        ? `✅ Đọc được MSSV: ${extracted.studentId}`
+        : "⚠️ Nhận diện thẻ SV thành công nhưng không đọc được mã số, vui lòng nhập tay."
+      );
+    } catch (err) {
+      console.error("OCR error:", err);
+      setOcrStatus("failed");
+      setOcrLog("❌ OCR thất bại. Vui lòng nhập thông tin thủ công.");
+    }
+  }
+
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset toàn bộ state cũ trước khi quét ảnh mới
+    setStudentId("");
+    setSchool("");
+    setExpiryDate("");
+    setError("");
+    setOcrStatus(null);
+    setOcrProgress(0);
+    setOcrLog("");
+    setRotation(0);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      setImagePreview(dataUrl);
+      setImageUrl(dataUrl);
+      runOcr(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleSubmit() {
+    setError("");
+    if (!imagePreview) {
+      setError("Vui lòng tải ảnh thẻ sinh viên lên để xác minh.");
+      return;
+    }
+    if (!studentId.trim()) {
+      setError("Vui lòng nhập mã sinh viên.");
+      return;
+    }
+    if (!expiryDate) {
+      setError("Vui lòng nhập hạn sử dụng thẻ.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = onConfirm({ studentId: studentId.trim(), school: school.trim(), expiryDate, imageUrl });
+    setIsSubmitting(false);
+    if (result && !result.ok) {
+      setError(result.error);
+    }
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    <div className="sv-modal-overlay" onClick={onCancel}>
+      <div className="sv-modal-card" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="sv-modal-header">
+          <div className="sv-modal-title">
+            <span className="sv-modal-icon">🎓</span>
+            <div>
+              <h3>Xác Minh Thẻ Sinh Viên</h3>
+              <p>Kiểm tra thẻ để áp dụng ưu đãi <strong>-15%</strong> giá vé</p>
+            </div>
+          </div>
+          <button className="sv-modal-close" onClick={onCancel}>✕</button>
+        </div>
+
+        {/* Usage badge */}
+        <div className={`sv-usage-banner ${
+          !hasStudentId ? "sv-usage-idle"
+          : remaining === 0 ? "sv-usage-full"
+          : remaining === 1 ? "sv-usage-warn"
+          : "sv-usage-ok"
+        }`}>
+          <span className="sv-usage-dots">
+            {[0,1,2].map(i => (
+              <span key={i} className={`sv-usage-dot ${hasStudentId && i < usedCount ? "used" : ""}`} />
+            ))}
+          </span>
+          <span className="sv-usage-text">
+            {!hasStudentId
+              ? "ℹ️ Nhập mã sinh viên để kiểm tra lượt sử dụng"
+              : remaining === 0
+              ? "⛔ Đã dùng hết 3/3 lượt trong tháng này"
+              : `✅ Còn ${remaining} lượt trong tháng (đã dùng ${usedCount}/3)`
+            }
+          </span>
+        </div>
+
+        <div className="sv-modal-body">
+          {/* Upload ảnh */}
+          <div className="sv-upload-section">
+            <label className="sv-upload-label" htmlFor="sv-card-img">
+              {imagePreview ? (
+                <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                  <img src={imagePreview} alt="Thẻ sinh viên" className="sv-card-preview" style={{ transform: `rotate(${rotation}deg)` }} />
+                  <button type="button" className="sv-rotate-btn" onClick={(e) => { e.preventDefault(); handleRotate(); }}>🔄 Xoay</button>
+                </div>
+              ) : (
+                <div className="sv-upload-placeholder">
+                  <span className="sv-upload-icon">📷</span>
+                  <span className="sv-upload-hint">Tải ảnh hoặc chụp thẻ sinh viên</span>
+                  <span className="sv-upload-sub">JPG, PNG, WEBP</span>
+                </div>
+              )}
+              <input
+                id="sv-card-img"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageChange}
+                style={{ display: "none" }}
+              />
+            </label>
+            {imagePreview && (
+              <button
+                type="button"
+                className="sv-reupload-btn"
+                onClick={() => {
+                  setImagePreview(""); setImageUrl("");
+                  setOcrStatus(null); setOcrProgress(0); setOcrLog("");
+                }}
+              >
+                🔄 Đổi ảnh
+              </button>
+            )}
+
+            {/* OCR Status */}
+            {ocrStatus === "scanning" && (
+              <div className="sv-ocr-status scanning">
+                <div className="sv-ocr-header">
+                  <span className="sv-ocr-spinner" />
+                  <span>🔍 Đang quét thẻ sinh viên...</span>
+                  <span className="sv-ocr-pct">{ocrProgress}%</span>
+                </div>
+                <div className="sv-ocr-bar-wrap">
+                  <div className="sv-ocr-bar" style={{ width: `${ocrProgress}%` }} />
+                </div>
+                <p className="sv-ocr-log">{ocrLog}</p>
+              </div>
+            )}
+            {(ocrStatus === "done" || ocrStatus === "failed") && (
+              <div className={`sv-ocr-status ${ocrStatus}`}>
+                <span>{ocrLog}</span>
+              </div>
+            )}
+            {ocrStatus === "rejected" && (
+              <div className="sv-ocr-status rejected">
+                <div className="sv-rejected-icon">🚫</div>
+                <div className="sv-rejected-text">{ocrLog}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Form nhập thông tin - Chỉ hiển thị khi không bị từ chối */}
+          <div className="sv-form" style={{ display: ocrStatus === "rejected" ? "none" : "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="sv-field">
+              <div className="sv-field-header">
+                <label className="sv-field-label">Mã sinh viên <span className="sv-required">*</span></label>
+                {ocrStatus === "done" && studentId && (
+                  <span className="sv-ocr-badge">✨ Tự động điền</span>
+                )}
+              </div>
+              <input
+                type="text"
+                className={`sv-input ${ocrStatus === "done" && studentId ? "sv-input-ocr" : ""}`}
+                placeholder="VD: 21030045"
+                value={studentId}
+                onChange={e => setStudentId(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="sv-field">
+              <div className="sv-field-header">
+                <label className="sv-field-label">Trường học</label>
+                {ocrStatus === "done" && school && (
+                  <span className="sv-ocr-badge">✨ Tự động điền</span>
+                )}
+              </div>
+              <input
+                type="text"
+                className={`sv-input ${ocrStatus === "done" && school ? "sv-input-ocr" : ""}`}
+                placeholder="VD: ĐH Bách Khoa Hà Nội"
+                value={school}
+                onChange={e => setSchool(e.target.value)}
+              />
+            </div>
+            <div className="sv-field">
+              <div className="sv-field-header">
+                <label className="sv-field-label">Hạn thẻ <span className="sv-required">*</span></label>
+                {ocrStatus === "done" && expiryDate && (
+                  <span className="sv-ocr-badge">✨ Tự động điền</span>
+                )}
+              </div>
+              <input
+                type="text"
+                className={`sv-input ${expiryDate && (expiryDate.length === 4 ? Number(expiryDate) < new Date().getFullYear() : expiryDate < today) ? "sv-input-error" : ocrStatus === "done" && expiryDate ? "sv-input-ocr" : ""}`}
+                placeholder="VD: 2027 hoặc 31/12/2027"
+                value={expiryDate}
+                onChange={e => setExpiryDate(e.target.value)}
+              />
+              {expiryDate && (expiryDate.length === 4 ? Number(expiryDate) < new Date().getFullYear() : expiryDate < today) && (
+                <span className="sv-field-hint error">Thẻ đã hết hạn</span>
+              )}
+            </div>
+          </div>
+
+          {/* Thông báo lỗi */}
+          {error && (
+            <div className="sv-error-box">
+              <span>⚠️</span> {error}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="sv-modal-actions">
+          <button type="button" className="sv-btn-cancel" onClick={onCancel}>
+            ❌ Hủy
+          </button>
+          <button
+            type="button"
+            className="sv-btn-confirm"
+            onClick={handleSubmit}
+          disabled={isSubmitting || remaining === 0 || ocrStatus === "scanning"}
+          >
+            {isSubmitting ? "Đang xử lý..." : "✅ Xác Nhận Hợp Lệ"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function StaffBanVe() {
   const {
@@ -165,6 +676,12 @@ export default function StaffBanVe() {
     setIsStudent,
     studentCount,
     setStudentCount,
+    showStudentVerifyModal,
+    studentVerified,
+    studentCardInfo,
+    handleStudentVerifyConfirm,
+    handleStudentVerifyCancel,
+    getStudentMonthlyUsage,
     discountCodeInput,
     setDiscountCodeInput,
     appliedDiscount,
@@ -554,9 +1071,43 @@ export default function StaffBanVe() {
                     className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500 accent-red-600 disabled:opacity-50"
                   />
                   <span>🎓 Khách là Học sinh / Sinh viên (-15% vé)</span>
+                  {studentVerified && (
+                    <span className="ml-auto text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                      ✓ Đã xác minh
+                    </span>
+                  )}
                 </label>
-                {isStudent && (
+
+                {/* Hiển thị info thẻ đã xác minh */}
+                {isStudent && studentVerified && studentCardInfo && (
                   <div className="mt-2 pt-2 border-t border-red-200/60 space-y-2">
+                    <div className="sv-verified-info">
+                      <div className="sv-verified-row">
+                        <span className="sv-verified-lbl">📋 MSSV:</span>
+                        <span className="sv-verified-val">{studentCardInfo.studentId || "—"}</span>
+                      </div>
+                      {studentCardInfo.school && (
+                        <div className="sv-verified-row">
+                          <span className="sv-verified-lbl">🏫 Trường:</span>
+                          <span className="sv-verified-val">{studentCardInfo.school}</span>
+                        </div>
+                      )}
+                      {studentCardInfo.expiryDate && (
+                        <div className="sv-verified-row">
+                          <span className="sv-verified-lbl">📅 Hạn thẻ:</span>
+                          <span className="sv-verified-val">
+                            {new Date(studentCardInfo.expiryDate).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="sv-verified-row">
+                        <span className="sv-verified-lbl">🎟️ Lượt còn:</span>
+                        <span className="sv-verified-val">
+                          {Math.max(0, 3 - getStudentMonthlyUsage(studentCardInfo.studentId))}/3 lần/tháng
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-bold text-red-800">Số lượng vé HS/SV:</span>
                       <span className="text-xxs text-gray-500">(Tối đa {selectedSeats.length || 1} vé)</span>
@@ -569,28 +1120,18 @@ export default function StaffBanVe() {
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => {
                         const val = e.target.value;
-                        if (val === "") {
-                          setStudentCount("");
-                          return;
-                        }
+                        if (val === "") { setStudentCount(""); return; }
                         const num = parseInt(val, 10);
                         if (!isNaN(num)) {
                           const maxSeats = selectedSeats.length || 1;
-                          if (num > maxSeats) {
-                            setStudentCount(maxSeats);
-                          } else {
-                            setStudentCount(num);
-                          }
+                          setStudentCount(num > maxSeats ? maxSeats : num);
                         }
                       }}
                       onBlur={() => {
                         const num = parseInt(studentCount, 10);
                         const maxSeats = selectedSeats.length || 1;
-                        if (isNaN(num) || num < 1) {
-                          setStudentCount(1);
-                        } else if (num > maxSeats) {
-                          setStudentCount(maxSeats);
-                        }
+                        if (isNaN(num) || num < 1) setStudentCount(1);
+                        else if (num > maxSeats) setStudentCount(maxSeats);
                       }}
                       className="w-full border border-red-200 rounded-xl px-3 py-1.5 text-sm font-bold text-red-700 bg-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
                     />
@@ -604,56 +1145,7 @@ export default function StaffBanVe() {
                 )}
               </div>
 
-              {/* Nhập mã ưu đãi */}
-              <div className="mt-2.5 p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl">
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-sm font-bold text-blue-800">
-                    🎟️ Mã giảm giá / Ưu đãi
-                  </label>
-                  {availableDiscounts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowVoucherModal(true)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
-                    >
-                      🎟️ Danh sách mã ({availableDiscounts.length})
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nhập mã..."
-                    value={discountCodeInput}
-                    onChange={(e) => setDiscountCodeInput(e.target.value.toUpperCase())}
-                    disabled={appliedDiscount !== null}
-                    className="flex-1 border border-blue-200 rounded-xl px-3 py-1.5 text-sm font-bold text-blue-900 bg-white focus:outline-none focus:border-blue-500 uppercase disabled:bg-gray-100 disabled:text-gray-400 placeholder:normal-case min-w-0"
-                  />
-                  {!appliedDiscount ? (
-                    <button
-                      type="button"
-                      onClick={() => handleApplyDiscount()}
-                      className="px-4 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex-shrink-0"
-                    >
-                      Áp dụng
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={removeDiscount}
-                      className="px-4 py-1.5 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 active:scale-95 transition-all flex-shrink-0"
-                    >
-                      Hủy mã
-                    </button>
-                  )}
-                </div>
-                {appliedDiscount && (
-                  <div className="mt-2 pl-1 text-xs font-bold text-blue-700 flex justify-between items-center">
-                    <span>Mã <strong>{appliedDiscount.discountCode}</strong> ({appliedDiscount.programName || appliedDiscount.discountType}):</span>
-                    <span className="font-extrabold text-sm text-red-600">-{formatMoney(studentDiscountAmount)} đ</span>
-                  </div>
-                )}
-              </div>
+
 
               {paymentMethod === "Cash" && (
                 <div className="mt-3 p-3.5 bg-gray-50 border border-gray-150 rounded-2xl space-y-2.5">
@@ -924,6 +1416,15 @@ export default function StaffBanVe() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ───── STUDENT VERIFY MODAL ───── */}
+      {showStudentVerifyModal && (
+        <StudentVerifyModal
+          onConfirm={handleStudentVerifyConfirm}
+          onCancel={handleStudentVerifyCancel}
+          getStudentMonthlyUsage={getStudentMonthlyUsage}
+        />
       )}
 
     </div>
