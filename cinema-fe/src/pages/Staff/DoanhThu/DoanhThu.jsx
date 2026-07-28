@@ -504,13 +504,6 @@ export default function DoanhThu() {
         initialCash: isFullDayReport ? 0 : Number(initialCash || 0)
       };
       localStorage.setItem("staff_shift_state", JSON.stringify(currentShiftState));
-      // Nếu Ca 1 vừa kết ca -> đánh dấu để Ca 2 được phép mở ngay
-      if (shiftForReport && shiftForReport.includes("Ca 1")) {
-        localStorage.setItem("ca1_ended_at", new Date().toISOString());
-      } else {
-        // Ca 2 kết thúc -> xóa flag Ca 1
-        localStorage.removeItem("ca1_ended_at");
-      }
       window.dispatchEvent(new CustomEvent("shiftStateChange"));
 
       alert(`Đã gửi ${isFullDayReport ? 'báo cáo tổng doanh thu cả ngày' : `báo cáo kết ca ${shiftForReport}`} ngày ${date} cho Admin thành công!`);

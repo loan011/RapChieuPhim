@@ -1041,15 +1041,6 @@ export function useRate() {
     });
   }
 
-  function handleRemoveAllConflicts() {
-    const conflictIds = batchItems.filter((item) => item.isConflict).map((item) => item.tempId);
-    setExcludedBatchIds((prev) => {
-      const next = new Set(prev);
-      conflictIds.forEach((id) => next.add(id));
-      return next;
-    });
-  }
-
   async function handleBatchSubmit(e) {
     e.preventDefault();
     setBatchError("");
@@ -1399,7 +1390,6 @@ export function useRate() {
     handleAddStartTime,
     handleRemoveStartTime,
     handleRemoveBatchItem,
-    handleRemoveAllConflicts,
     handleBatchSubmit,
 
     /* cinema/movie selection */

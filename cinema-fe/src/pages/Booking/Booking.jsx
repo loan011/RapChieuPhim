@@ -314,29 +314,7 @@ export default function Booking() {
 
       {/* Header Bar */}
       <header className="movie-header">
-        <div className="movie-logo-container" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            style={{
-              background: "rgba(255, 255, 255, 0.12)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              color: "#fff",
-              padding: "6px 14px",
-              borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              transition: "all 0.2s ease"
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)")}
-            onMouseOut={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)")}
-          >
-            ← Quay lại
-          </button>
+        <div className="movie-logo-container">
           <Link to="/" className="movie-logo">
             <span>Cinemas</span><b>HCM</b>
           </Link>

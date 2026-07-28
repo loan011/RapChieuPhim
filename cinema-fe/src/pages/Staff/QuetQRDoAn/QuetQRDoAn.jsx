@@ -221,82 +221,33 @@ export default function StaffQuetQRDoAn() {
                 {ticketDetails && (
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-white p-3 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-1"><MdPerson className="text-gray-400" /> Khách:</div>
-                    <div className="font-bold text-gray-800 text-right">
-                      {ticketDetails.isCounterSale
-                        ? <span className="text-orange-600">Khách vãng lai</span>
-                        : (ticketDetails.customerName || "Khách vãng lai")}
-                    </div>
+                    <div className="font-bold text-gray-800 text-right">{ticketDetails.customerName || "Khách tại quầy"}</div>
                     
                     <div className="flex items-center gap-1"><MdDateRange className="text-gray-400" /> Ngày đặt:</div>
-                    <div className="font-semibold text-gray-800 text-right">
-                      {ticketDetails.dateBooked
-                        ? new Date(ticketDetails.dateBooked).toLocaleDateString("vi-VN")
-                        : "—"}
-                    </div>
+                    <div className="font-semibold text-gray-800 text-right">{ticketDetails.dateBooked || "—"}</div>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  {orders.map((order, idx) => (
-                    (order._items || [order]).map((item, iIdx) => {
-                      const foodName = item.foodName || item.itemName || item.productName || item.name || item.comboName || item.title || "";
-                      const qty = item.quantity || item.qty || item.amount || 1;
-                      return (
-                        <div key={`${idx}-${iIdx}`} className="flex justify-between items-center bg-white p-3 rounded-xl border border-orange-100 shadow-2xs">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                            <span className="font-bold text-gray-800 text-sm">{foodName || `Món #${iIdx + 1}`}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-semibold text-gray-500">Số lượng:</span>
-                            <span className="text-base font-extrabold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-lg border border-orange-200">
-                              x{qty}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
+                  {orders.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-orange-100 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                        <span className="font-bold text-gray-800 text-sm">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-500">Số lượng:</span>
+                        <span className="text-base font-extrabold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-lg border border-orange-200">
+                          x{item.quantity}
+                        </span>
+                      </div>
+                    </div>
                   ))}
                 </div>
 
-                {/* Tổng tiền */}
-                {(() => {
-                  let total = 0;
-                  orders.forEach(order => {
-                    const items = order._items || [order];
-                    items.forEach(item => {
-                      const price = Number(item.price || item.unitPrice || item.totalPrice || 0);
-                      const qty = Number(item.quantity || item.qty || item.amount || 1);
-                      // Nếu totalPrice đã là tổng thì dùng luôn, ngược lại price * qty
-                      if (item.totalPrice > 0) {
-                        total += Number(item.totalPrice);
-                      } else {
-                        total += price * qty;
-                      }
-                    });
-                  });
-                  // Fallback: lấy totalAmount từ order đầu tiên nếu không tính được
-                  if (total === 0 && orders[0]) {
-                    total = Number(orders[0].totalAmount || orders[0].total || orders[0].amount || 0);
-                  }
-                  return total > 0 ? (
-                    <div className="flex justify-between items-center pt-2 border-t border-orange-100">
-                      <span className="text-sm font-bold text-gray-700">Tổng tiền:</span>
-                      <span className="text-base font-extrabold text-orange-600">
-                        {total.toLocaleString("vi-VN")}đ
-                      </span>
-                    </div>
-                  ) : null;
-                })()}
-
                 <button
-                  onClick={() => {
-                    // Xác nhận toàn bộ các đơn trong kết quả
-                    orders.forEach(o => {
-                      if (o.orderId && o.status !== "Completed") handleConfirmPickup(o.orderId);
-                    });
-                  }}
-                  disabled={loading || orders.every(o => o.status === "Completed")}
+                  onClick={handleConfirmPickup}
+                  disabled={loading}
                   className="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50"
                 >
                   <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN GIAO ĐỒ ĂN CHO KHÁCH"}
