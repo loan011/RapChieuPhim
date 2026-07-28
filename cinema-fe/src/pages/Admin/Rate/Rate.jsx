@@ -128,6 +128,7 @@ export default function Rate() {
     handleAddStartTime,
     handleRemoveStartTime,
     handleRemoveBatchItem,
+    handleRemoveAllConflicts,
     handleBatchSubmit,
 
     /* cinema/movie selection */
@@ -983,14 +984,40 @@ export default function Rate() {
 
                   {/* CỘT PHẢI: XEM TRƯỚC (PREVIEW) & KIỂM TRA TRÙNG LỊCH */}
                   <div className="lc-batch-col-right">
-                    <div className="lc-batch-preview-head">
+                    <div className="lc-batch-preview-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
                       <h6 className="lc-batch-section-title" style={{ margin: 0 }}>
                         4. Xem Trước Khung Giờ Chiếu ({batchItems.length} suất)
                       </h6>
                       {conflictCount > 0 && (
-                        <span className="lc-batch-conflict-badge">
-                          ⚠️ {conflictCount} suất bị trùng lịch!
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span className="lc-batch-conflict-badge">
+                            ⚠️ {conflictCount} suất bị trùng lịch!
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleRemoveAllConflicts}
+                            style={{
+                              background: "#ef4444",
+                              color: "#ffffff",
+                              border: "none",
+                              padding: "5px 12px",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              boxShadow: "0 2px 4px rgba(239, 68, 68, 0.3)",
+                              transition: "all 0.2s ease"
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.background = "#dc2626")}
+                            onMouseOut={(e) => (e.currentTarget.style.background = "#ef4444")}
+                            title="Xóa tất cả các suất bị trùng lịch ra khỏi danh sách"
+                          >
+                            🗑️ Xóa tất cả {conflictCount} suất trùng
+                          </button>
+                        </div>
                       )}
                     </div>
 
