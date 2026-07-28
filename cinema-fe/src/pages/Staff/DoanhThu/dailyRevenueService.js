@@ -1,4 +1,4 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch } from "../../../services/apiHelper";
 import { getUser } from "../../../services/authService";
 
 const API_URL = getApiUrl();
@@ -84,26 +84,18 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
   let ticketsList = [];
 
   try {
-    // Fetch all payments, bookings, orders, and tickets in parallel
-    const [paymentsRes, bookingsRes, ordersRes, ticketsRes] = await Promise.all([
-      fetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
-      fetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
-      fetch(`${API_URL}/Orders`, { headers, signal: controller.signal }),
-      fetch(`${API_URL}/Tickets`, { headers, signal: controller.signal })
+    // Fetch all payments, bookings, orders, and tickets in parallel using cachedFetch
+    const [pData, bData, oData, tData] = await Promise.all([
+      cachedFetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Orders`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Tickets`, { headers, signal: controller.signal })
     ]);
 
-    if (paymentsRes.ok && bookingsRes.ok && ordersRes.ok && ticketsRes.ok) {
-      const [pData, bData, oData, tData] = await Promise.all([
-        readResponse(paymentsRes),
-        readResponse(bookingsRes),
-        readResponse(ordersRes),
-        readResponse(ticketsRes)
-      ]);
-      payments = normalizeArray(pData);
-      bookings = normalizeArray(bData);
-      orders = normalizeArray(oData);
-      ticketsList = normalizeArray(tData);
-    }
+    payments = normalizeArray(pData);
+    bookings = normalizeArray(bData);
+    orders = normalizeArray(oData);
+    ticketsList = normalizeArray(tData);
   } catch (err) {
     console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
   } finally {
@@ -756,12 +748,10 @@ export async function sendDailyRevenueReport(payload) {
   // 2. Fetch staff shifts to resolve CinemaId
   let cinemaId = 1;
   try {
-    const shiftsRes = await fetch(`${API_URL}/StaffShifts/ByStaff/${staffId}`, { headers });
-    if (shiftsRes.ok) {
-      const shifts = await readResponse(shiftsRes);
-      if (shifts && shifts.length > 0) {
-        cinemaId = shifts[0].cinemaId || shifts[0].CinemaId || 1;
-      }
+    const shiftsData = await cachedFetch(`${API_URL}/StaffShifts/ByStaff/${staffId}`);
+    const shifts = normalizeArray(shiftsData);
+    if (shifts && shifts.length > 0) {
+      cinemaId = shifts[0].cinemaId || shifts[0].CinemaId || 1;
     }
   } catch (err) {
     console.error("Failed to fetch staff shifts, defaulting cinemaId to 1:", err);
@@ -770,14 +760,11 @@ export async function sendDailyRevenueReport(payload) {
   // Fetch cinema name
   let cinemaName = "Đồng Khởi";
   try {
-    const cinemasRes = await fetch(`${API_URL}/Cinemas`, { headers });
-    if (cinemasRes.ok) {
-      const cinemasData = await readResponse(cinemasRes);
-      const cinemas = Array.isArray(cinemasData) ? cinemasData : (Array.isArray(cinemasData?.$values) ? cinemasData.$values : []);
-      const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cinemaId));
-      if (found) {
-        cinemaName = found.cinemaName ?? found.CinemaName ?? "Đồng Khởi";
-      }
+    const cinemasData = await cachedFetch(`${API_URL}/Cinemas`);
+    const cinemas = normalizeArray(cinemasData);
+    const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cinemaId));
+    if (found) {
+      cinemaName = found.cinemaName ?? found.CinemaName ?? "Đồng Khởi";
     }
   } catch (err) {
     console.error("Failed to fetch cinemas:", err);
