@@ -61,11 +61,22 @@ export function isDateInFilterRange(pDate, filter) {
   return pDate === filter;
 }
 
+function normalizeArray(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.$values)) return data.$values;
+  if (Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data.data?.$values)) return data.data.$values;
+  if (Array.isArray(data.result)) return data.result;
+  if (Array.isArray(data.items)) return data.items;
+  return [];
+}
+
 export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
   const headers = getAuthHeaders();
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
 
   let payments = [];
   let bookings = [];
@@ -88,10 +99,10 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         readResponse(ordersRes),
         readResponse(ticketsRes)
       ]);
-      payments = pData || [];
-      bookings = bData || [];
-      orders = oData || [];
-      ticketsList = tData || [];
+      payments = normalizeArray(pData);
+      bookings = normalizeArray(bData);
+      orders = normalizeArray(oData);
+      ticketsList = normalizeArray(tData);
     }
   } catch (err) {
     console.warn("Failed to fetch daily revenue from API, falling back to local storage:", err);
@@ -164,10 +175,10 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
 
   // Filter payments for the selected date range and cinema
   const filteredPayments = (payments || []).filter(p => {
-    let rootBooking = p.bookingId ? (bookings || []).find(b => b.bookingId === p.bookingId) : null;
-    let order = p.orderId ? (orders || []).find(o => o.orderId === p.orderId) : null;
+    let rootBooking = p.bookingId ? (bookings || []).find(b => String(b.bookingId || b.BookingId) === String(p.bookingId)) : null;
+    let order = p.orderId ? (orders || []).find(o => String(o.orderId || o.OrderId) === String(p.orderId)) : null;
     if (!order && rootBooking) {
-      order = (orders || []).find(o => o.bookingId === rootBooking.bookingId);
+      order = (orders || []).find(o => String(o.bookingId || o.BookingId) === String(rootBooking.bookingId || rootBooking.BookingId));
     }
 
     const rawDate =
@@ -231,7 +242,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       if (!pCinemaId) {
         const bId = p.bookingId || p.BookingId || rootBooking?.bookingId;
         if (bId) {
-          const ticket = (ticketsList || []).find(t => t.bookingId === bId || t.BookingId === bId);
+          const ticket = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(bId));
           if (ticket) {
             const showtimeObj = ticket.showTime ?? ticket.showtime ?? ticket.ShowTime ?? ticket.Showtime;
             const roomObj = showtimeObj?.room ?? showtimeObj?.Room;
@@ -362,7 +373,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       continue;
     }
     // 1. Get root booking details
-    const rootBooking = payment.bookingId ? (bookings || []).find(b => b.bookingId === payment.bookingId) : null;
+    const rootBooking = payment.bookingId ? (bookings || []).find(b => String(b.bookingId || b.BookingId) === String(payment.bookingId)) : null;
 
     // 2. Find sibling bookings in the same batch
     let ticketsInBill = [];
@@ -389,10 +400,10 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
     }
 
     // 3. Find order if payment has OrderId OR by matching bookingId of the tickets in this bill
-    let order = payment.orderId ? (orders || []).find(o => o.orderId === payment.orderId) : null;
+    let order = payment.orderId ? (orders || []).find(o => String(o.orderId || o.OrderId) === String(payment.orderId)) : null;
     if (!order && ticketsInBill.length > 0) {
-      const matchBookingIds = ticketsInBill.map(t => t.bookingId);
-      order = (orders || []).find(o => o.bookingId && matchBookingIds.includes(o.bookingId));
+      const matchBookingIds = ticketsInBill.map(t => String(t.bookingId));
+      order = (orders || []).find(o => o.bookingId && matchBookingIds.includes(String(o.bookingId || o.BookingId)));
     }
 
     let concessionsInBill = [];
@@ -444,9 +455,14 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
     // Resolve ticket code for this booking to display in place of billCode
     let resolvedBillCode = `BILL${String(payment.paymentId).padStart(6, '0')}`;
     if (rootBooking) {
-      const ticketObj = (ticketsList || []).find(t => t.bookingId === rootBooking.bookingId);
+      const ticketObj = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(rootBooking.bookingId || rootBooking.BookingId));
       if (ticketObj && (ticketObj.ticketCode || ticketObj.code)) {
         resolvedBillCode = ticketObj.ticketCode || ticketObj.code;
+      }
+    } else if (order) {
+      const orderIdVal = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
+      if (orderIdVal) {
+        resolvedBillCode = `CB${orderIdVal}`;
       }
     }
 
@@ -495,7 +511,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
     }
 
     if (payment.bookingId) {
-      const ticket = (ticketsList || []).find(t => t.bookingId === payment.bookingId);
+      const ticket = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(payment.bookingId));
       if (ticket) {
         const tStatus = (ticket.status || "").toLowerCase();
         if (tStatus.includes("cancel") || tStatus.includes("hủy")) {
@@ -506,7 +522,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
 
     try {
       const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
-      const ticketObj = (ticketsList || []).find(t => t.bookingId === rootBooking?.bookingId);
+      const ticketObj = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(rootBooking?.bookingId || rootBooking?.BookingId));
       const codeToMatch = (ticketObj?.ticketCode || ticketObj?.code || resolvedBillCode || "").toString().toLowerCase();
       const foundLocal = storedT.find(t => String(t.ticketCode || t.code || "").toLowerCase() === codeToMatch);
       if (foundLocal && String(foundLocal.status || "").toLowerCase().includes("cancel")) {
@@ -558,16 +574,16 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
     if (!isConfirmed) return false;
 
     // Must NOT be linked to any payment or booking already included in bills (to avoid double-counting online ticket+concession orders)
-    const isLinkedToPayment = (payments || []).some(p => p.orderId === o.orderId);
+    const isLinkedToPayment = (payments || []).some(p => String(p.orderId || p.OrderId) === String(o.orderId || o.OrderId));
     if (isLinkedToPayment) return false;
 
     if (o.bookingId) {
-      const isLinkedToBookingPayment = (payments || []).some(p => p.bookingId === o.bookingId);
+      const isLinkedToBookingPayment = (payments || []).some(p => String(p.bookingId || p.BookingId) === String(o.bookingId || o.BookingId));
       if (isLinkedToBookingPayment) return false;
     }
 
     const alreadyProcessedInBills = bills.some(b => {
-      if (o.orderId && b.billCode === `CB${o.orderId}`) return true;
+      if (o.orderId && String(b.billCode) === `CB${o.orderId}`) return true;
       if (o.bookingId && b.tickets && b.tickets.some(t => String(t.bookingId) === String(o.bookingId))) return true;
 
       // Filter out standalone order if ticket bill already has matching food & customer
@@ -629,7 +645,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       totalAmount: localOrder.totalAmount || 0,
       tickets: [],
       ticketSubtotal: 0,
-      concessions: (localOrder.items || []).map(item => ({
+      concessions: (localOrder.items?.$values ?? localOrder.items ?? []).map(item => ({
         name: item.comboName || item.foodName || "N/A",
         quantity: item.quantity || 0,
         unitPrice: item.unitPrice || 0,
@@ -648,7 +664,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
   const localOrdersStr = localStorage.getItem("simulated_orders") || "[]";
   const localOrders = JSON.parse(localOrdersStr);
   const matchingLocalOrders = localOrders.filter(o => {
-    const alreadyInBills = bills.some(b => b.billCode === o.id);
+    const alreadyInBills = bills.some(b => String(b.billCode) === String(o.id || o.orderId));
     if (!isDateInFilterRange(o.date, dateOrFilter) || alreadyInBills) return false;
     
     const defaultCinemaId = user?.cinemaId || user?.CinemaId || 1;
