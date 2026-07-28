@@ -26,6 +26,7 @@ import {
 } from "react-icons/md";
 import { getCinemaList } from "../../Admin/Cinema/cinemaService";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
+import { clearApiCache } from "../../../services/apiHelper";
 import TicketExchangeModal from "../../../components/TicketExchangeModal";
 import "./DoanhThu.css";
 
@@ -558,6 +559,18 @@ export default function DoanhThu() {
             className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-700 transition-colors ml-1"
           >
             <MdToday className="text-sm" /> Hôm nay
+          </button>
+          
+          <button 
+            onClick={() => {
+              clearApiCache();
+              fetchData();
+            }}
+            disabled={loading}
+            className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-700 transition-colors ml-1 border border-gray-200"
+            title="Tải lại dữ liệu mới nhất từ máy chủ"
+          >
+            <MdRefresh className="text-sm" /> Tải lại
           </button>
         </div>
       </div>

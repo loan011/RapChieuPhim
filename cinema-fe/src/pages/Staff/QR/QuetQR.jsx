@@ -37,7 +37,7 @@ export default function StaffQuetQR() {
       }
 
       if (isStopped) return;
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 600));
       if (isStopped) return;
 
       try {
@@ -45,7 +45,7 @@ export default function StaffQuetQR() {
         html5QrCodeRef.current = html5QrCode;
         scannerInstance = html5QrCode;
 
-        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
         const qrCodeSuccessCallback = (decodedText) => {
           const now = Date.now();

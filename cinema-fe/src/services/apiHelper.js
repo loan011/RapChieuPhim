@@ -16,6 +16,14 @@ const pendingRequests = new Map();
 export function clearApiCache(urlPattern = null) {
   if (!urlPattern) {
     memoryCache.clear();
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("apicache_")) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {}
     return;
   }
   for (const key of memoryCache.keys()) {
@@ -23,6 +31,14 @@ export function clearApiCache(urlPattern = null) {
       memoryCache.delete(key);
     }
   }
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("apicache_") && key.includes(urlPattern)) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (e) {}
 }
 
 export async function cachedFetch(url, options = {}, ttlMs = 60000) {
@@ -42,6 +58,19 @@ export async function cachedFetch(url, options = {}, ttlMs = 60000) {
     return cached.data;
   }
 
+  // Try persistent localStorage cache
+  const lsKey = "apicache_" + url;
+  try {
+    const lsItem = localStorage.getItem(lsKey);
+    if (lsItem) {
+      const parsed = JSON.parse(lsItem);
+      if (parsed && now - parsed.timestamp < ttlMs) {
+        memoryCache.set(cacheKey, { timestamp: parsed.timestamp, data: parsed.data });
+        return parsed.data;
+      }
+    }
+  } catch (e) {}
+
   if (pendingRequests.has(cacheKey)) {
     return pendingRequests.get(cacheKey);
   }
@@ -53,7 +82,11 @@ export async function cachedFetch(url, options = {}, ttlMs = 60000) {
         ...options,
       });
       const data = await readResponse(response);
-      memoryCache.set(cacheKey, { timestamp: Date.now(), data });
+      const timestamp = Date.now();
+      memoryCache.set(cacheKey, { timestamp, data });
+      try {
+        localStorage.setItem(lsKey, JSON.stringify({ timestamp, data }));
+      } catch (e) {}
       return data;
     } finally {
       pendingRequests.delete(cacheKey);

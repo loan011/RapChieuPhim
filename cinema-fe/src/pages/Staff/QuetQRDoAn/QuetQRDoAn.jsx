@@ -50,7 +50,7 @@ export default function StaffQuetQRDoAn() {
       }
 
       if (isStopped) return;
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 600));
       if (isStopped) return;
 
       try {
@@ -58,7 +58,7 @@ export default function StaffQuetQRDoAn() {
         html5QrCodeRef.current = html5QrCode;
         scannerInstance = html5QrCode;
 
-        const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
         const qrCodeSuccessCallback = (decodedText) => {
           const now = Date.now();
@@ -225,6 +225,15 @@ export default function StaffQuetQRDoAn() {
                     
                     <div className="flex items-center gap-1"><MdDateRange className="text-gray-400" /> Ngày đặt:</div>
                     <div className="font-semibold text-gray-800 text-right">{ticketDetails.dateBooked || "—"}</div>
+
+                    {ticketDetails.totalAmount !== undefined && (
+                      <>
+                        <div className="flex items-center gap-1 font-semibold text-orange-600"><MdShoppingCart className="text-orange-400" /> Tổng tiền:</div>
+                        <div className="font-extrabold text-orange-600 text-right">
+                          {Number(ticketDetails.totalAmount).toLocaleString("vi-VN")} đ
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -245,13 +254,15 @@ export default function StaffQuetQRDoAn() {
                   ))}
                 </div>
 
-                <button
-                  onClick={handleConfirmPickup}
-                  disabled={loading}
-                  className="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50"
-                >
-                  <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN GIAO ĐỒ ĂN CHO KHÁCH"}
-                </button>
+                {!orders.every(item => item.status === "Completed") && (
+                  <button
+                    onClick={handleConfirmPickup}
+                    disabled={loading}
+                    className="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50"
+                  >
+                    <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN GIAO ĐỒ ĂN CHO KHÁCH"}
+                  </button>
+                )}
               </div>
             )}
           </div>

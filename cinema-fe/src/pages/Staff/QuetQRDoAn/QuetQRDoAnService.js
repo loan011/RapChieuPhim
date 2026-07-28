@@ -1,4 +1,4 @@
-import { getApiUrl, readResponse, getAuthHeaders } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getAuthHeaders, cachedFetch } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
@@ -75,11 +75,7 @@ export async function updateOrderStatus(orderId, status) {
 
 export async function fetchAllOrders() {
   try {
-    const response = await fetch(`${API_URL}/Orders`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) return [];
-    const data = await readResponse(response);
+    const data = await cachedFetch(`${API_URL}/Orders`);
     return normalizeArray(data);
   } catch (err) {
     console.error("Error fetching all orders:", err);
@@ -89,11 +85,7 @@ export async function fetchAllOrders() {
 
 export async function fetchAllBookings() {
   try {
-    const response = await fetch(`${API_URL}/Bookings/Detail`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) return [];
-    const data = await readResponse(response);
+    const data = await cachedFetch(`${API_URL}/Bookings/Detail`);
     return normalizeArray(data);
   } catch (err) {
     console.error("Error fetching all bookings:", err);
@@ -103,11 +95,7 @@ export async function fetchAllBookings() {
 
 export async function fetchAllTickets() {
   try {
-    const response = await fetch(`${API_URL}/Tickets`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) return [];
-    const data = await readResponse(response);
+    const data = await cachedFetch(`${API_URL}/Tickets`);
     return normalizeArray(data);
   } catch (err) {
     console.error("Error fetching all tickets:", err);

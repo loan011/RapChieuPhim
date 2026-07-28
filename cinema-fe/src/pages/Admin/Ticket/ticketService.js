@@ -1,24 +1,14 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
 
 export async function getTicketList() {
-  const response = await fetch(`${API_URL}/Tickets`, {
-    headers: getAuthHeaders(),
-  });
-  const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy danh sách vé thất bại!"));
-  return data;
+  return await cachedFetch(`${API_URL}/Tickets`);
 }
 
 export async function getTicketById(id) {
-  const response = await fetch(`${API_URL}/Tickets/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  const data = await readResponse(response);
-  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy thông tin vé thất bại!"));
-  return data;
+  return await cachedFetch(`${API_URL}/Tickets/${id}`);
 }
 
 // POST /api/Tickets

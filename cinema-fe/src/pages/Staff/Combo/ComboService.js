@@ -1,4 +1,4 @@
-import { getApiUrl, getAuthHeaders, readResponse } from "../../../services/apiHelper";
+import { getApiUrl, getAuthHeaders, readResponse, cachedFetch } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
@@ -15,36 +15,18 @@ export async function getCombosList() {
 
   // 1. Fetch Combos
   try {
-    const res = await fetch(`${API_URL}/Combos/Available`, {
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      const text = await res.text();
-      const raw = text ? JSON.parse(text) : null;
-      console.log("[Combo] Combos raw:", raw);
-      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-      combosData = normalizeArray(unwrapped);
-    } else {
-      console.warn("[Combo] Combos/Available trả về", res.status);
-    }
+    const raw = await cachedFetch(`${API_URL}/Combos/Available`);
+    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+    combosData = normalizeArray(unwrapped);
   } catch (err) {
     console.warn("[Combo] Failed to load combos:", err);
   }
 
   // 2. Fetch Foods
   try {
-    const res = await fetch(`${API_URL}/Foods/Available`, {
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      const text = await res.text();
-      const raw = text ? JSON.parse(text) : null;
-      console.log("[Combo] Foods raw:", raw);
-      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-      foodsData = normalizeArray(unwrapped);
-    } else {
-      console.warn("[Combo] Foods/Available trả về", res.status);
-    }
+    const raw = await cachedFetch(`${API_URL}/Foods/Available`);
+    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+    foodsData = normalizeArray(unwrapped);
   } catch (err) {
     console.warn("[Combo] Failed to load foods:", err);
   }
@@ -245,22 +227,18 @@ export async function cancelOrder(orderId) {
 export async function deductInventory(items) {
   if (!Array.isArray(items) || items.length === 0) return;
 
-  // Load fallback list if single GET fails
+  // Load fallback lists in parallel using cachedFetch
   let allFoods = [];
   let allCombos = [];
   try {
-    const [fRes, cRes] = await Promise.all([
-      fetch(`${API_URL}/Foods`, { headers: getAuthHeaders() }),
-      fetch(`${API_URL}/Combos`, { headers: getAuthHeaders() })
+    const [fData, cData] = await Promise.all([
+      cachedFetch(`${API_URL}/Foods/Available`),
+      cachedFetch(`${API_URL}/Combos/Available`)
     ]);
-    if (fRes.ok) {
-      const d = await readResponse(fRes);
-      allFoods = Array.isArray(d) ? d : (d?.$values ?? []);
-    }
-    if (cRes.ok) {
-      const d = await readResponse(cRes);
-      allCombos = Array.isArray(d) ? d : (d?.$values ?? []);
-    }
+    const fUnwrapped = fData?.data ?? fData?.Data ?? fData?.result ?? fData?.Result ?? fData;
+    const cUnwrapped = cData?.data ?? cData?.Data ?? cData?.result ?? cData?.Result ?? cData;
+    allFoods = normalizeArray(fUnwrapped);
+    allCombos = normalizeArray(cUnwrapped);
   } catch (e) {}
 
   let overrides = {};
@@ -288,40 +266,17 @@ export async function deductInventory(items) {
 
     try {
       if (isFood) {
-        let foodData = null;
-        try {
-          const res = await fetch(`${API_URL}/Foods/${id}`, { headers: getAuthHeaders() });
-          if (res.ok) foodData = await readResponse(res);
-        } catch (e) {}
-
-        if (!foodData) {
-          foodData = allFoods.find(f => (f.foodId ?? f.FoodId ?? f.id) == id);
-        }
-
+        const foodData = allFoods.find(f => String(f.foodId ?? f.FoodId ?? f.id ?? f.Id) === String(id));
         const baseQty = Number(foodData?.quantity ?? foodData?.Quantity ?? item.quantity ?? 100);
         const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
         const newQty = Math.max(0, currentQty - qty);
         overrides[key] = newQty;
-
-        // Bỏ gọi API PUT cập nhật tồn kho từ Frontend vì Staff không có quyền (gây lỗi 403)
-        // Backend nên tự trừ tồn kho khi đơn hàng được tạo/xác nhận thành công.
       } else if (isCombo) {
-        let comboData = null;
-        try {
-          const res = await fetch(`${API_URL}/Combos/${id}`, { headers: getAuthHeaders() });
-          if (res.ok) comboData = await readResponse(res);
-        } catch (e) {}
-
-        if (!comboData) {
-          comboData = allCombos.find(c => (c.comboId ?? c.ComboId ?? c.id) == id);
-        }
-
+        const comboData = allCombos.find(c => String(c.comboId ?? c.ComboId ?? c.id ?? c.Id) === String(id));
         const baseQty = Number(comboData?.quantity ?? comboData?.Quantity ?? item.quantity ?? 100);
         const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
         const newQty = Math.max(0, currentQty - qty);
         overrides[key] = newQty;
-
-        // Bỏ gọi API PUT cập nhật tồn kho từ Frontend vì Staff không có quyền (gây lỗi 403)
       }
     } catch (e) {
       console.warn("[deductInventory] Không thể cập nhật tồn kho:", e);

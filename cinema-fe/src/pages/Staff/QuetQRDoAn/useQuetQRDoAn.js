@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { fetchTicketByCode, fetchOrdersByBooking, fetchAllOrders, fetchBookingById, updateOrderStatus } from "./QuetQRDoAnService";
 import { getTicketList } from "../../Admin/Ticket/ticketService";
+import { cachedFetch, getApiUrl } from "../../../services/apiHelper";
+
+const API_URL = getApiUrl();
+
+function normalizeArray(arr) {
+  if (!arr) return [];
+  if (Array.isArray(arr)) return arr;
+  if (arr.$values && Array.isArray(arr.$values)) return arr.$values;
+  return [];
+}
 
 export function useQuetQRDoAn() {
   const [ticketCode, setTicketCode] = useState("");
@@ -45,11 +55,34 @@ export function useQuetQRDoAn() {
     }
 
     try {
+      // Fetch foods and combos catalogs to resolve names
+      let allFoods = [];
+      let allCombos = [];
+      try {
+        const [fData, cData] = await Promise.all([
+          cachedFetch(`${API_URL}/Foods/Available`),
+          cachedFetch(`${API_URL}/Combos/Available`)
+        ]);
+        const fUnwrapped = fData?.data ?? fData?.Data ?? fData?.result ?? fData?.Result ?? fData;
+        const cUnwrapped = cData?.data ?? cData?.Data ?? cData?.result ?? cData?.Result ?? cData;
+        allFoods = normalizeArray(fUnwrapped);
+        allCombos = normalizeArray(cUnwrapped);
+      } catch (e) {
+        console.warn("Failed to load catalogs in QR scanner:", e);
+      }
+
       // 1. Thử tìm thông tin vé bằng code
       let ticket = null;
       if (!cleanCode.toUpperCase().startsWith("CB") && !cleanCode.toUpperCase().startsWith("BILL")) {
         ticket = await fetchTicketByCode(cleanCode);
       }
+
+      let rawOrders = [];
+      let customerName = "";
+      let dateBooked = "";
+      let isExpired = false;
+      let expiredMessage = "";
+      let orderIdForPickup = null;
 
       if (ticket) {
         const bookingId = ticket.bookingId ?? ticket.BookingId;
@@ -58,19 +91,16 @@ export function useQuetQRDoAn() {
           booking = await fetchBookingById(bookingId);
         }
 
-        setTicketDetails({
-          ...ticket,
-          movieTitle: ticket.movieTitle || booking?.movieTitle || "—",
-          roomName: ticket.roomName || booking?.roomName || "—",
-          seatCode: ticket.seatCode || booking?.seatNumber || "—",
-          customerName: ticket.customerName || booking?.customerName || "—"
-        });
+        customerName = ticket.customerName || booking?.customerName || "Khách hàng";
+        dateBooked = ticket.dateBooked || booking?.bookingDate || ticket.startTimeDate || "—";
+        if (dateBooked && dateBooked !== "—") {
+          dateBooked = new Date(dateBooked).toLocaleString("vi-VN");
+        }
 
         // Check showtime expiration for ticket food (only valid BEFORE and DURING showtime)
         const rawStartTime = ticket.startTime || ticket.showtime || ticket.showTime || ticket.startTimeDate || booking?.startTime || booking?.showtime || booking?.bookingDate;
         const rawEndTime = ticket.endTime || ticket.showtimeEnd || ticket.endTimeDate || booking?.endTime;
 
-        let isShowtimeExpired = false;
         let startDate = rawStartTime ? new Date(rawStartTime) : null;
         let endDate = rawEndTime ? new Date(rawEndTime) : null;
 
@@ -79,67 +109,16 @@ export function useQuetQRDoAn() {
             endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
           }
           if (new Date() > endDate) {
-            isShowtimeExpired = true;
+            isExpired = true;
+            expiredMessage = `❌ Vé ${ticket.ticketCode || ticket.code || cleanCode} ĐÃ HẾT HẠN SUẤT CHIẾU (kết thúc lúc ${endDate.toLocaleString("vi-VN")}) và không thể nhận đồ ăn.`;
           }
         }
 
         if (bookingId) {
-          // 2. Tìm tất cả đơn hàng (food/combo) của booking đó
-          const bookingOrders = await fetchOrdersByBooking(bookingId);
-          
-          // Ưu tiên báo không có đồ ăn TRƯỚC khi báo hết hạn
-          if (bookingOrders.length === 0) {
-            setOrders([]);
-            if (isShowtimeExpired) {
-              // Hết hạn VÀ không có đồ ăn → báo cả hai
-              setStatusMessage({
-                type: "error",
-                text: `❌ Vé ${ticket.ticketCode || ticket.code || cleanCode} ĐÃ HẾT HẠN SUẤT CHIẾU (kết thúc lúc ${endDate ? endDate.toLocaleString("vi-VN") : ""}) và không có đồ ăn/combo nào được đặt kèm theo vé này.`
-              });
-            } else {
-              // Còn trong giờ nhưng không có đồ ăn
-              setStatusMessage({
-                type: "warning",
-                text: `Vé hợp lệ, nhưng không tìm thấy đơn hàng đồ ăn/combo nào cho vé này.`
-              });
-            }
-          } else {
-            const mappedOrders = bookingOrders.map(o => {
-              const isCompleted = localStorage.getItem("food_pickup_status_" + o.orderId) === "Completed";
-              return {
-                ...o,
-                status: isCompleted ? "Completed" : "Pending",
-                isExpired: isShowtimeExpired
-              };
-            });
-            
-            setOrders(mappedOrders);
-
-            if (isShowtimeExpired) {
-              setStatusMessage({
-                type: "error",
-                text: `❌ CẢNH BÁO: Đơn đồ ăn theo vé ${ticket.ticketCode || ticket.code || cleanCode} ĐÃ HẾT HẠN QUÉT! Suất chiếu này (kết thúc lúc ${endDate ? endDate.toLocaleString("vi-VN") : ""}) đã qua. Đồ ăn mua kèm vé chỉ được quét nhận trước và trong suất chiếu.`
-              });
-            } else {
-              const allCompleted = mappedOrders.every(o => o.status === "Completed" || o.status === "Đã lấy" || o.status === "Đã nhận");
-              if (allCompleted) {
-                setStatusMessage({
-                  type: "warning",
-                  text: "Thông báo: Đơn hàng đồ ăn của vé này đã được nhận trước đó!"
-                });
-              } else {
-                setStatusMessage({
-                  type: "success",
-                  text: "Tìm thấy đơn hàng! Vui lòng kiểm tra các món bên dưới và bấm xác nhận lấy đồ ăn."
-                });
-              }
-            }
+          rawOrders = await fetchOrdersByBooking(bookingId);
+          if (rawOrders.length > 0) {
+            orderIdForPickup = rawOrders[0].orderId;
           }
-        } else {
-          setStatusMessage({
-            type: "error",
-            text: "Không tìm thấy thông tin Booking liên kết với vé này."
-          });
         }
       } else {
         // 2. Nếu không tìm thấy vé (hoặc nhập mã đơn dạng CB73 / 73 / BILL73), tìm trực tiếp trong danh sách Orders
@@ -160,59 +139,114 @@ export function useQuetQRDoAn() {
         });
 
         if (foundOrder) {
-          const isCompleted = localStorage.getItem("food_pickup_status_" + foundOrder.orderId) === "Completed" || foundOrder.status === "Completed";
+          rawOrders = [foundOrder];
+          orderIdForPickup = foundOrder.orderId;
           
-          // Check 24h validity for standalone food orders
+          // Fix customer name showing employee's cinema name
+          customerName = (foundOrder.userName === "Đồng Khởi" || foundOrder.userName?.startsWith("Cinema") || !foundOrder.userName) ? "Khách mua tại quầy" : foundOrder.userName;
+          
           const rawOrderDate = foundOrder.orderDate || foundOrder.createdAt || foundOrder.date;
-          let isOrder24hExpired = false;
+          dateBooked = rawOrderDate ? new Date(rawOrderDate).toLocaleString("vi-VN") : "—";
 
+          // Check 24h validity for standalone food orders
           if (rawOrderDate) {
             const orderTime = new Date(rawOrderDate);
             if (!isNaN(orderTime.getTime())) {
               const hoursDiff = (new Date().getTime() - orderTime.getTime()) / (1000 * 60 * 60);
               if (hoursDiff > 24) {
-                isOrder24hExpired = true;
+                isExpired = true;
+                expiredMessage = `❌ CẢNH BÁO: Đơn hàng đồ ăn CB${foundOrder.orderId} ĐÃ HẾT HẠN 24H! (Thời gian đặt: ${orderTime.toLocaleString("vi-VN")}). Đồ ăn mua riêng tại quầy chỉ có hiệu lực trong vòng 24 giờ kể từ lúc mua.`;
               }
             }
           }
+        }
+      }
 
-          const mappedOrder = {
-            ...foundOrder,
-            status: isCompleted ? "Completed" : "Pending",
-            isExpired: isOrder24hExpired
-          };
-
-          setTicketDetails({
-            ticketCode: `CB${foundOrder.orderId}`,
-            customerName: foundOrder.userName || "Khách mua tại quầy",
-            movieTitle: "Đơn hàng đồ ăn bán tại quầy",
-            roomName: "Tại Quầy",
-            seatCode: "N/A"
+      if (rawOrders.length === 0) {
+        setOrders([]);
+        if (ticket && isExpired) {
+          setStatusMessage({ type: "error", text: expiredMessage });
+        } else {
+          setStatusMessage({
+            type: "warning",
+            text: `Không tìm thấy đơn hàng đồ ăn/combo nào cho mã "${cleanCode}".`
           });
+        }
+      } else {
+        // Resolve flat items with catalog names and prices
+        const resolvedItems = [];
+        let totalAmount = 0;
 
-          setOrders([mappedOrder]);
+        for (const order of rawOrders) {
+          const isCompleted = localStorage.getItem("food_pickup_status_" + order.orderId) === "Completed" || order.status === "Completed";
+          const itemsArray = normalizeArray(order.items || order.orderDetails || order.concessionDetails);
+          
+          for (const item of itemsArray) {
+            const foodId = item.foodId || item.FoodId;
+            const comboId = item.comboId || item.ComboId;
+            const qty = item.quantity || item.Quantity || 1;
 
-          if (isOrder24hExpired) {
-            setStatusMessage({
-              type: "error",
-              text: `❌ CẢNH BÁO: Đơn hàng đồ ăn CB${foundOrder.orderId} ĐÃ HẾT HẠN 24H! (Thời gian đặt: ${rawOrderDate ? new Date(rawOrderDate).toLocaleString("vi-VN") : ""}). Đồ ăn mua riêng tại quầy chỉ có hiệu lực trong vòng 24 giờ kể từ lúc mua.`
+            let name = "Bắp nước";
+            let price = 0;
+
+            if (foodId) {
+              const f = allFoods.find(food => String(food.foodId || food.FoodId || food.id || food.Id) === String(foodId));
+              if (f) {
+                name = f.foodName || f.FoodName || "Đồ ăn lẻ";
+                price = f.price || f.Price || 0;
+              }
+            } else if (comboId) {
+              const c = allCombos.find(combo => String(combo.comboId || combo.ComboId || combo.id || combo.Id) === String(comboId));
+              if (c) {
+                name = c.comboName || c.ComboName || "Combo";
+                price = c.price || c.Price || 0;
+              }
+            }
+
+            resolvedItems.push({
+              orderId: order.orderId,
+              name,
+              quantity: qty,
+              price,
+              subtotal: price * qty,
+              status: isCompleted ? "Completed" : "Pending",
+              isExpired
             });
-          } else if (isCompleted) {
+
+            totalAmount += price * qty;
+          }
+        }
+
+        setTicketDetails({
+          ticketCode: ticket ? (ticket.ticketCode || ticket.code || cleanCode) : `CB${orderIdForPickup}`,
+          orderId: orderIdForPickup,
+          customerName,
+          dateBooked,
+          movieTitle: ticket ? (ticket.movieTitle || "Vé xem phim") : "Đơn hàng đồ ăn bán tại quầy",
+          roomName: ticket ? (ticket.roomName || "Rạp") : "Tại Quầy",
+          seatCode: ticket ? (ticket.seatCode || "N/A") : "N/A",
+          totalAmount
+        });
+
+        setOrders(resolvedItems);
+
+        if (isExpired) {
+          setStatusMessage({ type: "error", text: expiredMessage });
+        } else {
+          const allCompleted = resolvedItems.every(item => item.status === "Completed");
+          if (allCompleted) {
             setStatusMessage({
               type: "warning",
-              text: `Thông báo: Đơn hàng đồ ăn CB${foundOrder.orderId} đã được nhận trước đó!`
+              text: `Thông báo: Đơn hàng đồ ăn này đã được nhận trước đó!`
             });
           } else {
             setStatusMessage({
               type: "success",
-              text: `Tìm thấy đơn hàng CB${foundOrder.orderId}! Vui lòng kiểm tra các món bên dưới và bấm xác nhận lấy đồ ăn.`
+              text: ticket
+                ? "Tìm thấy đơn hàng! Vui lòng kiểm tra các món bên dưới và bấm xác nhận lấy đồ ăn."
+                : `Tìm thấy đơn hàng CB${orderIdForPickup}! Vui lòng kiểm tra các món bên dưới và bấm xác nhận lấy đồ ăn.`
             });
           }
-        } else {
-          setStatusMessage({
-            type: "error",
-            text: "Không tìm thấy vé hoặc mã đơn hàng đồ ăn (mã CB...) trong hệ thống. Vui lòng kiểm tra lại mã!"
-          });
         }
       }
     } catch (err) {
@@ -227,10 +261,11 @@ export function useQuetQRDoAn() {
   }
 
   async function handleConfirmPickup(orderId) {
-    if (!orderId) return;
+    const actualOrderId = (orderId && typeof orderId !== "object") ? orderId : (orders[0]?.orderId || ticketDetails?.orderId);
+    if (!actualOrderId) return;
 
-    const targetOrder = orders.find(o => o.orderId === orderId);
-    if (targetOrder && targetOrder.isExpired) {
+    const hasExpired = orders.some(o => o.isExpired);
+    if (hasExpired) {
       setStatusMessage({
         type: "error",
         text: "❌ Không thể xác nhận lấy đồ ăn cho đơn hàng đã hết hạn!"
@@ -241,18 +276,17 @@ export function useQuetQRDoAn() {
     setStatusMessage(null);
 
     try {
-      // Vì Backend chỉ chấp nhận Pending | Confirmed | Cancelled, 
-      // ta lưu trạng thái đã giao đồ ăn vào LocalStorage để đồng bộ giao diện
-      localStorage.setItem("food_pickup_status_" + orderId, "Completed");
+      // Vì Backend chỉ chấp nhận Pending | Confirmed | Cancelled cho thuộc tính Trạng thái đơn hàng,
+      // ta chỉ cần lưu trạng thái đã nhận đồ ăn cục bộ vào LocalStorage để đồng bộ giao diện.
+      localStorage.setItem("food_pickup_status_" + actualOrderId, "Completed");
 
-      // Cập nhật state cục bộ để giao diện thay đổi ngay lập tức
       setOrders(prevOrders =>
-        prevOrders.map(o => o.orderId === orderId ? { ...o, status: "Completed" } : o)
+        prevOrders.map(o => o.orderId === actualOrderId ? { ...o, status: "Completed" } : o)
       );
 
       setStatusMessage({
         type: "success",
-        text: `Đơn hàng #${orderId} đã được xác nhận khách lấy đồ ăn thành công!`
+        text: `Đơn hàng #${actualOrderId} đã được xác nhận khách lấy đồ ăn thành công!`
       });
     } catch (err) {
       setStatusMessage({
@@ -270,8 +304,6 @@ export function useQuetQRDoAn() {
       return;
     }
     
-    // Tìm các vé có đơn hàng đồ ăn để test cho tiện
-    // Nếu không có, chọn vé ngẫu nhiên
     const randomTicket = tickets[Math.floor(Math.random() * tickets.length)];
     if (!randomTicket) return;
     

@@ -3,6 +3,7 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  cachedFetch,
 } from "../../../services/apiHelper";
 
 function generateMockSeats(roomId) {
@@ -41,69 +42,43 @@ function normalizeArray(data) {
 }
 
 export async function getMovieList() {
-  const response = await fetch(`${API_URL}/Movies`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách phim thất bại!"));
+  try {
+    const data = await cachedFetch(`${API_URL}/Movies`);
+    return normalizeArray(data);
+  } catch (err) {
+    throw new Error(getErrorMessage(err, "Lấy danh sách phim thất bại!"));
   }
-
-  return normalizeArray(data);
 }
 
 export async function getShowtimeList() {
-  const response = await fetch(`${API_URL}/Showtimes`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách suất chiếu thất bại!")
-    );
+  try {
+    const data = await cachedFetch(`${API_URL}/Showtimes`);
+    return normalizeArray(data);
+  } catch (err) {
+    throw new Error(getErrorMessage(err, "Lấy danh sách suất chiếu thất bại!"));
   }
-
-  return normalizeArray(data);
 }
 
 export async function getShowtimeDetailList() {
-  const response = await fetch(`${API_URL}/Showtimes`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách suất chiếu thất bại!")
-    );
+  try {
+    const data = await cachedFetch(`${API_URL}/Showtimes`);
+    return normalizeArray(data);
+  } catch (err) {
+    throw new Error(getErrorMessage(err, "Lấy danh sách suất chiếu thất bại!"));
   }
-
-  return normalizeArray(data);
 }
 
 export async function getSeatsByRoomId(roomId) {
-  const response = await fetch(`${API_URL}/Seats/ByRoom/${roomId}`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy sơ đồ ghế thất bại!"));
+  try {
+    const data = await cachedFetch(`${API_URL}/Seats/ByRoom/${roomId}`);
+    const seats = normalizeArray(data);
+    if (seats.length === 0) {
+      return generateMockSeats(roomId);
+    }
+    return seats;
+  } catch (err) {
+    throw new Error(getErrorMessage(err, "Lấy sơ đồ ghế thất bại!"));
   }
-
-  const seats = normalizeArray(data);
-
-  if (seats.length === 0) {
-    return generateMockSeats(roomId);
-  }
-
-  return seats;
 }
 
 export async function getAvailableSeats(showtimeId) {
@@ -142,19 +117,12 @@ export async function createBooking(payload) {
 }
 
 export async function getRoomList() {
-  const response = await fetch(`${API_URL}/Rooms`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách phòng thất bại!")
-    );
+  try {
+    const data = await cachedFetch(`${API_URL}/Rooms`);
+    return normalizeArray(data);
+  } catch (err) {
+    throw new Error(getErrorMessage(err, "Lấy danh sách phòng thất bại!"));
   }
-
-  return normalizeArray(data);
 }
 
 export async function getCombosAndFoodsList() {
@@ -162,31 +130,17 @@ export async function getCombosAndFoodsList() {
   let foodsData = [];
 
   try {
-    const res = await fetch(`${API_URL}/Combos/Available`, { headers: getAuthHeaders() });
-    if (res.ok) {
-      const text = await res.text();
-      const raw = text ? JSON.parse(text) : null;
-      console.log("[BanVe] Combos raw:", raw);
-      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-      combosData = normalizeArray(unwrapped);
-    } else {
-      console.warn("[BanVe] Combos/Available trả về", res.status);
-    }
+    const raw = await cachedFetch(`${API_URL}/Combos/Available`);
+    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+    combosData = normalizeArray(unwrapped);
   } catch (err) {
     console.warn("[BanVe] Failed to load combos:", err);
   }
 
   try {
-    const res = await fetch(`${API_URL}/Foods/Available`, { headers: getAuthHeaders() });
-    if (res.ok) {
-      const text = await res.text();
-      const raw = text ? JSON.parse(text) : null;
-      console.log("[BanVe] Foods raw:", raw);
-      const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-      foodsData = normalizeArray(unwrapped);
-    } else {
-      console.warn("[BanVe] Foods/Available trả về", res.status);
-    }
+    const raw = await cachedFetch(`${API_URL}/Foods/Available`);
+    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
+    foodsData = normalizeArray(unwrapped);
   } catch (err) {
     console.warn("[BanVe] Failed to load foods:", err);
   }
