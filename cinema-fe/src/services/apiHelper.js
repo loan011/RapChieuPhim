@@ -41,7 +41,7 @@ export function clearApiCache(urlPattern = null) {
   } catch (e) {}
 }
 
-export async function cachedFetch(url, options = {}, ttlMs = 60000) {
+export async function cachedFetch(url, options = {}, ttlMs = 300000) {
   const method = (options.method || "GET").toUpperCase();
   if (method !== "GET") {
     // Invalidate cache on mutations
@@ -52,49 +52,66 @@ export async function cachedFetch(url, options = {}, ttlMs = 60000) {
 
   const cacheKey = url;
   const now = Date.now();
-  const cached = memoryCache.get(cacheKey);
+  let cachedData = null;
+  let cachedTime = 0;
 
-  if (cached && now - cached.timestamp < ttlMs) {
-    return cached.data;
-  }
-
-  // Try persistent localStorage cache
-  const lsKey = "apicache_" + url;
-  try {
-    const lsItem = localStorage.getItem(lsKey);
-    if (lsItem) {
-      const parsed = JSON.parse(lsItem);
-      if (parsed && now - parsed.timestamp < ttlMs) {
-        memoryCache.set(cacheKey, { timestamp: parsed.timestamp, data: parsed.data });
-        return parsed.data;
-      }
-    }
-  } catch (e) {}
-
-  if (pendingRequests.has(cacheKey)) {
-    return pendingRequests.get(cacheKey);
-  }
-
-  const fetchPromise = (async () => {
+  const inMem = memoryCache.get(cacheKey);
+  if (inMem && inMem.data) {
+    cachedData = inMem.data;
+    cachedTime = inMem.timestamp;
+  } else {
+    const lsKey = "apicache_" + url;
     try {
-      const response = await fetch(url, {
-        headers: getAuthHeaders(),
-        ...options,
-      });
-      const data = await readResponse(response);
-      const timestamp = Date.now();
-      memoryCache.set(cacheKey, { timestamp, data });
-      try {
-        localStorage.setItem(lsKey, JSON.stringify({ timestamp, data }));
-      } catch (e) {}
-      return data;
-    } finally {
-      pendingRequests.delete(cacheKey);
-    }
-  })();
+      const lsItem = localStorage.getItem(lsKey);
+      if (lsItem) {
+        const parsed = JSON.parse(lsItem);
+        if (parsed && parsed.data) {
+          cachedData = parsed.data;
+          cachedTime = parsed.timestamp || 0;
+          memoryCache.set(cacheKey, { timestamp: cachedTime, data: cachedData });
+        }
+      }
+    } catch (e) {}
+  }
 
-  pendingRequests.set(cacheKey, fetchPromise);
-  return fetchPromise;
+  const isStale = now - cachedTime > ttlMs;
+
+  const triggerFetch = () => {
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey);
+    }
+    const lsKey = "apicache_" + url;
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(url, {
+          headers: getAuthHeaders(),
+          ...options,
+        });
+        const data = await readResponse(response);
+        const timestamp = Date.now();
+        memoryCache.set(cacheKey, { timestamp, data });
+        try {
+          localStorage.setItem(lsKey, JSON.stringify({ timestamp, data }));
+        } catch (e) {}
+        return data;
+      } finally {
+        pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    pendingRequests.set(cacheKey, fetchPromise);
+    return fetchPromise;
+  };
+
+  if (cachedData !== null) {
+    if (isStale) {
+      // Revalidate in background without blocking rendering
+      triggerFetch().catch(() => {});
+    }
+    return cachedData;
+  }
+
+  return await triggerFetch();
 }
 
 /**

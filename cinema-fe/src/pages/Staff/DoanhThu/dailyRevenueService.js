@@ -305,11 +305,10 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       const info = payment._localData;
       const isCancelled = String(info.status || "").toLowerCase().includes("hủy") || String(info.status || "").toLowerCase().includes("cancel");
 
-      const seatCode = info.seatCode || info.seatNumber || (info.seatsList ? info.seatsList.join(", ") : "A11");
-      const seatRow = String(seatCode).trim().charAt(0).toUpperCase();
+      const seatType = String(info.seatType || info.SeatType || info.type || "").toLowerCase();
       let defaultSeatPrice = 70000;
-      if (seatRow === "C") defaultSeatPrice = 90000;
-      else if (seatRow === "D" || seatRow === "E") defaultSeatPrice = 130000;
+      if (seatType.includes("vip")) defaultSeatPrice = 90000;
+      else if (seatType.includes("couple") || seatType.includes("sweetbox") || seatType.includes("đôi") || seatType.includes("doi")) defaultSeatPrice = 130000;
 
       const seatPrice = Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : defaultSeatPrice));
       const movieTitle = info.movieTitle || "Hành Trình Của Moana";

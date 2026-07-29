@@ -3,6 +3,7 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  cachedFetch,
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -18,37 +19,12 @@ function normalizeArray(data) {
 }
 
 export async function getCinemaList() {
-  const response = await fetch(`${API_URL}/Cinemas`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách rạp chiếu thất bại!")
-    );
-  }
-
+  const data = await cachedFetch(`${API_URL}/Cinemas`);
   return normalizeArray(data);
 }
 
 export async function getCinemaById(id) {
-  const response = await fetch(`${API_URL}/Cinemas/${id}`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy thông tin rạp chiếu thất bại!")
-    );
-  }
-
-  return data;
+  return await cachedFetch(`${API_URL}/Cinemas/${id}`);
 }
 
 export async function createCinema(cinema) {
@@ -105,18 +81,6 @@ export async function deleteCinema(id) {
 }
 
 export async function getAreaList() {
-  const response = await fetch(`${API_URL}/Areas`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(
-      getErrorMessage(data, "Lấy danh sách khu vực thất bại!")
-    );
-  }
-
+  const data = await cachedFetch(`${API_URL}/Areas`);
   return normalizeArray(data);
 }
