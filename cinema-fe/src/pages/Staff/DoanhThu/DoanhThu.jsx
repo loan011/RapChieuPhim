@@ -878,7 +878,8 @@ export default function DoanhThu() {
                           isCancelled = true;
                         }
 
-                        const isCash = String(bill.paymentMethod || "").toLowerCase().includes("cash") || String(bill.paymentMethod || "").includes("tiền mặt");
+                        const pmStr = String(bill.paymentMethod || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const isCash = pmStr.includes("cash") || pmStr.includes("tien") || pmStr.includes("mat");
 
                         return (
                           <tr key={bill.paymentId} className={`transition-colors ${isCancelled ? "bg-red-50/30 text-gray-500" : "hover:bg-gray-50/50"}`}>
@@ -990,13 +991,13 @@ export default function DoanhThu() {
                                         const code = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").trim();
                                         setShowExchangeModal(true);
                                         setTimeout(() => {
-                                          window.dispatchEvent(new CustomEvent("openExchangeModalWithCode", { detail: code }));
+                                          window.dispatchEvent(new CustomEvent("openExchangeModalWithCode", { detail: { code, bill } }));
                                         }, 100);
                                       }}
                                       className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 bg-red-50 hover:shadow-md px-2.5 py-1.5 rounded-lg transition-all border border-red-300 flex items-center gap-1 shrink-0 cursor-pointer"
                                       title="Hủy hóa đơn / vé & Hoàn tiền mặt"
                                     >
-                                      <MdCancel className="text-sm" /> Hủy vé
+                                      <MdCancel className="text-sm" /> Hủy hóa đơn
                                     </button>
                                   )
                                 )}

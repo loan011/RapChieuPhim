@@ -34,10 +34,34 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
 
   useEffect(() => {
     function handleOpenWithCode(e) {
-      const code = e.detail;
+      const payload = e.detail;
+      const code = typeof payload === "string" ? payload : payload?.code;
+      const bill = typeof payload === "object" ? payload?.bill : null;
+
       if (code) {
         setTicketCodeInput(code);
-        // Automatically search ticket
+
+        if (bill) {
+          const orderId = bill.billCode ? bill.billCode.replace(/\D/g, "") : "";
+          const formatted = {
+            ticketCode: bill.billCode,
+            code: bill.billCode,
+            bookingId: bill.bookingId || orderId,
+            orderId: orderId,
+            paymentId: bill.paymentId,
+            customerName: bill.customerName || "Khách mua tại quầy",
+            totalAmount: bill.totalAmount || 0,
+            paymentMethod: bill.paymentMethod || "Tiền mặt",
+            seatCode: bill.tickets?.[0]?.seatNumber || (bill.concessions?.length > 0 ? "Chỉ mua đồ ăn" : "Không mua vé"),
+            status: bill.status || "Active",
+            isFoodOnly: !bill.tickets || bill.tickets.length === 0
+          };
+          setSelectedTicket(formatted);
+          setActionMode("CANCEL_TICKET");
+          setStaffRefundConfirmed(false);
+          return;
+        }
+
         getTicketList().then((data) => {
           const list = Array.isArray(data) ? data : data?.$values || [];
           setTicketList(list);
@@ -335,33 +359,43 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
         localStorage.setItem("cancelled_seat_codes", JSON.stringify(releasedSeats));
       } catch (e) {}
 
-      // 2. Call updateTicket status to Cancelled
-      await updateTicket(ticketId, { status: "Cancelled" }).catch((err) => console.warn("updateTicket API error:", err));
+      const orderId = selectedTicket.orderId || (selectedTicket.code && selectedTicket.code.startsWith("CB") ? selectedTicket.code.replace(/\D/g, "") : null);
+
+      if (orderId) {
+        try {
+          await fetch(`${getApiUrl()}/Orders/${orderId}/Status`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: "Cancelled" })
+          }).catch((err) => console.warn("cancelOrder API error:", err));
+        } catch (e) {}
+      }
+
+      if (ticketId) {
+        await updateTicket(ticketId, { status: "Cancelled" }).catch((err) => console.warn("updateTicket API error:", err));
+      }
 
       // 3. Sync local storage tickets & revenue payments
       const nowFormatted = new Date().toLocaleString("vi-VN");
-      const tCode = String(selectedTicket.ticketCode || selectedTicket.code || `VE${ticketId}`).trim();
-      localStorage.setItem("cancelled_time_" + tCode, nowFormatted);
+      const tCode = String(selectedTicket.ticketCode || selectedTicket.code || selectedTicket.billCode || `HD${ticketId || orderId}`).trim();
+      if (tCode) localStorage.setItem("cancelled_time_" + tCode, nowFormatted);
       if (bookingId) localStorage.setItem("cancelled_time_booking_" + bookingId, nowFormatted);
 
       try {
         const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
-        const updatedTickets = storedTickets.map((t) => {
-          if (String(t.ticketId || t.id) === String(ticketId) || String(t.bookingId) === String(bookingId)) {
-            return { ...t, status: "Cancelled", cancelledAt: new Date().toISOString(), cancelledTimeStr: nowFormatted };
-          }
-          return t;
-        });
-        localStorage.setItem("rapchieuphim_tickets", JSON.stringify(updatedTickets));
-
-        // Deduct payment from daily revenue storage
-        const codeStr = String(selectedTicket.ticketCode || selectedTicket.code || `VE${ticketId}`);
-        const storedPayments = JSON.parse(localStorage.getItem("rapchieuphim_payments") || "[]");
-        const updatedPayments = storedPayments.filter((p) => {
-          const bCode = String(p.billCode || p.paymentId || p.bookingId || "");
-          return !bCode.includes(codeStr) && String(p.bookingId) !== String(bookingId);
-        });
-        localStorage.setItem("rapchieuphim_payments", JSON.stringify(updatedPayments));
+        const existingIdx = storedTickets.findIndex(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode.toLowerCase());
+        if (existingIdx >= 0) {
+          storedTickets[existingIdx].status = "Cancelled";
+          storedTickets[existingIdx].cancelledAt = new Date().toISOString();
+        } else {
+          storedTickets.push({
+            ticketCode: tCode,
+            code: tCode,
+            status: "Cancelled",
+            cancelledAt: new Date().toISOString()
+          });
+        }
+        localStorage.setItem("rapchieuphim_tickets", JSON.stringify(storedTickets));
       } catch (e) {}
 
       // 4. Notify open components (seat map, revenue reports, ticket list)
@@ -369,11 +403,12 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
       window.dispatchEvent(new Event("bookingsUpdated"));
       window.dispatchEvent(new Event("paymentsUpdated"));
 
-      setSuccessMsg(`✅ HỦY VÉ THÀNH CÔNG! Đã hủy vé ${selectedTicket.ticketCode || selectedTicket.code}, vô hiệu QR & giải phóng ghế ${selectedTicket.seatCode}. Hoàn lại: ${oldSeatPrice.toLocaleString("vi-VN")}đ tiền mặt.`);
+      const refundAmount = Number(selectedTicket.totalAmount || selectedTicket.price || oldSeatPrice || 0);
+      setSuccessMsg(`✅ HỦY HÓA ĐƠN THÀNH CÔNG! Đã hủy hóa đơn ${tCode}. Hoàn lại: ${refundAmount.toLocaleString("vi-VN")}đ tiền mặt.`);
       if (onRefreshData) onRefreshData();
       setActionMode("SUCCESS");
     } catch (err) {
-      alert("Lỗi thực hiện hủy vé: " + err.message);
+      alert("Lỗi thực hiện hủy hóa đơn: " + err.message);
     } finally {
       setProcessing(false);
     }
@@ -497,12 +532,12 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                           <MdCancel />
                         </div>
                         <div>
-                          <h5 className="font-black text-white text-lg">❌ HỦY VÉ & HOÀN TIỀN MẶT</h5>
-                          <p className="text-xs text-red-100 font-medium mt-0.5">Hủy vé, vô hiệu mã QR vé, giải phóng ghế trống & hoàn 100% tiền mặt cho khách.</p>
+                          <h5 className="font-black text-white text-lg">❌ HỦY HÓA ĐƠN & HOÀN TIỀN MẶT</h5>
+                          <p className="text-xs text-red-100 font-medium mt-0.5">Hủy hóa đơn, vô hiệu mã vé/đơn hàng & hoàn 100% tiền mặt cho khách.</p>
                         </div>
                       </div>
                       <span className="px-4 py-2.5 bg-white text-red-700 font-black text-xs rounded-xl shadow group-hover:bg-red-50 flex-shrink-0">
-                        Bấm để Hủy vé ➔
+                        Bấm để Hủy ➔
                       </span>
                     </button>
                   </div>
@@ -717,7 +752,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                 <div className="space-y-4 pt-2 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <h5 className="font-extrabold text-red-700 text-sm flex items-center gap-1.5">
-                      <MdCancel className="text-red-600 text-lg" /> XÁC NHẬN HỦY VÉ & HOÀN TIỀN MẶT
+                      <MdCancel className="text-red-600 text-lg" /> XÁC NHẬN HỦY HÓA ĐƠN & HOÀN TIỀN MẶT
                     </h5>
                     <button
                       type="button"
@@ -731,11 +766,13 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                   <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl space-y-3">
                     <div className="flex justify-between items-center text-sm font-extrabold text-gray-900">
                       <span>SỐ TIỀN HOÀN LẠI CHO KHÁCH:</span>
-                      <span className="text-xl text-red-600 font-extrabold">{oldSeatPrice.toLocaleString("vi-VN")} VNĐ</span>
+                      <span className="text-xl text-red-600 font-extrabold">{Number(selectedTicket.totalAmount || selectedTicket.price || oldSeatPrice || 0).toLocaleString("vi-VN")} VNĐ</span>
                     </div>
                     <p className="text-xs font-semibold text-red-700">
-                      • Mã vé {selectedTicket.ticketCode} sẽ bị hủy vĩnh viễn và vô hiệu QR.<br />
-                      • Ghế {selectedTicket.seatCode} sẽ được giải phóng trở về trạng thái trống cho khách khác đặt.
+                      • Mã hóa đơn {selectedTicket.ticketCode || selectedTicket.code} sẽ bị hủy vĩnh viễn.<br />
+                      {selectedTicket.seatCode && selectedTicket.seatCode !== "Không mua vé" && selectedTicket.seatCode !== "Chỉ mua đồ ăn" && (
+                        <>• Ghế {selectedTicket.seatCode} sẽ được giải phóng trở về trạng thái trống.<br /></>
+                      )}
                     </p>
 
                     {/* Staff Confirmation Checkbox */}
@@ -746,7 +783,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                         onChange={(e) => setStaffRefundConfirmed(e.target.checked)}
                         className="w-4 h-4 accent-red-600 rounded cursor-pointer"
                       />
-                      <span>Staff xác nhận ĐÃ HOÀN TRẢ ĐỦ {oldSeatPrice.toLocaleString("vi-VN")}đ TIỀN MẶT cho khách.</span>
+                      <span>Staff xác nhận ĐÃ HOÀN TRẢ ĐỦ {Number(selectedTicket.totalAmount || selectedTicket.price || oldSeatPrice || 0).toLocaleString("vi-VN")}đ TIỀN MẶT cho khách.</span>
                     </label>
                   </div>
 
@@ -754,9 +791,9 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                     type="button"
                     disabled={!staffRefundConfirmed || processing}
                     onClick={handleConfirmCancelTicket}
-                    className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all active:scale-98"
+                    className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all active:scale-98 cursor-pointer"
                   >
-                    {processing ? "Đang xử lý hủy vé..." : "XÁC NHẬN HỦY VÉ & GIẢI PHÓNG GHẾ"}
+                    {processing ? "Đang xử lý hủy hóa đơn..." : "XÁC NHẬN HỦY HÓA ĐƠN & HOÀN TIỀN"}
                   </button>
                 </div>
               )}

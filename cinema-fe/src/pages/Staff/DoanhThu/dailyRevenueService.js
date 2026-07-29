@@ -84,12 +84,17 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
   let ticketsList = [];
 
   try {
+    let dateParam = "";
+    if (typeof dateOrFilter === "string" && dateOrFilter.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      dateParam = `?date=${dateOrFilter}`;
+    }
+
     // Fetch all payments, bookings, orders, and tickets in parallel using cachedFetch
     const [pData, bData, oData, tData] = await Promise.all([
-      cachedFetch(`${API_URL}/Payments`, { headers, signal: controller.signal }),
-      cachedFetch(`${API_URL}/Bookings`, { headers, signal: controller.signal }),
-      cachedFetch(`${API_URL}/Orders`, { headers, signal: controller.signal }),
-      cachedFetch(`${API_URL}/Tickets`, { headers, signal: controller.signal })
+      cachedFetch(`${API_URL}/Payments${dateParam}`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Bookings${dateParam}`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Orders${dateParam}`, { headers, signal: controller.signal }),
+      cachedFetch(`${API_URL}/Tickets${dateParam}`, { headers, signal: controller.signal })
     ]);
 
     payments = normalizeArray(pData);
