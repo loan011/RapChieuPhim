@@ -75,8 +75,8 @@ export function usePayment() {
           "";
 
         bookingData.bookingIds.forEach((bId) => {
-          const existing = savedDiscounts[bId] || {};
-          savedDiscounts[bId] = {
+          const existing = savedDiscounts[bId] || savedDiscounts[String(bId)] || {};
+          const record = {
             ...existing,
             discountAmount: perBookingDiscount,
             discountCode: codeStr,
@@ -89,6 +89,12 @@ export function usePayment() {
             startTime: startTimeVal || existing.startTime,
             cinemaId: cinemaIdVal || existing.cinemaId,
           };
+          savedDiscounts[bId] = record;
+          savedDiscounts[String(bId)] = record;
+          const digits = String(bId).replace(/[^0-9]/g, "");
+          if (digits) {
+            savedDiscounts[digits] = record;
+          }
         });
         localStorage.setItem("customer_ticket_discounts", JSON.stringify(savedDiscounts));
       } catch (e) {

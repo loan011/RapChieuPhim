@@ -111,6 +111,7 @@ export function createBookingDates(totalDays = 7) {
 export async function loadBookingInitialData({
   movieParam,
   showtimeParam,
+  dateParam,
   dates,
 }) {
   const [cinemas, rooms, movie, showtimes] = await Promise.all([
@@ -133,7 +134,7 @@ export async function loadBookingInitialData({
   }
 
   let selectedCinemaId = "";
-  let selectedDateIso = dates?.[0]?.iso || "";
+  let selectedDateIso = dateParam || dates?.[0]?.iso || "";
 
   if (initialShowtime) {
     const room = rooms.find(
@@ -145,10 +146,12 @@ export async function loadBookingInitialData({
       selectedCinemaId = String(getRoomCinemaId(room));
     }
 
-    const showtimeDate = getShowtimeDate(initialShowtime);
+    if (!dateParam) {
+      const showtimeDate = getShowtimeDate(initialShowtime);
 
-    if (showtimeDate) {
-      selectedDateIso = showtimeDate;
+      if (showtimeDate) {
+        selectedDateIso = showtimeDate;
+      }
     }
   }
 
@@ -994,6 +997,14 @@ export function useBooking() {
     bookingState.ShowTime ||
     "";
 
+  const queryDate = searchParams.get("date") || searchParams.get("showDate");
+  const dateParam =
+    queryDate ||
+    bookingState.selectedDateIso ||
+    bookingState.date ||
+    bookingState.showDate ||
+    "";
+
   const [movie, setMovie] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
   const [cinemas, setCinemas] = useState([]);
@@ -1186,6 +1197,7 @@ export function useBooking() {
         const data = await loadBookingInitialData({
           movieParam,
           showtimeParam,
+          dateParam,
           dates,
         });
 

@@ -780,7 +780,14 @@ function Movies() {
                         return (
                           <Link
                             key={showtimeId}
-                            to={`/booking?movie=${movieTempId}&showtimeId=${showtimeId}`}
+                            to={`/booking?movie=${movieTempId}&showtimeId=${showtimeId}&date=${modalDate}&cinemaId=${modalAreaId}`}
+                            state={{
+                              movieId: movieTempId,
+                              showtimeId: showtimeId,
+                              selectedDateIso: modalDate,
+                              selectedCinemaId: modalAreaId,
+                              selectedShowtime: showtime,
+                            }}
                             className="modal-time-btn"
                           >
                             <strong>{showtime.startHour}</strong>

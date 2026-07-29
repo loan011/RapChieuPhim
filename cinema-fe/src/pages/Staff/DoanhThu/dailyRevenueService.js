@@ -468,7 +468,15 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
                       (rootBooking && (rootBooking.customerName === "Cơ Sở 2" || rootBooking.customerName === "Hệ Thống Admin")) ||
                       (order && (order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin"));
 
-    const resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai");
+    let resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || rootBooking.userName || rootBooking.fullName || "") : "");
+    if (!isCounter && (!resolvedCustomerName || resolvedCustomerName === "Khách vãng lai")) {
+      const emailVal = (rootBooking?.email || rootBooking?.customerEmail || "").trim();
+      if (emailVal && emailVal.includes("@") && emailVal !== "N/A" && emailVal !== "Tại quầy") {
+        resolvedCustomerName = emailVal.split("@")[0];
+      } else {
+        resolvedCustomerName = "Khách vãng lai";
+      }
+    }
     const resolvedCustomerEmail = isCounter ? "Tại quầy" : (rootBooking ? (rootBooking.email || "N/A") : "N/A");
 
     let savedCash = payment.cashReceived || payment.CashReceived;
