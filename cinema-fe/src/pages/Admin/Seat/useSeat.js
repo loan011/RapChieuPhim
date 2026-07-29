@@ -203,6 +203,33 @@ export function getSeatNumber(seat) {
 }
 
 export function getSeatType(seat) {
+  const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
+  const sId = String(getSeatId(seat) || "");
+  const row = getSeatRow(seat);
+  const code = getSeatCode(seat);
+
+  if (roomId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      if (sId && saved.seats && saved.seats[sId]?.type) {
+        const t = saved.seats[sId].type;
+        return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
+      }
+      if (code && saved.seats && saved.seats[code]?.type) {
+        const t = saved.seats[code].type;
+        return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
+      }
+      if (row && saved.rows) {
+        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
+        if (rType && rType !== "mixed") {
+          if (rType === "vip") return "VIP";
+          if (rType === "couple") return "Couple";
+          if (rType === "standard") return "Standard";
+        }
+      }
+    } catch (e) {}
+  }
+
   return seat?.seatType ?? seat?.SeatType ?? seat?.type ?? "Standard";
 }
 
@@ -216,6 +243,20 @@ export function getSeatCode(seat) {
 }
 
 export function getSeatStatus(seat) {
+  const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
+  const sId = String(getSeatId(seat) || "");
+  const code = getSeatCode(seat);
+
+  if (roomId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      const st = saved.seats?.[sId]?.status || saved.seats?.[code]?.status;
+      if (st === "active") return "Hoạt động";
+      if (st === "maintenance") return "Bảo trì";
+      if (st === "inactive") return "Ngừng dùng";
+    } catch (e) {}
+  }
+
   const isActive = seat?.isActive ?? seat?.IsActive;
 
   if (isActive === true) return "Hoạt động";

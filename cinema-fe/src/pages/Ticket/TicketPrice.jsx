@@ -157,7 +157,7 @@ function TicketPrice() {
                       </td>
                       <td className="td-price-val"><strong>150k / 180k</strong></td>
                       <td className="td-price-val"><strong>180k / 220k</strong></td>
-                      <td className="td-price-val"><strong>130k / 160k</strong></td>
+                      <td className="td-price-val"><strong>200k / 250k</strong></td>
                     </tr>
                     <tr>
                       <td className="td-seat-type">
@@ -172,9 +172,9 @@ function TicketPrice() {
               </div>
               
               <div style={{ marginTop: "16px", background: "rgba(30, 41, 59, 0.6)", padding: "12px 16px", borderRadius: "8px", borderLeft: "4px solid #f97316" }}>
-                <p style={{ color: "#f97316", fontWeight: "bold", marginBottom: "4px", fontSize: "13px" }}>⏰ Khung giờ áp dụng giá vé:</p>
-                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>07:00 - 21:00</strong>: Áp dụng giá bên trái (Ví dụ: 70k, 90k, 150k)</p>
-                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>21:00 - 00:00</strong>: Áp dụng giá bên phải (Ví dụ: 90k, 120k, 180k)</p>
+                <p style={{ color: "#f97316", fontWeight: "bold", marginBottom: "4px", fontSize: "13px" }}>📅 Quy định áp dụng giá vé:</p>
+                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>Giá bên trái</strong>: Áp dụng cho Ngày thường (Từ Thứ 2 đến Thứ 5)</p>
+                <p style={{ color: "#cbd5e1", fontSize: "12px", margin: "2px 0" }}>• <strong>Giá bên phải</strong>: Áp dụng cho Cuối tuần & Ngày lễ (Từ Thứ 6 đến Chủ Nhật)</p>
               </div>
             </div>
 

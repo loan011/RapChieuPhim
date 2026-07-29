@@ -3,6 +3,7 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  cachedFetch,
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -19,50 +20,19 @@ function normalizeArray(data) {
 
 // GET /api/Movies
 export async function getMovieList() {
-  const response = await fetch(`${API_URL}/Movies`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách phim thất bại!"));
-  }
-
+  const data = await cachedFetch(`${API_URL}/Movies`);
   return normalizeArray(data);
 }
 
 // GET /api/MovieCategories
 export async function getMovieCategoryList() {
-  const response = await fetch(`${API_URL}/MovieCategories`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy danh sách thể loại thất bại!"));
-  }
-
+  const data = await cachedFetch(`${API_URL}/MovieCategories`);
   return normalizeArray(data);
 }
 
 // GET /api/Movies/:id
 export async function getMovieById(id) {
-  const response = await fetch(`${API_URL}/Movies/${id}`, {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await readResponse(response);
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(data, "Lấy thông tin phim thất bại!"));
-  }
-
-  return data;
+  return await cachedFetch(`${API_URL}/Movies/${id}`);
 }
 
 // POST /api/Movies
