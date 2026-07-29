@@ -1041,6 +1041,18 @@ export function useRate() {
     });
   }
 
+  function handleRemoveAllConflicts() {
+    setExcludedBatchIds((prev) => {
+      const next = new Set(prev);
+      rawBatchItems.forEach(item => {
+        if (item.isConflict) {
+          next.add(item.tempId);
+        }
+      });
+      return next;
+    });
+  }
+
   async function handleBatchSubmit(e) {
     e.preventDefault();
     setBatchError("");
@@ -1390,6 +1402,7 @@ export function useRate() {
     handleAddStartTime,
     handleRemoveStartTime,
     handleRemoveBatchItem,
+    handleRemoveAllConflicts,
     handleBatchSubmit,
 
     /* cinema/movie selection */

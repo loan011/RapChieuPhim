@@ -14,6 +14,7 @@ import {
   MdTheaters,
   MdArrowBack,
   MdSearch,
+  MdClose,
 } from "react-icons/md";
 
 import {
@@ -128,6 +129,7 @@ export default function Rate() {
     handleAddStartTime,
     handleRemoveStartTime,
     handleRemoveBatchItem,
+    handleRemoveAllConflicts,
     handleBatchSubmit,
 
     /* cinema/movie selection */
@@ -988,8 +990,25 @@ export default function Rate() {
                         4. Xem Trước Khung Giờ Chiếu ({batchItems.length} suất)
                       </h6>
                       {conflictCount > 0 && (
-                        <span className="lc-batch-conflict-badge">
+                        <span className="lc-batch-conflict-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           ⚠️ {conflictCount} suất bị trùng lịch!
+                          <button
+                            type="button"
+                            onClick={handleRemoveAllConflicts}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'inherit',
+                              cursor: 'pointer',
+                              padding: '0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Xóa các suất trùng lịch"
+                          >
+                            <MdClose size={16} />
+                          </button>
                         </span>
                       )}
                     </div>

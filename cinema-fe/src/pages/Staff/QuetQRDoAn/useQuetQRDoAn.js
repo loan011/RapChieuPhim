@@ -71,10 +71,37 @@ export function useQuetQRDoAn() {
         console.warn("Failed to load catalogs in QR scanner:", e);
       }
 
-      // 1. Thử tìm thông tin vé bằng code
+      // 1. Thử tìm thông tin vé bằng code từ API
       let ticket = null;
       if (!cleanCode.toUpperCase().startsWith("CB") && !cleanCode.toUpperCase().startsWith("BILL")) {
         ticket = await fetchTicketByCode(cleanCode);
+      }
+
+      // Tra cứu dự phòng trong localStorage (customer_ticket_discounts & rapchieuphim_tickets)
+      let savedInfo = {};
+      try {
+        const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+        const codeKey = cleanCode;
+        const matchKey = Object.keys(savedDiscounts).find(k => k.toLowerCase() === codeKey.toLowerCase());
+        if (matchKey) savedInfo = savedDiscounts[matchKey];
+        else if (ticket?.bookingId && savedDiscounts[ticket.bookingId]) savedInfo = savedDiscounts[ticket.bookingId];
+      } catch (e) {}
+
+      let savedTicketLocal = null;
+      try {
+        const storedT = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+        savedTicketLocal = storedT.find(t => {
+          const c = String(t.ticketCode || t.code || t.bookingId || t.id || "").toLowerCase();
+          return c === cleanCode.toLowerCase();
+        });
+      } catch (e) {}
+
+      if (!ticket && (savedInfo.customerName || savedTicketLocal || savedInfo.seatPrice)) {
+        ticket = {
+          ticketCode: cleanCode,
+          ...savedTicketLocal,
+          ...savedInfo
+        };
       }
 
       let rawOrders = [];
@@ -82,7 +109,7 @@ export function useQuetQRDoAn() {
       let dateBooked = "";
       let isExpired = false;
       let expiredMessage = "";
-      let orderIdForPickup = null;
+      let orderIdForPickup = cleanCode;
 
       if (ticket) {
         const bookingId = ticket.bookingId ?? ticket.BookingId;
@@ -91,14 +118,37 @@ export function useQuetQRDoAn() {
           booking = await fetchBookingById(bookingId);
         }
 
-        customerName = ticket.customerName || booking?.customerName || "Khách hàng";
-        dateBooked = ticket.dateBooked || booking?.bookingDate || ticket.startTimeDate || "—";
-        if (dateBooked && dateBooked !== "—") {
-          dateBooked = new Date(dateBooked).toLocaleString("vi-VN");
-        }
+        customerName =
+          ticket.customerName ||
+          savedInfo.customerName ||
+          savedTicketLocal?.customerName ||
+          booking?.customerName ||
+          ticket.email ||
+          savedInfo.email ||
+          "Khách hàng";
+
+        const rawDate =
+          ticket.dateBooked ||
+          savedInfo.createdAt ||
+          savedTicketLocal?.paymentDate ||
+          savedTicketLocal?.createdAt ||
+          booking?.bookingDate ||
+          ticket.startTimeDate ||
+          ticket.createdAt;
+
+        dateBooked = rawDate ? new Date(rawDate).toLocaleString("vi-VN") : "—";
 
         // Check showtime expiration for ticket food (only valid BEFORE and DURING showtime)
-        const rawStartTime = ticket.startTime || ticket.showtime || ticket.showTime || ticket.startTimeDate || booking?.startTime || booking?.showtime || booking?.bookingDate;
+        const rawStartTime =
+          ticket.startTime ||
+          savedInfo.startTime ||
+          ticket.showtime ||
+          ticket.showTime ||
+          ticket.startTimeDate ||
+          booking?.startTime ||
+          booking?.showtime ||
+          booking?.bookingDate;
+
         const rawEndTime = ticket.endTime || ticket.showtimeEnd || ticket.endTimeDate || booking?.endTime;
 
         let startDate = rawStartTime ? new Date(rawStartTime) : null;
@@ -119,6 +169,23 @@ export function useQuetQRDoAn() {
           if (rawOrders.length > 0) {
             orderIdForPickup = rawOrders[0].orderId;
           }
+        }
+
+        // Nếu rawOrders từ API chưa có, lấy từ foodsList lưu cục bộ trên vé
+        const localFoodsList =
+          (savedInfo.foodsList && savedInfo.foodsList.length > 0) ? savedInfo.foodsList :
+          (savedTicketLocal?.foodsList && savedTicketLocal.foodsList.length > 0) ? savedTicketLocal.foodsList :
+          (ticket.foodsList && ticket.foodsList.length > 0) ? ticket.foodsList :
+          (ticket.foods && ticket.foods.length > 0) ? ticket.foods :
+          (ticket.bookingFoods && ticket.bookingFoods.length > 0) ? ticket.bookingFoods : [];
+
+        if (rawOrders.length === 0 && localFoodsList.length > 0) {
+          rawOrders = [{
+            orderId: ticket.ticketCode || cleanCode,
+            items: localFoodsList,
+            status: ticket.status === "Completed" ? "Completed" : "Pending"
+          }];
+          orderIdForPickup = ticket.ticketCode || cleanCode;
         }
       } else {
         // 2. Nếu không tìm thấy vé (hoặc nhập mã đơn dạng CB73 / 73 / BILL73), tìm trực tiếp trong danh sách Orders
@@ -142,7 +209,6 @@ export function useQuetQRDoAn() {
           rawOrders = [foundOrder];
           orderIdForPickup = foundOrder.orderId;
           
-          // Fix customer name showing employee's cinema name
           customerName = (foundOrder.userName === "Đồng Khởi" || foundOrder.userName?.startsWith("Cinema") || !foundOrder.userName) ? "Khách mua tại quầy" : foundOrder.userName;
           
           const rawOrderDate = foundOrder.orderDate || foundOrder.createdAt || foundOrder.date;
@@ -179,29 +245,44 @@ export function useQuetQRDoAn() {
 
         for (const order of rawOrders) {
           const isCompleted = localStorage.getItem("food_pickup_status_" + order.orderId) === "Completed" || order.status === "Completed";
-          const itemsArray = normalizeArray(order.items || order.orderDetails || order.concessionDetails);
+          const itemsArray = normalizeArray(order.items || order.orderDetails || order.concessionDetails || order.foodsList);
           
           for (const item of itemsArray) {
             const foodId = item.foodId || item.FoodId;
             const comboId = item.comboId || item.ComboId;
-            const qty = item.quantity || item.Quantity || 1;
+            const qty = Number(item.quantity ?? item.Quantity ?? item.qty ?? item.count ?? 1);
 
-            let name = "Bắp nước";
-            let price = 0;
+            let name =
+              item.name ||
+              item.foodName ||
+              item.comboName ||
+              item.FoodName ||
+              item.ComboName ||
+              item.itemName ||
+              item.ItemName ||
+              item.combo?.comboName ||
+              item.food?.foodName ||
+              "";
 
-            if (foodId) {
-              const f = allFoods.find(food => String(food.foodId || food.FoodId || food.id || food.Id) === String(foodId));
-              if (f) {
-                name = f.foodName || f.FoodName || "Đồ ăn lẻ";
-                price = f.price || f.Price || 0;
-              }
-            } else if (comboId) {
-              const c = allCombos.find(combo => String(combo.comboId || combo.ComboId || combo.id || combo.Id) === String(comboId));
-              if (c) {
-                name = c.comboName || c.ComboName || "Combo";
-                price = c.price || c.Price || 0;
+            let price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? 0);
+
+            if (!name) {
+              if (foodId) {
+                const f = allFoods.find(food => String(food.foodId || food.FoodId || food.id || food.Id) === String(foodId));
+                if (f) {
+                  name = f.foodName || f.FoodName || "Đồ ăn lẻ";
+                  if (!price) price = Number(f.price || f.Price || 0);
+                }
+              } else if (comboId) {
+                const c = allCombos.find(combo => String(combo.comboId || combo.ComboId || combo.id || combo.Id) === String(comboId));
+                if (c) {
+                  name = c.comboName || c.ComboName || "Combo";
+                  if (!price) price = Number(c.price || c.Price || 0);
+                }
               }
             }
+
+            if (!name) name = "Combo / Đồ ăn";
 
             resolvedItems.push({
               orderId: order.orderId,

@@ -988,7 +988,12 @@ export function useBanVe() {
   }
 
   function calculateSeatPrice(seat) {
-    return getSeatPrice(seat, selectedShowtime);
+    try {
+      return getSeatPrice(seat, selectedShowtime);
+    } catch (err) {
+      console.warn("Lỗi tính giá ghế:", err?.message || err);
+      return 0;
+    }
   }
 
   function handleFoodQuantityChange(item, delta) {

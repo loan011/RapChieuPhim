@@ -645,18 +645,44 @@ export function getShowtimeTimeCategory(selectedShowtime) {
   return "night";
 }
 
-export function getSeatPrice(seat, selectedShowtime, rooms = []) {
+export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) {
+  if (!seat) {
+    throw new Error("Không tìm thấy thông tin ghế!");
+  }
+
+  // 1. Nếu vé đã được mua trước đó có lưu giá cố định tại thời điểm mua (Ticket.Price / BookingDetail.Price), giữ nguyên giá cũ
   const explicitPrice = Number(seat?.price ?? seat?.Price);
   if (!isNaN(explicitPrice) && explicitPrice > 0) {
     return explicitPrice;
   }
 
-  const roomId = getShowtimeRoomId(selectedShowtime);
-  let room = Array.isArray(rooms) ? rooms.find((r) => String(getRoomId(r)) === String(roomId)) : null;
+  if (!selectedShowtime) {
+    throw new Error("Không tìm thấy thông tin suất chiếu!");
+  }
+
+  // 2. Ghế phải thuộc đúng phòng của suất chiếu (showtimeId + seatId)
+  const showtimeRoomId = getShowtimeRoomId(selectedShowtime);
+  const seatRoomId = seat?.roomId ?? seat?.RoomId;
+  if (
+    seatRoomId !== undefined &&
+    seatRoomId !== null &&
+    seatRoomId !== "" &&
+    seatRoomId !== 0 &&
+    showtimeRoomId !== undefined &&
+    showtimeRoomId !== null &&
+    showtimeRoomId !== "" &&
+    showtimeRoomId !== 0
+  ) {
+    if (String(seatRoomId) !== String(showtimeRoomId)) {
+      throw new Error("Ghế không thuộc phòng chiếu của suất chiếu này!");
+    }
+  }
+
+  // 3. Lấy loại phòng (RoomType: 2D, 3D, IMAX, 4DX)
+  let room = Array.isArray(rooms) ? rooms.find((r) => String(getRoomId(r)) === String(showtimeRoomId)) : null;
   if (!room && selectedShowtime) {
     room = selectedShowtime.room || selectedShowtime.Room;
   }
-
   const roomType = String(
     selectedShowtime?.roomType ?? 
     selectedShowtime?.RoomType ?? 
@@ -667,26 +693,84 @@ export function getSeatPrice(seat, selectedShowtime, rooms = []) {
     "2D"
   ).trim().toUpperCase();
 
+  // 4. Lấy loại ghế (SeatType: Standard/Thường, VIP, Couple/Sweetbox)
   const seatTypeRaw = String(getSeatType(seat) || seat?.seatType || seat?.SeatType || "").trim().toLowerCase();
   const seatRow = String(getSeatRow(seat) || seat?.seatRow || seat?.SeatRow || "").trim().toUpperCase();
 
   const isCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi") || seatRow === "D" || seatRow === "E";
   const isVip = seatTypeRaw.includes("vip") || seatRow === "C";
+  const seatCategory = isCouple ? "couple" : (isVip ? "vip" : "standard");
 
-  // Check 07:00 - 21:00 (day) vs 21:00 - 00:00 (night)
+  // 5. Xác định ngày thường / cuối tuần & khung giờ
+  const showtimeDateStr = getShowtimeDate(selectedShowtime) || new Date().toISOString();
+  const showtimeDate = new Date(showtimeDateStr);
+  const dayOfWeek = isNaN(showtimeDate.getTime()) ? new Date().getDay() : showtimeDate.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
   const timeCategory = getShowtimeTimeCategory(selectedShowtime);
   const isNight = timeCategory === "night";
 
-  if (roomType.includes("IMAX")) {
-    if (isCouple) return isNight ? 80000 : 65000; // 160k / 130k per pair
-    if (isVip) return isNight ? 220000 : 180000;
-    return isNight ? 180000 : 150000; // Standard IMAX
+  // 6. Tìm bảng giá đang hiệu lực (Active Ticket Pricing)
+  let activePricings = pricings;
+  if ((!activePricings || activePricings.length === 0) && typeof localStorage !== "undefined") {
+    try {
+      activePricings = JSON.parse(localStorage.getItem("active_ticket_pricings") || "[]");
+    } catch (e) {}
   }
 
-  // 2D / 3D / 4DX
-  if (isCouple) return isNight ? 80000 : 65000; // 160k / 130k per pair
-  if (isVip) return isNight ? 120000 : 90000;
-  return isNight ? 90000 : 70000; // Standard 2D/3D/4DX
+  let calculatedPrice = null;
+
+  if (Array.isArray(activePricings) && activePricings.length > 0) {
+    const found = activePricings.find((p) => {
+      const pRoomType = String(p.roomType || p.RoomType || "").trim().toUpperCase();
+      const pSeatType = String(p.seatType || p.SeatType || "").trim().toLowerCase();
+      const pIsWeekend = p.isWeekend ?? p.IsWeekend;
+      const matchRoom = !pRoomType || pRoomType === roomType;
+      const matchSeat = !pSeatType || pSeatType.includes(seatCategory);
+      const matchWeekend = pIsWeekend === undefined || Boolean(pIsWeekend) === isWeekend;
+      return matchRoom && matchSeat && matchWeekend;
+    });
+
+    if (found) {
+      calculatedPrice = Number(found.price || found.Price);
+    }
+  }
+
+  // Nếu không có trong activePricings, tra theo cấu hình bảng giá rạp
+  if (calculatedPrice === null || isNaN(calculatedPrice) || calculatedPrice <= 0) {
+    const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? selectedShowtime?.cinemaId ?? selectedShowtime?.CinemaId ?? "1";
+    const roomName = room?.roomName ?? room?.RoomName ?? "";
+    const customStdKey = `room_price_std_wd_c${roomCinemaId}_r${roomName}`;
+    const customVipKey = `room_price_vip_wd_c${roomCinemaId}_r${roomName}`;
+    const customCpKey = `room_price_cp_wd_c${roomCinemaId}_r${roomName}`;
+
+    if (seatCategory === "standard" && typeof localStorage !== "undefined" && localStorage.getItem(customStdKey)) {
+      calculatedPrice = Number(localStorage.getItem(customStdKey).replace(/\./g, "").trim());
+    } else if (seatCategory === "vip" && typeof localStorage !== "undefined" && localStorage.getItem(customVipKey)) {
+      calculatedPrice = Number(localStorage.getItem(customVipKey).replace(/\./g, "").trim());
+    } else if (seatCategory === "couple" && typeof localStorage !== "undefined" && localStorage.getItem(customCpKey)) {
+      calculatedPrice = Number(localStorage.getItem(customCpKey).replace(/\./g, "").trim());
+    }
+
+    if (!calculatedPrice || isNaN(calculatedPrice) || calculatedPrice <= 0) {
+      if (roomType.includes("IMAX")) {
+        if (isCouple) calculatedPrice = isNight ? 80000 : 65000;
+        else if (isVip) calculatedPrice = isNight ? 220000 : (isWeekend ? 200000 : 180000);
+        else calculatedPrice = isNight ? 180000 : (isWeekend ? 160000 : 150000);
+      } else {
+        if (isCouple) calculatedPrice = isNight ? 80000 : 65000;
+        else if (isVip) calculatedPrice = isNight ? 120000 : (isWeekend ? 100000 : 90000);
+        else calculatedPrice = isNight ? 90000 : (isWeekend ? 80000 : 70000);
+      }
+    }
+  }
+
+  // BÁO LỖI NẾU KHÔNG TÌM THẤY BẢNG GIÁ, KHÔNG ĐƯỢC TỰ ĐỘNG ĐỂ GIÁ BẰNG 0
+  if (!calculatedPrice || isNaN(calculatedPrice) || calculatedPrice <= 0) {
+    throw new Error(`Không tìm thấy bảng giá áp dụng cho phòng ${roomType || "chưa xác định"} và loại ghế ${seatCategory}!`);
+  }
+
+  return calculatedPrice;
 }
 
 export function groupSeatsByRow(seats) {
@@ -1282,7 +1366,14 @@ export function useBooking() {
 
   const totalAmount = useMemo(() => {
     return selectedSeats.reduce(
-      (sum, seat) => sum + getSeatPrice(seat, selectedShowtime, rooms),
+      (sum, seat) => {
+        try {
+          return sum + getSeatPrice(seat, selectedShowtime, rooms);
+        } catch (e) {
+          console.warn("Lỗi tính giá ghế:", e);
+          return sum;
+        }
+      },
       0
     );
   }, [selectedSeats, selectedShowtime, rooms]);

@@ -38,6 +38,7 @@ import {
   getRoomCinemaId
 } from "../Seat/useSeat";
 import { updateSeat } from "../Seat/seatService";
+import { fetchActiveTicketPricings } from "../../Ticket/ticketPriceService";
 
 export default function RoomAdmin() {
   // ── 1. Room Hook ──
@@ -127,16 +128,16 @@ export default function RoomAdmin() {
         setPriceStdWeekend(stdWe || (isImax ? "180.000" : "90.000"));
         setPriceVipWeekday(vipWd || (isImax ? "180.000" : "90.000"));
         setPriceVipWeekend(vipWe || (isImax ? "220.000" : "120.000"));
-        setPriceCoupleWeekday(cpWd || "130.000");
-        setPriceCoupleWeekend(cpWe || "160.000");
+        setPriceCoupleWeekday(cpWd || (isImax ? "200.000" : "130.000"));
+        setPriceCoupleWeekend(cpWe || (isImax ? "250.000" : "160.000"));
       } else {
         const isImax = String(roomForm.roomType).toUpperCase().includes("IMAX");
         setPriceStdWeekday(isImax ? "150.000" : "70.000");
         setPriceStdWeekend(isImax ? "180.000" : "90.000");
         setPriceVipWeekday(isImax ? "180.000" : "90.000");
         setPriceVipWeekend(isImax ? "220.000" : "120.000");
-        setPriceCoupleWeekday("130.000");
-        setPriceCoupleWeekend("160.000");
+        setPriceCoupleWeekday(isImax ? "200.000" : "130.000");
+        setPriceCoupleWeekend(isImax ? "250.000" : "160.000");
       }
     }
   }, [showRoomModal, isEditingRoom, roomForm?.cinemaId, roomForm?.roomName]);
@@ -150,8 +151,8 @@ export default function RoomAdmin() {
         setPriceStdWeekend("180.000");
         setPriceVipWeekday("180.000");
         setPriceVipWeekend("220.000");
-        setPriceCoupleWeekday("130.000");
-        setPriceCoupleWeekend("160.000");
+        setPriceCoupleWeekday("200.000");
+        setPriceCoupleWeekend("250.000");
       } else {
         setPriceStdWeekday("70.000");
         setPriceStdWeekend("90.000");
@@ -369,6 +370,18 @@ export default function RoomAdmin() {
     }
   }
   
+  const [activePricings, setActivePricings] = useState([]);
+
+  useEffect(() => {
+    fetchActiveTicketPricings()
+      .then(data => {
+        if (Array.isArray(data)) setActivePricings(data);
+        else if (Array.isArray(data?.data)) setActivePricings(data.data);
+        else if (Array.isArray(data?.$values)) setActivePricings(data.$values);
+      })
+      .catch(() => null);
+  }, []);
+
   const getRoomPriceText = (room, type) => {
     const cId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
     const rName = room?.roomName ?? room?.RoomName ?? "";
@@ -380,15 +393,51 @@ export default function RoomAdmin() {
     const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
     const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
 
-    const roomType = room?.roomType ?? room?.RoomType ?? "2D";
-    const isImax = String(roomType).toUpperCase().includes("IMAX");
+    const roomType = String(room?.roomType ?? room?.RoomType ?? "2D").trim().toUpperCase();
+    const isImax = roomType.includes("IMAX");
 
     const formatShorthand = (val, def) => {
-      if (!val) return def;
-      // Strip ".000" or similar for shorthand view in table
-      return String(val).replace(/\.000/g, "k").replace(/\.500/g, "k5").replace(/ đ/g, "");
+      if (val === undefined || val === null || val === "") return def;
+      const num = Number(String(val).replace(/[^0-9]/g, ""));
+      if (!isNaN(num) && num > 0) {
+        return `${Math.round(num / 1000)}k`;
+      }
+      return String(val).replace(/\.000/g, "k").replace(/000$/g, "k").replace(/ đ/g, "");
     };
 
+    // 1. Ưu tiên tra cứu từ dữ liệu Database TICKETPRICING
+    let dbPricings = activePricings;
+    if ((!dbPricings || dbPricings.length === 0) && typeof localStorage !== "undefined") {
+      try {
+        dbPricings = JSON.parse(localStorage.getItem("active_ticket_pricings") || "[]");
+      } catch(e) {}
+    }
+
+    if (Array.isArray(dbPricings) && dbPricings.length > 0) {
+      const getDbPrice = (seatTypeStr, dayTypeStr) => {
+        const item = dbPricings.find(p => {
+          const pRoom = String(p.roomType || p.RoomType || "").trim().toUpperCase();
+          const pSeat = String(p.seatType || p.SeatType || "").trim().toLowerCase();
+          const pDay = String(p.dayType || p.DayType || (p.isWeekend ? "Weekend" : "Weekday")).trim().toLowerCase();
+          
+          const matchRoom = (isImax && pRoom.includes("IMAX")) || (!isImax && pRoom === roomType) || (!pRoom && roomType === "2D");
+          const matchSeat = pSeat.includes(seatTypeStr.toLowerCase());
+          const matchDay = pDay === dayTypeStr.toLowerCase();
+          return matchRoom && matchSeat && matchDay;
+        });
+        return item ? Number(item.price || item.Price) : null;
+      };
+
+      const targetSeat = type === "std" ? "Standard" : (type === "vip" ? "VIP" : "Couple");
+      const dbWd = getDbPrice(targetSeat, "Weekday");
+      const dbWe = getDbPrice(targetSeat, "Weekend");
+
+      if (dbWd && dbWe) {
+        return `${formatShorthand(dbWd, "0")} / ${formatShorthand(dbWe, "0")}`;
+      }
+    }
+
+    // 2. Tra cứu từ custom local storage hoặc fallback theo chuẩn DB
     if (type === "std") {
       if (stdWd || stdWe) {
         return `${formatShorthand(stdWd, "0")} / ${formatShorthand(stdWe, "0")}`;
@@ -405,7 +454,7 @@ export default function RoomAdmin() {
       if (cpWd || cpWe) {
         return `${formatShorthand(cpWd, "0")} / ${formatShorthand(cpWe, "0")}`;
       }
-      return "130k / 160k";
+      return isImax ? "200k / 250k" : "130k / 160k";
     }
     return "—";
   };
@@ -505,7 +554,7 @@ export default function RoomAdmin() {
     }
     if (type === "couple" || type === "sweetbox") {
       if (cpWd || cpWe) return `${cpWd || "0"} đ / ${cpWe || "0"} đ`;
-      return "130.000 đ / 160.000 đ";
+      return isImax ? "200.000 đ / 250.000 đ" : "130.000 đ / 160.000 đ";
     }
     // Standard
     if (stdWd || stdWe) return `${stdWd || "0"} đ / ${stdWe || "0"} đ`;
