@@ -68,12 +68,23 @@ function Movies() {
     return createDateRange(new Date(), 7);
   }, []);
 
+  const sortedAreas = useMemo(() => {
+    if (!areas || areas.length === 0) return [];
+    return [...areas].sort((a, b) => {
+      const nameA = String(getAreaName(a) || "").toLowerCase();
+      const nameB = String(getAreaName(b) || "").toLowerCase();
+      if (nameA.includes("đồng khởi") || nameA.includes("dong khoi")) return -1;
+      if (nameB.includes("đồng khởi") || nameB.includes("dong khoi")) return 1;
+      return nameA.localeCompare(nameB, "vi");
+    });
+  }, [areas]);
+
   const handleBuyTicketFromDetail = () => {
     if (!selectedTrailer) return;
     const targetMovie = selectedTrailer;
     closeTrailer();
     setSelectedMovieForShowtimes(targetMovie);
-    setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+    setModalAreaId(selectedAreaId || (sortedAreas[0] ? getAreaId(sortedAreas[0]) : ""));
     setModalDate(modalDates[0].iso);
   };
 
@@ -411,7 +422,7 @@ function Movies() {
                             className="buy-ticket-btn"
                             onClick={() => {
                               setSelectedMovieForShowtimes(movie);
-                              setModalAreaId(selectedAreaId || (areas[0] ? getAreaId(areas[0]) : ""));
+                              setModalAreaId(selectedAreaId || (sortedAreas[0] ? getAreaId(sortedAreas[0]) : ""));
                               setModalDate(modalDates[0].iso);
                             }}
                           >
@@ -731,11 +742,10 @@ function Movies() {
               <div className="modal-filter-group">
                 <label>Cinema:</label>
                 <select
-                  value={modalAreaId}
+                  value={modalAreaId || (sortedAreas[0] ? getAreaId(sortedAreas[0]) : "")}
                   onChange={(e) => setModalAreaId(e.target.value)}
                 >
-                  <option value="">Tất cả Cinema</option>
-                  {areas.map((area) => (
+                  {sortedAreas.map((area) => (
                     <option key={getAreaId(area)} value={getAreaId(area)}>
                       {getAreaName(area)}
                     </option>

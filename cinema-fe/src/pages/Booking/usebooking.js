@@ -564,8 +564,15 @@ export function isSeatAvailable(seat, availableSeats, selectedShowtime = null, s
       const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
       const st = saved.seats?.[seatId]?.status || saved.seats?.[seatCode]?.status;
       if (st === "maintenance" || st === "inactive") return false;
+      if (saved.rows) {
+        const rVal = saved.rows[seatRow] || saved.rows[seatRow.toUpperCase()] || saved.rows[seatRow.toLowerCase()];
+        if (rVal === "inactive" || rVal === "maintenance") return false;
+      }
     } catch (e) {}
   }
+
+  const isActive = seat?.isActive ?? seat?.IsActive;
+  if (isActive === false) return false;
 
   try {
     const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
