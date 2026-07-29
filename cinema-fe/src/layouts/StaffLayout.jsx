@@ -18,11 +18,9 @@ import { getMyProfile } from "../pages/Admin/Personnel/employeeService";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
-  { to: "/staff/quan-ly-ve", label: "Quản lý vé", icon: <MdReceiptLong /> },
   { to: "/staff/combo", label: "Đồ ăn", icon: <MdFastfood /> },
   { to: "/staff/quet-qr", label: "Quét QR Vé", icon: <MdQrCodeScanner /> },
   { to: "/staff/quet-qr-do-an", label: "Quét QR Đồ ăn", icon: <MdFastfood /> },
-  { to: "/staff/quan-ly-do-an", label: "Quản lý Đồ ăn", icon: <MdReceiptLong /> },
   { to: "/staff/doanh-thu", label: "Doanh thu ngày và kết ca", icon: <MdBarChart /> },
 ];
 

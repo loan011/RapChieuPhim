@@ -588,7 +588,7 @@ export function useBanVe() {
           clearInterval(intervalId);
           
           // Force activate tickets to Active in DB
-          await forceActivateTickets(paymentTicketIds);
+          forceActivateTickets(paymentTicketIds);
           
           // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
           recordStaffSaleToLocalStorage(paymentTicketIds, tempReceipt?.totalAmount, "QR");
@@ -1209,8 +1209,8 @@ export function useBanVe() {
           localStorage.setItem("order_cinema_map", JSON.stringify(map));
         } catch(e) {}
 
-        // Force activate tickets to Active state immediately
-        await forceActivateTickets(bookedIds);
+        // Force activate tickets to Active state in background
+        forceActivateTickets(bookedIds);
 
         // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
         recordStaffSaleToLocalStorage(bookedIds, totalAmount, "Cash");
@@ -1459,27 +1459,40 @@ export function useBanVe() {
       .catch((e) => console.error(e));
   }
 
-  async function forceActivateTickets(bookedIds) {
+  function forceActivateTickets(bookedIds) {
     if (!bookedIds || bookedIds.length === 0) return;
-    try {
-      const ticketsList = await getTicketList();
-      const normalizedTickets = Array.isArray(ticketsList) ? ticketsList : (ticketsList?.$values || []);
-      const matchIds = bookedIds.map(Number);
-      const myTickets = normalizedTickets.filter(t => {
-        const bId = Number(t.bookingId ?? t.BookingId ?? 0);
-        return matchIds.includes(bId);
-      });
 
-      for (const ticket of myTickets) {
-        const ticketId = ticket.ticketId ?? ticket.TicketId;
-        if (ticketId) {
-          await updateTicket(ticketId, { status: "Active" });
-          console.log(`Force activated ticket ${ticketId} to Active`);
+    setTimeout(async () => {
+      try {
+        const matchIds = bookedIds.map(Number);
+        const todayStr = new Date().toISOString().split("T")[0];
+        
+        let ticketsList = null;
+        try {
+          const res = await cachedFetch(`${getApiUrl()}/Tickets?date=${todayStr}`);
+          ticketsList = res?.data ?? res?.Data ?? res?.$values ?? res;
+        } catch (e) {}
+
+        if (!Array.isArray(ticketsList) || ticketsList.length === 0) {
+          ticketsList = await getTicketList().catch(() => []);
         }
+
+        const normalizedTickets = Array.isArray(ticketsList) ? ticketsList : (ticketsList?.$values || []);
+        const myTickets = normalizedTickets.filter(t => {
+          const bId = Number(t.bookingId ?? t.BookingId ?? 0);
+          return matchIds.includes(bId);
+        });
+
+        await Promise.all(
+          myTickets.map(ticket => {
+            const ticketId = ticket.ticketId ?? ticket.TicketId;
+            return ticketId ? updateTicket(ticketId, { status: "Active" }).catch(() => {}) : Promise.resolve();
+          })
+        );
+      } catch (err) {
+        console.warn("Non-blocking forceActivateTickets warn:", err);
       }
-    } catch (err) {
-      console.error("Force activating tickets failed:", err);
-    }
+    }, 50);
   }
 
   function recordStaffSaleToLocalStorage(bookedIds, totalAmt, paymentMethodStr) {

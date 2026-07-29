@@ -2,8 +2,65 @@ import { useState, useEffect } from "react";
 import { fetchTicketByCode, fetchOrdersByBooking, fetchAllOrders, fetchBookingById, updateOrderStatus } from "./QuetQRDoAnService";
 import { getTicketList } from "../../Admin/Ticket/ticketService";
 import { cachedFetch, getApiUrl } from "../../../services/apiHelper";
+import { getUser } from "../../../services/authService";
 
 const API_URL = getApiUrl();
+
+const CINEMA_NAME_MAP = {
+  "1": "CinemaHCM Đồng Khởi",
+  "2": "CinemaHCM Bến Thành",
+  "3": "CinemaHCM Tân Bình",
+  "4": "CinemaHCM Vincom Thủ Đức"
+};
+
+function formatCinemaDisplayName(cinemaId, cinemaName, cinemasList = []) {
+  const cId = String(cinemaId || "").trim();
+  const cName = String(cinemaName || "").trim();
+
+  if (cName && !cName.toLowerCase().startsWith("chi nhánh id") && !cName.toLowerCase().startsWith("chi nhánh ")) {
+    return cName;
+  }
+
+  if (cId && Array.isArray(cinemasList) && cinemasList.length > 0) {
+    const found = cinemasList.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === cId);
+    if (found) {
+      const name = found.cinemaName || found.CinemaName || found.name || found.Name;
+      if (name) return name;
+    }
+  }
+
+  if (cId && CINEMA_NAME_MAP[cId]) {
+    return CINEMA_NAME_MAP[cId];
+  }
+
+  return cName || (cId ? `Chi nhánh ${cId}` : "chi nhánh khác");
+}
+
+function getStaffCinema() {
+  try {
+    const user = getUser();
+    if (!user) return { cinemaId: "", cinemaName: "" };
+    const cId = String(user.cinemaId || user.CinemaId || user.cinemaID || user.CinemaID || "").trim();
+    const cName = String(user.cinemaName || user.CinemaName || user.cinema || user.Cinema || "").trim();
+    return { cinemaId: cId, cinemaName: cName };
+  } catch (e) {
+    return { cinemaId: "", cinemaName: "" };
+  }
+}
+
+function isSameCinema(staffCinema, orderCinemaId, orderCinemaName) {
+  if (!staffCinema || !staffCinema.cinemaId) return true; // Admin/no branch restriction
+  const sId = String(staffCinema.cinemaId).trim();
+  const oId = String(orderCinemaId || "").trim();
+  if (oId && sId === oId) return true;
+
+  const sName = String(staffCinema.cinemaName || "").toLowerCase().trim();
+  const oName = String(orderCinemaName || "").toLowerCase().trim();
+  if (sName && oName) {
+    if (sName === oName || sName.includes(oName) || oName.includes(sName)) return true;
+  }
+  return false;
+}
 
 function normalizeArray(arr) {
   if (!arr) return [];
@@ -110,10 +167,11 @@ export function useQuetQRDoAn() {
       let isExpired = false;
       let expiredMessage = "";
       let orderIdForPickup = cleanCode;
+      let booking = null;
+      let foundOrder = null;
 
       if (ticket) {
         const bookingId = ticket.bookingId ?? ticket.BookingId;
-        let booking = null;
         if (bookingId) {
           booking = await fetchBookingById(bookingId);
         }
@@ -193,7 +251,7 @@ export function useQuetQRDoAn() {
         const rawCode = cleanCode.toLowerCase();
         const numericIdStr = cleanCode.replace(/\D/g, "");
 
-        const foundOrder = allOrders.find(o => {
+        foundOrder = allOrders.find(o => {
           const oIdStr = String(o.orderId || "");
           return (
             (numericIdStr && oIdStr === numericIdStr) ||
@@ -227,6 +285,33 @@ export function useQuetQRDoAn() {
           }
         }
       }
+
+      // ─── KIỂM TRA CHI NHÁNH ĐƠN HÀNG ĐỒ ĂN ────────────────────────────────────
+      const staffCinema = getStaffCinema();
+
+      const orderCinemaId = String(
+        ticket?.cinemaId || ticket?.CinemaId ||
+        booking?.cinemaId || booking?.CinemaId ||
+        booking?.showTime?.room?.cinemaId ||
+        foundOrder?.cinemaId || foundOrder?.CinemaId ||
+        foundOrder?.booking?.showTime?.room?.cinemaId ||
+        foundOrder?.staff?.cinemaId ||
+        savedInfo?.cinemaId ||
+        savedTicketLocal?.cinemaId ||
+        ""
+      );
+
+      const orderCinemaName =
+        ticket?.cinemaName || ticket?.CinemaName ||
+        booking?.cinemaName ||
+        foundOrder?.cinemaName || foundOrder?.CinemaName ||
+        foundOrder?.staff?.cinemaName ||
+        savedInfo?.cinemaName ||
+        savedTicketLocal?.cinemaName ||
+        "";
+
+      const isCrossChain = Boolean(staffCinema.cinemaId && !isSameCinema(staffCinema, orderCinemaId, orderCinemaName));
+      // ──────────────────────────────────────────────────────────────────────────
 
       if (rawOrders.length === 0) {
         setOrders([]);
@@ -306,12 +391,21 @@ export function useQuetQRDoAn() {
           movieTitle: ticket ? (ticket.movieTitle || "Vé xem phim") : "Đơn hàng đồ ăn bán tại quầy",
           roomName: ticket ? (ticket.roomName || "Rạp") : "Tại Quầy",
           seatCode: ticket ? (ticket.seatCode || "N/A") : "N/A",
-          totalAmount
+          totalAmount,
+          cinemaName: orderCinemaName,
+          isCrossChain: isCrossChain
         });
 
         setOrders(resolvedItems);
 
-        if (isExpired) {
+        if (isCrossChain) {
+          const staffDisplayName = formatCinemaDisplayName(staffCinema.cinemaId, staffCinema.cinemaName);
+          const orderDisplayName = formatCinemaDisplayName(orderCinemaId, orderCinemaName);
+          setStatusMessage({
+            type: "error",
+            text: `🚫 Đơn hàng/vé ${cleanCode} KHÔNG THUỘC CHI NHÁNH NÀY! Đơn hàng được mua tại: "${orderDisplayName}". Nhân viên chỉ có thể phát đồ ăn tại chi nhánh của mình ("${staffDisplayName}").`
+          });
+        } else if (isExpired) {
           setStatusMessage({ type: "error", text: expiredMessage });
         } else {
           const allCompleted = resolvedItems.every(item => item.status === "Completed");
@@ -344,6 +438,14 @@ export function useQuetQRDoAn() {
   async function handleConfirmPickup(orderId) {
     const actualOrderId = (orderId && typeof orderId !== "object") ? orderId : (orders[0]?.orderId || ticketDetails?.orderId);
     if (!actualOrderId) return;
+
+    if (ticketDetails?.isCrossChain) {
+      setStatusMessage({
+        type: "error",
+        text: "🚫 Đơn hàng thuộc chi nhánh khác! Không thể giao đồ ăn tại đây."
+      });
+      return;
+    }
 
     const hasExpired = orders.some(o => o.isExpired);
     if (hasExpired) {

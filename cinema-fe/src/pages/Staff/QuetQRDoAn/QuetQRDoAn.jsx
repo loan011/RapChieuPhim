@@ -255,13 +255,19 @@ export default function StaffQuetQRDoAn() {
                 </div>
 
                 {!orders.every(item => item.status === "Completed") && (
-                  <button
-                    onClick={handleConfirmPickup}
-                    disabled={loading}
-                    className="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50"
-                  >
-                    <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN GIAO ĐỒ ĂN CHO KHÁCH"}
-                  </button>
+                  ticketDetails?.isCrossChain ? (
+                    <div className="w-full mt-4 bg-red-50 border border-red-300 text-red-700 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                      🚫 ĐƠN HÀNG THUỘC CHI NHÁNH KHÁC — KHÔNG THỂ GIAO ĐỒ ĂN
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleConfirmPickup}
+                      disabled={loading}
+                      className="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 cursor-pointer"
+                    >
+                      <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN GIAO ĐỒ ĂN CHO KHÁCH"}
+                    </button>
+                  )
                 )}
               </div>
             )}

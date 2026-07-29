@@ -1,14 +1,36 @@
 import { useState, useEffect } from "react";
 import { fetchTickets, validateTicket, fetchTicketByCode, fetchBookingById } from "./QuetQRService";
 
+const CINEMA_NAME_MAP = {
+  "1": "CinemaHCM Đồng Khởi",
+  "2": "CinemaHCM Bến Thành",
+  "3": "CinemaHCM Tân Bình",
+  "4": "CinemaHCM Vincom Thủ Đức"
+};
+
+function formatCinemaDisplayName(cinemaId, cinemaName) {
+  const cId = String(cinemaId || "").trim();
+  const cName = String(cinemaName || "").trim();
+
+  if (cName && !cName.toLowerCase().startsWith("chi nhánh id") && !cName.toLowerCase().startsWith("chi nhánh ")) {
+    return cName;
+  }
+
+  if (cId && CINEMA_NAME_MAP[cId]) {
+    return CINEMA_NAME_MAP[cId];
+  }
+
+  return cName || (cId ? `Chi nhánh ${cId}` : "chi nhánh khác");
+}
+
 // Lấy thông tin chi nhánh của nhân viên đang đăng nhập
 function getStaffCinema() {
   try {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    return {
-      cinemaId: String(user?.cinemaId || user?.CinemaId || ""),
-      cinemaName: String(user?.cinemaName || user?.CinemaName || user?.cinema?.cinemaName || user?.cinema?.name || "").toLowerCase().trim()
-    };
+    const cId = String(user?.cinemaId || user?.CinemaId || "").trim();
+    const rawName = String(user?.cinemaName || user?.CinemaName || user?.cinema?.cinemaName || user?.cinema?.name || "").trim();
+    const cName = formatCinemaDisplayName(cId, rawName);
+    return { cinemaId: cId, cinemaName: cName };
   } catch (e) {
     return { cinemaId: "", cinemaName: "" };
   }
@@ -26,8 +48,9 @@ function isSameCinema(staffCinema, ticketCinemaId, ticketCinemaName) {
 
   // So sánh theo tên
   const tName = String(ticketCinemaName || "").toLowerCase().trim();
-  if (staffCinema.cinemaName && tName) {
-    return tName.includes(staffCinema.cinemaName) || staffCinema.cinemaName.includes(tName);
+  const sName = String(staffCinema.cinemaName || "").toLowerCase().trim();
+  if (sName && tName) {
+    return tName.includes(sName) || sName.includes(tName);
   }
 
   return true; // Không xác định được → cho qua
@@ -218,8 +241,8 @@ export function useQuetQR() {
         setTicketDetails(enrichedDetails);
 
         if (isCrossChain) {
-          const staffDisplayName = staffCinema.cinemaName || `Chi nhánh ID ${staffCinema.cinemaId}`;
-          const ticketDisplayName = ticketCinemaName || (ticketCinemaId ? `Chi nhánh ID ${ticketCinemaId}` : "chi nhánh khác");
+          const staffDisplayName = formatCinemaDisplayName(staffCinema.cinemaId, staffCinema.cinemaName);
+          const ticketDisplayName = formatCinemaDisplayName(ticketCinemaId, ticketCinemaName);
           setStatusMessage({
             type: "error",
             text: `🚫 Vé ${found.ticketCode || found.TicketCode || cleanCode} KHÔNG THUỘC CHI NHÁNH NÀY! Vé được đặt tại: "${ticketDisplayName}". Nhân viên chỉ có thể quét vé tại chi nhánh của mình ("${staffDisplayName}").`
