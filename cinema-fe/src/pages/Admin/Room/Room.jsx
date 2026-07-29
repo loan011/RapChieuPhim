@@ -537,6 +537,7 @@ export default function RoomAdmin() {
                       onChange={handleRoomChange}
                       className="rm-input"
                       required
+                      disabled={!!selectedCinemaFilter}
                     >
                       <option value="">-- Chọn chi nhánh --</option>
                       {cinemaOptions.map((opt) => (
@@ -556,7 +557,7 @@ export default function RoomAdmin() {
                     value={roomForm.roomName}
                     onChange={handleRoomChange}
                     className="rm-input"
-                    placeholder="Nhập tên phòng chiếu"
+                    placeholder="Nhập số"
                     required
                     disabled={isEditingRoom}
                   />
@@ -677,20 +678,6 @@ export default function RoomAdmin() {
                       />
                     </div>
                   </div>
-                  
-                  {/* Đồng bộ giá cho tất cả các phòng cùng loại */}
-                  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input
-                      type="checkbox"
-                      id="syncAllRooms"
-                      checked={syncAllRooms}
-                      onChange={(e) => setSyncAllRooms(e.target.checked)}
-                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                    />
-                    <label htmlFor="syncAllRooms" style={{ fontSize: "0.83rem", color: "#e2e8f0", cursor: "pointer", userSelect: "none" }}>
-                      Đồng bộ giá này cho tất cả phòng cùng loại ({roomForm.roomType || "2D"}) của chi nhánh
-                    </label>
-                  </div>
                 </div>
 
                 <div className="rm-modal-actions">
@@ -739,8 +726,8 @@ export default function RoomAdmin() {
                   </div>
                 )}
 
-                {editSeatId === null && (
-                  <div className="rm-field-row">
+                {editSeatId === null ? (
+                  <div className="rm-field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                     <div className="rm-field">
                       <label className="rm-label">Hàng Ghế <span className="rm-required">*</span></label>
                       <select
@@ -749,7 +736,6 @@ export default function RoomAdmin() {
                         onChange={handleSeatChange}
                         className="rm-input"
                         required
-                        disabled={editSeatId !== null}
                       >
                         <option value="">-- Hàng --</option>
                         {SEAT_ROW_OPTIONS.map((row) => (
@@ -761,22 +747,49 @@ export default function RoomAdmin() {
                     </div>
 
                     <div className="rm-field">
-                      <label className="rm-label">Số Ghế <span className="rm-required">*</span></label>
+                      <label className="rm-label">Từ Ghế <span className="rm-required">*</span></label>
                       <select
                         name="seatNumber"
                         value={String(seatForm.seatNumber)}
                         onChange={handleSeatChange}
                         className="rm-input"
                         required
-                        disabled={editSeatId !== null}
                       >
-                        <option value="">-- Số --</option>
+                        <option value="">-- Từ số --</option>
                         {SEAT_NUMBER_OPTIONS.map((number) => (
                           <option key={number.value} value={number.value}>
                             {number.label}
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="rm-field">
+                      <label className="rm-label">Đến Ghế</label>
+                      <select
+                        name="endSeatNumber"
+                        value={String(seatForm.endSeatNumber || seatForm.seatNumber || "")}
+                        onChange={handleSeatChange}
+                        className="rm-input"
+                      >
+                        <option value="">-- Đến số --</option>
+                        {SEAT_NUMBER_OPTIONS.filter(n => Number(n.value) >= (Number(seatForm.seatNumber) || 1)).map((number) => (
+                          <option key={number.value} value={number.value}>
+                            {number.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rm-field-row">
+                    <div className="rm-field">
+                      <label className="rm-label">Hàng Ghế</label>
+                      <input className="rm-input" value={seatForm.seatRow} disabled />
+                    </div>
+                    <div className="rm-field">
+                      <label className="rm-label">Số Ghế</label>
+                      <input className="rm-input" value={seatForm.seatNumber} disabled />
                     </div>
                   </div>
                 )}
@@ -888,10 +901,11 @@ export default function RoomAdmin() {
               {editMode === "row" && (() => {
                 const TC = { standard:"#6b7280", vip:"#eab308", couple:"#ec4899", mixed:"#a78bfa", maintenance:"#9ca3af" };
                 const OPTS = [
-                  { value:"standard", label:"Thuong (Standard)" },
+                  { value:"standard", label:"Thường (Standard)" },
                   { value:"vip", label:"VIP" },
                   { value:"couple", label:"Couple" },
-                  { value:"maintenance", label:"Bao tri (tat ca)" }
+                  { value:"maintenance", label:"Bảo trì (Tất cả)" },
+                  { value:"inactive", label:"Ẩn hàng này (Chỉ ẩn, giữ DB)" }
                 ];
                 return (
                   <table style={{ width:"100%", borderCollapse:"collapse" }}>
@@ -901,6 +915,7 @@ export default function RoomAdmin() {
                         <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Ghế</th>
                         <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Loại hiện tại</th>
                         <th style={{ padding:"8px 10px", textAlign:"left", color:"#9ca3af", fontSize:"0.8rem" }}>Đổi loại hàng</th>
+                        <th style={{ padding:"8px 10px", textAlign:"right", color:"#9ca3af", fontSize:"0.8rem" }}>Ẩn / Xóa hàng</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -908,7 +923,7 @@ export default function RoomAdmin() {
                         const dt = getRowDisplayType(row);
                         const rv = layoutRowTypes[row.rowName] || dt;
                         const col = TC[dt] || "#6b7280";
-                        const dtLabel = dt==="mixed"?"Hon hop":dt==="standard"?"Thuong":dt==="vip"?"VIP":dt==="couple"?"Couple":"Bao tri";
+                        const dtLabel = dt==="mixed"?"Hỗn hợp":dt==="standard"?"Thường":dt==="vip"?"VIP":dt==="couple"?"Couple":dt==="inactive"?"Đã ẩn":"Bảo trì";
                         return (
                           <tr key={row.rowName} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", background: i%2===0?"transparent":"rgba(255,255,255,0.02)" }}>
                             <td style={{ padding:"10px 10px" }}>
@@ -928,7 +943,20 @@ export default function RoomAdmin() {
                                   setLayoutRowTypes(prev => ({ ...prev, [row.rowName]: val }));
                                   setSeatOverrides(prev => {
                                     const next = { ...prev };
-                                    row.seats.forEach(s => { delete next[String(getSeatId(s)||"")]; });
+                                    row.seats.forEach(s => {
+                                      const sId = String(getSeatId(s)||"");
+                                      const sCode = getSeatCode(s);
+                                      if (next[sId]) {
+                                        const { status, ...rest } = next[sId];
+                                        if (Object.keys(rest).length > 0) next[sId] = rest;
+                                        else delete next[sId];
+                                      }
+                                      if (next[sCode]) {
+                                        const { status, ...rest } = next[sCode];
+                                        if (Object.keys(rest).length > 0) next[sCode] = rest;
+                                        else delete next[sCode];
+                                      }
+                                    });
                                     return next;
                                   });
                                   setLayoutError("");
@@ -936,9 +964,42 @@ export default function RoomAdmin() {
                                 style={{ background:"#1f2937", border:"1.5px solid #374151", color:"#e2e8f0",
                                   borderRadius:7, padding:"5px 10px", fontSize:"0.83rem", cursor:"pointer", outline:"none" }}
                               >
-                                {dt==="mixed" && <option value="">— giu nguyen —</option>}
+                                {dt==="mixed" && <option value="">— giữ nguyên —</option>}
                                 {OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                               </select>
+                            </td>
+                            <td style={{ padding:"10px 10px", textAlign:"right" }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLayoutRowTypes(prev => ({ ...prev, [row.rowName]: "inactive" }));
+                                  setSeatOverrides(prev => {
+                                    const next = { ...prev };
+                                    row.seats.forEach(s => {
+                                      const sId = String(getSeatId(s) || '');
+                                      next[sId] = { ...(next[sId] || {}), status: 'inactive' };
+                                    });
+                                    return next;
+                                  });
+                                  setLayoutError('');
+                                }}
+                                style={{
+                                  background: "rgba(239, 68, 68, 0.15)",
+                                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                                  color: "#fca5a5",
+                                  borderRadius: "6px",
+                                  padding: "5px 10px",
+                                  fontSize: "0.78rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                                title="Ẩn hàng ghế này khỏi sơ đồ (Vẫn giữ nguyên dữ liệu trong CSDL)"
+                              >
+                                <MdDelete size={14} /> Ẩn hàng
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1043,11 +1104,7 @@ export default function RoomAdmin() {
 
             {/* Actions */}
             <div className="rm-modal-actions" style={{ flexShrink:0, padding:"14px 20px 18px", margin:0, borderTop:"1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ fontSize:"0.8rem", color:"#6b7280", alignSelf:"center" }}>
-                {Object.keys(seatOverrides).length > 0 && (
-                  <span style={{ color:"#818cf8" }}>{Object.keys(seatOverrides).length} ghế được sửa riêng</span>
-                )}
-              </div>
+              <div style={{ flex: 1 }}></div>
               <button type="button" className="rm-btn-cancel" onClick={() => setShowLayoutEditor(false)} disabled={layoutSaving}>Hủy</button>
               <button type="button" className="rm-btn-submit"
                 style={{ background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", gap:6 }}

@@ -181,7 +181,24 @@ export async function loadBookingSeatsData(selectedShowtime) {
     };
   }
 
-  const seats = await getSeatsByRoomId(roomId);
+  let seats = await getSeatsByRoomId(roomId);
+
+  if (Array.isArray(seats) && seats.length > 0) {
+    const seenMap = new Map();
+    const uniqueSeats = [];
+    for (const seat of seats) {
+      const row = String(getSeatRow(seat)).toUpperCase();
+      const num = String(getSeatNumber(seat));
+      const code = (row && num && num !== "0") ? `${row}${num}` : String(getSeatId(seat) || "");
+      if (code && !seenMap.has(code)) {
+        seenMap.set(code, true);
+        seat.roomId = roomId;
+        seat.RoomId = roomId;
+        uniqueSeats.push(seat);
+      }
+    }
+    seats = uniqueSeats;
+  }
 
   let availableSeats = [];
 
@@ -494,6 +511,30 @@ export function getSeatNumber(seat) {
 }
 
 export function getSeatType(seat) {
+  const roomId = seat?.roomId || seat?.RoomId || seat?.room?.roomId || seat?.room?.RoomId;
+  const sId = String(getSeatId(seat) || "");
+  const row = String(getSeatRow(seat)).toUpperCase();
+  const num = String(getSeatNumber(seat));
+  const code = (row && num) ? `${row}${num}` : sId;
+
+  if (roomId && typeof localStorage !== "undefined") {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      if (sId && saved.seats && saved.seats[sId]?.type) {
+        return saved.seats[sId].type;
+      }
+      if (code && saved.seats && saved.seats[code]?.type) {
+        return saved.seats[code].type;
+      }
+      if (row && saved.rows) {
+        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
+        if (rType && rType !== "mixed") {
+          return rType;
+        }
+      }
+    } catch (e) {}
+  }
+
   return (
     seat?.seatType ||
     seat?.SeatType ||
@@ -516,6 +557,15 @@ export function isSeatAvailable(seat, availableSeats, selectedShowtime = null, s
   const seatRow = String(getSeatRow(seat)).toUpperCase();
   const seatNum = String(getSeatNumber(seat));
   const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+
+  const roomId = seat?.roomId || seat?.RoomId || seat?.room?.roomId || selectedShowtime?.roomId || selectedShowtime?.RoomId;
+  if (roomId && typeof localStorage !== "undefined") {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      const st = saved.seats?.[seatId]?.status || saved.seats?.[seatCode]?.status;
+      if (st === "maintenance" || st === "inactive") return false;
+    } catch (e) {}
+  }
 
   try {
     const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");

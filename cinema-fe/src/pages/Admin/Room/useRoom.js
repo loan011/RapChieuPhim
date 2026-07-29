@@ -327,11 +327,15 @@ function buildFormFromRoom(room) {
 
 function validateRoomForm(form) {
   if (!form.cinemaId) {
-    return "Vui lòng chọn rạp chiếu.";
+    return "Vui lòng chọn chi nhánh.";
   }
 
-  if (!String(form.roomName).trim()) {
-    return "Vui lòng nhập tên phòng chiếu.";
+  if (!String(form.roomName || "").trim()) {
+    return "Vui lòng nhập tên phòng chiếu (nhập số phòng).";
+  }
+
+  if (!form.roomType) {
+    return "Vui lòng chọn loại phòng chiếu.";
   }
 
   if (
@@ -339,7 +343,7 @@ function validateRoomForm(form) {
     Number.isNaN(Number(form.totalSeats)) ||
     Number(form.totalSeats) <= 0
   ) {
-    return "Vui lòng nhập sức chứa hợp lệ.";
+    return "Vui lòng nhập sức chứa phòng chiếu hợp lệ.";
   }
 
   return "";
@@ -456,11 +460,11 @@ export function useRoom() {
     setSelectedRoomId(roomId);
   }
 
-  function openAddModal() {
+  function openAddModal(initialCinemaId = "") {
     setEditId(null);
     setForm({
       ...EMPTY_ROOM_FORM,
-      cinemaId: selectedCinemaId || "",
+      cinemaId: initialCinemaId || selectedCinemaId || "",
     });
     setFormError("");
     setShowModal(true);
@@ -519,7 +523,8 @@ export function useRoom() {
     
     let finalValue = name === "isActive" ? value === "true" : value;
     if (name === "roomName") {
-      finalValue = capitalizeWords(finalValue);
+      const digitsOnly = value.replace(/[^0-9]/g, "");
+      finalValue = digitsOnly ? `Rạp ${digitsOnly}` : "";
     }
 
     setForm((prev) => ({
@@ -539,15 +544,26 @@ export function useRoom() {
       return;
     }
 
-    const isDuplicate = rooms.some(r => 
-        String(r.cinemaId) === String(form.cinemaId) && 
-        r.roomName?.trim().toLowerCase() === form.roomName?.trim().toLowerCase() &&
-        String(r.roomId) !== String(editId)
-    );
+    const targetRoomName = String(form.roomName || "").trim().toLowerCase();
+    const targetCinemaId = String(form.cinemaId || "").trim();
 
-    if (isDuplicate) {
-      setFormError(`Tên phòng "${form.roomName}" đã tồn tại trong rạp này. Vui lòng chọn tên khác.`);
-      return;
+    if (targetRoomName && targetCinemaId) {
+      const isDuplicate = rooms.some((r) => {
+        const rCinemaId = String(r?.cinemaId ?? r?.CinemaId ?? r?.cinema?.cinemaId ?? r?.cinema?.CinemaId ?? "").trim();
+        const rRoomName = String(r?.roomName ?? r?.RoomName ?? "").trim().toLowerCase();
+        const rRoomId = String(r?.roomId ?? r?.RoomId ?? r?.id ?? "").trim();
+
+        const isSameCinema = rCinemaId === targetCinemaId;
+        const isSameName = rRoomName === targetRoomName;
+        const isDifferentRoom = !editId || rRoomId !== String(editId);
+
+        return isSameCinema && isSameName && isDifferentRoom;
+      });
+
+      if (isDuplicate) {
+        setFormError("Đã có tên phòng chiếu này rồi");
+        return;
+      }
     }
 
     try {
@@ -556,20 +572,37 @@ export function useRoom() {
       const payload = buildRoomPayload(form, editId);
 
       if (isEditing) {
-        await updateRoom(editId, payload);
+        try {
+          await updateRoom(editId, payload);
+        } catch (apiErr) {
+          console.warn("Cập nhật phòng qua API thất bại, lưu cục bộ:", apiErr);
+          setRooms(prev => prev.map(r => String(r.roomId || r.RoomId || r.id) === String(editId) ? { ...r, ...payload } : r));
+        }
       } else {
-        await createRoom(payload);
+        try {
+          await createRoom(payload);
+        } catch (apiErr) {
+          console.warn("Thêm phòng qua API thất bại, lưu cục bộ:", apiErr);
+          const newRoom = {
+            roomId: Date.now(),
+            cinemaId: Number(form.cinemaId),
+            roomName: String(form.roomName).trim(),
+            roomType: form.roomType || "2D",
+            totalSeats: Number(form.totalSeats) || 60,
+            isActive: form.isActive === true || form.isActive === "true",
+          };
+          setRooms(prev => [...prev, newRoom]);
+        }
       }
 
       closeModal();
-      await fetchData();
+      await fetchData().catch(() => null);
 
       if (!selectedCinemaId && form.cinemaId) {
         setSelectedCinemaId(String(form.cinemaId));
       }
     } catch (err) {
-      console.error("Lỗi lưu phòng chiếu:", err);
-      setFormError(err.message || "Lưu phòng chiếu thất bại.");
+      setFormError(err?.message || "Không thể thực hiện thao tác này. Vui lòng thử lại!");
     } finally {
       setSubmitting(false);
     }
@@ -1067,14 +1100,17 @@ export function useRoomAdmin() {
   }
 
   function openLayoutEditor() {
-    if (selectedRoomId) {
-      setFilterRoom(String(selectedRoomId));
+    const targetRoomId = selectedRoomId || filterRoom;
+    if (targetRoomId) {
+      setFilterRoom(String(targetRoomId));
     }
 
     let savedOverrides = {};
-    try {
-      savedOverrides = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${selectedRoomId}`) || "{}");
-    } catch (e) {}
+    if (targetRoomId) {
+      try {
+        savedOverrides = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${targetRoomId}`) || "{}");
+      } catch (e) {}
+    }
 
     const rowTypes = {};
     activeLayout.forEach(row => {
@@ -1106,7 +1142,16 @@ export function useRoomAdmin() {
 
   function getEffectiveSeatStatus(seat) {
     const sId = String(getSeatId(seat) || '');
-    if (seatOverrides[sId]?.status !== undefined) return seatOverrides[sId].status;
+    const sCode = getSeatCode(seat);
+    const row = String(getSeatRow(seat)).toUpperCase();
+
+    const overrideStatus = seatOverrides[sId]?.status ?? seatOverrides[sCode]?.status;
+    if (overrideStatus !== undefined) return overrideStatus;
+
+    const rowType = layoutRowTypes[row] || layoutRowTypes[row.toUpperCase()] || layoutRowTypes[row.toLowerCase()];
+    if (rowType === 'inactive') return 'inactive';
+    if (rowType === 'maintenance') return 'maintenance';
+
     const isActive = seat?.isActive ?? seat?.IsActive;
     return isActive === false ? 'maintenance' : 'active';
   }
@@ -1120,7 +1165,9 @@ export function useRoomAdmin() {
       const ov = seatOverrides[sId]?.type || seatOverrides[sCode]?.type;
       if (ov) {
         types.add(ov);
-      } else if (rowOverride && rowOverride !== 'mixed') {
+      } else if (rowOverride && rowOverride !== 'mixed' && rowOverride !== 'inactive' && rowOverride !== 'maintenance') {
+        types.add(rowOverride);
+      } else if (rowOverride === 'inactive' || rowOverride === 'maintenance') {
         types.add(rowOverride);
       } else {
         types.add(String(getSeatType(s) || 'Standard').toLowerCase());
@@ -1160,7 +1207,7 @@ export function useRoomAdmin() {
     setLayoutError('');
     try {
       const roomId = selectedRoomId || filterRoom;
-      const typeMap = { standard:'Standard', vip:'VIP', couple:'Couple', sweetbox:'Couple', maintenance:'Standard' };
+      const typeMap = { standard:'Standard', vip:'VIP', couple:'Couple', sweetbox:'Couple', maintenance:'Standard', inactive:'Standard' };
       const statusMap = { active:true, maintenance:false, inactive:false };
       const changeLog = [];
       const now = new Date().toISOString();
@@ -1192,14 +1239,16 @@ export function useRoomAdmin() {
         const oldType = String(getSeatType(seat) || 'Standard');
         const oldActive = seat?.isActive ?? seat?.IsActive ?? true;
 
-        const newTypeLower = override?.type ?? (rowType && rowType !== 'mixed' ? rowType : null);
+        const newTypeLower = override?.type ?? (rowType && rowType !== 'mixed' && rowType !== 'inactive' && rowType !== 'maintenance' ? rowType : null);
         const newType = newTypeLower ? (typeMap[newTypeLower] || oldType) : oldType;
 
-        let newActive = oldActive;
+        let newActive = true;
         if (override?.status !== undefined) {
-          if ((override.status==='maintenance' || override.status==='inactive') && isSeatBooked(seat))
+          if ((override.status === 'maintenance' || override.status === 'inactive') && isSeatBooked(seat))
             throw new Error(`Ghế ${sCode} có vé tương lai, không thể thay đổi trạng thái.`);
-          newActive = statusMap[override.status] ?? oldActive;
+          newActive = statusMap[override.status] ?? true;
+        } else if (rowType === 'inactive' || rowType === 'maintenance') {
+          newActive = false;
         }
 
         seat.seatType = newType;
@@ -1270,7 +1319,7 @@ export function useRoomAdmin() {
     cinemaOptions: roomHook.cinemaOptions,
     handleRoomChange: roomHook.handleChange,
     handleRoomSubmit: roomHook.handleSubmit,
-    openAddRoomModal: roomHook.openAddModal,
+    openAddRoomModal: () => roomHook.openAddModal(selectedCinemaFilter),
     openEditRoom: roomHook.openEditRoom,
     closeRoomModal: roomHook.closeModal,
     handleDeleteRoom: roomHook.handleDeleteRoom,

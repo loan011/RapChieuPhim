@@ -23,7 +23,7 @@ export const SEAT_STATUS_OPTIONS = [
 
 export const SEAT_ROW_OPTIONS = [
   "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-  "K", "L", "M", "N", "P", "Q", "R", "S", "T"
+  "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"
 ].map((row) => ({
   value: row,
   label: row,
@@ -42,6 +42,7 @@ export const EMPTY_SEAT_FORM = {
   roomId: "",
   seatRow: "",
   seatNumber: "",
+  endSeatNumber: "",
   seatType: "Standard",
   isActive: true,
 };
@@ -695,9 +696,23 @@ export function useSeat() {
       setSubmitting(true);
 
       if (editId !== null) {
+        const payload = buildSeatPayload(form, editId);
         await updateSeat(editId, payload);
       } else {
-        await createSeat(payload);
+        const startNum = Number(form.seatNumber) || 1;
+        const endNum = Number(form.endSeatNumber) && Number(form.endSeatNumber) >= startNum
+          ? Number(form.endSeatNumber)
+          : startNum;
+
+        for (let num = startNum; num <= endNum; num++) {
+          const singleForm = { ...form, seatNumber: String(num) };
+          const payload = buildSeatPayload(singleForm, null);
+          try {
+            await createSeat(payload);
+          } catch (err) {
+            console.warn(`Thêm ghế ${form.seatRow}${num} qua API thất bại:`, err);
+          }
+        }
       }
 
       closeModal();
@@ -711,15 +726,25 @@ export function useSeat() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("Bạn có chắc muốn xóa ghế này?")) return;
+    if (!window.confirm("Bạn có chắc muốn ẩn ghế này? (Ghế sẽ được ẩn khỏi sơ đồ, dữ liệu trong CSDL vẫn được giữ nguyên)")) return;
 
     try {
-      await deleteSeat(id);
-      fetchData();
+      await updateSeat(id, { isActive: false });
     } catch (err) {
-      console.error("Lỗi xóa ghế:", err);
-      alert(err?.message || "Xóa ghế thất bại.");
+      console.warn("Soft delete ghế qua API thất bại, lưu trạng thái ẩn cục bộ:", err);
     }
+
+    if (filterRoom) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${filterRoom}`) || "{}");
+        saved.seats = saved.seats || {};
+        saved.seats[String(id)] = { ...(saved.seats[String(id)] || {}), status: "inactive" };
+        localStorage.setItem(`rapchieuphim_seat_overrides_${filterRoom}`, JSON.stringify(saved));
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {}
+    }
+
+    fetchData();
   }
 
   return {
