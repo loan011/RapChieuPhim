@@ -1,6 +1,38 @@
 import { useState, useEffect } from "react";
 import { fetchTickets, validateTicket, fetchTicketByCode, fetchBookingById } from "./QuetQRService";
 
+// Lấy thông tin chi nhánh của nhân viên đang đăng nhập
+function getStaffCinema() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    return {
+      cinemaId: String(user?.cinemaId || user?.CinemaId || ""),
+      cinemaName: String(user?.cinemaName || user?.CinemaName || user?.cinema?.cinemaName || user?.cinema?.name || "").toLowerCase().trim()
+    };
+  } catch (e) {
+    return { cinemaId: "", cinemaName: "" };
+  }
+}
+
+// Kiểm tra xem vé có thuộc chi nhánh của nhân viên không
+function isSameCinema(staffCinema, ticketCinemaId, ticketCinemaName) {
+  // Nếu không xác định được chi nhánh nhân viên → cho qua (tránh chặn nhầm)
+  if (!staffCinema.cinemaId && !staffCinema.cinemaName) return true;
+
+  // So sánh theo ID (ưu tiên)
+  if (staffCinema.cinemaId && ticketCinemaId) {
+    return String(ticketCinemaId) === staffCinema.cinemaId;
+  }
+
+  // So sánh theo tên
+  const tName = String(ticketCinemaName || "").toLowerCase().trim();
+  if (staffCinema.cinemaName && tName) {
+    return tName.includes(staffCinema.cinemaName) || staffCinema.cinemaName.includes(tName);
+  }
+
+  return true; // Không xác định được → cho qua
+}
+
 export function useQuetQR() {
   const [ticketCode, setTicketCode] = useState("");
   const [ticketDetails, setTicketDetails] = useState(null);
@@ -96,12 +128,12 @@ export function useQuetQR() {
           booking = await fetchBookingById(bId);
         }
 
-        // Check showtime expiration
-        const rawStartTime = savedInfo.showDate && savedInfo.startTime
+        // Check showtime expiration - uu tien du lieu tu API
+        const rawStartTime = found.showtimeStart || found.ShowtimeStart || (savedInfo.showDate && savedInfo.startTime
           ? `${savedInfo.showDate}T${savedInfo.startTime}`
-          : (found.startTime || found.showtime || found.showTime || booking?.startTime || booking?.showtime || booking?.bookingDate);
+          : (found.startTime || found.showtime || found.showTime || booking?.startTime || booking?.showtime || booking?.bookingDate));
 
-        const rawEndTime = found.endTime || found.showtimeEnd || booking?.endTime;
+        const rawEndTime = found.showtimeEnd || found.ShowtimeEnd || found.endTime || found.showtimeEnd || booking?.endTime;
 
         let isShowtimeExpired = false;
         let startDate = rawStartTime ? new Date(rawStartTime) : null;
@@ -116,31 +148,61 @@ export function useQuetQR() {
           }
         }
 
-        const seatPriceVal = savedInfo.seatPrice > 0
-          ? savedInfo.seatPrice
-          : (found.price || found.ticketPrice || (found.seatPrice > 0 ? found.seatPrice : 70000));
+        // Lấy giá vé chính xác từ API (ticket.Price / ticket.price)
+        const ticketPriceFromApi = Number(found.price || found.Price || found.ticketPrice || 0);
 
-        const seatCodeVal = savedInfo.seatCode ||
+        const seatPriceVal = ticketPriceFromApi > 0
+          ? ticketPriceFromApi
+          : (savedInfo.seatPrice > 0 ? savedInfo.seatPrice : 0);
+
+        const seatCodeVal = found.seatCode || found.SeatCode || savedInfo.seatCode ||
           (savedInfo.seatsList && savedInfo.seatsList.join(", ")) ||
-          found.seatCode || found.seatNumber || "A11";
+          found.seatNumber || "";
 
-        const foodsVal = (savedInfo.foodsList && savedInfo.foodsList.length > 0)
-          ? savedInfo.foodsList
-          : (found.foods || found.bookingFoods || (savedTicketLocal?.foodsList || []));
+        const foodsVal = (found.foods && found.foods.length > 0)
+          ? found.foods
+          : ((savedInfo.foodsList && savedInfo.foodsList.length > 0)
+            ? savedInfo.foodsList
+            : (found.bookingFoods || (savedTicketLocal?.foodsList || [])));
 
-        const showDateVal = savedInfo.showDate || found.showDate || savedTicketLocal?.showDate || "27/7/2026";
-        const startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "09:00";
+        // Tính ngày giờ chiếu từ dữ liệu API
+        let showDateVal = "";
+        let startTimeVal = "";
+        if (startDate && !isNaN(startDate.getTime())) {
+          showDateVal = startDate.toLocaleDateString("vi-VN");
+          startTimeVal = startDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+        } else {
+          showDateVal = savedInfo.showDate || found.showDate || savedTicketLocal?.showDate || "";
+          startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "";
+        }
 
         const discountAmtVal = savedInfo.discountAmount || savedInfo.totalDiscountAmount || found.discountAmount || 0;
-        const discountCodeVal = savedInfo.discountCode || found.discountCode || "SALE10";
-        const finalTotalVal = savedInfo.finalTotalAmount || found.totalAmount || savedTicketLocal?.totalAmount || 109250;
+        const discountCodeVal = savedInfo.discountCode || found.discountCode || "";
+
+        // Tổng tiền = giá vé (chính xác từ API) + đồ ăn - giảm giá
+        const foodTotal = foodsVal.reduce((sum, f) => sum + (Number(f.price || f.Price || 0) * Number(f.quantity || f.Quantity || 1)), 0);
+        const finalTotalVal = seatPriceVal > 0
+          ? (seatPriceVal + foodTotal - discountAmtVal)
+          : (savedInfo.finalTotalAmount || found.totalAmount || savedTicketLocal?.totalAmount || 0);
+
+        // ─── KIỂM TRA CHI NHÁNH ────────────────────────────────────────────────
+        const staffCinema = getStaffCinema();
+        const ticketCinemaId = String(
+          found.cinemaId || found.CinemaId ||
+          booking?.cinemaId || booking?.CinemaId ||
+          found.showtime?.room?.cinemaId ||
+          ""
+        );
+        const ticketCinemaName = savedInfo.cinemaName || found.cinemaName || found.CinemaName || booking?.cinemaName || "";
+        const isCrossChain = Boolean(staffCinema.cinemaId && !isSameCinema(staffCinema, ticketCinemaId, ticketCinemaName));
+        // ───────────────────────────────────────────────────────────────────────
 
         const enrichedDetails = {
           ...found,
-          ticketCode: found.ticketCode || cleanCode,
-          movieTitle: savedInfo.movieTitle || found.movieTitle || booking?.movieTitle || "Hành Trình Của Moana",
-          roomName: savedInfo.roomName || found.roomName || booking?.roomName || "Rạp 3",
-          cinemaName: savedInfo.cinemaName || found.cinemaName || "CinemaHCM Đồng Khởi",
+          ticketCode: found.ticketCode || found.TicketCode || cleanCode,
+          movieTitle: found.movieTitle || found.MovieTitle || savedInfo.movieTitle || booking?.movieTitle || "N/A",
+          roomName: found.roomName || found.RoomName || savedInfo.roomName || booking?.roomName || "N/A",
+          cinemaName: ticketCinemaName || found.cinemaName || found.CinemaName || "N/A",
           seatCode: seatCodeVal,
           seatPrice: seatPriceVal,
           showDate: showDateVal,
@@ -149,10 +211,22 @@ export function useQuetQR() {
           discountAmount: discountAmtVal,
           discountCode: discountCodeVal,
           finalTotalAmount: finalTotalVal,
-          customerName: found.customerName || booking?.customerName || "Rabbit",
-          isExpired: isShowtimeExpired
+          customerName: found.customerName || found.CustomerName || booking?.customerName || "Khách",
+          isExpired: isShowtimeExpired,
+          isCrossChain: isCrossChain
         };
         setTicketDetails(enrichedDetails);
+
+        if (isCrossChain) {
+          const staffDisplayName = staffCinema.cinemaName || `Chi nhánh ID ${staffCinema.cinemaId}`;
+          const ticketDisplayName = ticketCinemaName || (ticketCinemaId ? `Chi nhánh ID ${ticketCinemaId}` : "chi nhánh khác");
+          setStatusMessage({
+            type: "error",
+            text: `🚫 Vé ${found.ticketCode || found.TicketCode || cleanCode} KHÔNG THUỘC CHI NHÁNH NÀY! Vé được đặt tại: "${ticketDisplayName}". Nhân viên chỉ có thể quét vé tại chi nhánh của mình ("${staffDisplayName}").`
+          });
+          setLoading(false);
+          return;
+        }
 
         if (isShowtimeExpired) {
           setStatusMessage({
@@ -208,6 +282,13 @@ export function useQuetQR() {
       setStatusMessage({
         type: "error",
         text: "❌ Không thể check-in vé đã hết hạn suất chiếu!"
+      });
+      return;
+    }
+    if (ticketDetails.isCrossChain) {
+      setStatusMessage({
+        type: "error",
+        text: "🚫 Không thể check-in vé thuộc chi nhánh khác!"
       });
       return;
     }

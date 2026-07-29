@@ -228,7 +228,7 @@ export default function StaffQuetQR() {
 
                   <div>Thông tin vé:</div>
                   <div className="font-bold text-green-700 text-right">
-                    1 x Vé ({(ticketDetails.seatPrice || 70000).toLocaleString("vi-VN")}đ - {ticketDetails.seatCode || "A11"})
+                    1 x Vé ({(ticketDetails.seatPrice || ticketDetails.price || 0).toLocaleString("vi-VN")}đ - {ticketDetails.seatCode || "N/A"})
                   </div>
 
                   {ticketDetails.foods && ticketDetails.foods.length > 0 && (
@@ -238,7 +238,7 @@ export default function StaffQuetQR() {
                       <div className="text-right" style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
                         {ticketDetails.foods.map((food, idx) => (
                           <span key={idx} className="font-bold text-orange-600">
-                            {food.name} x{food.quantity || 1} {(food.price ? (Number(food.price) * Number(food.quantity || 1)).toLocaleString("vi-VN") + "đ" : "45.000đ")}
+                            {food.name} x{food.quantity || 1} {(food.price ? (Number(food.price) * Number(food.quantity || 1)).toLocaleString("vi-VN") + "đ" : "0đ")}
                           </span>
                         ))}
                       </div>
@@ -247,7 +247,7 @@ export default function StaffQuetQR() {
 
                   {ticketDetails.discountAmount > 0 && (
                     <>
-                      <div>Giảm giá ({ticketDetails.discountCode || "SALE10"}):</div>
+                      <div>Giảm giá ({ticketDetails.discountCode || "VOUCHER"}):</div>
                       <div className="font-bold text-green-600 text-right">-{Number(ticketDetails.discountAmount).toLocaleString("vi-VN")}đ</div>
                     </>
                   )}
@@ -255,18 +255,24 @@ export default function StaffQuetQR() {
                   <div className="col-span-2 border-t border-gray-200 my-1"></div>
                   <div className="font-bold text-sm text-gray-900">Tổng cộng:</div>
                   <div className="font-bold text-base text-orange-600 text-right">
-                    {Number(ticketDetails.finalTotalAmount || 109250).toLocaleString("vi-VN")}đ
+                    {Number(ticketDetails.finalTotalAmount ?? ticketDetails.price ?? 0).toLocaleString("vi-VN")}đ
                   </div>
                 </div>
 
                 {ticketDetails.status !== "Used" && ticketDetails.status !== "Đã sử dụng" && (
-                  <button
-                    onClick={handleCheckIn}
-                    disabled={loading}
-                    className="w-full mt-5 bg-green-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-green-700 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-green-100 disabled:opacity-50"
-                  >
-                    <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN CHO VÀO RẠP (CHECK-IN)"}
-                  </button>
+                  ticketDetails.isCrossChain ? (
+                    <div className="w-full mt-5 bg-red-50 border border-red-300 text-red-700 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                      🚫 VÉ THUỘC CHI NHÁNH KHÁC — KHÔNG THỂ CHECK-IN
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={loading}
+                      className="w-full mt-5 bg-green-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-green-700 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-green-100 disabled:opacity-50"
+                    >
+                      <MdCheckCircle className="text-lg" /> {loading ? "Đang xử lý..." : "XÁC NHẬN CHO VÀO RẠP (CHECK-IN)"}
+                    </button>
+                  )
                 )}
               </div>
             )}

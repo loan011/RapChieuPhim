@@ -749,7 +749,6 @@ export default function StaffBanVe() {
             <span className="bv-paid-badge">✓ Đã thanh toán thành công</span>
 
             <div className="bv-receipt-grid">
-              <div><strong>Mã hóa đơn:</strong> {successReceipt.ticketCode}</div>
               <div><strong>Khách hàng:</strong> {successReceipt.customerName}{successReceipt.customerPhone ? ` (${successReceipt.customerPhone})` : ""}</div>
               <div><strong>Phim:</strong> {successReceipt.movieTitle}</div>
               <div><strong>Suất chiếu:</strong> {successReceipt.showtimeDate} {successReceipt.showtimeTime}</div>
