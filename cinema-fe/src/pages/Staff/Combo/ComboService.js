@@ -288,6 +288,74 @@ export async function deductInventory(items) {
   } catch (e) {}
 }
 
+/**
+ * Hoàn lại tồn kho khi hủy đơn hàng - ngược lại của deductInventory
+ */
+export async function restoreInventory(items) {
+  if (!Array.isArray(items) || items.length === 0) return;
+
+  // Load current foods/combos data
+  let allFoods = [];
+  let allCombos = [];
+  try {
+    const [fData, cData] = await Promise.all([
+      cachedFetch(`${API_URL}/Foods/Available`),
+      cachedFetch(`${API_URL}/Combos/Available`)
+    ]);
+    const fUnwrapped = fData?.data ?? fData?.Data ?? fData?.result ?? fData?.Result ?? fData;
+    const cUnwrapped = cData?.data ?? cData?.Data ?? cData?.result ?? cData?.Result ?? cData;
+    allFoods = normalizeArray(fUnwrapped);
+    allCombos = normalizeArray(cUnwrapped);
+  } catch (e) {}
+
+  let overrides = {};
+  try {
+    overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
+  } catch (e) {}
+
+  let activeCinemaId = "1";
+  try {
+    const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+    const cid = userObj.cinemaId ?? userObj.CinemaId;
+    if (cid) activeCinemaId = String(cid);
+  } catch (e) {}
+
+  for (const item of items) {
+    const qty = Number(item.quantity || 1);
+    if (qty <= 0) continue;
+
+    const isFood = item.type === "food" || item.foodId != null;
+    const isCombo = item.type === "combo" || item.comboId != null;
+    const id = item.id ?? item.foodId ?? item.comboId;
+
+    if (!id) continue;
+    const key = `${isFood ? 'food' : 'combo'}_${id}_c${activeCinemaId}`;
+
+    try {
+      if (isFood) {
+        const foodData = allFoods.find(f => String(f.foodId ?? f.FoodId ?? f.id ?? f.Id) === String(id));
+        const baseQty = Number(foodData?.quantity ?? foodData?.Quantity ?? 100);
+        const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+        // Cộng lại số lượng đã trừ khi bán, nhưng không vượt quá baseQty
+        overrides[key] = Math.min(baseQty, currentQty + qty);
+      } else if (isCombo) {
+        const comboData = allCombos.find(c => String(c.comboId ?? c.ComboId ?? c.id ?? c.Id) === String(id));
+        const baseQty = Number(comboData?.quantity ?? comboData?.Quantity ?? 100);
+        const currentQty = overrides[key] !== undefined ? Number(overrides[key]) : baseQty;
+        overrides[key] = Math.min(baseQty, currentQty + qty);
+      }
+    } catch (e) {
+      console.warn("[restoreInventory] Không thể cập nhật tồn kho:", e);
+    }
+  }
+
+  try {
+    localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
+    // Thông báo cho các component cập nhật lại danh sách đồ ăn
+    window.dispatchEvent(new Event("inventoryUpdated"));
+  } catch (e) {}
+}
+
 export async function sellCombo(payload) {
   let staffId = null;
   let cinemaId = null;

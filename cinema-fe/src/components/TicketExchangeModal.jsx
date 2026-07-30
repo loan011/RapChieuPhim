@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { MdSearch, MdClose, MdRefresh, MdCancel, MdCheckCircle, MdWarning, MdPrint, MdConfirmationNumber, MdEventSeat, MdAttachMoney } from "react-icons/md";
 import { getTicketList, updateTicket } from "../pages/Admin/Ticket/ticketService";
 import { getSeatsByRoomId, getAvailableSeats, cancelBooking, getRooms } from "../pages/Booking/bookingService";
+import { restoreInventory } from "../pages/Staff/Combo/ComboService";
+import { getApiUrl, getAuthHeaders } from "../services/apiHelper";
 
 export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) {
   const [ticketCodeInput, setTicketCodeInput] = useState("");
@@ -43,16 +45,29 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
 
         if (bill) {
           const orderId = bill.billCode ? bill.billCode.replace(/\D/g, "") : "";
+          // Xây dựng tên hiển thị từ danh sách đồ ăn
+          const foodItemsLabel = bill.concessions && bill.concessions.length > 0
+            ? bill.concessions.map(c => `${c.name}${c.quantity > 1 ? ` x${c.quantity}` : ""}`).join(", ")
+            : "";
+
           const formatted = {
             ticketCode: bill.billCode,
             code: bill.billCode,
+            billCode: bill.billCode,
             bookingId: bill.bookingId || orderId,
-            orderId: orderId,
+            orderId: bill.billCode?.startsWith("CB") ? bill.billCode.replace(/\D/g, "") : orderId,
             paymentId: bill.paymentId,
             customerName: bill.customerName || "Khách mua tại quầy",
             totalAmount: bill.totalAmount || 0,
             paymentMethod: bill.paymentMethod || "Tiền mặt",
             seatCode: bill.tickets?.[0]?.seatNumber || (bill.concessions?.length > 0 ? "Chỉ mua đồ ăn" : "Không mua vé"),
+            // Tên phim lấy từ vé, hoặc tên đồ ăn nếu là đơn CB
+            movieTitle: bill.tickets?.[0]?.movieTitle || foodItemsLabel || "",
+            roomName: bill.tickets?.[0]?.roomName || "",
+            showtime: bill.tickets?.[0]?.showtime || "",
+            price: bill.tickets?.[0]?.price || bill.ticketSubtotal || 0,
+            amount: bill.totalAmount || 0,
+            concessions: bill.concessions || [],
             status: bill.status || "Active",
             isFoodOnly: !bill.tickets || bill.tickets.length === 0
           };
@@ -359,16 +374,45 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
         localStorage.setItem("cancelled_seat_codes", JSON.stringify(releasedSeats));
       } catch (e) {}
 
-      const orderId = selectedTicket.orderId || (selectedTicket.code && selectedTicket.code.startsWith("CB") ? selectedTicket.code.replace(/\D/g, "") : null);
+      const orderId = selectedTicket.orderId || (selectedTicket.code && selectedTicket.code.startsWith("CB") ? selectedTicket.code.replace(/\D/g, "") : null)
+                    || (selectedTicket.billCode && selectedTicket.billCode.startsWith("CB") ? selectedTicket.billCode.replace(/\D/g, "") : null);
 
       if (orderId) {
         try {
+          // Lấy chi tiết đơn hàng để biết các món cần hoàn tồn kho
+          const orderDetailRes = await fetch(`${getApiUrl()}/Orders/${orderId}`, {
+            headers: getAuthHeaders()
+          }).catch(() => null);
+          
+          if (orderDetailRes && orderDetailRes.ok) {
+            const orderDetail = await orderDetailRes.json().catch(() => null);
+            if (orderDetail) {
+              const items = orderDetail.items?.$values ?? orderDetail.items ?? orderDetail.Items?.$values ?? orderDetail.Items ?? [];
+              if (Array.isArray(items) && items.length > 0) {
+                // Chuẩn hóa items về format mà restoreInventory hiểu được
+                const normalizedItems = items.map(item => ({
+                  id: item.foodId ?? item.FoodId ?? item.comboId ?? item.ComboId,
+                  foodId: item.foodId ?? item.FoodId ?? null,
+                  comboId: item.comboId ?? item.ComboId ?? null,
+                  type: (item.foodId ?? item.FoodId) ? "food" : "combo",
+                  quantity: item.quantity ?? item.Quantity ?? 1
+                }));
+                // Hoàn lại tồn kho
+                await restoreInventory(normalizedItems).catch(e => console.warn("[restoreInventory] lỗi:", e));
+                console.log(`[Hủy đơn] Đã hoàn lại tồn kho cho ${normalizedItems.length} món.`);
+              }
+            }
+          }
+
+          // Hủy đơn trên server
           await fetch(`${getApiUrl()}/Orders/${orderId}/Status`, {
             method: "PUT",
             headers: getAuthHeaders(),
             body: JSON.stringify({ status: "Cancelled" })
           }).catch((err) => console.warn("cancelOrder API error:", err));
-        } catch (e) {}
+        } catch (e) {
+          console.warn("[cancel order] lỗi:", e);
+        }
       }
 
       if (ticketId) {
@@ -482,8 +526,15 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                       MÃ VÉ: {selectedTicket.ticketCode || selectedTicket.code || `VE${selectedTicket.ticketId}`}
                     </span>
                     <h4 className="text-base font-extrabold text-gray-900 mt-1">
-                      {selectedTicket.movieTitle || selectedTicket.movie?.title || "Phim điện ảnh"}
+                      {selectedTicket.movieTitle || selectedTicket.movie?.title ||
+                        (selectedTicket.isFoodOnly ? "Đơn Đồ Ăn / Combo" : "Vé Xem Phim")}
                     </h4>
+                    {(selectedTicket.roomName || selectedTicket.showtime) && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {selectedTicket.roomName && `📍 ${selectedTicket.roomName}`}
+                        {selectedTicket.showtime && ` · ⏰ ${selectedTicket.showtime}`}
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-extrabold ${
@@ -498,7 +549,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-medium text-gray-600 pt-2 border-t border-blue-100">
                   <div>🎭 Suất chiếu / Ghế: <strong className="text-gray-900">{selectedTicket.seatCode}</strong></div>
-                  <div>💰 Giá vé: <strong className="text-red-600">{Number(selectedTicket.price || selectedTicket.amount || 0).toLocaleString("vi-VN")}đ</strong></div>
+                  <div>💰 Giá vé: <strong className="text-red-600">{Number(selectedTicket.price || selectedTicket.amount || selectedTicket.totalAmount || 0).toLocaleString("vi-VN")}đ</strong></div>
                   <div>📍 Hình thức mua: <strong className="text-gray-900">{isCounterTicket ? "Mua tại Quầy" : "Mua Online App/Web"}</strong></div>
                   <div>💳 Thanh toán: <strong className="text-gray-900">{isCashPayment ? "Tiền Mặt (Cash)" : "QR / VNPay / Thẻ"}</strong></div>
                 </div>
