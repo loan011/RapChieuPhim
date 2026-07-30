@@ -349,6 +349,12 @@ export default function Ticket() {
                   </span>
                 </div>
                 <div className="detail-info-row">
+                  <span className="info-label">Thời gian mua vé:</span>
+                  <span className="info-value font-bold">
+                    {selectedTicket?.purchaseTime || "Chưa rõ"}
+                  </span>
+                </div>
+                <div className="detail-info-row">
                   <span className="info-label">Thông tin vé:</span>
                   <span className="info-value">
                     {selectedTicket.seats.length} x Vé ({selectedTicket.ticketPrice || selectedTicket.price} -{" "}

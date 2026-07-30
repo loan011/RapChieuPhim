@@ -111,6 +111,7 @@ export function createBookingDates(totalDays = 7) {
 export async function loadBookingInitialData({
   movieParam,
   showtimeParam,
+  dateParam,
   dates,
 }) {
   const [cinemas, rooms, movie, showtimes] = await Promise.all([
@@ -133,7 +134,7 @@ export async function loadBookingInitialData({
   }
 
   let selectedCinemaId = "";
-  let selectedDateIso = dates?.[0]?.iso || "";
+  let selectedDateIso = dateParam || dates?.[0]?.iso || "";
 
   if (initialShowtime) {
     const room = rooms.find(
@@ -145,10 +146,12 @@ export async function loadBookingInitialData({
       selectedCinemaId = String(getRoomCinemaId(room));
     }
 
-    const showtimeDate = getShowtimeDate(initialShowtime);
+    if (!dateParam) {
+      const showtimeDate = getShowtimeDate(initialShowtime);
 
-    if (showtimeDate) {
-      selectedDateIso = showtimeDate;
+      if (showtimeDate) {
+        selectedDateIso = showtimeDate;
+      }
     }
   }
 
@@ -181,7 +184,24 @@ export async function loadBookingSeatsData(selectedShowtime) {
     };
   }
 
-  const seats = await getSeatsByRoomId(roomId);
+  let seats = await getSeatsByRoomId(roomId);
+
+  if (Array.isArray(seats) && seats.length > 0) {
+    const seenMap = new Map();
+    const uniqueSeats = [];
+    for (const seat of seats) {
+      const row = String(getSeatRow(seat)).toUpperCase();
+      const num = String(getSeatNumber(seat));
+      const code = (row && num && num !== "0") ? `${row}${num}` : String(getSeatId(seat) || "");
+      if (code && !seenMap.has(code)) {
+        seenMap.set(code, true);
+        seat.roomId = roomId;
+        seat.RoomId = roomId;
+        uniqueSeats.push(seat);
+      }
+    }
+    seats = uniqueSeats;
+  }
 
   let availableSeats = [];
 
@@ -494,6 +514,30 @@ export function getSeatNumber(seat) {
 }
 
 export function getSeatType(seat) {
+  const roomId = seat?.roomId || seat?.RoomId || seat?.room?.roomId || seat?.room?.RoomId;
+  const sId = String(getSeatId(seat) || "");
+  const row = String(getSeatRow(seat)).toUpperCase();
+  const num = String(getSeatNumber(seat));
+  const code = (row && num) ? `${row}${num}` : sId;
+
+  if (roomId && typeof localStorage !== "undefined") {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      if (sId && saved.seats && saved.seats[sId]?.type) {
+        return saved.seats[sId].type;
+      }
+      if (code && saved.seats && saved.seats[code]?.type) {
+        return saved.seats[code].type;
+      }
+      if (row && saved.rows) {
+        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
+        if (rType && rType !== "mixed") {
+          return rType;
+        }
+      }
+    } catch (e) {}
+  }
+
   return (
     seat?.seatType ||
     seat?.SeatType ||
@@ -516,6 +560,22 @@ export function isSeatAvailable(seat, availableSeats, selectedShowtime = null, s
   const seatRow = String(getSeatRow(seat)).toUpperCase();
   const seatNum = String(getSeatNumber(seat));
   const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
+
+  const roomId = seat?.roomId || seat?.RoomId || seat?.room?.roomId || selectedShowtime?.roomId || selectedShowtime?.RoomId;
+  if (roomId && typeof localStorage !== "undefined") {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+      const st = saved.seats?.[seatId]?.status || saved.seats?.[seatCode]?.status;
+      if (st === "maintenance" || st === "inactive") return false;
+      if (saved.rows) {
+        const rVal = saved.rows[seatRow] || saved.rows[seatRow.toUpperCase()] || saved.rows[seatRow.toLowerCase()];
+        if (rVal === "inactive" || rVal === "maintenance") return false;
+      }
+    } catch (e) {}
+  }
+
+  const isActive = seat?.isActive ?? seat?.IsActive;
+  if (isActive === false) return false;
 
   try {
     const storedTickets = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
@@ -694,11 +754,10 @@ export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) 
   ).trim().toUpperCase();
 
   // 4. Lấy loại ghế (SeatType: Standard/Thường, VIP, Couple/Sweetbox)
-  const seatTypeRaw = String(getSeatType(seat) || seat?.seatType || seat?.SeatType || "").trim().toLowerCase();
-  const seatRow = String(getSeatRow(seat) || seat?.seatRow || seat?.SeatRow || "").trim().toUpperCase();
+  const seatTypeRaw = String(getSeatType(seat) || seat?.seatType || seat?.SeatType || seat?.type || "").trim().toLowerCase();
 
-  const isCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi") || seatRow === "D" || seatRow === "E";
-  const isVip = seatTypeRaw.includes("vip") || seatRow === "C";
+  const isCouple = seatTypeRaw.includes("sweetbox") || seatTypeRaw.includes("couple") || seatTypeRaw.includes("đôi") || seatTypeRaw.includes("doi");
+  const isVip = seatTypeRaw.includes("vip");
   const seatCategory = isCouple ? "couple" : (isVip ? "vip" : "standard");
 
   // 5. Xác định ngày thường / cuối tuần & khung giờ
@@ -740,9 +799,10 @@ export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) 
   if (calculatedPrice === null || isNaN(calculatedPrice) || calculatedPrice <= 0) {
     const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? selectedShowtime?.cinemaId ?? selectedShowtime?.CinemaId ?? "1";
     const roomName = room?.roomName ?? room?.RoomName ?? "";
-    const customStdKey = `room_price_std_wd_c${roomCinemaId}_r${roomName}`;
-    const customVipKey = `room_price_vip_wd_c${roomCinemaId}_r${roomName}`;
-    const customCpKey = `room_price_cp_wd_c${roomCinemaId}_r${roomName}`;
+    const wdWeSuffix = isWeekend ? "we" : "wd";
+    const customStdKey = `room_price_std_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
+    const customVipKey = `room_price_vip_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
+    const customCpKey = `room_price_cp_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
 
     if (seatCategory === "standard" && typeof localStorage !== "undefined" && localStorage.getItem(customStdKey)) {
       calculatedPrice = Number(localStorage.getItem(customStdKey).replace(/\./g, "").trim());
@@ -754,11 +814,11 @@ export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) 
 
     if (!calculatedPrice || isNaN(calculatedPrice) || calculatedPrice <= 0) {
       if (roomType.includes("IMAX")) {
-        if (isCouple) calculatedPrice = isNight ? 80000 : 65000;
+        if (isCouple) calculatedPrice = isNight ? 250000 : (isWeekend ? 250000 : 200000);
         else if (isVip) calculatedPrice = isNight ? 220000 : (isWeekend ? 200000 : 180000);
         else calculatedPrice = isNight ? 180000 : (isWeekend ? 160000 : 150000);
       } else {
-        if (isCouple) calculatedPrice = isNight ? 80000 : 65000;
+        if (isCouple) calculatedPrice = isNight ? 160000 : (isWeekend ? 160000 : 130000);
         else if (isVip) calculatedPrice = isNight ? 120000 : (isWeekend ? 100000 : 90000);
         else calculatedPrice = isNight ? 90000 : (isWeekend ? 80000 : 70000);
       }
@@ -768,6 +828,13 @@ export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) 
   // BÁO LỖI NẾU KHÔNG TÌM THẤY BẢNG GIÁ, KHÔNG ĐƯỢC TỰ ĐỘNG ĐỂ GIÁ BẰNG 0
   if (!calculatedPrice || isNaN(calculatedPrice) || calculatedPrice <= 0) {
     throw new Error(`Không tìm thấy bảng giá áp dụng cho phòng ${roomType || "chưa xác định"} và loại ghế ${seatCategory}!`);
+  }
+
+  // Đối với ghế Couple, giá trong bảng giá là giá của CẢ CẶP GHE (2 ghế).
+  // Vì mỗi ghế trong cặp (VD: H13, H14) được đếm riêng trong danh sách ghế đã chọn,
+  // nên đơn giá từng ghế đơn = giá cặp / 2 để tổng 2 ghế bằng đúng giá cả cặp.
+  if (isCouple && calculatedPrice > 0) {
+    return Math.round(calculatedPrice / 2);
   }
 
   return calculatedPrice;
@@ -928,6 +995,14 @@ export function useBooking() {
     bookingState.time ||
     bookingState.showTime ||
     bookingState.ShowTime ||
+    "";
+
+  const queryDate = searchParams.get("date") || searchParams.get("showDate");
+  const dateParam =
+    queryDate ||
+    bookingState.selectedDateIso ||
+    bookingState.date ||
+    bookingState.showDate ||
     "";
 
   const [movie, setMovie] = useState(null);
@@ -1122,6 +1197,7 @@ export function useBooking() {
         const data = await loadBookingInitialData({
           movieParam,
           showtimeParam,
+          dateParam,
           dates,
         });
 

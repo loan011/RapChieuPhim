@@ -831,7 +831,7 @@ export function useRate() {
     const cId = roomObj ? getRoomCinemaId(roomObj) : selectedCinemaId || "";
 
     setEditId(getShowtimeId(item));
-    setIsEditMode(false); // Mặc định hiển thị chế độ Xem Chi Tiết
+    setIsEditMode(true);
     setForm({
       ...baseForm,
       cinemaId: cId || "",

@@ -755,7 +755,11 @@ export default function Rate() {
                         type="button"
                         className="lc-btn-submit"
                         style={{ background: "#f97316" }}
-                        onClick={() => setIsEditMode(true)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsEditMode(true);
+                        }}
                       >
                         <MdEdit size={16} style={{ marginRight: 4 }} /> Chỉnh Sửa
                       </button>

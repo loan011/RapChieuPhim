@@ -26,8 +26,8 @@ async function getTicketCatalog(endpoint) {
 
 export async function getTicketFoodCatalogs() {
   const [combos, foods] = await Promise.all([
-    getTicketCatalog("/Combos").catch(() => []),
-    getTicketCatalog("/Foods").catch(() => []),
+    getTicketCatalog("/Combos/Available").catch(() => getTicketCatalog("/Combos").catch(() => [])),
+    getTicketCatalog("/Foods/Available").catch(() => getTicketCatalog("/Foods").catch(() => [])),
   ]);
 
   return { combos, foods };

@@ -168,11 +168,11 @@ function isValidAvatarUrl(url) {
 }
 
 export function normalizeProfileData(data) {
-  const email = (data?.email || data?.Email || localStorage.getItem("userEmail") || localStorage.getItem("email") || "").trim().toLowerCase();
+  const savedUser = getSavedProfileUser();
+  const email = (data?.email || data?.Email || savedUser.email || savedUser.Email || localStorage.getItem("userEmail") || localStorage.getItem("email") || "").trim().toLowerCase();
   const emailAvatarKey = email ? `user_avatar_${email}` : null;
   const savedEmailAvatar = emailAvatarKey ? localStorage.getItem(emailAvatarKey) : null;
   const savedAvatarUrl = localStorage.getItem("avatarUrl");
-  const savedAddress = localStorage.getItem("address");
 
   const backendAvatar = data?.avatarUrl || data?.AvatarUrl;
   
@@ -183,15 +183,27 @@ export function normalizeProfileData(data) {
     finalAvatar = savedEmailAvatar;
   } else if (isValidAvatarUrl(savedAvatarUrl)) {
     finalAvatar = savedAvatarUrl;
+  } else if (isValidAvatarUrl(savedUser.avatarUrl)) {
+    finalAvatar = savedUser.avatarUrl;
+  }
+
+  const rawDob = data?.dateOfBirth || data?.DateOfBirth || savedUser.dateOfBirth || savedUser.DateOfBirth || localStorage.getItem("dateOfBirth") || "";
+  let formattedDob = "";
+  if (rawDob) {
+    if (rawDob.includes("T")) {
+      formattedDob = rawDob.split("T")[0];
+    } else {
+      formattedDob = rawDob;
+    }
   }
 
   return {
-    fullName: data?.fullName || data?.FullName || "",
-    email: data?.email || data?.Email || "",
-    phone: data?.phone || data?.Phone || "",
-    dateOfBirth: data?.dateOfBirth || data?.DateOfBirth || "",
-    gender: data?.gender || data?.Gender || "",
-    address: data?.address || data?.Address || savedAddress || "",
+    fullName: data?.fullName || data?.FullName || savedUser.fullName || savedUser.FullName || localStorage.getItem("fullName") || "",
+    email: data?.email || data?.Email || savedUser.email || savedUser.Email || localStorage.getItem("email") || "",
+    phone: data?.phone || data?.Phone || savedUser.phone || savedUser.Phone || localStorage.getItem("phone") || "",
+    dateOfBirth: formattedDob,
+    gender: data?.gender || data?.Gender || savedUser.gender || savedUser.Gender || localStorage.getItem("gender") || "",
+    address: data?.address || data?.Address || savedUser.address || savedUser.Address || localStorage.getItem("address") || "",
     avatarUrl: finalAvatar,
   };
 }
@@ -387,10 +399,20 @@ export function useProfile() {
 
       const payload = buildUpdateProfilePayload(form);
 
-      const updatedData = await updateProfile(payload);
+      // Lưu ngay lập tức vào localStorage để không bị mất khi F5 hoặc đăng nhập lại
+      saveProfileToLocalStorage(form, payload);
 
-      saveProfileToLocalStorage(form, updatedData);
+      try {
+        const updatedData = await updateProfile(payload);
+        if (updatedData) {
+          saveProfileToLocalStorage(form, updatedData);
+        }
+      } catch (apiErr) {
+        console.warn("Lưu thông tin backend có cảnh báo, trạng thái local đã được bảo toàn:", apiErr);
+      }
+
       window.dispatchEvent(new Event("avatarUpdated"));
+      window.dispatchEvent(new Event("userUpdated"));
 
       setInitialForm(form);
       setShowToast(true);

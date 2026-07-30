@@ -3,6 +3,7 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  cachedFetch,
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -65,21 +66,13 @@ async function sendRoomRequest({
 
 // Lấy danh sách phòng chiếu
 export async function getRoomList() {
-  const data = await sendRoomRequest({
-    method: "GET",
-    errorMessage: "Lấy danh sách phòng chiếu thất bại!",
-  });
-
+  const data = await cachedFetch(buildRoomUrl(""));
   return normalizeArray(data);
 }
 
 // Lấy chi tiết 1 phòng chiếu
 export async function getRoomById(id) {
-  return sendRoomRequest({
-    id,
-    method: "GET",
-    errorMessage: "Lấy thông tin phòng chiếu thất bại!",
-  });
+  return cachedFetch(buildRoomUrl(id));
 }
 
 // Thêm phòng chiếu

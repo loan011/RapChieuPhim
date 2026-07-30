@@ -236,6 +236,12 @@ export default function Payment() {
 
             <div className="ticket-invoice-receipt" style={{ textAlign: "left", marginBottom: "24px", padding: "16px", background: "#f9fafb", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
               <p style={{ margin: "0 0 8px", fontSize: "0.9rem", color: "#374151" }}>
+                🏦 Ngân hàng: <strong style={{ color: "#1e293b" }}>TPBank - 15145686888</strong>
+              </p>
+              <p style={{ margin: "0 0 8px", fontSize: "0.9rem", color: "#374151" }}>
+                👤 Chủ TK: <strong style={{ color: "#1e293b" }}>Nguyen Quang Vinh</strong>
+              </p>
+              <p style={{ margin: "0 0 8px", fontSize: "0.9rem", color: "#374151" }}>
                 💰 Số tiền: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{totalAmount.toLocaleString("vi-VN")}đ</strong>
               </p>
               <p style={{ margin: "0", fontSize: "0.85rem", color: "#4b5563" }}>

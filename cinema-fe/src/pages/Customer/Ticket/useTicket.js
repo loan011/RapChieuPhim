@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCustomerTickets, getTicketFoodCatalogs } from "./customerTicketService.js";
+import { getShowtimeDate, getShowtimeHour } from "../../Booking/usebooking.js";
 
 export function getLocalBookedTickets() {
   try {
@@ -14,7 +15,7 @@ export function getLocalBookedTickets() {
 
 export function loadTickets() {
   const localTickets = getLocalBookedTickets();
-  return [...localTickets, ...MOCK_TICKETS];
+  return localTickets;
 }
 
 export function filterTicketsByStatus(tickets, activeTab) {
@@ -319,7 +320,6 @@ export function useTicket() {
               const isPaid = statusStr === "đã thanh toán" || statusStr === "đã đặt" || statusStr === "paid" || statusStr === "success" || statusStr === "successful" || statusStr === "pending";
 
               const showTimeObj = booking.showTime ?? booking.showtime ?? booking.ShowTime ?? booking.Showtime;
-              const bookingDate = t.bookingDate ?? t.BookingDate ?? booking.bookingDate ?? booking.BookingDate;
               
               let savedShowDate = "";
               let savedStartTime = "";
@@ -327,99 +327,149 @@ export function useTicket() {
                 try {
                   const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
                   const bIds = t.bookingIds || [t.bookingId || t.id];
-                  for (const bId of bIds) {
-                    if (savedDiscounts[bId]) {
-                      if (savedDiscounts[bId].showDate) savedShowDate = savedDiscounts[bId].showDate;
-                      if (savedDiscounts[bId].startTime) savedStartTime = savedDiscounts[bId].startTime;
+                  for (const rawBId of bIds) {
+                    const digitsOnly = String(rawBId).replace(/[^0-9]/g, "");
+                    const foundObj = savedDiscounts[rawBId] || (digitsOnly ? savedDiscounts[digitsOnly] : null);
+                    if (foundObj) {
+                      if (foundObj.showDate) savedShowDate = foundObj.showDate;
+                      if (foundObj.startTime) savedStartTime = foundObj.startTime;
                     }
                   }
                 } catch (e) {}
               }
 
-              // 1. Xác định Ngày Chiếu (showDate): Ưu tiên vết đặt hàng từ trang mua vé, rồi đến API, cuối cùng mới là ngày tạo
-              const rawDateVal =
-                (savedShowDate || null) ??
-                showTimeObj?.showDate ??
-                showTimeObj?.ShowDate ??
-                showTimeObj?.date ??
-                showTimeObj?.Date ??
-                showTimeObj?.showtimeDate ??
-                showTimeObj?.ShowtimeDate ??
-                t.showDate ??
-                t.ShowDate ??
-                booking.showDate ??
-                booking.ShowDate ??
-                t.date ??
-                t.Date ??
-                bookingDate;
-              
-              // 2. Xác định Giờ Chiếu (startTime)
-              const rawTimeVal =
-                (savedStartTime || null) ??
-                showTimeObj?.startTime ??
-                showTimeObj?.StartTime ??
-                showTimeObj?.time ??
-                showTimeObj?.Time ??
-                t.startTime ??
-                t.StartTime ??
-                t.showTime ??
-                t.ShowTime ??
-                booking.showTime ??
-                booking.ShowTime ??
+              // Extract date & time from backend objects using || (so empty string "" falls back to next field)
+              let extractedDate =
+                savedShowDate ||
+                getShowtimeDate(showTimeObj) ||
+                getShowtimeDate(t) ||
+                getShowtimeDate(booking) ||
+                showTimeObj?.showtimeStartTime ||
+                showTimeObj?.ShowtimeStartTime ||
+                showTimeObj?.startTime ||
+                showTimeObj?.StartTime ||
+                showTimeObj?.showDate ||
+                showTimeObj?.ShowDate ||
+                t.showtimeStartTime ||
+                t.ShowtimeStartTime ||
+                t.showDate ||
+                t.ShowDate ||
+                booking.showtimeStartTime ||
+                booking.ShowtimeStartTime ||
+                booking.showDate ||
+                booking.ShowDate;
+
+              let extractedTime =
+                savedStartTime ||
+                (getShowtimeHour(showTimeObj) !== "N/A" ? getShowtimeHour(showTimeObj) : "") ||
+                (getShowtimeHour(t) !== "N/A" ? getShowtimeHour(t) : "") ||
+                (getShowtimeHour(booking) !== "N/A" ? getShowtimeHour(booking) : "") ||
+                showTimeObj?.startTime ||
+                showTimeObj?.StartTime ||
+                showTimeObj?.time ||
+                showTimeObj?.Time ||
+                t.startTime ||
+                t.StartTime ||
+                booking.showTime ||
+                booking.ShowTime ||
                 "00:00";
 
               let formattedDate = "Chưa rõ";
+              let formattedTime = extractedTime;
               let datePartForCompare = "";
-              if (rawDateVal) {
-                const str = String(rawDateVal).trim();
-                const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                if (match) {
-                  const [, y, m, d] = match;
-                  formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
-                  datePartForCompare = `${y}-${m}-${d}`;
-                } else {
-                  const dt = new Date(rawDateVal);
+              let parsedDtObj = null;
+
+              if (extractedDate) {
+                const str = String(extractedDate).trim();
+                if (str.endsWith("Z") || str.includes("+") || (str.includes("T") && str.length > 19)) {
+                  // UTC String với Z -> Chuyển sang múi giờ Asia/Ho_Chi_Minh (UTC+7)
+                  const dt = new Date(str);
                   if (!isNaN(dt.getTime())) {
-                    const y = dt.getFullYear();
-                    const m = String(dt.getMonth() + 1).padStart(2, "0");
-                    const d = String(dt.getDate()).padStart(2, "0");
-                    formattedDate = `${dt.getDate()}/${dt.getMonth() + 1}/${y}`;
+                    parsedDtObj = dt;
+                    const parts = new Intl.DateTimeFormat("en-GB", {
+                      timeZone: "Asia/Ho_Chi_Minh",
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    }).formatToParts(dt);
+
+                    let d = "", m = "", y = "", h = "", min = "";
+                    parts.forEach(p => {
+                      if (p.type === "day") d = p.value;
+                      if (p.type === "month") m = p.value;
+                      if (p.type === "year") y = p.value;
+                      if (p.type === "hour") h = p.value;
+                      if (p.type === "minute") min = p.value;
+                    });
+
+                    formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
                     datePartForCompare = `${y}-${m}-${d}`;
+                    if (formattedTime === "00:00" || !formattedTime) {
+                      formattedTime = `${h}:${min}`;
+                    }
+                  }
+                } else if (str.includes("T")) {
+                  // Giờ địa phương không có Z (VD: 2026-07-31T10:25:00) -> Tách trực tiếp tránh JS đổi lệch múi giờ
+                  const [dPart, tPart] = str.split("T");
+                  const matchIso = dPart.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                  if (matchIso) {
+                    const [, y, m, d] = matchIso;
+                    formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+                    datePartForCompare = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                  }
+                  if (tPart && (formattedTime === "00:00" || !formattedTime)) {
+                    formattedTime = tPart.slice(0, 5);
+                  }
+                } else {
+                  // Chuỗi ngày thường (VD: 2026-07-31 hoặc 31/07/2026)
+                  const matchIso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                  const matchVn = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                  if (matchIso) {
+                    const [, y, m, d] = matchIso;
+                    formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+                    datePartForCompare = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                  } else if (matchVn) {
+                    const [, d, m, y] = matchVn;
+                    formattedDate = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+                    datePartForCompare = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
                   }
                 }
               }
 
-              let formattedTime = "";
-              let timePart = "00:00";
-              if (rawTimeVal) {
-                if (typeof rawTimeVal === "string") {
-                  if (rawTimeVal.includes("T")) {
-                    timePart = rawTimeVal.split("T")[1]?.slice(0, 5) || "00:00";
-                  } else {
-                    timePart = rawTimeVal.slice(0, 5);
-                  }
-                }
-                formattedTime = timePart;
+              if ((formattedTime === "00:00" || !formattedTime) && extractedTime) {
+                const tStr = String(extractedTime).trim();
+                formattedTime = tStr.includes("T") ? tStr.split("T")[1].slice(0, 5) : tStr.slice(0, 5);
               }
 
-              // 3. Tính toán xem suất chiếu đã trôi qua chưa (dựa trên giờ địa phương, không lệch UTC)
-              let isPast = false;
-              if (datePartForCompare) {
+              // 2. Phân loại trạng thái vé (Sắp chiếu, Đã xem, Đã hủy) dựa trên Showtime.StartTime
+              let isPastDay = false;
+              if (parsedDtObj) {
+                isPastDay = parsedDtObj.getTime() < Date.now();
+              } else if (datePartForCompare) {
                 try {
-                  const showtimeDateTime = new Date(`${datePartForCompare}T${timePart}:00`);
-                  if (!isNaN(showtimeDateTime.getTime()) && showtimeDateTime.getTime() < new Date().getTime()) {
-                    isPast = true;
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const parts = datePartForCompare.split("-").map(Number);
+                  if (parts.length === 3) {
+                    const [y, m, d] = parts;
+                    const showtimeEnd = new Date(y, m - 1, d, 23, 59, 59);
+                    if (showtimeEnd.getTime() < today.getTime()) {
+                      isPastDay = true;
+                    }
                   }
                 } catch (e) {
                   console.error("Lỗi so sánh ngày giờ suất chiếu:", e);
                 }
               }
 
-              // 4. Xác định Trạng thái hiển thị (status)
+              // 3. Phân loại vé thành Sắp chiếu, Đã xem hoặc Đã hủy
               let finalStatus = "upcoming";
               if (isCancelled) {
                 finalStatus = "cancelled";
-              } else if (isPast) {
+              } else if (isPastDay) {
                 finalStatus = "watched";
               } else {
                 finalStatus = "upcoming";
@@ -454,30 +504,46 @@ export function useTicket() {
                 "";
 
               let savedFinalAmount = null;
+              let purchaseTimeStr = "";
 
               if (typeof window !== "undefined") {
                 try {
                   const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
-                  const bIds = t.bookingIds || [];
-                  for (const bId of bIds) {
-                    if (savedDiscounts[bId]) {
+                  const bIds = t.bookingIds || [t.bookingId || t.id];
+                  for (const rawBId of bIds) {
+                    const digitsOnly = String(rawBId).replace(/[^0-9]/g, "");
+                    const foundObj = savedDiscounts[rawBId] || (digitsOnly ? savedDiscounts[digitsOnly] : null);
+                    if (foundObj) {
                       if (!discountAmount) {
-                        discountAmount += Number(savedDiscounts[bId].discountAmount || savedDiscounts[bId].totalDiscountAmount || 0);
+                        discountAmount += Number(foundObj.discountAmount || foundObj.totalDiscountAmount || 0);
                       }
-                      discountCode = discountCode || savedDiscounts[bId].discountCode;
-                      if (savedDiscounts[bId].finalTotalAmount) {
-                        savedFinalAmount = Number(savedDiscounts[bId].finalTotalAmount);
+                      discountCode = discountCode || foundObj.discountCode;
+                      if (foundObj.finalTotalAmount) {
+                        savedFinalAmount = Number(foundObj.finalTotalAmount);
                       }
-                    }
-                  }
-                  if (!discountAmount && savedDiscounts[ticketCode]) {
-                    discountAmount = Number(savedDiscounts[ticketCode].discountAmount || savedDiscounts[ticketCode].totalDiscountAmount || 0);
-                    discountCode = savedDiscounts[ticketCode].discountCode;
-                    if (savedDiscounts[ticketCode].finalTotalAmount) {
-                      savedFinalAmount = Number(savedDiscounts[ticketCode].finalTotalAmount);
+                      if (foundObj.purchaseTime) {
+                        purchaseTimeStr = foundObj.purchaseTime;
+                      }
                     }
                   }
                 } catch (e) {}
+              }
+
+              if (!purchaseTimeStr) {
+                const rawCreated = t.createdDate || t.CreatedDate || t.bookingDate || t.BookingDate || booking.createdDate || booking.CreatedDate || booking.bookingDate || booking.BookingDate;
+                if (rawCreated) {
+                  const dateObj = new Date(rawCreated);
+                  if (!isNaN(dateObj.getTime())) {
+                    const d = String(dateObj.getDate()).padStart(2, '0');
+                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const y = dateObj.getFullYear();
+                    const h = String(dateObj.getHours()).padStart(2, '0');
+                    const min = String(dateObj.getMinutes()).padStart(2, '0');
+                    purchaseTimeStr = `${d}/${m}/${y} ${h}:${min}`;
+                  } else {
+                    purchaseTimeStr = String(rawCreated);
+                  }
+                }
               }
 
               const calculatedFinal = Math.max(0, rawTotalAmount - discountAmount);
@@ -496,6 +562,7 @@ export function useTicket() {
                   "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=200&auto=format&fit=crop",
                 date: formattedDate,
                 time: formattedTime,
+                purchaseTime: purchaseTimeStr || "Chưa rõ",
                 cinema: t.cinemaName ?? t.CinemaName ?? cinema?.cinemaName ?? cinema?.CinemaName ?? cinema?.name ?? cinema?.Name ?? "Rạp chiếu phim",
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,

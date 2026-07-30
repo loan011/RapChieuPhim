@@ -26,18 +26,26 @@ function formatDateTime(rawDate) {
 }
 
 function getCustomerDisplayName(t) {
-  const name = t.customerName || "";
+  const name = t.customerName || t.fullName || t.name || t.user?.fullName || t.user?.name || t.userName || "";
   const isCounter =
     t.bookingType === "Staff" ||
     name === "Cơ Sở 2" ||
     name === "Hệ Thống Admin" ||
-    name === "Khách vãng lai" ||
     name === "Đồng Khởi" ||
     name.toLowerCase().includes("đồng khởi") ||
-    name.toLowerCase().includes("cinemahcm") ||
-    !name;
+    name.toLowerCase().includes("cinemahcm");
 
-  return isCounter ? "Khách mua tại quầy" : name;
+  if (isCounter) return "Khách mua tại quầy";
+
+  if (!name || name === "Khách vãng lai") {
+    const email = t.email || t.customerEmail || t.user?.email || t.userEmail || "";
+    if (email && email.includes("@") && email !== "N/A" && email !== "Tại quầy") {
+      return email.split("@")[0];
+    }
+    return "Khách vãng lai";
+  }
+
+  return name;
 }
 
 export default function StaffQuanLyVe() {

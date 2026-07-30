@@ -339,7 +339,6 @@ function Home() {
                 value={selectedCinemaId}
                 onChange={(e) => handleCinemaChange(e.target.value)}
               >
-                <option value="">Tất cả rạp</option>
                 {cinemas.map((cinema) => (
                   <option key={getCinemaId(cinema)} value={getCinemaId(cinema)}>
                     {getCinemaName(cinema)}
