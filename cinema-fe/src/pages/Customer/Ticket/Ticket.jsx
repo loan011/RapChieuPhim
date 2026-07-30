@@ -351,26 +351,7 @@ export default function Ticket() {
                 <div className="detail-info-row">
                   <span className="info-label">Thời gian mua vé:</span>
                   <span className="info-value font-bold">
-                    {(() => {
-                      const rawDate = selectedTicket?.createdDate || selectedTicket?.CreatedDate || selectedTicket?.bookingDate || selectedTicket?.BookingDate || selectedTicket?.purchaseDate || selectedTicket?.createdTime || selectedTicket?.bookingTime;
-                      if (!rawDate) {
-                        const now = new Date();
-                        const d = String(now.getDate()).padStart(2, '0');
-                        const m = String(now.getMonth() + 1).padStart(2, '0');
-                        const y = now.getFullYear();
-                        const h = String(now.getHours()).padStart(2, '0');
-                        const min = String(now.getMinutes()).padStart(2, '0');
-                        return `${d}/${m}/${y} ${h}:${min}`;
-                      }
-                      const dateObj = new Date(rawDate);
-                      if (isNaN(dateObj.getTime())) return String(rawDate);
-                      const d = String(dateObj.getDate()).padStart(2, '0');
-                      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-                      const y = dateObj.getFullYear();
-                      const h = String(dateObj.getHours()).padStart(2, '0');
-                      const min = String(dateObj.getMinutes()).padStart(2, '0');
-                      return `${d}/${m}/${y} ${h}:${min}`;
-                    })()}
+                    {selectedTicket?.purchaseTime || "Chưa rõ"}
                   </span>
                 </div>
                 <div className="detail-info-row">

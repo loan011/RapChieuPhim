@@ -325,7 +325,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       const concessionSubtotal = Number(concessions.reduce((sum, c) => sum + c.subtotal, 0));
       const discountAmt = Number(info.discountAmount || 0);
       const calculatedTotal = Math.max(0, (seatPrice + concessionSubtotal) - discountAmt);
-      const finalTot = (info.finalTotalAmount && info.finalTotalAmount > 0 && info.finalTotalAmount !== 129250 && seatRow !== "A")
+      const finalTot = (info.finalTotalAmount && info.finalTotalAmount > 0)
         ? Number(info.finalTotalAmount)
         : calculatedTotal;
 

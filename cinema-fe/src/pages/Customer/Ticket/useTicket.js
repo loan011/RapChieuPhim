@@ -504,30 +504,46 @@ export function useTicket() {
                 "";
 
               let savedFinalAmount = null;
+              let purchaseTimeStr = "";
 
               if (typeof window !== "undefined") {
                 try {
                   const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
-                  const bIds = t.bookingIds || [];
-                  for (const bId of bIds) {
-                    if (savedDiscounts[bId]) {
+                  const bIds = t.bookingIds || [t.bookingId || t.id];
+                  for (const rawBId of bIds) {
+                    const digitsOnly = String(rawBId).replace(/[^0-9]/g, "");
+                    const foundObj = savedDiscounts[rawBId] || (digitsOnly ? savedDiscounts[digitsOnly] : null);
+                    if (foundObj) {
                       if (!discountAmount) {
-                        discountAmount += Number(savedDiscounts[bId].discountAmount || savedDiscounts[bId].totalDiscountAmount || 0);
+                        discountAmount += Number(foundObj.discountAmount || foundObj.totalDiscountAmount || 0);
                       }
-                      discountCode = discountCode || savedDiscounts[bId].discountCode;
-                      if (savedDiscounts[bId].finalTotalAmount) {
-                        savedFinalAmount = Number(savedDiscounts[bId].finalTotalAmount);
+                      discountCode = discountCode || foundObj.discountCode;
+                      if (foundObj.finalTotalAmount) {
+                        savedFinalAmount = Number(foundObj.finalTotalAmount);
                       }
-                    }
-                  }
-                  if (!discountAmount && savedDiscounts[ticketCode]) {
-                    discountAmount = Number(savedDiscounts[ticketCode].discountAmount || savedDiscounts[ticketCode].totalDiscountAmount || 0);
-                    discountCode = savedDiscounts[ticketCode].discountCode;
-                    if (savedDiscounts[ticketCode].finalTotalAmount) {
-                      savedFinalAmount = Number(savedDiscounts[ticketCode].finalTotalAmount);
+                      if (foundObj.purchaseTime) {
+                        purchaseTimeStr = foundObj.purchaseTime;
+                      }
                     }
                   }
                 } catch (e) {}
+              }
+
+              if (!purchaseTimeStr) {
+                const rawCreated = t.createdDate || t.CreatedDate || t.bookingDate || t.BookingDate || booking.createdDate || booking.CreatedDate || booking.bookingDate || booking.BookingDate;
+                if (rawCreated) {
+                  const dateObj = new Date(rawCreated);
+                  if (!isNaN(dateObj.getTime())) {
+                    const d = String(dateObj.getDate()).padStart(2, '0');
+                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const y = dateObj.getFullYear();
+                    const h = String(dateObj.getHours()).padStart(2, '0');
+                    const min = String(dateObj.getMinutes()).padStart(2, '0');
+                    purchaseTimeStr = `${d}/${m}/${y} ${h}:${min}`;
+                  } else {
+                    purchaseTimeStr = String(rawCreated);
+                  }
+                }
               }
 
               const calculatedFinal = Math.max(0, rawTotalAmount - discountAmount);
@@ -546,6 +562,7 @@ export function useTicket() {
                   "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=200&auto=format&fit=crop",
                 date: formattedDate,
                 time: formattedTime,
+                purchaseTime: purchaseTimeStr || "Chưa rõ",
                 cinema: t.cinemaName ?? t.CinemaName ?? cinema?.cinemaName ?? cinema?.CinemaName ?? cinema?.name ?? cinema?.Name ?? "Rạp chiếu phim",
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,

@@ -74,6 +74,14 @@ export function usePayment() {
           bookingData.selectedShowtime?.CinemaId ||
           "";
 
+        const now = new Date();
+        const d = String(now.getDate()).padStart(2, "0");
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const y = now.getFullYear();
+        const h = String(now.getHours()).padStart(2, "0");
+        const min = String(now.getMinutes()).padStart(2, "0");
+        const fixedPurchaseTime = `${d}/${m}/${y} ${h}:${min}`;
+
         bookingData.bookingIds.forEach((bId) => {
           const existing = savedDiscounts[bId] || savedDiscounts[String(bId)] || {};
           const record = {
@@ -88,6 +96,7 @@ export function usePayment() {
             showDate: showDateVal || existing.showDate,
             startTime: startTimeVal || existing.startTime,
             cinemaId: cinemaIdVal || existing.cinemaId,
+            purchaseTime: existing.purchaseTime || fixedPurchaseTime,
           };
           savedDiscounts[bId] = record;
           savedDiscounts[String(bId)] = record;
