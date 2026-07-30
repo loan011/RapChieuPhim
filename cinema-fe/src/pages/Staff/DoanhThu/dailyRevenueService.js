@@ -323,15 +323,20 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       const info = payment._localData;
       const isCancelled = String(info.status || "").toLowerCase().includes("hủy") || String(info.status || "").toLowerCase().includes("cancel");
 
-      const seatCode = info.seatCode || info.seatNumber || (info.seatsList ? info.seatsList.join(", ") : "A11");
-      const seatRow = String(seatCode).trim().charAt(0).toUpperCase();
-      let defaultSeatPrice = 70000;
-      if (seatType.includes("vip")) defaultSeatPrice = 90000;
-      else if (seatType.includes("couple") || seatType.includes("sweetbox") || seatType.includes("đôi") || seatType.includes("doi")) defaultSeatPrice = 130000;
+      // Phát hiện đơn đồ ăn thuần (CB...) - không có vé, không dùng hardcode phim/ghế
+      const tCodeStr = String(info.ticketCode || payment.bookingId || "");
+      const isFoodOnlyEntry = tCodeStr.startsWith("CB") || tCodeStr.startsWith("cb") ||
+        (!info.movieTitle && !info.seatCode && !info.seatNumber && !info.seatPrice);
 
-      const seatPrice = Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : defaultSeatPrice));
-      const movieTitle = info.movieTitle || "Hành Trình Của Moana";
-      const roomName = info.roomName || "Rạp 3";
+      const seatCode = isFoodOnlyEntry ? "" : (info.seatCode || info.seatNumber || (info.seatsList ? info.seatsList.join(", ") : ""));
+      const seatRow = seatCode ? String(seatCode).trim().charAt(0).toUpperCase() : "";
+      let defaultSeatPrice = 70000;
+      if (seatRow === "C") defaultSeatPrice = 90000;
+      else if (seatRow === "D" || seatRow === "E") defaultSeatPrice = 130000;
+
+      const seatPrice = isFoodOnlyEntry ? 0 : Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : defaultSeatPrice));
+      const movieTitle = isFoodOnlyEntry ? "" : (info.movieTitle || "");
+      const roomName = isFoodOnlyEntry ? "" : (info.roomName || "");
       
       const concessions = (info.foodsList || []).map((f, idx) => ({
         id: idx,
@@ -344,7 +349,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       const concessionSubtotal = Number(concessions.reduce((sum, c) => sum + c.subtotal, 0));
       const discountAmt = Number(info.discountAmount || 0);
       const calculatedTotal = Math.max(0, (seatPrice + concessionSubtotal) - discountAmt);
-      const finalTot = (info.finalTotalAmount && info.finalTotalAmount > 0 && info.finalTotalAmount !== 129250 && seatRow !== "A")
+      const finalTot = (!isFoodOnlyEntry && info.finalTotalAmount && info.finalTotalAmount > 0 && info.finalTotalAmount !== 129250 && seatRow !== "A")
         ? Number(info.finalTotalAmount)
         : (isFoodOnlyEntry ? concessionSubtotal : calculatedTotal);
 
@@ -360,11 +365,10 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         paymentId: payment.paymentId,
         billCode: info.ticketCode || payment.bookingId || `VE${payment.paymentId}`,
         paymentDate: payment.createdAt,
-        customerName: info.customerName || "Rabbit",
-        customerEmail: info.email || "hongloancute1234@gmail.com",
-        customerEmail: info.email || "hongloancute1234@gmail.com",
-        staffName: "Đặt Trực Tuyến",
-        paymentMethod: info.paymentMethod || "QRCODE",
+        customerName: resolvedCustomerName,
+        customerEmail: resolvedCustomerEmail,
+        staffName: isFoodOnlyEntry ? "Nhân viên T&M" : "Đặt Trực Tuyến",
+        paymentMethod: info.paymentMethod || (isFoodOnlyEntry ? "Tiền mặt" : "QRCODE"),
         cashReceived: finalTot,
         changeAmount: 0,
         discountAmt: discountAmt,
@@ -496,15 +500,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
                       (rootBooking && (rootBooking.customerName === "Cơ Sở 2" || rootBooking.customerName === "Hệ Thống Admin")) ||
                       (order && (order.userName === "Cơ Sở 2" || order.userName === "Hệ Thống Admin"));
 
-    let resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || rootBooking.userName || rootBooking.fullName || "") : "");
-    if (!isCounter && (!resolvedCustomerName || resolvedCustomerName === "Khách vãng lai")) {
-      const emailVal = (rootBooking?.email || rootBooking?.customerEmail || "").trim();
-      if (emailVal && emailVal.includes("@") && emailVal !== "N/A" && emailVal !== "Tại quầy") {
-        resolvedCustomerName = emailVal.split("@")[0];
-      } else {
-        resolvedCustomerName = "Khách vãng lai";
-      }
-    }
+    const resolvedCustomerName = isCounter ? "Khách mua tại quầy" : (rootBooking ? (rootBooking.customerName || "Khách vãng lai") : "Khách vãng lai");
     const resolvedCustomerEmail = isCounter ? "Tại quầy" : (rootBooking ? (rootBooking.email || "N/A") : "N/A");
 
     let savedCash = payment.cashReceived || payment.CashReceived;
