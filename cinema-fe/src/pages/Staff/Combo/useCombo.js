@@ -30,6 +30,9 @@ export function useCombo() {
 
   useEffect(() => {
     loadData();
+    // Lắng nghe event cập nhật tồn kho từ các trang khác (vd: khi hủy đơn ở DoanhThu)
+    window.addEventListener("inventoryUpdated", loadData);
+    return () => window.removeEventListener("inventoryUpdated", loadData);
   }, []);
 
   // Dọn dẹp polling khi unmount

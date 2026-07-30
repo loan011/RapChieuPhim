@@ -241,20 +241,32 @@ export default function DoanhThu() {
     });
   }, [reportData, selectedShiftFilter, cinemas]);
 
+  // Helper: kiểm tra hoá đơn đã hủy chưa (kểm tra cả server data và localStorage)
+  function checkIsCancelled(bill) {
+    // Ʈu tiên: server đã đánh dấu cancelled từ DB
+    if (bill.isCancelled) return true;
+    const statusStr = String(bill.status || bill.paymentStatus || bill.tickets?.[0]?.status || "").toLowerCase();
+    if (statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund")) return true;
+
+    // Kiểm tra localStorage: theo ticketCode của vé đầu tiên hoặc billCode
+    const tCode = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").toLowerCase();
+    if (tCode) {
+      const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+      if (found && String(found.status || "").toLowerCase().includes("cancel")) return true;
+    }
+    // Kiểm tra cancelled_time key
+    if (bill.billCode && localStorage.getItem("cancelled_time_" + bill.billCode)) return true;
+
+    return false;
+  }
+
   // Danh sách hóa đơn sau khi áp dụng cả lọc Ca, Tìm kiếm & Lọc trạng thái
   const filteredBills = useMemo(() => {
     return shiftBills.filter(bill => {
       const matchSearch = bill.billCode.toLowerCase().includes(searchQuery.toLowerCase().trim());
       if (!matchSearch) return false;
 
-      const statusStr = String(bill.status || bill.paymentStatus || bill.tickets?.[0]?.status || "").toLowerCase();
-      let isCancelled = bill.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
-
-      const tCode = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").toLowerCase();
-      const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
-      if (found && String(found.status || "").toLowerCase().includes("cancel")) {
-        isCancelled = true;
-      }
+      const isCancelled = checkIsCancelled(bill);
 
       if (selectedStatusFilter === "PAID") return !isCancelled;
       if (selectedStatusFilter === "CANCELLED") return isCancelled;
@@ -288,14 +300,18 @@ export default function DoanhThu() {
     let transferCount = 0;
 
     for (const b of shiftBills) {
-      const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
-      let isCancelled = b.isCancelled || statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
-
-      const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
-      const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
-      if (found && String(found.status || "").toLowerCase().includes("cancel")) {
-        isCancelled = true;
+      // Kiểm tra hủy: những đơn đã hủy không tính vào doanh thu
+      let isCancelled = b.isCancelled;
+      if (!isCancelled) {
+        const statusStr = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
+        isCancelled = statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
       }
+      if (!isCancelled) {
+        const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
+        const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
+        if (found && String(found.status || "").toLowerCase().includes("cancel")) isCancelled = true;
+      }
+      if (!isCancelled && b.billCode && localStorage.getItem("cancelled_time_" + b.billCode)) isCancelled = true;
 
       if (isCancelled) continue; // 🛑 Bỏ qua hóa đơn đã hủy khi tính Tổng Doanh Thu
 
@@ -316,11 +332,13 @@ export default function DoanhThu() {
     }
 
     const activeBillsCount = shiftBills.filter(b => {
+      if (b.isCancelled) return false;
       const s = String(b.status || b.paymentStatus || b.tickets?.[0]?.status || "").toLowerCase();
-      if (b.isCancelled || s.includes("cancel") || s.includes("hủy") || s.includes("refund")) return false;
+      if (s.includes("cancel") || s.includes("hủy") || s.includes("refund")) return false;
       const tCode = String(b.tickets?.[0]?.ticketCode || b.billCode || "").toLowerCase();
       const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
       if (found && String(found.status || "").toLowerCase().includes("cancel")) return false;
+      if (b.billCode && localStorage.getItem("cancelled_time_" + b.billCode)) return false;
       return true;
     }).length;
 
@@ -868,15 +886,8 @@ export default function DoanhThu() {
                       </tr>
                     ) : (
                       filteredBills.map((bill) => {
-                        const statusStr = String(bill.status || bill.paymentStatus || bill.tickets?.[0]?.status || "").toLowerCase();
-                        let isCancelled = statusStr.includes("cancel") || statusStr.includes("hủy") || statusStr.includes("refund");
-                        
-                        // Check local stored tickets for cancel status
-                        const tCode = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").toLowerCase();
-                        const found = localTicketsArray.find(t => String(t.ticketCode || t.code || "").toLowerCase() === tCode);
-                        if (found && String(found.status || "").toLowerCase().includes("cancel")) {
-                          isCancelled = true;
-                        }
+                        // Dùng helper checkIsCancelled để nhất quán
+                        const isCancelled = checkIsCancelled(bill);
 
                         const pmStr = String(bill.paymentMethod || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                         const isCash = pmStr.includes("cash") || pmStr.includes("tien") || pmStr.includes("mat");
