@@ -228,7 +228,7 @@ export default function StaffQuetQR() {
 
                   <div>Thông tin vé:</div>
                   <div className="font-bold text-green-700 text-right">
-                    1 x Vé ({(ticketDetails.seatPrice || ticketDetails.price || 0).toLocaleString("vi-VN")}đ - {ticketDetails.seatCode || "N/A"})
+                    {ticketDetails.ticketCount || 1} x Vé ({(ticketDetails.totalTicketPrice || ticketDetails.seatPrice || ticketDetails.price || 0).toLocaleString("vi-VN")}đ - {ticketDetails.seatCode || "N/A"})
                   </div>
 
                   {ticketDetails.foods && ticketDetails.foods.length > 0 && (

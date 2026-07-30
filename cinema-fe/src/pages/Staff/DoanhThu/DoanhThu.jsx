@@ -1473,7 +1473,22 @@ export default function DoanhThu() {
                     )}
                   </div>
 
-                  <div className="border-t border-dashed border-gray-300 my-4"></div>
+                  {/* Mã QR Code Vé / Hóa đơn */}
+                  <div className="flex flex-col items-center justify-center my-3 pt-3 border-t border-dashed border-gray-300">
+                    <div className="p-2 bg-white border border-gray-200 rounded-xl shadow-xs">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedBill.billCode)}`}
+                        alt={`QR ${selectedBill.billCode}`}
+                        className="w-28 h-28 object-contain"
+                      />
+                    </div>
+                    <span className="text-[11px] font-extrabold font-mono text-gray-700 tracking-wider mt-1.5">
+                      {selectedBill.billCode}
+                    </span>
+                    <span className="text-[10px] font-medium text-gray-400">
+                      (Quét mã QR để kiểm tra/soát vé)
+                    </span>
+                  </div>
 
                   {/* Receipt Footer */}
                   <div className="text-center text-[10px] text-gray-400 space-y-1 pb-2">
