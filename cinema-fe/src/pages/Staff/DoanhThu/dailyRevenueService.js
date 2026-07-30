@@ -313,6 +313,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       const seatPrice = Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : defaultSeatPrice));
       const movieTitle = info.movieTitle || "Hành Trình Của Moana";
       const roomName = info.roomName || "Rạp 3";
+      const seatCode = info.seatCode || info.seatNumber || info.seatLabel || info.seat || "A11";
       
       const concessions = (info.foodsList || []).map((f, idx) => ({
         id: idx,
@@ -334,7 +335,6 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         billCode: info.ticketCode || payment.bookingId || `VE${payment.paymentId}`,
         paymentDate: payment.createdAt,
         customerName: info.customerName || "Rabbit",
-        customerEmail: info.email || "hongloancute1234@gmail.com",
         customerEmail: info.email || "hongloancute1234@gmail.com",
         staffName: "Đặt Trực Tuyến",
         paymentMethod: info.paymentMethod || "QRCODE",
