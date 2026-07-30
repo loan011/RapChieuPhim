@@ -4,6 +4,7 @@ import {
   getErrorMessage,
   getAuthHeaders,
   cachedFetch,
+  clearApiCache,
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -65,7 +66,8 @@ async function sendRoomRequest({
 }
 
 // Lấy danh sách phòng chiếu
-export async function getRoomList() {
+export async function getRoomList(forceBypass = false) {
+  if (forceBypass) clearApiCache();
   const data = await cachedFetch(buildRoomUrl(""));
   return normalizeArray(data);
 }
@@ -77,28 +79,37 @@ export async function getRoomById(id) {
 
 // Thêm phòng chiếu
 export async function createRoom(roomData) {
-  return sendRoomRequest({
+  clearApiCache();
+  const result = await sendRoomRequest({
     method: "POST",
     body: roomData,
     errorMessage: "Thêm phòng chiếu thất bại!",
   });
+  clearApiCache();
+  return result;
 }
 
 // Cập nhật phòng chiếu
 export async function updateRoom(id, roomData) {
-  return sendRoomRequest({
+  clearApiCache();
+  const result = await sendRoomRequest({
     id,
     method: "PUT",
     body: roomData,
     errorMessage: "Cập nhật phòng chiếu thất bại!",
   });
+  clearApiCache();
+  return result;
 }
 
 // Xóa phòng chiếu
 export async function deleteRoom(id) {
-  return sendRoomRequest({
+  clearApiCache();
+  const result = await sendRoomRequest({
     id,
     method: "DELETE",
     errorMessage: "Xóa phòng chiếu thất bại!",
   });
+  clearApiCache();
+  return result;
 }

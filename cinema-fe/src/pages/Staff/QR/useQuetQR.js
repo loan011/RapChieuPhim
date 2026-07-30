@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchTickets, validateTicket, fetchTicketByCode, fetchBookingById } from "./QuetQRService";
+import { getDailyRevenue } from "../DoanhThu/dailyRevenueService";
 
 const CINEMA_NAME_MAP = {
   "1": "CinemaHCM Đồng Khởi",
@@ -171,22 +172,89 @@ export function useQuetQR() {
           }
         }
 
-        // Lấy giá vé chính xác từ API (ticket.Price / ticket.price)
-        const ticketPriceFromApi = Number(found.price || found.Price || found.ticketPrice || 0);
+        // ─── TÌM HÓA ĐƠN THANH TOÁN ĐẦY ĐỦ (matchedBill) ─────────────────────
+        let matchedBill = null;
+        try {
+          const dailyData = await getDailyRevenue();
+          if (dailyData?.bills) {
+            matchedBill = dailyData.bills.find(b => 
+              String(b.billCode || "").toLowerCase() === cleanCode.toLowerCase() ||
+              b.tickets?.some(t => String(t.ticketCode || t.bookingId || "").toLowerCase() === cleanCode.toLowerCase())
+            );
+          }
+        } catch (e) {}
 
-        const seatPriceVal = ticketPriceFromApi > 0
-          ? ticketPriceFromApi
-          : (savedInfo.seatPrice > 0 ? savedInfo.seatPrice : 0);
+        let ticketCount = 1;
+        let seatCodeVal = "";
+        let totalTicketPrice = 0;
+        let foodsVal = [];
+        let discountAmtVal = 0;
+        let discountCodeVal = "";
+        let finalTotalVal = 0;
+        let customerNameVal = found.customerName || found.CustomerName || booking?.customerName || "Khách";
 
-        const seatCodeVal = found.seatCode || found.SeatCode || savedInfo.seatCode ||
-          (savedInfo.seatsList && savedInfo.seatsList.join(", ")) ||
-          found.seatNumber || "";
+        if (matchedBill) {
+          const billTickets = matchedBill.tickets || [];
+          ticketCount = Math.max(1, billTickets.length);
+          seatCodeVal = billTickets.map(t => t.seatNumber).filter(Boolean).join(", ") || (found.seatCode || "N/A");
+          totalTicketPrice = matchedBill.ticketSubtotal || (Number(found.price || 200000) * ticketCount);
+          foodsVal = matchedBill.concessions || [];
+          discountAmtVal = Number(matchedBill.discountAmt || 0);
+          discountCodeVal = matchedBill.discountReason || "";
+          finalTotalVal = matchedBill.totalAmount;
+          if (matchedBill.customerName) customerNameVal = matchedBill.customerName;
+        } else {
+          // Fallback nếu không tìm thấy matchedBill
+          let siblingTickets = [];
+          if (bId && Array.isArray(tickets)) {
+            siblingTickets = tickets.filter(t => String(t.bookingId || t.BookingId) === String(bId));
+          }
 
-        const foodsVal = (found.foods && found.foods.length > 0)
-          ? found.foods
-          : ((savedInfo.foodsList && savedInfo.foodsList.length > 0)
-            ? savedInfo.foodsList
-            : (found.bookingFoods || (savedTicketLocal?.foodsList || [])));
+          let seatCodeList = [];
+          if (siblingTickets.length > 0) {
+            seatCodeList = siblingTickets.map(t => {
+              const r = String(t.seatRow || t.SeatRow || "").trim();
+              const n = String(t.seatNumber || t.SeatNumber || "").trim();
+              if (r && n && !n.toUpperCase().startsWith(r.toUpperCase())) return `${r}${n}`;
+              return n || r || t.seatCode || t.SeatCode || "";
+            }).filter(Boolean);
+          }
+
+          if (seatCodeList.length === 0) {
+            if (savedInfo.seatsList && savedInfo.seatsList.length > 0) {
+              seatCodeList = savedInfo.seatsList;
+            } else if (savedTicketLocal?.seats) {
+              seatCodeList = String(savedTicketLocal.seats).split(/[,;\s]+/).filter(Boolean);
+            } else {
+              const rawSeat = String(found.seatCode || found.SeatCode || found.seatNumber || savedInfo.seatCode || "").trim();
+              const cleanedSeat = rawSeat.replace(/^([A-Za-z]+)\s+\1(\d+)/, "$1$2");
+              if (cleanedSeat) seatCodeList = [cleanedSeat];
+            }
+          }
+
+          ticketCount = Math.max(1, siblingTickets.length > 0 ? siblingTickets.length : seatCodeList.length);
+          seatCodeVal = seatCodeList.join(", ") || "N/A";
+
+          if (siblingTickets.length > 0) {
+            totalTicketPrice = siblingTickets.reduce((sum, t) => sum + Number(t.price || t.Price || t.ticketPrice || 0), 0);
+          }
+          if (totalTicketPrice <= 0) {
+            const singlePrice = Number(found.price || found.Price || found.ticketPrice || savedInfo.seatPrice || 0);
+            totalTicketPrice = singlePrice > 0 ? (singlePrice * ticketCount) : Number(savedInfo.ticketSubtotal || savedTicketLocal?.ticketSubtotal || 0);
+          }
+
+          foodsVal = (found.foods && found.foods.length > 0)
+            ? found.foods
+            : ((savedInfo.foodsList && savedInfo.foodsList.length > 0)
+              ? savedInfo.foodsList
+              : (found.bookingFoods || (savedTicketLocal?.foodsList || [])));
+
+          discountAmtVal = Number(savedInfo.discountAmount || savedInfo.totalDiscountAmount || found.discountAmount || 0);
+          discountCodeVal = savedInfo.discountCode || found.discountCode || "";
+
+          const foodTotal = foodsVal.reduce((sum, f) => sum + (Number(f.price || f.Price || 0) * Number(f.quantity || f.Quantity || 1)), 0);
+          finalTotalVal = Math.max(0, (totalTicketPrice + foodTotal) - discountAmtVal);
+        }
 
         // Tính ngày giờ chiếu từ dữ liệu API
         let showDateVal = "";
@@ -199,15 +267,6 @@ export function useQuetQR() {
           startTimeVal = savedInfo.startTime || found.startTime || savedTicketLocal?.startTime || "";
         }
 
-        const discountAmtVal = savedInfo.discountAmount || savedInfo.totalDiscountAmount || found.discountAmount || 0;
-        const discountCodeVal = savedInfo.discountCode || found.discountCode || "";
-
-        // Tổng tiền = giá vé (chính xác từ API) + đồ ăn - giảm giá
-        const foodTotal = foodsVal.reduce((sum, f) => sum + (Number(f.price || f.Price || 0) * Number(f.quantity || f.Quantity || 1)), 0);
-        const finalTotalVal = seatPriceVal > 0
-          ? (seatPriceVal + foodTotal - discountAmtVal)
-          : (savedInfo.finalTotalAmount || found.totalAmount || savedTicketLocal?.totalAmount || 0);
-
         // ─── KIỂM TRA CHI NHÁNH ────────────────────────────────────────────────
         const staffCinema = getStaffCinema();
         const ticketCinemaId = String(
@@ -216,25 +275,27 @@ export function useQuetQR() {
           found.showtime?.room?.cinemaId ||
           ""
         );
-        const ticketCinemaName = savedInfo.cinemaName || found.cinemaName || found.CinemaName || booking?.cinemaName || "";
+        const ticketCinemaName = matchedBill?.cinemaName || savedInfo.cinemaName || found.cinemaName || found.CinemaName || booking?.cinemaName || "";
         const isCrossChain = Boolean(staffCinema.cinemaId && !isSameCinema(staffCinema, ticketCinemaId, ticketCinemaName));
         // ───────────────────────────────────────────────────────────────────────
 
         const enrichedDetails = {
           ...found,
           ticketCode: found.ticketCode || found.TicketCode || cleanCode,
-          movieTitle: found.movieTitle || found.MovieTitle || savedInfo.movieTitle || booking?.movieTitle || "N/A",
-          roomName: found.roomName || found.RoomName || savedInfo.roomName || booking?.roomName || "N/A",
-          cinemaName: ticketCinemaName || found.cinemaName || found.CinemaName || "N/A",
+          movieTitle: matchedBill?.tickets?.[0]?.movieTitle || found.movieTitle || found.MovieTitle || savedInfo.movieTitle || booking?.movieTitle || "N/A",
+          roomName: matchedBill?.tickets?.[0]?.roomName || found.roomName || found.RoomName || savedInfo.roomName || booking?.roomName || "N/A",
+          cinemaName: ticketCinemaName || "N/A",
           seatCode: seatCodeVal,
-          seatPrice: seatPriceVal,
+          ticketCount: ticketCount,
+          totalTicketPrice: totalTicketPrice,
+          seatPrice: totalTicketPrice,
           showDate: showDateVal,
           startTime: startTimeVal,
           foods: foodsVal,
           discountAmount: discountAmtVal,
           discountCode: discountCodeVal,
           finalTotalAmount: finalTotalVal,
-          customerName: found.customerName || found.CustomerName || booking?.customerName || "Khách",
+          customerName: customerNameVal,
           isExpired: isShowtimeExpired,
           isCrossChain: isCrossChain
         };

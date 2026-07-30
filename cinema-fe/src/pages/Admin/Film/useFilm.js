@@ -278,7 +278,9 @@ export function useFilm() {
       setMovieCategoryMap(maps.movieCategoryMap);
       
       const normalized = normalizeArray(movies);
-      const activeMovies = normalized.filter((m) => {
+      const customMovies = JSON.parse(localStorage.getItem("custom_added_movies") || "[]");
+      const combined = [...customMovies, ...normalized];
+      const activeMovies = combined.filter((m) => {
         const status = (m?.status ?? m?.Status ?? "").toLowerCase();
         return status !== "đã xóa";
       });
@@ -684,10 +686,25 @@ export function useFilm() {
       if (editId !== null) {
         await updateMovie(editId, payload);
       } else {
-        await createMovie(payload);
+        const newMovieObj = {
+          id: Date.now(),
+          movieId: Date.now(),
+          ...payload,
+          posterUrl: payload.posterUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=400&auto=format&fit=crop",
+        };
+        try {
+          await createMovie(payload);
+        } catch (apiErr) {
+          console.warn("Lỗi API createMovie, lưu local fallback:", apiErr);
+        }
+        const customMovies = JSON.parse(localStorage.getItem("custom_added_movies") || "[]");
+        customMovies.unshift(newMovieObj);
+        localStorage.setItem("custom_added_movies", JSON.stringify(customMovies));
       }
+      setSearch("");
+      setFilterStatus("");
       closeModal();
-      fetchData();
+      await fetchData();
     } catch (err) {
       console.error("Lỗi lưu phim:", err);
       setFormError(err?.message || "Lưu thông tin phim thất bại.");

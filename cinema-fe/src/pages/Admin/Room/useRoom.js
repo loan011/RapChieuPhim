@@ -428,6 +428,21 @@ export function useRoom() {
     });
   }, [roomsByCinema, selectedRoomId]);
 
+function deduplicateRooms(roomsArray) {
+  const seenKeys = new Set();
+  return (roomsArray || []).filter((room) => {
+    const id = room?.roomId ?? room?.RoomId ?? room?.id ?? room?.Id;
+    const name = String(room?.roomName ?? room?.RoomName ?? "").trim().toLowerCase();
+    const cId = String(room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "").trim();
+    const key = id ? `id_${id}` : `c_${cId}_name_${name}`;
+    if (seenKeys.has(key)) {
+      return false;
+    }
+    seenKeys.add(key);
+    return true;
+  });
+}
+
   async function fetchData() {
     try {
       setLoading(true);
@@ -438,7 +453,10 @@ export function useRoom() {
         getCinemaList(),
       ]);
 
-      setRooms(normalizeArray(roomData));
+      const normRooms = normalizeArray(roomData);
+      const customRooms = JSON.parse(localStorage.getItem("custom_added_rooms") || "[]");
+      const combinedRooms = deduplicateRooms([...customRooms, ...normRooms]);
+      setRooms(combinedRooms);
       setCinemas(normalizeArray(cinemaData));
     } catch (err) {
       console.error("Lỗi tải dữ liệu phòng chiếu:", err);
@@ -579,20 +597,32 @@ export function useRoom() {
           setRooms(prev => prev.map(r => String(r.roomId || r.RoomId || r.id) === String(editId) ? { ...r, ...payload } : r));
         }
       } else {
+        const newRoomObj = {
+          id: Date.now(),
+          roomId: Date.now(),
+          cinemaId: Number(form.cinemaId) || form.cinemaId,
+          roomName: String(form.roomName).trim(),
+          roomType: form.roomType || "4DX",
+          totalSeats: Number(form.totalSeats) || 150,
+          isActive: form.isActive === true || form.isActive === "true" || form.isActive === "Hoạt động",
+          statusText: form.isActive ? "Hoạt động" : "Ngừng hoạt động",
+          normalDayNormalSeatPrice: Number(form.normalDayNormalSeatPrice || 90000),
+          weekendNormalSeatPrice: Number(form.weekendNormalSeatPrice || 100000),
+          normalDayVipSeatPrice: Number(form.normalDayVipSeatPrice || 120000),
+          weekendVipSeatPrice: Number(form.weekendVipSeatPrice || 140000),
+          normalDayCoupleSeatPrice: Number(form.normalDayCoupleSeatPrice || 160000),
+          weekendCoupleSeatPrice: Number(form.weekendCoupleSeatPrice || 200000),
+        };
         try {
           await createRoom(payload);
         } catch (apiErr) {
           console.warn("Thêm phòng qua API thất bại, lưu cục bộ:", apiErr);
-          const newRoom = {
-            roomId: Date.now(),
-            cinemaId: Number(form.cinemaId),
-            roomName: String(form.roomName).trim(),
-            roomType: form.roomType || "2D",
-            totalSeats: Number(form.totalSeats) || 60,
-            isActive: form.isActive === true || form.isActive === "true",
-          };
-          setRooms(prev => [...prev, newRoom]);
         }
+        const customRooms = JSON.parse(localStorage.getItem("custom_added_rooms") || "[]");
+        // Deduplicate before saving
+        const filteredCustom = customRooms.filter(r => String(r.roomName).toLowerCase().trim() !== String(newRoomObj.roomName).toLowerCase().trim());
+        filteredCustom.unshift(newRoomObj);
+        localStorage.setItem("custom_added_rooms", JSON.stringify(filteredCustom));
       }
 
       closeModal();
@@ -829,7 +859,8 @@ export function useRoomAdmin() {
         return item ? new Intl.NumberFormat("vi-VN").format(Number(item.price || item.Price)) : null;
       };
 
-      const currentType = roomForm.roomType || "2D";
+      const targetForm = roomForm || {};
+      const currentType = targetForm.roomType || "2D";
       const isImax = String(currentType).toUpperCase().includes("IMAX");
 
       const dbStdWd = getDbFormatted(currentType, "standard", false);
@@ -850,34 +881,41 @@ export function useRoomAdmin() {
 
   const handleCustomRoomSubmit = async (e) => {
     e.preventDefault();
-    const cId = roomForm.cinemaId;
-    const rName = roomForm.roomName;
-    const currentRoomType = roomForm.roomType || "2D";
+    const targetForm = roomForm || {};
+    const cId = targetForm.cinemaId || selectedCinemaFilter || "";
+    const rName = targetForm.roomName || "";
+    const currentRoomType = targetForm.roomType || "2D";
 
-    localStorage.setItem(`room_price_std_wd_c${cId}_r${rName}`, priceStdWeekday);
-    localStorage.setItem(`room_price_std_we_c${cId}_r${rName}`, priceStdWeekend);
-    localStorage.setItem(`room_price_vip_wd_c${cId}_r${rName}`, priceVipWeekday);
-    localStorage.setItem(`room_price_vip_we_c${cId}_r${rName}`, priceVipWeekend);
-    localStorage.setItem(`room_price_cp_wd_c${cId}_r${rName}`, priceCoupleWeekday);
-    localStorage.setItem(`room_price_cp_we_c${cId}_r${rName}`, priceCoupleWeekend);
+    if (cId && rName) {
+      localStorage.setItem(`room_price_std_wd_c${cId}_r${rName}`, priceStdWeekday);
+      localStorage.setItem(`room_price_std_we_c${cId}_r${rName}`, priceStdWeekend);
+      localStorage.setItem(`room_price_vip_wd_c${cId}_r${rName}`, priceVipWeekday);
+      localStorage.setItem(`room_price_vip_we_c${cId}_r${rName}`, priceVipWeekend);
+      localStorage.setItem(`room_price_cp_wd_c${cId}_r${rName}`, priceCoupleWeekday);
+      localStorage.setItem(`room_price_cp_we_c${cId}_r${rName}`, priceCoupleWeekend);
 
-    if (syncAllRooms && rooms && rooms.length > 0) {
-      rooms.forEach(room => {
-        const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
-        const type = room?.roomType ?? room?.RoomType ?? "2D";
-        const name = room?.roomName ?? room?.RoomName ?? "";
-        if (String(roomCinemaId) === String(cId) && String(type).toUpperCase() === String(currentRoomType).toUpperCase()) {
-          localStorage.setItem(`room_price_std_wd_c${cId}_r${name}`, priceStdWeekday);
-          localStorage.setItem(`room_price_std_we_c${cId}_r${name}`, priceStdWeekend);
-          localStorage.setItem(`room_price_vip_wd_c${cId}_r${name}`, priceVipWeekday);
-          localStorage.setItem(`room_price_vip_we_c${cId}_r${name}`, priceVipWeekend);
-          localStorage.setItem(`room_price_cp_wd_c${cId}_r${name}`, priceCoupleWeekday);
-          localStorage.setItem(`room_price_cp_we_c${cId}_r${name}`, priceCoupleWeekend);
-        }
-      });
+      if (syncAllRooms && rooms && rooms.length > 0) {
+        rooms.forEach(room => {
+          const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
+          const type = room?.roomType ?? room?.RoomType ?? "2D";
+          const name = room?.roomName ?? room?.RoomName ?? "";
+          if (String(roomCinemaId) === String(cId) && String(type).toUpperCase() === String(currentRoomType).toUpperCase()) {
+            localStorage.setItem(`room_price_std_wd_c${cId}_r${name}`, priceStdWeekday);
+            localStorage.setItem(`room_price_std_we_c${cId}_r${name}`, priceStdWeekend);
+            localStorage.setItem(`room_price_vip_wd_c${cId}_r${name}`, priceVipWeekday);
+            localStorage.setItem(`room_price_vip_we_c${cId}_r${name}`, priceVipWeekend);
+            localStorage.setItem(`room_price_cp_wd_c${cId}_r${name}`, priceCoupleWeekday);
+            localStorage.setItem(`room_price_cp_we_c${cId}_r${name}`, priceCoupleWeekend);
+          }
+        });
+      }
     }
 
-    await handleRoomSubmit(e);
+    if (typeof handleRoomSubmit === "function") {
+      await handleRoomSubmit(e);
+    } else if (typeof handleSubmit === "function") {
+      await handleSubmit(e);
+    }
   };
 
   const menuRef = useRef(null);
@@ -1176,18 +1214,14 @@ export function useRoomAdmin() {
     return types.size > 1 ? 'mixed' : ([...types][0] || 'standard');
   }
 
-  function handleSeatTypeOverride(row, seat, newType) {
-    if (newType === 'couple') {
-      const seatNum = Number(getSeatNumber(seat)) || 0;
-      const adj = row.seats.find(s => { const n = Number(getSeatNumber(s)); return n === seatNum-1 || n === seatNum+1; });
-      if (!adj) { setLayoutError(`Ghế ${getSeatCode(seat)}: Couple phải chọn 2 ghế liền nhau.`); return; }
-      const adjId = String(getSeatId(adj) || '');
-      const sId = String(getSeatId(seat) || '');
-      setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), type:'couple' }, [adjId]: { ...(prev[adjId]||{}), type:'couple' } }));
-      setLayoutError('');
-      return;
-    }
-    setLayoutError('');
+  function handleRowTypeChange(rowName, newType) {
+    setLayoutRowTypes(prev => ({
+      ...prev,
+      [rowName]: newType,
+    }));
+  }
+
+  function handleSeatTypeOverride(seat, newType) {
     const sId = String(getSeatId(seat) || '');
     setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), type: newType } }));
   }
@@ -1206,7 +1240,7 @@ export function useRoomAdmin() {
     setLayoutSaving(true);
     setLayoutError('');
     try {
-      const roomId = selectedRoomId || filterRoom;
+      const roomId = selectedRoomId || filterRoom || (selectedRoom ? getRoomId(selectedRoom) : null) || "global";
       const typeMap = { standard:'Standard', vip:'VIP', couple:'Couple', sweetbox:'Couple', maintenance:'Standard', inactive:'Standard' };
       const statusMap = { active:true, maintenance:false, inactive:false };
       const changeLog = [];
@@ -1224,9 +1258,15 @@ export function useRoomAdmin() {
         rows: { ...layoutRowTypes },
         seats: { ...seatOverrides }
       };
-      if (roomId) {
-        localStorage.setItem(`rapchieuphim_seat_overrides_${roomId}`, JSON.stringify(savedMap));
-      }
+
+      try {
+        if (roomId) {
+          localStorage.setItem(`rapchieuphim_seat_overrides_${roomId}`, JSON.stringify(savedMap));
+          localStorage.setItem(`rapchieuphim_seat_overrides_room_${roomId}`, JSON.stringify(savedMap));
+        }
+        localStorage.setItem("rapchieuphim_seat_overrides_latest", JSON.stringify(savedMap));
+        localStorage.setItem("rapchieuphim_seat_overrides_global", JSON.stringify(savedMap));
+      } catch(e) {}
 
       const toUpdate = [];
       for (const seat of seatsToProcess) {
@@ -1287,6 +1327,10 @@ export function useRoomAdmin() {
         try { hist = JSON.parse(localStorage.getItem('rapchieuphim_seat_history') || '[]'); } catch(e) {}
         hist.unshift(...changeLog);
         localStorage.setItem('rapchieuphim_seat_history', JSON.stringify(hist.slice(0, 200)));
+      }
+
+      if (seatHook?.refetchSeats) {
+        await seatHook.refetchSeats().catch(() => null);
       }
 
       try { window.dispatchEvent(new Event('storage')); } catch(e) {}

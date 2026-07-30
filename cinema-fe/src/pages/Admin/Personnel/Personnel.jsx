@@ -344,7 +344,7 @@ export default function Personnel() {
                   />
                 </div>
 
-                {/* Điện thoại & Chi nhánh */}
+                {/* Điện thoại & Địa chỉ */}
                 <div className="pe-field-row">
                   <div className="pe-field">
                     <label className="pe-label">Điện Thoại</label>
@@ -358,20 +358,15 @@ export default function Personnel() {
                     />
                   </div>
                   <div className="pe-field">
-                    <label className="pe-label">Chi Nhánh Rạp</label>
-                    <select
-                      name="cinemaId"
-                      value={form.cinemaId}
+                    <label className="pe-label">Địa Chỉ</label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={form.address || ""}
                       onChange={handleChange}
                       className="pe-input"
-                    >
-                      <option value="">Tất cả các rạp (Hệ thống)</option>
-                      {cinemaOptions.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="VD: 123 Nguyễn Trãi, Q.1, TP.HCM"
+                    />
                   </div>
                 </div>
 

@@ -4,6 +4,7 @@ import {
   getErrorMessage,
   getAuthHeaders,
   cachedFetch,
+  clearApiCache,
 } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -19,7 +20,8 @@ function normalizeArray(data) {
 }
 
 // GET /api/Movies
-export async function getMovieList() {
+export async function getMovieList(forceBypass = false) {
+  if (forceBypass) clearApiCache();
   const data = await cachedFetch(`${API_URL}/Movies`);
   return normalizeArray(data);
 }
@@ -37,6 +39,7 @@ export async function getMovieById(id) {
 
 // POST /api/Movies
 export async function createMovie(movie) {
+  clearApiCache();
   const response = await fetch(`${API_URL}/Movies`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -49,11 +52,13 @@ export async function createMovie(movie) {
     throw new Error(getErrorMessage(data, "Thêm phim thất bại!"));
   }
 
+  clearApiCache();
   return data;
 }
 
 // PUT /api/Movies/:id
 export async function updateMovie(id, movie) {
+  clearApiCache();
   console.log(`[updateMovie] PUT /Movies/${id}`, movie);
 
   const response = await fetch(`${API_URL}/Movies/${id}`, {

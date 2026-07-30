@@ -206,32 +206,47 @@ export function getSeatNumber(seat) {
 export function getSeatType(seat) {
   const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
   const sId = String(getSeatId(seat) || "");
-  const row = getSeatRow(seat);
+  const row = normalizeSeatRow(getSeatRow(seat));
   const code = getSeatCode(seat);
 
-  if (roomId) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+  try {
+    const keys = [
+      roomId ? `rapchieuphim_seat_overrides_${roomId}` : null,
+      roomId ? `rapchieuphim_seat_overrides_room_${roomId}` : null,
+      "rapchieuphim_seat_overrides_latest",
+      "rapchieuphim_seat_overrides_global",
+    ].filter(Boolean);
+
+    for (const key of keys) {
+      const item = localStorage.getItem(key);
+      if (!item) continue;
+      const saved = JSON.parse(item);
+
       if (sId && saved.seats && saved.seats[sId]?.type) {
-        const t = saved.seats[sId].type;
+        const t = String(saved.seats[sId].type).toLowerCase();
         return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
       }
       if (code && saved.seats && saved.seats[code]?.type) {
-        const t = saved.seats[code].type;
+        const t = String(saved.seats[code].type).toLowerCase();
         return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
       }
       if (row && saved.rows) {
         const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
         if (rType && rType !== "mixed") {
-          if (rType === "vip") return "VIP";
-          if (rType === "couple") return "Couple";
-          if (rType === "standard") return "Standard";
+          const lowerRType = String(rType).toLowerCase();
+          if (lowerRType === "vip") return "VIP";
+          if (lowerRType === "couple") return "Couple";
+          if (lowerRType === "standard") return "Standard";
         }
       }
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
 
-  return seat?.seatType ?? seat?.SeatType ?? seat?.type ?? "Standard";
+  const raw = seat?.seatType ?? seat?.SeatType ?? seat?.type ?? "Standard";
+  const lowerRaw = String(raw).toLowerCase();
+  if (lowerRaw === "couple") return "Couple";
+  if (lowerRaw === "vip") return "VIP";
+  return "Standard";
 }
 
 export function getSeatCode(seat) {
@@ -246,17 +261,34 @@ export function getSeatCode(seat) {
 export function getSeatStatus(seat) {
   const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
   const sId = String(getSeatId(seat) || "");
+  const row = normalizeSeatRow(getSeatRow(seat));
   const code = getSeatCode(seat);
 
-  if (roomId) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
+  try {
+    const keys = [
+      roomId ? `rapchieuphim_seat_overrides_${roomId}` : null,
+      roomId ? `rapchieuphim_seat_overrides_room_${roomId}` : null,
+      "rapchieuphim_seat_overrides_latest",
+      "rapchieuphim_seat_overrides_global",
+    ].filter(Boolean);
+
+    for (const key of keys) {
+      const item = localStorage.getItem(key);
+      if (!item) continue;
+      const saved = JSON.parse(item);
+
       const st = saved.seats?.[sId]?.status || saved.seats?.[code]?.status;
       if (st === "active") return "Hoạt động";
       if (st === "maintenance") return "Bảo trì";
       if (st === "inactive") return "Ngừng dùng";
-    } catch (e) {}
-  }
+
+      if (row && saved.rows) {
+        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
+        if (rType === "maintenance") return "Bảo trì";
+        if (rType === "inactive") return "Ngừng dùng";
+      }
+    }
+  } catch (e) {}
 
   const isActive = seat?.isActive ?? seat?.IsActive;
 
@@ -784,6 +816,7 @@ export function useSeat() {
     formError,
     openAddModal,
     openEditModal,
+    refetchSeats: fetchData,
     closeModal,
     handleChange,
     handleSubmit,

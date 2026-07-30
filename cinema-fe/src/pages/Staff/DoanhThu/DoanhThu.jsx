@@ -143,6 +143,28 @@ export default function DoanhThu() {
     }
   };
 
+  const CINEMA_NAME_MAP = {
+    "1": "CinemaHCM Đồng Khởi",
+    "2": "CinemaHCM Bến Thành",
+    "3": "CinemaHCM Tân Bình",
+    "4": "CinemaHCM Vincom Thủ Đức"
+  };
+
+  const getBillBranchName = (bill) => {
+    if (!bill) return "";
+    const cid = getOrderCinemaId(bill, cinemas) || getStaffCinemaId();
+    const found = cinemas.find(c => String(c.cinemaId ?? c.CinemaId ?? c.id ?? c.Id) === String(cid));
+    const name = found?.name || found?.cinemaName || found?.Name || found?.CinemaName;
+    if (name && !name.toLowerCase().startsWith("chi nhánh id") && !name.toLowerCase().startsWith("chi nhánh ")) {
+      return name;
+    }
+    if (cid && CINEMA_NAME_MAP[cid]) {
+      return CINEMA_NAME_MAP[cid];
+    }
+    if (bill.cinemaName) return bill.cinemaName;
+    return cid ? `Chi nhánh ${cid}` : "Chi nhánh T&M";
+  };
+
   // Gọi API lấy dữ liệu mỗi khi date thay đổi
   useEffect(() => {
     fetchData();
@@ -429,10 +451,48 @@ export default function DoanhThu() {
     };
   }
 
+  // Kiểm tra xem Ca 1 của ngày chọn đã được xác nhận / gửi báo cáo kết ca chưa
+  const isCa1ConfirmedForDate = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem("staff_reports_history") || "[]");
+      const hasCa1History = history.some(r => r.date === date && String(r.shiftName || "").includes("Ca 1"));
+      if (hasCa1History) return true;
+
+      const savedState = JSON.parse(localStorage.getItem("staff_shift_state") || "{}");
+      if (savedState && savedState.status === "ENDED" && String(savedState.shiftName || "").includes("Ca 1")) {
+        const endedDate = savedState.endedAt ? savedState.endedAt.split('T')[0] : "";
+        if (endedDate === date || !endedDate) return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }, [date, reportData, showSendModal]);
+
+  // Kiểm tra xem Ca 2 của ngày chọn đã được xác nhận / gửi báo cáo kết ca chưa
+  const isCa2ConfirmedForDate = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem("staff_reports_history") || "[]");
+      const hasCa2History = history.some(r => r.date === date && String(r.shiftName || "").includes("Ca 2"));
+      if (hasCa2History) return true;
+
+      const savedState = JSON.parse(localStorage.getItem("staff_shift_state") || "{}");
+      if (savedState && savedState.status === "ENDED" && String(savedState.shiftName || "").includes("Ca 2")) {
+        const endedDate = savedState.endedAt ? savedState.endedAt.split('T')[0] : "";
+        if (endedDate === date || !endedDate) return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }, [date, reportData, showSendModal]);
+
+  // Báo cáo cả ngày chỉ cho phép khi ĐÃ KẾT CẢ CA 1 VÀ CA 2
+  const isFullDayAllowed = isCa1ConfirmedForDate && isCa2ConfirmedForDate;
+
   // Mở modal gửi báo cáo kết ca
   function handleOpenSendModal() {
     const now = new Date();
-    const currentHour = now.getHours();
     
     let defaultShift = selectedShiftFilter === "CA2" ? "Ca 2 (16:00 - 24:00)" : "Ca 1 (08:00 - 16:00)";
     let initCash = 500000;
@@ -444,6 +504,11 @@ export default function DoanhThu() {
         if (savedState.initialCash !== undefined) initCash = Number(savedState.initialCash);
       }
     } catch (e) {}
+
+    // Bắt buộc: Ca 1 chưa xác nhận -> Không thể mặc định là Ca 2
+    if (defaultShift.includes("Ca 2") && !isCa1ConfirmedForDate) {
+      defaultShift = "Ca 1 (08:00 - 16:00)";
+    }
 
     setShiftForReport(defaultShift);
 
@@ -458,6 +523,17 @@ export default function DoanhThu() {
 
   // Đổi Ca trong modal kết ca
   function handleShiftChangeInModal(newShift) {
+    if (newShift.includes("Ca 2") && !isCa1ConfirmedForDate) {
+      alert(`❌ Chưa thể chọn Ca 2!\n\nVui lòng thực hiện Bàn Giao & Xác Nhận Kết Ca 1 (ngày ${date}) cho Admin trước khi kết ca Ca 2.`);
+      return;
+    }
+
+    const isFullDayChoice = newShift.includes("Cả ngày") || newShift.includes("Cả Ngày") || newShift.includes("Full Day");
+    if (isFullDayChoice && !isFullDayAllowed) {
+      alert(`❌ Chưa thể chọn báo cáo Cả ngày!\n\nBạn cần xác nhận kết ca & gửi báo cáo cho CẢ CA 1 VÀ CA 2 (ngày ${date}) trước khi báo cáo Cả ngày.`);
+      return;
+    }
+
     setShiftForReport(newShift);
     const metrics = getShiftMetricsByName(newShift);
     setActualCash(initialCash + metrics.totalCashRevenue);
@@ -485,7 +561,16 @@ export default function DoanhThu() {
     e.preventDefault();
     if (!reportData) return;
 
+    if (shiftForReport.includes("Ca 2") && !isCa1ConfirmedForDate) {
+      alert(`❌ Không thể xác nhận Ca 2!\n\nCa 1 ngày ${date} chưa được kết ca và gửi báo cáo cho Admin. Vui lòng hoàn tất Ca 1 trước.`);
+      return;
+    }
+
     const isFullDayReport = shiftForReport.includes("Cả ngày") || shiftForReport.includes("Cả Ngày") || shiftForReport.includes("Full Day");
+    if (isFullDayReport && !isFullDayAllowed) {
+      alert(`❌ Không thể gửi báo cáo Cả ngày!\n\nBạn cần hoàn tất xác nhận kết ca và gửi báo cáo cho cả Ca 1 và Ca 2 ngày ${date} trước.`);
+      return;
+    }
     const modalShiftMetrics = getShiftMetricsByName(shiftForReport);
 
     const theoreticalCash = isFullDayReport ? 0 : (Number(initialCash || 0) + modalShiftMetrics.totalCashRevenue);
@@ -1007,31 +1092,56 @@ export default function DoanhThu() {
                           : "border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
                     >
-                      <span className="text-xs">Ca 1</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs">Ca 1</span>
+                        {isCa1ConfirmedForDate && <span className="text-[10px] text-emerald-600 font-extrabold">✓ Đã gửi</span>}
+                      </div>
                       <span className="text-[10px] font-normal text-gray-500">08:00 - 16:00</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleShiftChangeInModal("Ca 2 (16:00 - 24:00)")}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5 ${
-                        shiftForReport.includes("Ca 2")
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5 relative ${
+                        !isCa1ConfirmedForDate
+                          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
+                          : shiftForReport.includes("Ca 2")
                           ? "bg-blue-50 border-blue-500 text-blue-800 ring-2 ring-blue-100"
                           : "border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
+                      title={!isCa1ConfirmedForDate ? "Cần kết ca Ca 1 trước" : "Ca 2 (16:00 - 24:00)"}
                     >
-                      <span className="text-xs">Ca 2</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs">Ca 2</span>
+                        {!isCa1ConfirmedForDate ? (
+                          <span className="text-[10px] text-red-500 font-bold">🔒 Khóa (Chờ Ca 1)</span>
+                        ) : isCa2ConfirmedForDate ? (
+                          <span className="text-[10px] text-blue-600 font-extrabold">✓ Đã gửi</span>
+                        ) : (
+                          <span className="text-[10px] text-blue-600 font-bold">✓ Sẵn sàng</span>
+                        )}
+                      </div>
                       <span className="text-[10px] font-normal text-gray-500">16:00 - 24:00</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleShiftChangeInModal("Cả ngày (08:00 - 24:00)")}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5 ${
-                        shiftForReport.includes("Cả ngày") || shiftForReport.includes("Full Day")
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5 relative ${
+                        !isFullDayAllowed
+                          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
+                          : shiftForReport.includes("Cả ngày") || shiftForReport.includes("Full Day")
                           ? "bg-purple-50 border-purple-500 text-purple-800 ring-2 ring-purple-100"
                           : "border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
+                      title={!isFullDayAllowed ? "Cần kết ca Ca 1 & Ca 2 trước" : "Cả ngày (08:00 - 24:00)"}
                     >
-                      <span className="text-xs">Cả ngày</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs">Cả ngày</span>
+                        {!isFullDayAllowed ? (
+                          <span className="text-[10px] text-red-500 font-bold">🔒 Khóa (Chờ Ca 1 & 2)</span>
+                        ) : (
+                          <span className="text-[10px] text-purple-600 font-bold">✓ Sẵn sàng</span>
+                        )}
+                      </div>
                       <span className="text-[10px] font-normal text-gray-500">08:00 - 24:00</span>
                     </button>
                   </div>
@@ -1245,8 +1355,8 @@ export default function DoanhThu() {
                       <span className="font-semibold">{selectedBill.paymentMethod === "Cash" ? "Tiền mặt" : selectedBill.paymentMethod}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Nhân viên:</span>
-                      <span>{selectedBill.staffName}</span>
+                      <span className="text-gray-400">Chi nhánh:</span>
+                      <span className="font-semibold">{getBillBranchName(selectedBill)}</span>
                     </div>
                   </div>
 
@@ -1363,7 +1473,22 @@ export default function DoanhThu() {
                     )}
                   </div>
 
-                  <div className="border-t border-dashed border-gray-300 my-4"></div>
+                  {/* Mã QR Code Vé / Hóa đơn */}
+                  <div className="flex flex-col items-center justify-center my-3 pt-3 border-t border-dashed border-gray-300">
+                    <div className="p-2 bg-white border border-gray-200 rounded-xl shadow-xs">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedBill.billCode)}`}
+                        alt={`QR ${selectedBill.billCode}`}
+                        className="w-28 h-28 object-contain"
+                      />
+                    </div>
+                    <span className="text-[11px] font-extrabold font-mono text-gray-700 tracking-wider mt-1.5">
+                      {selectedBill.billCode}
+                    </span>
+                    <span className="text-[10px] font-medium text-gray-400">
+                      (Quét mã QR để kiểm tra/soát vé)
+                    </span>
+                  </div>
 
                   {/* Receipt Footer */}
                   <div className="text-center text-[10px] text-gray-400 space-y-1 pb-2">
