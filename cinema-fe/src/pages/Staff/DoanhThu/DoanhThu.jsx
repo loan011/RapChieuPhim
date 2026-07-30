@@ -27,7 +27,6 @@ import {
 import { getCinemaList } from "../../Admin/Cinema/cinemaService";
 import { getDailyRevenue, sendDailyRevenueReport } from "./dailyRevenueService";
 import { clearApiCache } from "../../../services/apiHelper";
-import TicketExchangeModal from "../../../components/TicketExchangeModal";
 import "./DoanhThu.css";
 
 function getOrderCinemaId(order, cinemas = []) {
@@ -109,11 +108,9 @@ export default function DoanhThu() {
 
   // Trạng thái hóa đơn chi tiết được chọn
   const [selectedBill, setSelectedBill] = useState(null);
-  const [showExchangeModal, setShowExchangeModal] = useState(false);
 
-  // Tìm kiếm theo mã hóa đơn & Lọc trạng thái (Tất cả / Thành công / Đã Hủy)
+  // Tìm kiếm theo mã hóa đơn
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
 
   // Lấy danh sách rạp chiếu khi component mount
   useEffect(() => {
@@ -260,19 +257,18 @@ export default function DoanhThu() {
     return false;
   }
 
-  // Danh sách hóa đơn sau khi áp dụng cả lọc Ca, Tìm kiếm & Lọc trạng thái
+  // Danh sách hóa đơn sau khi áp dụng lọc Ca và Tìm kiếm (Ẩn hoàn toàn hóa đơn đã hủy)
   const filteredBills = useMemo(() => {
     return shiftBills.filter(bill => {
       const matchSearch = bill.billCode.toLowerCase().includes(searchQuery.toLowerCase().trim());
       if (!matchSearch) return false;
 
       const isCancelled = checkIsCancelled(bill);
+      if (isCancelled) return false; // Ẩn hoàn toàn tất cả các hóa đơn đã hủy
 
-      if (selectedStatusFilter === "PAID") return !isCancelled;
-      if (selectedStatusFilter === "CANCELLED") return isCancelled;
       return true;
     });
-  }, [shiftBills, searchQuery, selectedStatusFilter, localTicketsArray]);
+  }, [shiftBills, searchQuery, localTicketsArray]);
 
   // Thống kê doanh thu theo Ca được chọn
   const currentShiftMetrics = useMemo(() => {
@@ -808,43 +804,6 @@ export default function DoanhThu() {
                     <span className="w-1.5 h-5 bg-green-600 rounded-full"></span>
                     Chi Tiết Các Hóa Đơn ({filteredBills.length})
                   </h5>
-
-                  {/* STATUS FILTER TABS */}
-                  <div className="flex bg-gray-100 p-1 rounded-xl gap-1 text-xs font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStatusFilter("ALL")}
-                      className={`px-3 py-1 rounded-lg transition-all ${
-                        selectedStatusFilter === "ALL"
-                          ? "bg-white text-gray-800 shadow-xs"
-                          : "text-gray-500 hover:text-gray-800"
-                      }`}
-                    >
-                      Tất Cả
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStatusFilter("PAID")}
-                      className={`px-3 py-1 rounded-lg transition-all ${
-                        selectedStatusFilter === "PAID"
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-gray-500 hover:text-gray-800"
-                      }`}
-                    >
-                      🟢 Thành Công
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStatusFilter("CANCELLED")}
-                      className={`px-3 py-1 rounded-lg transition-all ${
-                        selectedStatusFilter === "CANCELLED"
-                          ? "bg-red-600 text-white shadow-xs"
-                          : "text-gray-500 hover:text-gray-800"
-                      }`}
-                    >
-                      🔴 Đã Hủy Vé
-                    </button>
-                  </div>
                 </div>
 
                 <div className="relative w-full sm:w-60">
@@ -990,27 +949,10 @@ export default function DoanhThu() {
                                   Xem
                                 </button>
 
-                                {isCancelled ? (
+                                {isCancelled && (
                                   <span className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700 border border-red-200 shrink-0">
                                     ❌ Đã Hủy
                                   </span>
-                                ) : (
-                                  isCash && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const code = String(bill.tickets?.[0]?.ticketCode || bill.billCode || "").trim();
-                                        setShowExchangeModal(true);
-                                        setTimeout(() => {
-                                          window.dispatchEvent(new CustomEvent("openExchangeModalWithCode", { detail: { code, bill } }));
-                                        }, 100);
-                                      }}
-                                      className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 bg-red-50 hover:shadow-md px-2.5 py-1.5 rounded-lg transition-all border border-red-300 flex items-center gap-1 shrink-0 cursor-pointer"
-                                      title="Hủy hóa đơn / vé & Hoàn tiền mặt"
-                                    >
-                                      <MdCancel className="text-sm" /> Hủy hóa đơn
-                                    </button>
-                                  )
                                 )}
                               </div>
                             </td>
@@ -1445,13 +1387,6 @@ export default function DoanhThu() {
           </div>,
           document.body
         )}
-
-      {/* Ticket Exchange / Cancel Modal */}
-      <TicketExchangeModal
-        isOpen={showExchangeModal}
-        onClose={() => setShowExchangeModal(false)}
-        onRefreshData={fetchData}
-      />
     </div>
   );
 }
