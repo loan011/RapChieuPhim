@@ -821,6 +821,59 @@
   padding-bottom: 14px;
 }
 
+.detail-info-row--ticket {
+  align-items: center;
+}
+
+.ticket-seat-summary {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+  color: #374151;
+}
+
+.ticket-seat-summary > strong {
+  color: #374151;
+  white-space: nowrap;
+}
+
+.ticket-seat-details {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.ticket-seat-detail {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ticket-seat-detail span {
+  color: #b45309;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ticket-seat-price {
+  color: #6b7280;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .detail-food-heading {
   width: 100%;
 }

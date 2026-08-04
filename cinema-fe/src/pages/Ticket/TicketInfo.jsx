@@ -246,9 +246,21 @@ export default function TicketInfo() {
             {ticket.foods && ticket.foods.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {ticket.foods.map((food, idx) => (
-                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                    <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>{food.name}</span>
-                    <span style={{ fontWeight: "700", color: "#fff" }}>x{food.quantity}</span>
+                  <div key={food.foodOrderDetailId ?? idx} style={{ fontSize: "0.85rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: "500" }}>{food.itemNameSnapshot || food.name}</span>
+                      <span style={{ fontWeight: "700", color: "#fff" }}>x{food.quantity}</span>
+                    </div>
+                    {(food.comboSelections || []).map((selection, selectionIndex) => (
+                      <div key={`${selection.foodId}-${selectionIndex}`} style={{ paddingLeft: "12px", color: "rgba(255,255,255,0.55)", fontSize: "0.78rem" }}>
+                        • {selection.foodNameSnapshot || selection.foodName} x{selection.quantity}
+                      </div>
+                    ))}
+                    {food.comboSelectionDataUnavailable && (
+                      <div style={{ paddingLeft: "12px", color: "rgba(255,255,255,0.45)", fontSize: "0.76rem", fontStyle: "italic" }}>
+                        Không có dữ liệu thành phần Combo do đây là đơn cũ.
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

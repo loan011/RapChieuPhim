@@ -16,6 +16,7 @@ import {
 } from "./bookingService.js";
 import { getDiscountList } from "../Admin/Discount/discountService";
 import { INITIAL_DISCOUNTS, getStoredDiscounts } from "../Admin/Discount/useDiscount";
+import { isSellingTime, SELLING_TIME_MESSAGE } from "../../utils/sellingShift";
 
 /* =========================
    LOCAL USER
@@ -185,6 +186,9 @@ export async function loadBookingSeatsData(selectedShowtime) {
   }
 
   let seats = await getSeatsByRoomId(roomId);
+  seats = Array.isArray(seats)
+    ? seats.filter(seat => (seat?.isActive ?? seat?.IsActive) !== false)
+    : [];
 
   if (Array.isArray(seats) && seats.length > 0) {
     const seenMap = new Map();
@@ -419,7 +423,7 @@ export function getShowtimeBasePrice(showtime) {
     showtime?.TicketPrice ||
     showtime?.price ||
     showtime?.Price ||
-    70000
+    0
   );
 }
 
@@ -560,19 +564,6 @@ export function isSeatAvailable(seat, availableSeats, selectedShowtime = null, s
   const seatRow = String(getSeatRow(seat)).toUpperCase();
   const seatNum = String(getSeatNumber(seat));
   const seatCode = (seatRow && seatNum && seatNum !== "0") ? `${seatRow}${seatNum}` : String(getSeatCode(seat)).toUpperCase();
-
-  const roomId = seat?.roomId || seat?.RoomId || seat?.room?.roomId || selectedShowtime?.roomId || selectedShowtime?.RoomId;
-  if (roomId && typeof localStorage !== "undefined") {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${roomId}`) || "{}");
-      const st = saved.seats?.[seatId]?.status || saved.seats?.[seatCode]?.status;
-      if (st === "maintenance" || st === "inactive") return false;
-      if (saved.rows) {
-        const rVal = saved.rows[seatRow] || saved.rows[seatRow.toUpperCase()] || saved.rows[seatRow.toLowerCase()];
-        if (rVal === "inactive" || rVal === "maintenance") return false;
-      }
-    } catch (e) {}
-  }
 
   const isActive = seat?.isActive ?? seat?.IsActive;
   if (isActive === false) return false;
@@ -781,47 +772,20 @@ export function getSeatPrice(seat, selectedShowtime, rooms = [], pricings = []) 
 
   if (Array.isArray(activePricings) && activePricings.length > 0) {
     const found = activePricings.find((p) => {
+      const pRoomId = p.roomId ?? p.RoomId;
       const pRoomType = String(p.roomType || p.RoomType || "").trim().toUpperCase();
       const pSeatType = String(p.seatType || p.SeatType || "").trim().toLowerCase();
-      const pIsWeekend = p.isWeekend ?? p.IsWeekend;
-      const matchRoom = !pRoomType || pRoomType === roomType;
+      const pDayType = String(p.dayType || p.DayType || "").trim().toLowerCase();
+      const matchRoom = pRoomId
+        ? String(pRoomId) === String(showtimeRoomId)
+        : (!pRoomType || pRoomType === roomType);
       const matchSeat = !pSeatType || pSeatType.includes(seatCategory);
-      const matchWeekend = pIsWeekend === undefined || Boolean(pIsWeekend) === isWeekend;
-      return matchRoom && matchSeat && matchWeekend;
+      const matchDay = !pDayType || pDayType === (isWeekend ? "weekend" : "weekday");
+      return matchRoom && matchSeat && matchDay;
     });
 
     if (found) {
       calculatedPrice = Number(found.price || found.Price);
-    }
-  }
-
-  // Nếu không có trong activePricings, tra theo cấu hình bảng giá rạp
-  if (calculatedPrice === null || isNaN(calculatedPrice) || calculatedPrice <= 0) {
-    const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? selectedShowtime?.cinemaId ?? selectedShowtime?.CinemaId ?? "1";
-    const roomName = room?.roomName ?? room?.RoomName ?? "";
-    const wdWeSuffix = isWeekend ? "we" : "wd";
-    const customStdKey = `room_price_std_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
-    const customVipKey = `room_price_vip_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
-    const customCpKey = `room_price_cp_${wdWeSuffix}_c${roomCinemaId}_r${roomName}`;
-
-    if (seatCategory === "standard" && typeof localStorage !== "undefined" && localStorage.getItem(customStdKey)) {
-      calculatedPrice = Number(localStorage.getItem(customStdKey).replace(/\./g, "").trim());
-    } else if (seatCategory === "vip" && typeof localStorage !== "undefined" && localStorage.getItem(customVipKey)) {
-      calculatedPrice = Number(localStorage.getItem(customVipKey).replace(/\./g, "").trim());
-    } else if (seatCategory === "couple" && typeof localStorage !== "undefined" && localStorage.getItem(customCpKey)) {
-      calculatedPrice = Number(localStorage.getItem(customCpKey).replace(/\./g, "").trim());
-    }
-
-    if (!calculatedPrice || isNaN(calculatedPrice) || calculatedPrice <= 0) {
-      if (roomType.includes("IMAX")) {
-        if (isCouple) calculatedPrice = isNight ? 250000 : (isWeekend ? 250000 : 200000);
-        else if (isVip) calculatedPrice = isNight ? 220000 : (isWeekend ? 200000 : 180000);
-        else calculatedPrice = isNight ? 180000 : (isWeekend ? 160000 : 150000);
-      } else {
-        if (isCouple) calculatedPrice = isNight ? 160000 : (isWeekend ? 160000 : 130000);
-        else if (isVip) calculatedPrice = isNight ? 120000 : (isWeekend ? 100000 : 90000);
-        else calculatedPrice = isNight ? 90000 : (isWeekend ? 80000 : 70000);
-      }
     }
   }
 
@@ -889,7 +853,7 @@ export function buildBookingPayload({
       // Phân biệt rõ Food vs Combo, chỉ gửi 1 trong 2 để tránh lỗi 400 "FoodOrComboNotBoth"
       const id = Number(combo._resolvedId ?? combo.comboId ?? combo.foodId ?? combo.id);
       if (combo._isCombo) {
-        return { comboId: id, quantity: Number(combo.quantity) };
+        return { comboId: id, quantity: Number(combo.quantity), selectedComponents: combo.selectedComponents || [] };
       }
       return { foodId: id, quantity: Number(combo.quantity) };
     });
@@ -1024,6 +988,7 @@ export function useBooking() {
   const [showComboModal, setShowComboModal] = useState(false);
   const [combos, setCombos] = useState([]);
   const [comboQuantities, setComboQuantities] = useState({});
+  const [comboSelections, setComboSelections] = useState({});
 
   const savedUser = getSavedUser();
   const userEmail = getUserEmail();
@@ -1119,7 +1084,8 @@ export function useBooking() {
   useEffect(() => {
     async function loadCombos() {
       try {
-        const data = await getCombos();
+        if (!selectedCinemaId) return;
+        const data = await getCombos(selectedCinemaId);
 
         const normalized = data.map((item, index) => {
           const rawComboId = item?.comboId ?? item?.ComboId ?? null;
@@ -1161,6 +1127,11 @@ export function useBooking() {
             price,
             description,
             image,
+            quantityAvailable: Number(item?.quantity ?? item?.Quantity ?? 0),
+            isAvailable: Boolean(item?.isAvailable ?? item?.IsAvailable),
+            drinkSlotCount: Number(item?.drinkSlotCount ?? item?.DrinkSlotCount ?? 0),
+            popcornSlotCount: Number(item?.popcornSlotCount ?? item?.PopcornSlotCount ?? 0),
+            allowedItems: item?.foodItems ?? item?.FoodItems ?? [],
           };
         });
 
@@ -1172,7 +1143,9 @@ export function useBooking() {
     }
 
     loadCombos();
-  }, []);
+    window.addEventListener("focus", loadCombos);
+    return () => window.removeEventListener("focus", loadCombos);
+  }, [selectedCinemaId]);
 
   useEffect(() => {
     async function init() {
@@ -1189,10 +1162,9 @@ export function useBooking() {
       setBookingError("");
 
       try {
-        // Fetch active ticket pricings in background and store in localStorage
-        fetchActiveTicketPricings()
-          .then(p => localStorage.setItem("active_ticket_pricings", JSON.stringify(p)))
-          .catch(e => console.error("Error caching active ticket pricings:", e));
+        // Chờ bảng giá Backend trước khi hiển thị sơ đồ ghế.
+        const pricingData = await fetchActiveTicketPricings();
+        localStorage.setItem("active_ticket_pricings", JSON.stringify(pricingData));
 
         const data = await loadBookingInitialData({
           movieParam,
@@ -1256,6 +1228,14 @@ export function useBooking() {
     }
 
     fetchSeatsForShowtime();
+    const refreshLayout = (event) => {
+      const changedRoomId = event?.detail?.roomId;
+      if (!changedRoomId || String(changedRoomId) === String(getShowtimeRoomId(selectedShowtime))) {
+        fetchSeatsForShowtime();
+      }
+    };
+    window.addEventListener("seatLayoutUpdated", refreshLayout);
+    return () => window.removeEventListener("seatLayoutUpdated", refreshLayout);
   }, [selectedShowtime]);
 
   const filteredShowtimes = filterShowtimesForBooking({
@@ -1407,16 +1387,88 @@ export function useBooking() {
     }
   }
 
+  async function handleCoupleSeatClick(firstSeat, secondSeat) {
+    const pair = [firstSeat, secondSeat].filter(Boolean);
+    if (pair.length !== 2) return;
+    const groupId = getCoupleGroupId(firstSeat);
+    if (!groupId || String(groupId) !== String(getCoupleGroupId(secondSeat))) return;
+    if (pair.some((seat) => !isSeatAvailable(seat, availableSeats))) return;
+
+    const ids = pair.map(getSeatId);
+    const pairSelected = ids.every((id) => selectedSeats.some((s) => String(getSeatId(s)) === String(id)));
+    setLoadingSeats(true);
+    try {
+      if (pairSelected) {
+        for (const id of ids) {
+          const holdKey = holdKeysRef.current[id];
+          if (holdKey) await releaseSeat(holdKey);
+          delete holdKeysRef.current[id];
+        }
+        setSelectedSeats((prev) => prev.filter((s) => !ids.some((id) => String(getSeatId(s)) === String(id))));
+        return;
+      }
+
+      const showtimeId = getShowtimeId(selectedShowtime);
+      const newlyHeld = [];
+      try {
+        for (const seat of pair) {
+          const id = getSeatId(seat);
+          const data = await holdSeat(showtimeId, id);
+          const holdKey = data?.holdKey || data?.HoldKey || data;
+          if (holdKey) holdKeysRef.current[id] = holdKey;
+          newlyHeld.push(id);
+        }
+      } catch (error) {
+        for (const id of newlyHeld) {
+          const holdKey = holdKeysRef.current[id];
+          if (holdKey) await releaseSeat(holdKey).catch(() => {});
+          delete holdKeysRef.current[id];
+        }
+        throw error;
+      }
+      setSelectedSeats((prev) => [...prev.filter((s) => !ids.some((id) => String(getSeatId(s)) === String(id))), ...pair]);
+      setTimeLeft(300);
+      setIsHoldActive(true);
+    } catch (err) {
+      console.error("Không thể giữ cặp ghế Couple:", err);
+      alert("Cặp ghế này đã được giữ, đã bán hoặc không còn hoạt động!");
+    } finally {
+      setLoadingSeats(false);
+    }
+  }
+
   const updateComboQuantity = (comboId, delta) => {
     setComboQuantities((prev) => {
       const currentQuantity = prev[comboId] || 0;
       const nextQuantity = Math.max(0, currentQuantity + delta);
+      const combo = combos.find(x => x.id === comboId);
+      if (combo?._isCombo) {
+        const drinkCount = nextQuantity * combo.drinkSlotCount;
+        const popcornCount = nextQuantity * combo.popcornSlotCount;
+        setComboSelections(current => {
+          const existing = current[comboId] || [];
+          const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+          const drinks = existing.filter(x => normalize(x.category).includes('nuoc')).slice(0, drinkCount);
+          const popcorns = existing.filter(x => normalize(x.category).includes('bap')).slice(0, popcornCount);
+          while (drinks.length < drinkCount) drinks.push({foodId:null,category:'Nước Uống',quantity:1});
+          while (popcorns.length < popcornCount) popcorns.push({foodId:null,category:'Bắp Rang',quantity:1});
+          return {...current,[comboId]:[...drinks,...popcorns]};
+        });
+      }
 
       return {
         ...prev,
         [comboId]: nextQuantity,
       };
     });
+  };
+
+  const updateComboSelection = (comboId, slotIndex, foodId) => {
+    const combo = combos.find(x => x.id === comboId);
+    const food = combo?.allowedItems?.find(x => Number(x.foodId ?? x.FoodId) === Number(foodId));
+    setComboSelections(current => ({...current, [comboId]:(current[comboId] || []).map((x,i) => i === slotIndex ? {
+      foodId:Number(foodId), foodName:food?.foodName ?? food?.FoodName, category:food?.category ?? food?.Category, quantity:1
+    } : x)}));
   };
 
   const selectedCombos = useMemo(() => {
@@ -1435,10 +1487,11 @@ export function useBooking() {
           ...combo,
           name,
           quantity: comboQuantities[combo.id] || 0,
+          selectedComponents: Object.values((comboSelections[combo.id] || []).filter(x => x.foodId).reduce((a,x) => { const k=String(x.foodId); a[k]=a[k]?{...a[k],quantity:a[k].quantity+1}:x; return a; }, {})),
         };
       })
       .filter((combo) => combo.quantity > 0);
-  }, [combos, comboQuantities]);
+  }, [combos, comboQuantities, comboSelections]);
 
   const totalAmount = useMemo(() => {
     return selectedSeats.reduce(
@@ -1684,6 +1737,10 @@ export function useBooking() {
   const rowsKeys = Object.keys(groupedSeats).sort();
 
   function handleCheckout() {
+    if (!isSellingTime()) {
+      alert(SELLING_TIME_MESSAGE);
+      return;
+    }
     if (!userEmail) {
       alert("Vui lòng đăng nhập trước khi tiến hành thanh toán!");
       navigate("/login");
@@ -1704,6 +1761,10 @@ export function useBooking() {
   }
 
   async function handleConfirmBooking() {
+    if (!isSellingTime()) {
+      alert(SELLING_TIME_MESSAGE);
+      return;
+    }
     const showtimeId = getShowtimeId(selectedShowtime);
 
     const userId =
@@ -1758,6 +1819,20 @@ export function useBooking() {
         throw new Error("Đặt vé thất bại: Không nhận được mã đặt vé hợp lệ từ máy chủ.");
       }
 
+      // Dùng kết quả tiền do Backend tính; không tính lại ở trang thanh toán.
+      const backendSummaries = bookingResults.map(result => result?.data ?? result ?? {});
+      const backendTicketTotal = backendSummaries.reduce(
+        (sum, item) => sum + Number(item.ticketTotal ?? item.TicketTotal ?? 0), 0
+      );
+      const backendDiscountAmount = backendSummaries.reduce(
+        (sum, item) => sum + Number(item.discountAmt ?? item.DiscountAmt ?? 0), 0
+      );
+      const backendFinalAmount = backendSummaries.reduce(
+        (sum, item) => sum + Number(
+          item.finalAmount ?? item.FinalAmount ?? item.grandTotal ?? item.GrandTotal ?? 0
+        ), 0
+      );
+
 
       // Giải phóng thông tin giữ ghế cục bộ
       holdKeysRef.current = {};
@@ -1767,9 +1842,10 @@ export function useBooking() {
       navigate("/payment", {
         state: {
           bookingIds: bookedIds.map(Number),
-          totalAmount: finalTotalAmount,
-          rawTotalAmount,
-          discountAmount,
+          totalAmount: backendFinalAmount || finalTotalAmount,
+          finalAmount: backendFinalAmount || finalTotalAmount,
+          rawTotalAmount: backendTicketTotal || rawTotalAmount,
+          discountAmount: backendDiscountAmount,
           appliedDiscount,
           movie,
           selectedCinemaId,
@@ -1813,6 +1889,7 @@ export function useBooking() {
     handleDateChange,
     handleShowtimeClick,
     handleSeatClick,
+    handleCoupleSeatClick,
     isSeatHeldByOther,
     totalAmount,
     rowsKeys,
@@ -1830,6 +1907,7 @@ export function useBooking() {
     totalCombosAmount,
     finalTotalAmount,
     updateComboQuantity,
+    comboSelections, setComboSelections, updateComboSelection,
     handleConfirmBooking,
 
     // Customer Coupon states
@@ -1845,4 +1923,8 @@ export function useBooking() {
     handleApplyCoupon,
     handleRemoveCoupon,
   };
+}
+
+export function getCoupleGroupId(seat) {
+  return seat?.coupleGroupId ?? seat?.CoupleGroupId ?? null;
 }

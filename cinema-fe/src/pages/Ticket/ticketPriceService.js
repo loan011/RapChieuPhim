@@ -20,3 +20,23 @@ export async function fetchActiveTicketPricings() {
   if (!response.ok) throw new Error(getErrorMessage(data, "Lấy bảng giá hoạt động thất bại!"));
   return data;
 }
+
+export async function fetchRoomTicketPricings(roomId) {
+  const response = await fetch(`${API_URL}/TicketPricing/Room/${roomId}`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Lấy bảng giá phòng thất bại!"));
+  return Array.isArray(data) ? data : (data?.$values || data?.data || []);
+}
+
+export async function updateRoomTicketPricings(roomId, prices) {
+  const response = await fetch(`${API_URL}/TicketPricing/Room/${roomId}`, {
+    method: "PUT",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ prices }),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Cập nhật bảng giá phòng thất bại!"));
+  return data;
+}

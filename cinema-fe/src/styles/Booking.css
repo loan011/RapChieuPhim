@@ -364,9 +364,25 @@
 /* Double-wide merged couple seat style */
 .seat-node.couple-merged {
   width: 64px;
+  padding: 0;
   border: 1.5px solid #ec4899;
   background: rgba(236, 72, 147, 0.15);
   border-radius: 6px;
+  overflow: hidden;
+}
+.seat-node.couple-merged .couple-seat-half {
+  width: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.seat-node.couple-merged .couple-seat-half + .couple-seat-half {
+  border-left: 1px solid rgba(236, 72, 153, 0.75);
+}
+.seat-node.couple-merged.selected .couple-seat-half + .couple-seat-half,
+.seat-node.couple-merged.taken .couple-seat-half + .couple-seat-half {
+  border-left-color: rgba(255, 255, 255, 0.45);
 }
 .seat-node.couple-merged:hover:not(:disabled) {
   background: #ec4899;

@@ -91,6 +91,10 @@ export default function RoomAdmin() {
     setPriceCoupleWeekday,
     priceCoupleWeekend,
     setPriceCoupleWeekend,
+    roomPricingMissing,
+    roomPricingLoading,
+    parsePrice,
+    formatInputPrice,
     syncAllRooms,
     setSyncAllRooms,
 
@@ -522,7 +526,7 @@ export default function RoomAdmin() {
           <div className="rm-modal-overlay">
             <div className="rm-modal">
               <h5 className="rm-modal-title">
-                {isEditingRoom ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu"}
+                {isEditingRoom ? "Chỉnh Sửa Phòng Chiếu" : "Thêm Phòng Chiếu"}
               </h5>
 
               {roomFormError && <p className="rm-form-error">{roomFormError}</p>}
@@ -612,6 +616,16 @@ export default function RoomAdmin() {
 
                 <div className="rm-field" style={{ marginTop: "12px", borderTop: "1px solid #2c2c2e", paddingTop: "12px" }}>
                   <label className="rm-label" style={{ color: "#ffd60a", fontWeight: "bold" }}>Bảng Giá Vé Ghế:</label>
+                  {isEditingRoom && roomPricingLoading && (
+                    <div style={{ color: "#8e8e93", fontSize: "0.78rem", marginTop: "6px" }}>
+                      Đang tải bảng giá...
+                    </div>
+                  )}
+                  {isEditingRoom && !roomPricingLoading && roomPricingMissing && (
+                    <div style={{ color: "#ff9f0a", fontSize: "0.78rem", marginTop: "6px" }}>
+                      Phòng chưa thiết lập bảng giá
+                    </div>
+                  )}
                   
                   <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "8px", fontSize: "0.8rem", color: "#aeaeb2", marginTop: "8px", alignItems: "center" }}>
                     <div></div>
@@ -623,18 +637,18 @@ export default function RoomAdmin() {
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceStdWeekday}
-                        onChange={(e) => setPriceStdWeekday(e.target.value)}
-                        placeholder="70.000"
+                        value={formatInputPrice(priceStdWeekday)}
+                        onChange={(e) => setPriceStdWeekday(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
                     <div>
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceStdWeekend}
-                        onChange={(e) => setPriceStdWeekend(e.target.value)}
-                        placeholder="90.000"
+                        value={formatInputPrice(priceStdWeekend)}
+                        onChange={(e) => setPriceStdWeekend(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
 
@@ -643,18 +657,18 @@ export default function RoomAdmin() {
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceVipWeekday}
-                        onChange={(e) => setPriceVipWeekday(e.target.value)}
-                        placeholder="90.000"
+                        value={formatInputPrice(priceVipWeekday)}
+                        onChange={(e) => setPriceVipWeekday(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
                     <div>
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceVipWeekend}
-                        onChange={(e) => setPriceVipWeekend(e.target.value)}
-                        placeholder="120.000"
+                        value={formatInputPrice(priceVipWeekend)}
+                        onChange={(e) => setPriceVipWeekend(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
 
@@ -663,18 +677,18 @@ export default function RoomAdmin() {
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceCoupleWeekday}
-                        onChange={(e) => setPriceCoupleWeekday(e.target.value)}
-                        placeholder="130.000"
+                        value={formatInputPrice(priceCoupleWeekday)}
+                        onChange={(e) => setPriceCoupleWeekday(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
                     <div>
                       <input
                         type="text"
                         className="rm-input-price"
-                        value={priceCoupleWeekend}
-                        onChange={(e) => setPriceCoupleWeekend(e.target.value)}
-                        placeholder="160.000"
+                        value={formatInputPrice(priceCoupleWeekend)}
+                        onChange={(e) => setPriceCoupleWeekend(parsePrice(e.target.value))}
+                        disabled={roomPricingLoading}
                       />
                     </div>
                   </div>
@@ -684,8 +698,8 @@ export default function RoomAdmin() {
                   <button type="button" onClick={closeRoomModal} className="rm-btn-cancel" disabled={submittingRoom}>
                     Hủy
                   </button>
-                  <button type="submit" className="rm-btn-submit" disabled={submittingRoom}>
-                    {submittingRoom ? "Đang xử lý..." : isEditingRoom ? "Cập Nhật" : "Thêm Mới"}
+                  <button type="submit" className="rm-btn-submit" disabled={submittingRoom || roomPricingLoading}>
+                    {submittingRoom ? "Đang xử lý..." : isEditingRoom ? "Lưu Thay Đổi" : "Thêm Mới"}
                   </button>
                 </div>
               </form>

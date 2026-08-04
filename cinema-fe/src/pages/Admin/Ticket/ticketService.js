@@ -1,4 +1,4 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch, clearApiCache } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
@@ -13,6 +13,7 @@ export async function getTicketById(id) {
 
 // POST /api/Tickets
 export async function createTicket(ticket) {
+  clearApiCache();
   const response = await fetch(`${API_URL}/Tickets`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -25,6 +26,7 @@ export async function createTicket(ticket) {
 
 // PUT /api/Tickets/:id/Status
 export async function updateTicket(id, ticket) {
+  clearApiCache();
   let backendStatus = ticket.status;
   if (ticket.status === "Đã thanh toán" || ticket.status === "Used") {
     backendStatus = "Used";
@@ -61,11 +63,38 @@ export async function updateTicket(id, ticket) {
 
 // DELETE /api/Tickets/:id
 export async function deleteTicket(id) {
+  clearApiCache();
   const response = await fetch(`${API_URL}/Tickets/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
   const data = await readResponse(response);
   if (!response.ok) throw new Error(getErrorMessage(data, "Xóa vé thất bại!"));
+  return data;
+}
+
+// POST /api/Tickets/exchange — Yêu cầu đổi ghế tại quầy
+export async function requestSeatExchange(ticketId, newSeatId) {
+  clearApiCache();
+  const response = await fetch(`${API_URL}/Tickets/exchange`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ ticketId: Number(ticketId), newSeatId: Number(newSeatId) }),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Yêu cầu đổi ghế thất bại!"));
+  return data;
+}
+
+// POST /api/Tickets/exchange/confirm-cash — Xác nhận thu tiền mặt hoàn tất đổi ghế
+export async function confirmCashSeatExchange(exchangeId, amountPaid) {
+  clearApiCache();
+  const response = await fetch(`${API_URL}/Tickets/exchange/confirm-cash`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ exchangeId: Number(exchangeId), amountPaid: Number(amountPaid) }),
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Xác nhận thu tiền mặt thất bại!"));
   return data;
 }

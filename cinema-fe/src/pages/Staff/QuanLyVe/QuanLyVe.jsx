@@ -97,7 +97,7 @@ export default function StaffQuanLyVe() {
             onClick={() => setShowExchangeModal(true)}
             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-extrabold hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
-            🔄 Đổi / Hủy Vé Tiền Mặt (Quầy)
+            🔄 Đổi Ghế Tại Quầy
           </button>
           <button 
             onClick={fetchData}
@@ -205,6 +205,7 @@ export default function StaffQuanLyVe() {
                             <th className="px-4 py-3 text-left">Giá Vé</th>
                             <th className="px-4 py-3 text-left">Trạng Thái</th>
                             <th className="px-4 py-3 text-left">Thời Gian Mua</th>
+                            <th className="px-4 py-3 text-center">Hành Động</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -239,6 +240,22 @@ export default function StaffQuanLyVe() {
                               <td className="px-4 py-3.5 text-gray-600">
                                 {formatDateTime(t.issuedAt || t.IssuedAt)}
                               </td>
+                              <td className="px-4 py-3.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowExchangeModal(true);
+                                    setTimeout(() => {
+                                      window.dispatchEvent(
+                                        new CustomEvent("openExchangeModalWithCode", { detail: t.code || t.ticketCode || `VE${t.id}` })
+                                      );
+                                    }, 100);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors border border-blue-200 whitespace-nowrap shadow-sm active:scale-95"
+                                >
+                                  Đổi ghế
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -252,7 +269,7 @@ export default function StaffQuanLyVe() {
         )}
       </div>
 
-      {/* Ticket Exchange / Cancel Modal */}
+      {/* Counter seat exchange modal */}
       <TicketExchangeModal
         isOpen={showExchangeModal}
         onClose={() => setShowExchangeModal(false)}

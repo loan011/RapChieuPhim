@@ -239,17 +239,31 @@ export default function StaffQuetQRDoAn() {
 
                 <div className="space-y-2">
                   {orders.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-orange-100 shadow-2xs">
-                      <div className="flex items-center gap-2">
+                    <div key={idx} className="bg-white p-3 rounded-xl border border-orange-100 shadow-2xs">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                        <span className="font-bold text-gray-800 text-sm">{item.name}</span>
+                          <span className="font-bold text-gray-800 text-sm">{item.name} ×{item.quantity}</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                         <span className="text-xs font-semibold text-gray-500">Số lượng:</span>
                         <span className="text-base font-extrabold text-orange-600 bg-orange-50 px-2.5 py-0.5 rounded-lg border border-orange-200">
                           x{item.quantity}
                         </span>
                       </div>
+                      </div>
+                      <div className="mt-1 pl-4 text-xs text-gray-500">
+                        {Number(item.price).toLocaleString("vi-VN")} đ × {item.quantity} = {Number(item.subtotal).toLocaleString("vi-VN")} đ
+                      </div>
+                      {item.comboItems?.length > 0 && (
+                        <div className="mt-2 ml-4 space-y-1 text-xs text-gray-600">
+                          {item.comboItems.map((comboItem, componentIndex) => (
+                            <div key={`${comboItem.name}-${componentIndex}`}>
+                              - {comboItem.name}{comboItem.flavorName ? ` (${comboItem.flavorName})` : ""}{comboItem.sizeName ? ` ${comboItem.sizeName}` : ""} ×{comboItem.quantity}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

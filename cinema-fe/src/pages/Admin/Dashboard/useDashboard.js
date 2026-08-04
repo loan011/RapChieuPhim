@@ -295,6 +295,31 @@ function normalizeFoodDistributions(chartDataResp) {
   return list;
 }
 
+function buildFoodDistributionsFromBills(bills = []) {
+  const grouped = new Map();
+  bills.forEach((bill) => {
+    (bill.concessions || []).forEach((item) => {
+      const name = String(item.name || item.foodName || item.comboName || "").trim();
+      if (!name || name.toLowerCase() === "string" || name === "N/A") return;
+      const quantity = Number(item.quantity || 1);
+      const value = Number(item.subtotal || (Number(item.unitPrice || item.price || 0) * quantity));
+      const previous = grouped.get(name) || { value: 0, quantity: 0 };
+      grouped.set(name, {
+        value: previous.value + value,
+        quantity: previous.quantity + quantity,
+      });
+    });
+  });
+
+  const total = Array.from(grouped.values()).reduce((sum, item) => sum + item.value, 0);
+  return Array.from(grouped, ([name, item]) => ({
+    name,
+    value: item.value,
+    quantity: item.quantity,
+    percent: total > 0 ? Number(((item.value / total) * 100).toFixed(1)) : 0,
+  })).sort((a, b) => b.value - a.value);
+}
+
 export function useDashboard() {
   const [stats, setStats] = useState(DEFAULT_DASHBOARD_STATS);
   const [recentTickets, setRecentTickets] = useState([]);
@@ -319,6 +344,25 @@ export function useDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+  }, [timeFilter, cinemaId]);
+
+  useEffect(() => {
+    let refreshTimer;
+    const refreshAfterTicketChange = () => {
+      cacheRef.current = {};
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => fetchDashboardData(), 100);
+    };
+
+    window.addEventListener("ticketsUpdated", refreshAfterTicketChange);
+    window.addEventListener("bookingsUpdated", refreshAfterTicketChange);
+    window.addEventListener("paymentsUpdated", refreshAfterTicketChange);
+    return () => {
+      window.clearTimeout(refreshTimer);
+      window.removeEventListener("ticketsUpdated", refreshAfterTicketChange);
+      window.removeEventListener("bookingsUpdated", refreshAfterTicketChange);
+      window.removeEventListener("paymentsUpdated", refreshAfterTicketChange);
+    };
   }, [timeFilter, cinemaId]);
 
   // ─── Fetch toàn bộ dữ liệu dashboard (Tối ưu hóa tốc độ load) ───────────────
@@ -366,11 +410,6 @@ export function useDashboard() {
       await applyData(result);
 
       // Thêm dữ liệu từ simulated orders nếu có
-      const localFoodSources = await getDashboardFoodSources();
-      if (localFoodSources?.orders?.length > 0) {
-        applyFoodDistribution(localFoodSources, timeFilter, cinemaId);
-      }
-
     } catch (err) {
       console.error("Dashboard error:", err);
       setError(err.message || "Lấy dữ liệu dashboard thất bại!");
@@ -433,10 +472,10 @@ export function useDashboard() {
 
     if (dailyReport) {
       // 1. Đồng bộ và tính toán lại 100% số liệu doanh thu tổng và số vé theo rạp được chọn
-      let calcTicketRevenue = 0;
-      let calcFoodRevenue = 0;
-      let calcOverallRevenue = 0;
-      let calcTicketsCount = 0;
+      const calcTicketRevenue = Number(dailyReport.totalTicketRevenue || 0);
+      const calcFoodRevenue = Number(dailyReport.totalConcessionRevenue || 0);
+      const calcOverallRevenue = Number(dailyReport.totalOverallRevenue || 0);
+      const calcTicketsCount = Number(dailyReport.totalTicketsCount || 0);
 
       let storedT = [];
       try {
@@ -470,12 +509,7 @@ export function useDashboard() {
         return !isCancelled;
       });
 
-      filteredBills.forEach(b => {
-        calcTicketRevenue += b.ticketSubtotal || 0;
-        calcFoodRevenue += b.concessionSubtotal || 0;
-        calcOverallRevenue += b.totalAmount || 0;
-        calcTicketsCount += (b.tickets?.length || 0);
-      });
+      const billFoodDistributions = buildFoodDistributionsFromBills(filteredBills);
 
       setStats({
         totalMovies: statsData?.totalMovies ?? statsData?.TotalMovies ?? 4,
@@ -489,7 +523,7 @@ export function useDashboard() {
         totalFoodRevenue: calcFoodRevenue,
         ticketRevenuePercentage: calcOverallRevenue > 0 ? Number(((calcTicketRevenue / calcOverallRevenue) * 100).toFixed(1)) : 0,
         foodRevenuePercentage: calcOverallRevenue > 0 ? Number(((calcFoodRevenue / calcOverallRevenue) * 100).toFixed(1)) : 0,
-        foodDistributions,
+        foodDistributions: billFoodDistributions.length > 0 ? billFoodDistributions : foodDistributions,
         topShowtimes: [],
         revenueByTime: []
       });

@@ -562,149 +562,184 @@ function Home() {
           )}
         </div>
       </main>
+
       {/* Detail Modal (Trailer & Info) */}
       {selectedTrailer && (
-        <div 
-          className="trailer-overlay" 
-          onClick={() => setSelectedTrailer(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.85)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1200
-          }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSelectedTrailer(null)}>
           <div 
-            className="trailer-modal" 
-            onClick={(e) => e.stopPropagation()} 
-            style={{ 
-              background: "#111",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "12px",
-              width: "850px",
-              maxWidth: "90%",
-              padding: "24px",
-              position: "relative",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.8)",
-              color: "#fff"
-            }}
+            className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111214] shadow-2xl text-white"
+            onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              className="trailer-close"
-              onClick={() => setSelectedTrailer(null)}
-              style={{
-                position: "absolute",
-                top: "16px",
-                right: "16px",
-                background: "transparent",
-                border: "none",
-                color: "#999",
-                fontSize: "32px",
-                cursor: "pointer",
-                transition: "color 0.2s"
-              }}
-              onMouseOver={(e) => e.target.style.color = "#fff"}
-              onMouseOut={(e) => e.target.style.color = "#999"}
-            >
-              &times;
-            </button>
-            
-            <h2 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#fff", marginBottom: "16px", borderBottom: "1px solid rgba(255, 255, 255, 0.1)", paddingBottom: "12px" }}>
-              CHI TIẾT PHIM: {getMovieTitle(selectedTrailer)}
-            </h2>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {/* Top Side: Video Trailer (Large screen format) */}
-              <div style={{ position: "relative", width: "100%", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255, 255, 255, 0.1)", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)" }}>
-                {getMovieTrailer(selectedTrailer) ? (
-                  <iframe
-                    src={getEmbedUrl(getMovieTrailer(selectedTrailer))}
-                    title={`Trailer ${getMovieTitle(selectedTrailer)}`}
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    style={{ width: "100%", aspectRatio: "16/9", border: "none", display: "block", background: "#000" }}
-                  ></iframe>
-                ) : (
-                  <div style={{ width: "100%", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.03)" }}>
-                    🎬 Phim này chưa có trailer chính thức.
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-white/10 bg-[#111214] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🎬</span>
+                <h2 className="text-lg font-bold tracking-wide uppercase">CHI TIẾT PHIM</h2>
+              </div>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-lg text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                onClick={() => setSelectedTrailer(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Body Content */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 space-y-8">
+
+              {/* Section 1: Top Grid (Trailer + Info Box) */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)] items-start">
+                {/* Left: Trailer */}
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black shadow-lg">
+                  {getMovieTrailer(selectedTrailer) ? (
+                    <iframe
+                      src={getEmbedUrl(getMovieTrailer(selectedTrailer))}
+                      title={`Trailer ${getMovieTitle(selectedTrailer)}`}
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-none"
+                    ></iframe>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white/40 bg-zinc-900/50">
+                      <span className="text-3xl">🎬</span>
+                      <span>Chưa có trailer chính thức.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Movie Info Box */}
+                <div className="flex flex-col justify-between gap-4 rounded-xl border border-white/5 bg-zinc-900/60 p-5 h-full">
+                  <div className="flex flex-col gap-3 text-xs text-zinc-300">
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">🏷️ THỂ LOẠI</span>
+                      <span className="font-semibold text-white">{getMovieGenre(selectedTrailer)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">🎬 ĐẠO DIỄN</span>
+                      <span className="font-semibold text-white">{selectedTrailer.director || selectedTrailer.Director || "Đang cập nhật"}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">⏱️ THỜI LƯỢNG</span>
+                      <span className="font-semibold text-white">{getMovieDuration(selectedTrailer)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">🔞 ĐỘ TUỔI</span>
+                      <span className="bg-red-600 text-white px-2 py-0.5 rounded font-extrabold text-[10px] tracking-wider uppercase">
+                        {getMovieAge(selectedTrailer)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">📅 KHỞI CHIẾU</span>
+                      <span className="font-semibold text-white">{getMovieReleaseDate(selectedTrailer)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">🗣️ NGÔN NGỮ</span>
+                      <span className="font-semibold text-white">{selectedTrailer.language || selectedTrailer.Language || "Đang cập nhật"}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 border-b border-white/5 pb-1.5">
+                      <span className="text-zinc-500 w-24 shrink-0 font-medium">📝 PHỤ ĐỀ</span>
+                      <span className="font-semibold text-white">{selectedTrailer.subtitles || selectedTrailer.Subtitles || "Đang cập nhật"}</span>
+                    </div>
                   </div>
-                )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const mId = selectedTrailer.id || selectedTrailer.movieId || selectedTrailer.MovieId;
+                        setSelectedTrailer(null);
+                        window.location.href = `/movies?movieId=${mId}`;
+                      }}
+                      className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white font-bold text-xs tracking-wider uppercase rounded-lg shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2"
+                    >
+                      🎟️ ĐẶT VÉ NGAY
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const mId = selectedTrailer.id || selectedTrailer.movieId || selectedTrailer.MovieId;
+                        setSelectedTrailer(null);
+                        window.location.href = `/movies?movieId=${mId}&rate=true`;
+                      }}
+                      className="w-full py-2.5 px-4 bg-amber-500/10 hover:bg-amber-500/20 active:scale-[0.99] border border-amber-500/50 text-amber-400 font-bold text-xs tracking-wider uppercase rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      ⭐ ĐÁNH GIÁ PHIM
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Bottom Side: Split Grid for Info & Metadata */}
-              <div className="detail-modal-split" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", color: "#fff" }}>
-                {/* Left Side: Description */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <h4 style={{ fontSize: "1rem", fontWeight: "800", color: "#e50914", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    NỘI DUNG PHIM
+              {/* Section 2: Movie Description & Actors */}
+              <section className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 border-t border-white/10 pt-8">
+                {/* Left: Description */}
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-sm font-extrabold text-red-500 uppercase tracking-wider flex items-center gap-2">
+                    <span>🍿</span> NỘI DUNG PHIM
                   </h4>
-                  <div 
-                    className="detail-modal-desc" 
-                    style={{ 
-                      fontSize: "0.9rem", 
-                      color: "rgba(255,255,255,0.75)", 
-                      lineHeight: "1.6", 
-                      margin: 0, 
-                      maxHeight: "190px", 
-                      overflowY: "auto",
-                      paddingRight: "8px",
-                      textAlign: "justify",
-                      whiteSpace: "pre-wrap"
-                    }}
-                  >
-                    {selectedTrailer.description || selectedTrailer.Description || "Chưa có thông tin nội dung mô tả của bộ phim này."}
-                  </div>
+                  <p className="whitespace-pre-line text-sm leading-7 text-gray-300">
+                    {selectedTrailer?.description || selectedTrailer?.Description || selectedTrailer?.content || selectedTrailer?.Content || selectedTrailer?.movieDescription || "Nội dung phim đang được cập nhật."}
+                  </p>
                 </div>
 
-                {/* Right Side: Metadata list */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(255, 255, 255, 0.03)", padding: "16px", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.06)", justifyContent: "center" }}>
-                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🏷️ Thể loại:</span> 
-                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieGenre(selectedTrailer)}</span>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🎬 Đạo diễn:</span> 
-                    <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.director || selectedTrailer.Director || "Đang cập nhật"}</span>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>⏱️ Thời lượng:</span> 
-                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieDuration(selectedTrailer)}</span>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🔞 Độ tuổi:</span> 
-                    <span style={{ background: "#e50914", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "800", display: "inline-block" }}>
-                      {getMovieAge(selectedTrailer)}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📅 Khởi chiếu:</span> 
-                    <span style={{ fontWeight: "600", color: "#fff" }}>{getMovieReleaseDate(selectedTrailer)}</span>
-                  </div>
-                  {selectedTrailer.language && (
-                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>🗣️ Ngôn ngữ:</span> 
-                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.language}</span>
-                    </div>
-                  )}
-                  {selectedTrailer.subtitles && (
-                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>📝 Phụ đề:</span> 
-                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.subtitles}</span>
-                    </div>
-                  )}
-                  {(selectedTrailer.actors || selectedTrailer.Actors) && (
-                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ color: "rgba(255,255,255,0.4)", width: "95px", flexShrink: 0 }}>👥 Diễn viên:</span> 
-                      <span style={{ fontWeight: "600", color: "#fff" }}>{selectedTrailer.actors || selectedTrailer.Actors}</span>
-                    </div>
-                  )}
+                {/* Right: Actors / Cast */}
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-sm font-extrabold text-red-500 uppercase tracking-wider flex items-center gap-2">
+                    <span>👤</span> DIỄN VIÊN
+                  </h4>
+                  {(() => {
+                    const raw = selectedTrailer.actors || selectedTrailer.Actors || selectedTrailer.cast;
+                    const list = !raw ? [] : Array.isArray(raw) ? raw.map(a => typeof a === "string" ? { name: a, avatar: "" } : { name: a.name || a.Name || "Diễn viên", avatar: a.avatar || a.imageUrl || "" }) : typeof raw === "string" ? raw.split(/[,;]/).map(n => ({ name: n.trim(), avatar: "" })).filter(a => a.name) : [];
+                    if (list.length === 0) return <p className="text-xs text-zinc-500">Chưa có thông tin diễn viên.</p>;
+                    return (
+                      <div className="flex items-center gap-3 overflow-x-auto pb-2">
+                        {list.map((actor, idx) => (
+                          <div key={idx} className="flex flex-col items-center gap-1.5 w-24 shrink-0 bg-zinc-900/60 p-2 rounded-xl border border-white/5 text-center">
+                            <div className="w-16 h-20 rounded-lg overflow-hidden bg-zinc-800 flex items-center justify-center">
+                              {actor.avatar ? (
+                                <img src={actor.avatar} alt={actor.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-2xl text-zinc-500">👤</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-medium text-zinc-200 line-clamp-2 leading-snug">{actor.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
-              </div>
+              </section>
+
+              {/* Section 3: Movie Gallery */}
+              {(() => {
+                const gallery = selectedTrailer.images || selectedTrailer.gallery || selectedTrailer.imagesList || selectedTrailer.Images || selectedTrailer.Gallery;
+                const list = Array.isArray(gallery) ? gallery.filter(Boolean) : typeof gallery === "string" ? gallery.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [];
+                if (list.length === 0) return null;
+                return (
+                  <section className="mt-8 border-t border-white/10 pt-8">
+                    <h4 className="text-sm font-extrabold text-red-500 uppercase tracking-wider flex items-center gap-2 mb-4">
+                      <span>🖼️</span> HÌNH ÁNH PHIM
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {list.map((imgUrl, idx) => (
+                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-white/10 bg-zinc-900 shadow">
+                          <img src={imgUrl} alt={`Phim ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })()}
+
             </div>
           </div>
         </div>

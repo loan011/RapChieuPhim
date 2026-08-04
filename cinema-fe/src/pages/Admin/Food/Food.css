@@ -212,6 +212,7 @@
 }
 .fd-status.active { background: rgba(22, 163, 74, 0.1); color: #4ade80; }
 .fd-status.inactive { background: rgba(220, 38, 38, 0.1); color: #f87171; }
+.fd-status.low-stock { background: rgba(245, 158, 11, 0.14); color: #fbbf24; }
 
 /* Actions Dropdown */
 .fd-actions {

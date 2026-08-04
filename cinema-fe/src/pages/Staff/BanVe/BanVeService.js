@@ -116,6 +116,48 @@ export async function createBooking(payload) {
   return data?.data || data;
 }
 
+export function normalizeStudentExpiryDate(value) {
+  const input = String(value || "").trim();
+  let match;
+
+  if ((match = input.match(/^(\d{4})$/))) return `${match[1]}-12-31`;
+  if ((match = input.match(/^(\d{2})$/))) return `20${match[1]}-12-31`;
+  if ((match = input.match(/^(\d{1,2})[/.\-](\d{4})$/))) {
+    const month = Number(match[1]);
+    const year = Number(match[2]);
+    if (month < 1 || month > 12) return input;
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }
+  if ((match = input.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/))) {
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  return input;
+}
+
+export async function submitStudentVerification(bookingId, cardInfo) {
+  const body = new FormData();
+  body.append("bookingId", bookingId); body.append("studentCode", cardInfo.studentId);
+  if (cardInfo.studentName) body.append("studentName", cardInfo.studentName);
+  if (cardInfo.school) body.append("schoolName", cardInfo.school);
+  body.append("expiryDate", normalizeStudentExpiryDate(cardInfo.expiryDate)); body.append("cardImage", cardInfo.imageFile);
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_URL}/student-card-verifications`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Không thể gửi yêu cầu xác minh."));
+  return data;
+}
+
+export async function getStudentVerificationStatus(id) {
+  const response = await fetch(`${API_URL}/student-card-verifications/${id}/status`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, "Không thể cập nhật trạng thái xác minh."));
+  return data;
+}
+
 export async function getRoomList() {
   try {
     const data = await cachedFetch(`${API_URL}/Rooms`);
@@ -125,24 +167,22 @@ export async function getRoomList() {
   }
 }
 
-export async function getCombosAndFoodsList() {
+export async function getCombosAndFoodsList(cinemaIdOverride) {
   let combosData = [];
   let foodsData = [];
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const cinemaId = cinemaIdOverride ?? user.cinemaId ?? user.CinemaId;
 
   try {
-    const raw = await cachedFetch(`${API_URL}/Combos/Available`);
-    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-    combosData = normalizeArray(unwrapped);
+    const response = await fetch(`${API_URL}/food-inventory/menu?cinemaId=${encodeURIComponent(cinemaId)}`, {
+      headers: getAuthHeaders(), cache: "no-store"
+    });
+    const raw = await readResponse(response);
+    if (!response.ok) throw new Error(getErrorMessage(raw, "Không tải được menu của rạp."));
+    combosData = normalizeArray(raw?.combos);
+    foodsData = normalizeArray(raw?.foods);
   } catch (err) {
     console.warn("[BanVe] Failed to load combos:", err);
-  }
-
-  try {
-    const raw = await cachedFetch(`${API_URL}/Foods/Available`);
-    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-    foodsData = normalizeArray(unwrapped);
-  } catch (err) {
-    console.warn("[BanVe] Failed to load foods:", err);
   }
 
   console.log("[BanVe] Combos:", combosData.length, "| Foods:", foodsData.length);
@@ -155,6 +195,19 @@ export async function getCombosAndFoodsList() {
     price: Number(c.price ?? c.Price ?? 0),
     image: c.imageUrl ?? c.ImageUrl ?? "🍿",
     category: "combo",
+    quantity: Number(c.quantity ?? c.Quantity ?? 0),
+    isAvailable: Boolean(c.isAvailable ?? c.IsAvailable),
+    drinkSlotCount: Number(c.drinkSlotCount ?? c.DrinkSlotCount ?? 0),
+    popcornSlotCount: Number(c.popcornSlotCount ?? c.PopcornSlotCount ?? 0),
+    allowedItems: normalizeArray(c.foodItems ?? c.FoodItems).map(option => {
+      const optionId = option.foodId ?? option.FoodId;
+      const inventory = foodsData.find(food => Number(food.foodId ?? food.FoodId) === Number(optionId));
+      return {
+        ...option,
+        quantity: Number(inventory?.quantity ?? inventory?.Quantity ?? 0),
+        isAvailable: Boolean(inventory?.isAvailable ?? inventory?.IsAvailable),
+      };
+    }),
   }));
 
   const foods = foodsData.map(f => ({
@@ -163,19 +216,11 @@ export async function getCombosAndFoodsList() {
     name: f.foodName ?? f.FoodName ?? "",
     description: f.category ?? f.Category ?? "",
     price: Number(f.price ?? f.Price ?? 0),
+    quantity: Number(f.quantity ?? f.Quantity ?? 0),
+    isAvailable: Boolean(f.isAvailable ?? f.IsAvailable),
     image: f.imageUrl ?? f.ImageUrl ?? "🥤",
     category: (f.category ?? f.Category ?? "").toLowerCase().includes("nước") || (f.category ?? f.Category ?? "").toLowerCase().includes("uống") ? "drink" : "food",
   }));
-
-  if (combos.length === 0 && foods.length === 0) {
-    return [
-      { id: 1, type: "combo", name: "Combo Solo", description: "1 Bắp ngọt lớn + 1 Nước ngọt lớn", price: 85000, image: "🍿🥤", category: "combo" },
-      { id: 2, type: "combo", name: "Combo Couple", description: "1 Bắp ngọt lớn + 2 Nước ngọt lớn", price: 115000, image: "🍿🥤🥤", category: "combo" },
-      { id: 3, type: "combo", name: "Combo Family", description: "2 Bắp ngọt lớn + 3 Nước ngọt lớn", price: 185000, image: "🍿🍿🥤🥤🥤", category: "combo" },
-      { id: 4, type: "food", name: "Bắp Ngọt Lớn", description: "Bắp ngọt giòn thơm cỡ lớn", price: 60000, image: "🍿", category: "food" },
-      { id: 5, type: "food", name: "Nước Ngọt Lớn", description: "Ly nước ngọt 32oz mát lạnh", price: 35000, image: "🥤", category: "drink" }
-    ];
-  }
 
   return [...combos, ...foods];
 }

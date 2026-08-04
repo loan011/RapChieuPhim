@@ -13,8 +13,10 @@ import {
   getSeatType,
 } from "../Booking/usebooking";
 import "../../styles/Payment.css";
+import { useSellingShift } from "../../utils/sellingShift";
 
 export default function Payment() {
+  const { isSelling, message: sellingTimeMessage } = useSellingShift();
   const {
     bookingData,
     paymentMethod,
@@ -58,9 +60,12 @@ export default function Payment() {
   const room = rooms && selectedShowtime ? findRoomByShowtime(selectedShowtime, rooms) : null;
   const roomName = room ? getRoomName(room) : "";
   const displayCinema = roomName ? `${cinemaName} - ${roomName}` : cinemaName;
+  const getComponentName = (component) =>
+    component.foodName ?? component.FoodName ?? component.name ?? component.Name ?? "Món trong combo";
 
   return (
     <div className="payment-page-layout">
+      {!isSelling && <div className="payment-error-message">{sellingTimeMessage}</div>}
       <div className="payment-page-container">
       {/* Header quay lại */}
       <div className="payment-header" style={{ flexWrap: "wrap", gap: "15px" }}>
@@ -108,7 +113,9 @@ export default function Payment() {
                         const nextIsCouple = nextType.includes("sweetbox") || nextType.includes("couple") || nextType.includes("đôi");
                         
                         if (nextIsCouple) {
-                          const price = rooms ? getSeatPrice(seat, selectedShowtime, rooms) * 2 : 0;
+                          const price = rooms
+                            ? getSeatPrice(seat, selectedShowtime, rooms) + getSeatPrice(nextSeat, selectedShowtime, rooms)
+                            : 0;
                           elements.push(
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
                               <strong>{getSeatLabel(seat)}, {getSeatLabel(nextSeat)}</strong>
@@ -138,9 +145,20 @@ export default function Payment() {
                 <span>Bắp nước:</span>
                 <div className="combos-list-text" style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, marginLeft: '16px' }}>
                   {selectedCombos.map((c, i) => (
-                    <div key={i} className="combo-item-text" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
-                      <strong style={{ color: '#eee', fontWeight: '600' }}>{c.name} (x{c.quantity})</strong>
-                      <span style={{ color: '#aaa', fontSize: '0.9rem', fontWeight: '500' }}>{(c.price * c.quantity).toLocaleString("vi-VN")}đ</span>
+                    <div key={i} className="combo-detail-item">
+                      <div className="combo-item-text">
+                        <strong>{c.name} (x{c.quantity})</strong>
+                        <span>{(c.price * c.quantity).toLocaleString("vi-VN")}đ</span>
+                      </div>
+                      {(c.selectedComponents || []).length > 0 && (
+                        <div className="combo-components-list">
+                          {(c.selectedComponents || []).map((component, componentIndex) => (
+                            <span key={`${component.foodId ?? component.FoodId ?? componentIndex}-${componentIndex}`}>
+                              {getComponentName(component)} x{component.quantity ?? component.Quantity ?? 1}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -193,7 +211,7 @@ export default function Payment() {
               </div>
             )}
 
-            <button type="submit" className="pay-now-btn" disabled={loading}>
+            <button type="submit" className="pay-now-btn" disabled={loading || !isSelling}>
               {loading ? (
                 <>
                   <span className="btn-spinner"></span>

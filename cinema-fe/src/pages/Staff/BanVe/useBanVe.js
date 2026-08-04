@@ -9,7 +9,7 @@ import {
   createBooking,
   cancelBooking,
 } from "../../Booking/bookingService";
-import { createPayment, updatePaymentStatus, checkPaymentStatus } from "../../Payment/PaymentService";
+import { createPayment, updatePaymentStatus, checkPaymentStatus, getPaymentByBooking } from "../../Payment/PaymentService";
 import { getCombosAndFoodsList } from "./BanVeService";
 import {
   createBookingDates,
@@ -22,6 +22,8 @@ import {
 } from "../../Booking/usebooking.js";
 import { getApiUrl, getAuthHeaders, readResponse } from "../../../services/apiHelper";
 import { getStoredDiscounts } from "../../Admin/Discount/useDiscount";
+import { submitStudentVerification, normalizeStudentExpiryDate } from "./BanVeService";
+import { isSellingTime, SELLING_TIME_MESSAGE } from "../../../utils/sellingShift";
 
 /* =========================
    SEAT HELPER
@@ -330,7 +332,10 @@ export function useBanVe() {
     // Hợp lệ → áp dụng giảm giá
     setIsStudent(true);
     setStudentVerified(true);
-    setStudentCardInfo(cardInfo);
+    setStudentCardInfo({
+      ...cardInfo,
+      expiryDate: normalizeStudentExpiryDate(cardInfo.expiryDate),
+    });
     setShowStudentVerifyModal(false);
     return { ok: true };
   }
@@ -526,6 +531,9 @@ export function useBanVe() {
   // Food & Combo States
   const [foodMenu, setFoodMenu] = useState([]);
   const [selectedFoods, setSelectedFoods] = useState({});
+  const [comboSelections, setComboSelections] = useState({});
+  const [configuringCombo, setConfiguringCombo] = useState(null);
+  const [comboSlots, setComboSlots] = useState([]);
   const [showFoodModal, setShowFoodModal] = useState(false);
   const [foodSearchQuery, setFoodSearchQuery] = useState("");
   const [foodFilterType, setFoodFilterType] = useState("all");
@@ -573,6 +581,16 @@ export function useBanVe() {
     loadData();
   }, []);
 
+  // Mỗi lần Staff mở danh sách đồ ăn, lấy lại trạng thái mới nhất từ Backend.
+  useEffect(() => {
+    if (!showFoodModal || !staffCinemaId) return;
+    let cancelled = false;
+    getCombosAndFoodsList(staffCinemaId)
+      .then(list => { if (!cancelled) setFoodMenu(Array.isArray(list) ? list : []); })
+      .catch(err => { if (!cancelled) setError(err.message || "Không thể tải menu của rạp."); });
+    return () => { cancelled = true; };
+  }, [showFoodModal, staffCinemaId]);
+
   // Polling for Sepay QR Payment Success
   useEffect(() => {
     if (!showQrModal || !paymentTicketIds || paymentTicketIds.length === 0) return;
@@ -593,8 +611,14 @@ export function useBanVe() {
           // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
           recordStaffSaleToLocalStorage(paymentTicketIds, tempReceipt?.totalAmount, "QR");
           
-          // Complete checkout on frontend
-          setSuccessReceipt(tempReceipt);
+          // Luôn tải lại hóa đơn đã lưu; không dùng danh sách món tạm trên màn hình bán vé.
+          const persistedPayment = await getPaymentByBooking(firstBookingId).catch(() => null);
+          setSuccessReceipt({
+            ...tempReceipt,
+            foodsText: formatBackendFoodItems(persistedPayment),
+            totalAmount: Number(persistedPayment?.totalAmount ?? persistedPayment?.TotalAmount ?? tempReceipt?.totalAmount ?? 0),
+            ticketSubtotal: Number(persistedPayment?.ticketTotal ?? persistedPayment?.TicketTotal ?? tempReceipt?.ticketSubtotal ?? 0)
+          });
           setShowQrModal(false);
           setPaymentQrCode("");
           setCurrentPaymentId(null);
@@ -767,7 +791,9 @@ export function useBanVe() {
           getAvailableSeats(showtimeId),
         ]);
 
-        const normalizedSeats = Array.isArray(seatsList) ? seatsList : [];
+        const normalizedSeats = Array.isArray(seatsList)
+          ? seatsList.filter(seat => (seat?.isActive ?? seat?.IsActive) !== false)
+          : [];
         const normalizedAvailable = Array.isArray(availableList)
           ? availableList
           : [];
@@ -806,9 +832,11 @@ export function useBanVe() {
     loadSeats();
     window.addEventListener("ticketsUpdated", loadSeats);
     window.addEventListener("bookingsUpdated", loadSeats);
+    window.addEventListener("seatLayoutUpdated", loadSeats);
     return () => {
       window.removeEventListener("ticketsUpdated", loadSeats);
       window.removeEventListener("bookingsUpdated", loadSeats);
+      window.removeEventListener("seatLayoutUpdated", loadSeats);
     };
   }, [selectedShowtime]);
 
@@ -933,25 +961,13 @@ export function useBanVe() {
       return null;
     }
 
+    const groupId = seat?.coupleGroupId ?? seat?.CoupleGroupId;
+    if (!groupId) return null;
     const row = extractSeatRow(seat);
-    const rowSeats = groupedSeats[row] || [];
-    const sortedRowSeats = [...rowSeats].sort((a, b) => {
-      return extractSeatNumber(a) - extractSeatNumber(b);
-    });
-
-    const coupleSeats = sortedRowSeats.filter(s => {
-      const t = getSeatTypeRaw(s);
-      return t.includes("couple") || t.includes("sweetbox") || t.includes("đôi");
-    });
-
-    const index = coupleSeats.findIndex(s => getSeatId(s) === getSeatId(seat));
-    if (index === -1) return null;
-
-    if (index % 2 === 0) {
-      return coupleSeats[index + 1] || null;
-    } else {
-      return coupleSeats[index - 1] || null;
-    }
+    return (groupedSeats[row] || []).find((candidate) =>
+      String(candidate?.coupleGroupId ?? candidate?.CoupleGroupId ?? "") === String(groupId) &&
+      String(getSeatId(candidate)) !== String(getSeatId(seat))
+    ) || null;
   }
 
   function handleSeatClick(seat) {
@@ -959,6 +975,7 @@ export function useBanVe() {
 
     const seatId = getSeatId(seat);
     const pair = findCouplePair(seat);
+    if ((seat?.coupleGroupId ?? seat?.CoupleGroupId) && (!pair || isSeatBooked(pair))) return;
 
     const isSelected = selectedSeats.some(
       (selectedSeat) => String(getSeatId(selectedSeat)) === String(seatId)
@@ -998,6 +1015,19 @@ export function useBanVe() {
 
   function handleFoodQuantityChange(item, delta) {
     const key = `${item.id}_${item.type}`;
+    if (delta > 0 && (item.isAvailable === false || Number(item.quantity) <= 0)) {
+      setError(`${item.name} hiện đã hết hàng hoặc ngừng bán.`);
+      return;
+    }
+    if (item.type === 'combo' && delta > 0) {
+      const nextQuantity = (selectedFoods[key] || 0) + 1;
+      if (nextQuantity > Number(item.quantity)) return;
+      const slots = [
+        ...Array.from({length:item.drinkSlotCount * nextQuantity},()=>({itemType:'DRINK',foodId:null})),
+        ...Array.from({length:item.popcornSlotCount * nextQuantity},()=>({itemType:'POPCORN',foodId:null}))
+      ];
+      setConfiguringCombo({...item,nextQuantity,key}); setComboSlots(slots); return;
+    }
     setSelectedFoods((prev) => {
       const current = prev[key] || 0;
       const next = Math.max(0, current + delta);
@@ -1027,6 +1057,7 @@ export function useBanVe() {
       .map((item) => ({
         ...item,
         quantity: selectedFoods[`${item.id}_${item.type}`],
+        selectedComponents: comboSelections[`${item.id}_${item.type}`] || [],
       }));
   }, [foodMenu, selectedFoods]);
 
@@ -1036,6 +1067,27 @@ export function useBanVe() {
       0
     );
   }, [selectedFoodsList]);
+
+  const formatSelectedFoodsText = (items) => items.map((item) => {
+    const selections = (item.selectedComponents || [])
+      .map((selection) => `${selection.name || selection.foodName || "Món trong Combo"} x${selection.quantity || 1}`)
+      .join(", ");
+    return `${item.name} x${item.quantity}${selections ? ` (${selections})` : ""}`;
+  }).join(", ");
+
+  const formatBackendFoodItems = (payment) => {
+    const items = payment?.foodItems?.$values ?? payment?.foodItems ?? payment?.FoodItems?.$values ?? payment?.FoodItems ?? [];
+    return items.map((item) => {
+      const name = item.itemNameSnapshot ?? item.ItemNameSnapshot ?? item.foodName ?? item.FoodName ?? item.comboName ?? item.ComboName ?? "Đồ ăn";
+      const quantity = Number(item.quantity ?? item.Quantity ?? 1);
+      const selections = item.comboSelections?.$values ?? item.comboSelections ?? item.ComboSelections?.$values ?? item.ComboSelections ?? [];
+      const unavailable = item.comboSelectionDataUnavailable ?? item.ComboSelectionDataUnavailable;
+      const detail = selections.length > 0
+        ? selections.map((selection) => `${selection.foodNameSnapshot ?? selection.FoodNameSnapshot ?? selection.foodName ?? selection.FoodName} x${selection.quantity ?? selection.Quantity ?? 1}`).join(", ")
+        : (unavailable ? "Không có dữ liệu thành phần Combo do đây là đơn cũ." : "");
+      return `${name} x${quantity}${detail ? ` (${detail})` : ""}`;
+    }).join(", ");
+  };
 
   const ticketSubtotal = useMemo(() => {
     return selectedSeats.reduce(
@@ -1056,8 +1108,7 @@ export function useBanVe() {
         const type = String(seat?.seatType || seat?.SeatType || seat?.type || seat?.Type || "").toLowerCase();
         const isCouple = type.includes("couple") || type.includes("sweetbox") || type.includes("đôi") || type.includes("doi");
         const price = Number(calculateSeatPrice(seat)) || 0;
-        const seatUnitPrice = (isCouple && price > 100000) ? (price / 2) : price;
-        return sum + Math.round(seatUnitPrice * 0.15);
+        return sum + Math.round(price * 0.15);
       },
       0
     );
@@ -1085,6 +1136,10 @@ export function useBanVe() {
 
   async function handleSellTickets(e) {
     e.preventDefault();
+    if (!isSellingTime()) {
+      alert(SELLING_TIME_MESSAGE);
+      return;
+    }
 
     if (!selectedShowtime) {
       alert("Vui lòng chọn suất chiếu!");
@@ -1119,7 +1174,7 @@ export function useBanVe() {
         const isCombo = item.type === "Combo" || item.type === "combo" || item.isCombo || item._isCombo;
         const id = Number(item.id);
         if (isCombo) {
-          return { comboId: id, quantity: Number(item.quantity) };
+          return { comboId: id, quantity: Number(item.quantity), selectedComponents:item.selectedComponents || [] };
         }
         return { foodId: id, quantity: Number(item.quantity) };
       });
@@ -1152,6 +1207,16 @@ export function useBanVe() {
       // Trích xuất bookingIds
       let bookedIds = [];
       const resData = res?.data ?? res;
+      const backendTicketTotal = Number(resData?.ticketTotal ?? resData?.TicketTotal ?? ticketSubtotal);
+      const backendOrderId = Number(resData?.orderId ?? resData?.OrderId ?? 0) || null;
+      const backendDiscountAmount = Number(resData?.discountAmt ?? resData?.DiscountAmt ?? finalDiscountAmount);
+      const backendFinalAmount = Number(
+        resData?.finalAmount ?? resData?.FinalAmount ??
+        resData?.grandTotal ?? resData?.GrandTotal ??
+        totalAmount
+      );
+      const backendStudentDiscount = isStudent ? backendDiscountAmount : 0;
+      const backendPromoDiscount = appliedDiscount ? backendDiscountAmount : 0;
       if (resData && (resData.bookingIds || resData.BookingIds)) {
         const rawIds = resData.bookingIds ?? resData.BookingIds;
         bookedIds = Array.isArray(rawIds) ? rawIds : (rawIds?.$values || []);
@@ -1159,6 +1224,11 @@ export function useBanVe() {
       if (bookedIds.length === 0) {
         const singleId = extractBookingId(res);
         bookedIds = singleId !== null ? [singleId] : [`BK${Math.floor(Math.random() * 90000)}`];
+      }
+      if (isStudent) {
+        if (!studentCardInfo?.imageFile) throw new Error("Vui lòng chọn ảnh thẻ sinh viên.");
+        await submitStudentVerification(Number(bookedIds[0]), studentCardInfo);
+        setError("");
       }
       // NẾU CHỌN THANH TOÁN TIỀN MẶT
       if (paymentMethod === "Cash") {
@@ -1177,7 +1247,8 @@ export function useBanVe() {
           const paymentPayload = {
             bookingId: Number(bookedIds[0]),
             bookingIds: bookedIds.map(Number),
-            amount: Number(totalAmount),
+            orderId: backendOrderId,
+            amount: backendFinalAmount,
             paymentMethod: "Cash",
             notes: pNotes,
             description: `Thanh toan tien mat tai quay cho booking ${bookedIds.join(", ")}`,
@@ -1213,13 +1284,14 @@ export function useBanVe() {
         forceActivateTickets(bookedIds);
 
         // Đồng bộ đơn bán vé POS vào localStorage & bắn event cho Doanh Thu
-        recordStaffSaleToLocalStorage(bookedIds, totalAmount, "Cash");
+        recordStaffSaleToLocalStorage(bookedIds, backendFinalAmount, "Cash");
 
         // Ghi nhận lượt dùng HS/SV sau khi thanh toán thành công
         if (isStudent && studentCardInfo) {
           recordStudentUsage(bookedIds, studentCardInfo);
         }
 
+        const persistedPayment = await getPaymentByBooking(Number(bookedIds[0])).catch(() => null);
         setSuccessReceipt({
           movieTitle: selectedMovie?.title || selectedMovie?.Title || "Phim",
           showtimeDate: getShowtimeDate(selectedShowtime),
@@ -1229,13 +1301,13 @@ export function useBanVe() {
             selectedShowtime.RoomName ||
             `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
           seats: selectedSeats.map((seat) => getSeatCode(seat)).join(", "),
-          foodsText: selectedFoodsList.map(item => `${item.name} x${item.quantity}`).join(", "),
+          foodsText: formatBackendFoodItems(persistedPayment),
           customerName: customer.name || "Khách vãng lai",
           customerPhone: customer.phone || "",
-          totalAmount,
-          ticketSubtotal,
-          studentDiscountAmount: studentDiscountAmount,
-          promoDiscountAmount: promoDiscountAmount,
+          totalAmount: Number(persistedPayment?.totalAmount ?? persistedPayment?.TotalAmount ?? backendFinalAmount),
+          ticketSubtotal: Number(persistedPayment?.ticketTotal ?? persistedPayment?.TicketTotal ?? backendTicketTotal),
+          studentDiscountAmount: backendStudentDiscount,
+          promoDiscountAmount: backendPromoDiscount,
           isStudent,
           studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
           appliedDiscount,
@@ -1284,7 +1356,8 @@ export function useBanVe() {
         const paymentPayload = {
           bookingId: Number(bookedIds[0]),
           bookingIds: bookedIds.map(Number),
-          amount: Number(totalAmount),
+          orderId: backendOrderId,
+          amount: backendFinalAmount,
           paymentMethod: "QR",
           notes: pNotes,
           description: `Thanh toan QR cho don: ${bookedIds.join(", ")}`,
@@ -1331,7 +1404,7 @@ export function useBanVe() {
           qrCodeUrlToUse = qr;
         } else if (bankId && accountNo) {
           const addInfo = encodeURIComponent(`Thanh toan ve ${bookedIds.join(" ")}`);
-          qrCodeUrlToUse = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${totalAmount}&addInfo=${addInfo}`;
+          qrCodeUrlToUse = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${backendFinalAmount}&addInfo=${addInfo}`;
         }
       } catch (payErr) {
         console.warn("Payments API failed in staff flow, using fallback QR:", payErr);
@@ -1339,7 +1412,7 @@ export function useBanVe() {
 
       // ALWAYS USE USER'S TPBANK DETAILS FOR SEPAY AUTOMATIC DETECTION
       const addInfo = encodeURIComponent(`DATVE ${bookedIds[0]}`);
-      qrCodeUrlToUse = `https://img.vietqr.io/image/TPB-15145686888-compact.png?amount=${totalAmount}&addInfo=${addInfo}&accountName=Nguyen%20Quang%20Vinh`;
+      qrCodeUrlToUse = `https://img.vietqr.io/image/TPB-15145686888-compact.png?amount=${backendFinalAmount}&addInfo=${addInfo}&accountName=Nguyen%20Quang%20Vinh`;
       console.log("GENERATED STAFF VIETQR FOR SEPAY:", qrCodeUrlToUse);
 
       setTempReceipt({
@@ -1351,13 +1424,13 @@ export function useBanVe() {
           selectedShowtime.RoomName ||
           `Phòng ${getShowtimeRoomId(selectedShowtime)}`,
         seats: selectedSeats.map((seat) => getSeatCode(seat)).join(", "),
-        foodsText: selectedFoodsList.map(item => `${item.name} x${item.quantity}`).join(", "),
+        foodsText: formatSelectedFoodsText(selectedFoodsList),
         customerName: customer.name || "Khách vãng lai",
         customerPhone: customer.phone || "",
-        totalAmount,
-        ticketSubtotal,
-        studentDiscountAmount: studentDiscountAmount,
-        promoDiscountAmount: promoDiscountAmount,
+        totalAmount: backendFinalAmount,
+        ticketSubtotal: backendTicketTotal,
+        studentDiscountAmount: backendStudentDiscount,
+        promoDiscountAmount: backendPromoDiscount,
         isStudent,
         studentCount: isStudent ? Math.min(Math.max(1, Number(studentCount) || 1), selectedSeats.length) : 0,
         appliedDiscount,
@@ -1374,6 +1447,24 @@ export function useBanVe() {
     } catch (err) {
       console.error("Đặt vé thất bại:", err);
       setError(err.message || "Đặt vé thất bại.");
+      // Nếu ghế vừa được bán ở một màn hình khác, đồng bộ lại sơ đồ ngay
+      // và bỏ những ghế không còn trống khỏi lựa chọn hiện tại.
+      if (selectedShowtime && /ghế.*đã được đặt|seats?.*booked/i.test(err.message || "")) {
+        try {
+          const latestAvailable = await getAvailableSeats(getShowtimeId(selectedShowtime));
+          const availableIds = new Set(
+            (Array.isArray(latestAvailable) ? latestAvailable : []).map((seat) =>
+              String(seat?.seatId ?? seat?.SeatId ?? seat?.id ?? seat?.Id)
+            )
+          );
+          setAvailableSeats(Array.isArray(latestAvailable) ? latestAvailable : []);
+          setSelectedSeats((current) =>
+            current.filter((seat) => availableIds.has(String(getSeatId(seat))))
+          );
+        } catch (refreshError) {
+          console.error("Không thể làm mới sơ đồ ghế:", refreshError);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -1415,7 +1506,15 @@ export function useBanVe() {
       recordStudentUsage(paymentTicketIds, studentCardInfo);
     }
 
-    setSuccessReceipt(tempReceipt);
+    const persistedPayment = paymentTicketIds?.[0]
+      ? await getPaymentByBooking(paymentTicketIds[0]).catch(() => null)
+      : null;
+    setSuccessReceipt({
+      ...tempReceipt,
+      foodsText: formatBackendFoodItems(persistedPayment),
+      totalAmount: Number(persistedPayment?.totalAmount ?? persistedPayment?.TotalAmount ?? tempReceipt?.totalAmount ?? 0),
+      ticketSubtotal: Number(persistedPayment?.ticketTotal ?? persistedPayment?.TicketTotal ?? tempReceipt?.ticketSubtotal ?? 0)
+    });
     setShowQrModal(false);
     setPaymentQrCode("");
     setCurrentPaymentId(null);
@@ -1530,7 +1629,14 @@ export function useBanVe() {
       const foodsListFormatted = selectedFoodsList.map(item => ({
         name: item.name,
         price: item.price,
-        quantity: item.quantity
+        quantity: item.quantity,
+        lineTotal: Number(item.price || 0) * Number(item.quantity || 0),
+        itemType: item.type === "combo" ? "COMBO" : "FOOD",
+        comboSelections: (item.selectedComponents || []).map(selection => ({
+          foodId: selection.foodId,
+          name: selection.name || selection.foodName,
+          quantity: selection.quantity || 1
+        }))
       }));
 
       const ticketRecord = {
@@ -1783,5 +1889,13 @@ export function useBanVe() {
     selectedFoodsList,
     foodTotalAmount,
     handleFoodQuantityChange,
+    configuringCombo, setConfiguringCombo, comboSlots, setComboSlots,
+    confirmComboSlots: () => {
+      if (!configuringCombo || comboSlots.some(x=>!x.foodId)) return;
+      const grouped=Object.values(comboSlots.reduce((a,x)=>{const k=String(x.foodId);a[k]=a[k]?{...a[k],quantity:a[k].quantity+1}:{foodId:Number(x.foodId),quantity:1};return a;},{}));
+      setComboSelections(c=>({...c,[configuringCombo.key]:grouped}));
+      setSelectedFoods(c=>({...c,[configuringCombo.key]:configuringCombo.nextQuantity}));
+      setConfiguringCombo(null); setComboSlots([]);
+    },
   };
 }

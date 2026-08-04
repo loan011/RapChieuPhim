@@ -167,8 +167,41 @@
 }
 
 .combo-item-text {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
   color: #ffffff;
   font-weight: 600;
+}
+
+.combo-detail-item + .combo-detail-item {
+  margin-top: 10px;
+}
+
+.combo-item-text span {
+  color: #aaa;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.combo-components-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.combo-components-list span {
+  color: #d1d5db;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.25);
 }
 
 .divider {

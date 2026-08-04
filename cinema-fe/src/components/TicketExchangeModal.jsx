@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { MdSearch, MdClose, MdRefresh, MdCancel, MdCheckCircle, MdWarning, MdPrint, MdConfirmationNumber, MdEventSeat, MdAttachMoney } from "react-icons/md";
-import { getTicketList, updateTicket } from "../pages/Admin/Ticket/ticketService";
+import { getTicketList, updateTicket, requestSeatExchange, confirmCashSeatExchange } from "../pages/Admin/Ticket/ticketService";
 import { getSeatsByRoomId, getAvailableSeats, cancelBooking, getRooms } from "../pages/Booking/bookingService";
 import { restoreInventory } from "../pages/Staff/Combo/ComboService";
-import { getApiUrl, getAuthHeaders } from "../services/apiHelper";
+import { getApiUrl, getAuthHeaders, clearApiCache } from "../services/apiHelper";
+import "../pages/Staff/BanVe/BanVe.css";
 
 export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) {
   const [ticketCodeInput, setTicketCodeInput] = useState("");
@@ -27,12 +28,36 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
   const [processing, setProcessing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Cash Payment Modal states for seat exchange
+  const [cashPaymentModalOpen, setCashPaymentModalOpen] = useState(false);
+  const [pendingExchange, setPendingExchange] = useState(null); // { exchangeId, additionalAmount, holdUntil, newSeatCode, newSeatPrice }
+  const [customerPaidAmount, setCustomerPaidAmount] = useState("");
+  const [cashPaymentError, setCashPaymentError] = useState("");
+
+  // Room type and pricing states
+  const [pricingList, setPricingList] = useState([]);
+  const [currentRoomType, setCurrentRoomType] = useState("2D");
+
   useEffect(() => {
     if (isOpen) {
       loadTickets();
+      loadPricings();
       resetForm();
     }
   }, [isOpen]);
+
+  async function loadPricings() {
+    try {
+      const response = await fetch(`${getApiUrl()}/TicketPricing/Active`, { headers: getAuthHeaders() });
+      if (response.ok) {
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : data?.$values || [];
+        setPricingList(list);
+      }
+    } catch (e) {
+      console.warn("Lỗi tải bảng giá:", e);
+    }
+  }
 
   useEffect(() => {
     function handleOpenWithCode(e) {
@@ -72,7 +97,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
             isFoodOnly: !bill.tickets || bill.tickets.length === 0
           };
           setSelectedTicket(formatted);
-          setActionMode("CANCEL_TICKET");
+          setActionMode("SELECT");
           setStaffRefundConfirmed(false);
           return;
         }
@@ -87,7 +112,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
           });
           if (found) {
             setSelectedTicket(found);
-            setActionMode("CANCEL_TICKET");
+            setActionMode("SELECT");
             setStaffRefundConfirmed(false);
           }
         }).catch(() => {});
@@ -116,9 +141,13 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
     setStaffMoneyConfirmed(false);
     setStaffRefundConfirmed(false);
     setSuccessMsg("");
+    setCashPaymentModalOpen(false);
+    setPendingExchange(null);
+    setCustomerPaidAmount("");
+    setCashPaymentError("");
   }
 
-  function handleSearchTicket(codeToSearch) {
+  async function handleSearchTicket(codeToSearch) {
     const query = (codeToSearch || ticketCodeInput).trim().toUpperCase();
     setSearchError("");
     setSelectedTicket(null);
@@ -133,7 +162,13 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
 
     setSearching(true);
     try {
-      const found = ticketList.find((t) => {
+      // Clear cache to always get the latest tickets directly from Database
+      clearApiCache();
+      const data = await getTicketList();
+      const list = Array.isArray(data) ? data : data?.$values || [];
+      setTicketList(list);
+
+      const found = list.find((t) => {
         const c1 = (t.ticketCode || t.code || t.billCode || t.bookingCode || "").toUpperCase();
         const idStr = String(t.ticketId || t.id || t.bookingId || "");
         return c1 === query || `VE${idStr}` === query || idStr === query || query.includes(c1) || c1.includes(query);
@@ -204,7 +239,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
       let showtimeId = selectedTicket.showtimeId || selectedTicket.ShowtimeId || selectedTicket.booking?.showtimeId;
       let roomId = selectedTicket.roomId || selectedTicket.RoomId || selectedTicket.booking?.showTime?.roomId;
 
-      // Fallback 1: Lookup roomId by matching roomName from getRooms()
+      // Fallback 1: Lookup roomId by matching roomName from getRooms() if roomId is not yet determined
       if (!roomId) {
         try {
           const rooms = await getRooms().catch(() => []);
@@ -215,8 +250,26 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
           });
           if (matched) {
             roomId = matched.roomId || matched.RoomId || matched.id;
+            setCurrentRoomType(matched.roomType || matched.RoomType || "2D");
+          } else {
+            setCurrentRoomType("2D");
           }
-        } catch (e) {}
+        } catch (e) {
+          setCurrentRoomType("2D");
+        }
+      } else {
+        // Just resolve roomType if roomId is already known
+        try {
+          const rooms = await getRooms().catch(() => []);
+          const matched = (rooms || []).find(r => String(r.roomId || r.RoomId || r.id) === String(roomId));
+          if (matched) {
+            setCurrentRoomType(matched.roomType || matched.RoomType || "2D");
+          } else {
+            setCurrentRoomType("2D");
+          }
+        } catch (e) {
+          setCurrentRoomType("2D");
+        }
       }
 
       // Fallback 2: Default roomId = 1 if still not found
@@ -258,85 +311,204 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
   }
 
   // Calculate seat change price difference
-  const oldSeatPrice = Number(selectedTicket?.price || selectedTicket?.amount || 0);
-  const newSeatPrice = selectedNewSeat ? Number(selectedNewSeat.price || selectedNewSeat.Price || oldSeatPrice) : oldSeatPrice;
+  const oldSeatPrice = Number(selectedTicket?.price || selectedTicket?.amount || selectedTicket?.booking?.ticketPrice || 0);
+
+  const newSeatPrice = (() => {
+    if (!selectedNewSeat) return oldSeatPrice;
+
+    const showtimeDate = selectedTicket.showtimeStart || selectedTicket.ShowtimeStart || selectedTicket.showtime || selectedTicket.Showtime || selectedTicket.booking?.showTime?.startTime || selectedTicket.booking?.showTime?.StartTime;
+    const newType = selectedNewSeat.seatType || selectedNewSeat.SeatType || "Standard";
+
+    // 1. Determine DayType (Weekday / Weekend)
+    let dayType = "Weekday";
+    if (showtimeDate) {
+      const dt = new Date(showtimeDate);
+      if (!isNaN(dt.getTime())) {
+        const day = dt.getDay();
+        if (day === 0 || day === 6) {
+          dayType = "Weekend";
+        }
+      }
+    }
+
+    const rType = String(currentRoomType || "2D").trim().toUpperCase();
+    const sType = String(newType).trim().toLowerCase();
+
+    let targetSeatType = "Standard";
+    if (sType.includes("vip")) targetSeatType = "VIP";
+    else if (sType.includes("couple") || sType.includes("sweetbox") || sType.includes("đôi")) targetSeatType = "Couple";
+
+    // 2. Find matching pricing rule
+    const match = (pricingList || []).find(p => {
+      const pRoom = String(p.roomType || p.RoomType || "").trim().toUpperCase();
+      const pSeat = String(p.seatType || p.SeatType || "").trim().toUpperCase();
+      const pDay = String(p.dayType || p.DayType || "").trim().toUpperCase();
+
+      return (pRoom === rType || !pRoom) &&
+             (pSeat === targetSeatType.toUpperCase()) &&
+             (pDay === dayType.toUpperCase() || !pDay);
+    });
+
+    if (match) {
+      return Number(match.price || match.Price || 0);
+    }
+
+    // Không tự suy diễn/hard-code giá ở Frontend. Backend sẽ kiểm tra lại giá SQL.
+    return oldSeatPrice;
+  })();
+
   const priceDifference = newSeatPrice - oldSeatPrice;
 
-  // Perform Change Seat
+  // Helper notify local & window updates
+  function notifySystemUpdates(ticketId, newSeatCode, newSeatId, newSeatPrice) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
+      const updated = stored.map((t) => {
+        if (String(t.ticketId || t.id) === String(ticketId)) {
+          return {
+            ...t,
+            seatCode: newSeatCode,
+            seatId: newSeatId,
+            price: newSeatPrice,
+            ticketPrice: newSeatPrice,
+            seatPrice: newSeatPrice,
+            status: "Active",
+          };
+        }
+        return t;
+      });
+      localStorage.setItem("rapchieuphim_tickets", JSON.stringify(updated));
+    } catch (e) {}
+
+    try {
+      const saved = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
+      const bookingId = selectedTicket?.bookingId ?? selectedTicket?.BookingId ?? selectedTicket?.booking?.bookingId;
+      const ticketCode = selectedTicket?.ticketCode ?? selectedTicket?.TicketCode ?? selectedTicket?.code;
+      const keys = [bookingId, ticketCode].filter(Boolean).map(String);
+      keys.forEach((key) => {
+        saved[key] = {
+          ...(saved[key] || {}),
+          seatCode: newSeatCode,
+          seatsList: [newSeatCode],
+          seatId: newSeatId,
+          seatPrice: newSeatPrice,
+          ticketPrice: newSeatPrice,
+          ticketSubtotal: newSeatPrice,
+        };
+      });
+      localStorage.setItem("customer_ticket_discounts", JSON.stringify(saved));
+    } catch (e) {}
+
+    setSelectedTicket((previous) => previous ? {
+      ...previous,
+      seatCode: newSeatCode,
+      seatNumber: newSeatCode,
+      seatId: newSeatId,
+      price: newSeatPrice,
+      ticketPrice: newSeatPrice,
+      seatPrice: newSeatPrice,
+    } : previous);
+
+    window.dispatchEvent(new Event("ticketsUpdated"));
+    window.dispatchEvent(new Event("bookingsUpdated"));
+    window.dispatchEvent(new Event("paymentsUpdated"));
+  }
+
+  // Perform Change Seat — Step 1: Request Exchange
   async function handleConfirmChangeSeat() {
     if (!selectedNewSeat) {
       alert("Vui lòng chọn ghế mới muốn đổi!");
       return;
     }
 
-    if (!staffMoneyConfirmed) {
-      alert("Vui lòng tích xác nhận đã thực hiện giao dịch tiền mặt với khách hàng!");
+    if (priceDifference < 0) {
+      alert("Khách chỉ được chọn ghế cùng giá hoặc giá cao hơn!");
       return;
     }
 
     setProcessing(true);
     try {
-      const ticketId = selectedTicket.ticketId || selectedTicket.id;
-      const oldBookingId = selectedTicket.bookingId || selectedTicket.BookingId || selectedTicket.booking?.bookingId;
+      const ticketId = Number(selectedTicket.ticketId || selectedTicket.id);
+      const newSeatId = Number(selectedNewSeat.seatId || selectedNewSeat.id || selectedNewSeat.SeatId);
       const newSeatCode = `${selectedNewSeat.seatRow || selectedNewSeat.SeatRow || ""}${selectedNewSeat.seatNumber || selectedNewSeat.SeatNumber || ""}`;
-      const newSeatId = Number(selectedNewSeat.seatId || selectedNewSeat.id);
 
-      // 1. Release old booking in C# DB if exists
-      if (oldBookingId) {
-        await cancelBooking(oldBookingId).catch((err) => console.warn("Cancel old booking fail:", err));
+      // Call API 1: Request Seat Exchange
+      const res = await requestSeatExchange(ticketId, newSeatId);
+
+      const isSuccess = res.isSuccess ?? res.IsSuccess;
+      if (!isSuccess) {
+        alert(res.message || res.Message || "Lỗi khi yêu cầu đổi ghế");
+        return;
       }
 
-      // Save old seat into released list
-      try {
-        const releasedSeats = JSON.parse(localStorage.getItem("cancelled_seat_codes") || "[]");
-        const rawSeatCode = String(selectedTicket.seatCode || selectedTicket.SeatCode || "");
-        const individualCodes = rawSeatCode.split(/[,;\s-]+/).map(s => s.trim()).filter(Boolean);
-        const oldSeatId = String(selectedTicket.seatId || selectedTicket.SeatId || "");
-        
-        individualCodes.forEach(code => {
-          if (code && !releasedSeats.includes(code)) releasedSeats.push(code);
+      const requiresPayment = res.requiresPayment ?? res.RequiresPayment;
+      const additionalAmount = res.additionalAmount ?? res.AdditionalAmount ?? 0;
+      const exchangeId = res.exchangeId ?? res.ExchangeId;
+      const resolvedNewSeatPrice = Number(
+        res.newSeatPrice ?? res.NewSeatPrice ??
+        res.ticketPrice ?? res.TicketPrice ??
+        newSeatPrice
+      );
+
+      if (requiresPayment) {
+        // Case B: Higher price -> Open Cash Payment Modal
+        setPendingExchange({
+          exchangeId,
+          additionalAmount,
+          holdUntil: res.holdUntil ?? res.HoldUntil,
+          newSeatCode,
+          newSeatPrice: resolvedNewSeatPrice
         });
-        if (oldSeatId && !releasedSeats.includes(oldSeatId)) releasedSeats.push(oldSeatId);
-        
-        localStorage.setItem("cancelled_seat_codes", JSON.stringify(releasedSeats));
-      } catch (e) {}
+        setCustomerPaidAmount(String(additionalAmount));
+        setCashPaymentError("");
+        setCashPaymentModalOpen(true);
+      } else {
+        // Case A: Same price -> Exchange completed immediately without payment
+        notifySystemUpdates(ticketId, newSeatCode, newSeatId, resolvedNewSeatPrice);
+        setSuccessMsg(res.message || res.Message || `✅ ĐỔI GHẾ THÀNH CÔNG! Vé ${selectedTicket.ticketCode || selectedTicket.code} đã chuyển sang ghế ${newSeatCode} (Cùng giá ${oldSeatPrice.toLocaleString("vi-VN")}đ).`);
+        if (onRefreshData) onRefreshData();
+        setActionMode("SUCCESS");
+      }
+    } catch (err) {
+      alert("Lỗi thực hiện đổi ghế: " + (err.message || err));
+    } finally {
+      setProcessing(false);
+    }
+  }
 
-      // 2. Call update ticket with new seat code and price
-      await updateTicket(ticketId, {
-        status: "Active",
-        seatCode: newSeatCode,
-        seatId: newSeatId,
-        price: newSeatPrice,
-      }).catch((err) => console.warn("updateTicket seat fail:", err));
+  // Handle Confirm Cash Payment for seat exchange — Step 2: Confirm Cash
+  async function handleConfirmCashPayment() {
+    if (!pendingExchange) return;
 
-      // 3. Update local stored state
-      try {
-        const stored = JSON.parse(localStorage.getItem("rapchieuphim_tickets") || "[]");
-        const updated = stored.map((t) => {
-          if (String(t.ticketId || t.id) === String(ticketId)) {
-            return {
-              ...t,
-              seatCode: newSeatCode,
-              seatId: newSeatId,
-              price: newSeatPrice,
-              status: "Active",
-            };
-          }
-          return t;
-        });
-        localStorage.setItem("rapchieuphim_tickets", JSON.stringify(updated));
-      } catch (e) {}
+    const paid = Number(customerPaidAmount);
+    if (isNaN(paid) || paid < pendingExchange.additionalAmount) {
+      setCashPaymentError(`Số tiền đưa (${paid.toLocaleString("vi-VN")}đ) chưa đủ số tiền cần thu (${pendingExchange.additionalAmount.toLocaleString("vi-VN")}đ).`);
+      return;
+    }
 
-      // 4. Notify open components
-      window.dispatchEvent(new Event("ticketsUpdated"));
-      window.dispatchEvent(new Event("bookingsUpdated"));
-      window.dispatchEvent(new Event("paymentsUpdated"));
+    setProcessing(true);
+    setCashPaymentError("");
+    try {
+      const res = await confirmCashSeatExchange(pendingExchange.exchangeId, paid);
 
-      setSuccessMsg(`✅ ĐỔI GHẾ THÀNH CÔNG! Vé ${selectedTicket.ticketCode || selectedTicket.code} đã chuyển sang ghế ${newSeatCode}. Giá mới: ${newSeatPrice.toLocaleString("vi-VN")}đ.`);
+      const isSuccess = res.isSuccess ?? res.IsSuccess;
+      if (!isSuccess) {
+        setCashPaymentError(res.message || res.Message || "Lỗi xác nhận thanh toán tiền mặt");
+        return;
+      }
+
+      const ticketId = Number(selectedTicket.ticketId || selectedTicket.id);
+      const newSeatId = Number(selectedNewSeat?.seatId || selectedNewSeat?.id || selectedNewSeat?.SeatId);
+
+      setCashPaymentModalOpen(false);
+      notifySystemUpdates(ticketId, pendingExchange.newSeatCode, newSeatId, pendingExchange.newSeatPrice);
+
+      const change = Math.max(0, paid - pendingExchange.additionalAmount);
+      setSuccessMsg(`✅ ĐỔI GHẾ THÀNH CÔNG! Đã thu ${pendingExchange.additionalAmount.toLocaleString("vi-VN")}đ tiền mặt (Khách đưa: ${paid.toLocaleString("vi-VN")}đ, Tiền thừa: ${change.toLocaleString("vi-VN")}đ). Vé đã chuyển sang ghế ${pendingExchange.newSeatCode}.`);
       if (onRefreshData) onRefreshData();
       setActionMode("SUCCESS");
     } catch (err) {
-      alert("Lỗi thực hiện đổi ghế: " + err.message);
+      setCashPaymentError("Lỗi xác nhận thu tiền: " + (err.message || err));
     } finally {
       setProcessing(false);
     }
@@ -461,16 +633,16 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
+    <div className="ticket-exchange-overlay fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+      <div className="ticket-exchange-shell bg-white w-full overflow-hidden shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-5 text-white flex justify-between items-center">
+        <div className="ticket-exchange-header bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl">
               🔄
             </div>
             <div>
-              <h3 className="font-extrabold text-lg leading-tight">ĐỔI GHẾ / HỦY VÉ BÁN TẠI QUẦY</h3>
+              <h3 className="font-extrabold text-lg leading-tight">ĐỔI GHẾ TẠI QUẦY</h3>
               <p className="text-xs text-blue-200">Dành riêng cho vé mua trực tiếp tại quầy thanh toán bằng tiền mặt (Cash)</p>
             </div>
           </div>
@@ -484,9 +656,9 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[80vh] overflow-y-auto space-y-5">
+        <div className="ticket-exchange-body space-y-4">
           {/* Step 1: Tra cứu vé */}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+          <div className="exchange-search-card bg-gray-50 border border-gray-200 rounded-2xl p-4">
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
               🔍 Quét mã QR hoặc Nhập Mã Vé (VD: TIC12345 / VE12)
             </label>
@@ -519,7 +691,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
           {/* Ticket Information & Eligibility Check */}
           {selectedTicket && (
             <div className="space-y-4">
-              <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-4 space-y-3">
+              <div className="exchange-ticket-card bg-blue-50/60 border border-blue-200/80 rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[11px] font-extrabold text-blue-700 uppercase bg-blue-100 px-2 py-0.5 rounded-md">
@@ -529,12 +701,22 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                       {selectedTicket.movieTitle || selectedTicket.movie?.title ||
                         (selectedTicket.isFoodOnly ? "Đơn Đồ Ăn / Combo" : "Vé Xem Phim")}
                     </h4>
-                    {(selectedTicket.roomName || selectedTicket.showtime) && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {selectedTicket.roomName && `📍 ${selectedTicket.roomName}`}
-                        {selectedTicket.showtime && ` · ⏰ ${selectedTicket.showtime}`}
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {(selectedTicket.roomName || selectedTicket.RoomName) && `📍 ${selectedTicket.roomName || selectedTicket.RoomName}`}
+                      {(() => {
+                        const rawStart = selectedTicket.showtimeStart || selectedTicket.ShowtimeStart || selectedTicket.showtime || selectedTicket.Showtime || selectedTicket.booking?.showTime?.startTime || selectedTicket.booking?.showTime?.StartTime;
+                        if (!rawStart) return "";
+                        try {
+                          const dt = new Date(rawStart);
+                          if (!isNaN(dt.getTime())) {
+                            const timeStr = dt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                            const dateStr = dt.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+                            return ` · ⏰ ${timeStr} (${dateStr})`;
+                          }
+                        } catch (e) {}
+                        return ` · ⏰ ${rawStart}`;
+                      })()}
+                    </p>
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-extrabold ${
@@ -548,7 +730,22 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-medium text-gray-600 pt-2 border-t border-blue-100">
-                  <div>🎭 Suất chiếu / Ghế: <strong className="text-gray-900">{selectedTicket.seatCode}</strong></div>
+                  <div className="col-span-2 md:col-span-1">🎭 Suất chiếu: <strong className="text-gray-900">
+                    {(() => {
+                      const rawStart = selectedTicket.showtimeStart || selectedTicket.ShowtimeStart || selectedTicket.showtime || selectedTicket.Showtime || selectedTicket.booking?.showTime?.startTime || selectedTicket.booking?.showTime?.StartTime;
+                      if (!rawStart) return "N/A";
+                      try {
+                        const dt = new Date(rawStart);
+                        if (!isNaN(dt.getTime())) {
+                          const timeStr = dt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                          const dateStr = dt.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+                          return `${timeStr} (${dateStr})`;
+                        }
+                      } catch (e) {}
+                      return String(rawStart);
+                    })()}
+                  </strong></div>
+                  <div>💺 Ghế: <strong className="text-gray-900">{selectedTicket.seatCode || selectedTicket.seatNumber || "N/A"}</strong></div>
                   <div>💰 Giá vé: <strong className="text-red-600">{Number(selectedTicket.price || selectedTicket.amount || selectedTicket.totalAmount || 0).toLocaleString("vi-VN")}đ</strong></div>
                   <div>📍 Hình thức mua: <strong className="text-gray-900">{isCounterTicket ? "Mua tại Quầy" : "Mua Online App/Web"}</strong></div>
                   <div>💳 Thanh toán: <strong className="text-gray-900">{isCashPayment ? "Tiền Mặt (Cash)" : "QR / VNPay / Thẻ"}</strong></div>
@@ -556,48 +753,31 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
               </div>
 
               {/* Ineligible Warning */}
-              {!isEligible ? (
-                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2 text-red-700 font-extrabold text-sm">
-                    <MdCancel className="text-xl flex-shrink-0" />
-                    <span>KHÔNG ÁP DỤNG CHỨC NĂNG ĐỔI / HỦY VÉ NÀY!</span>
-                  </div>
-                  <p className="text-xs font-semibold text-red-600 leading-relaxed pl-7">
-                    Chức năng Đổi ghế / Hủy vé tại quầy <strong>chỉ áp dụng cho vé MUA TẠI QUẦY và THANH TOÁN BẰNG TIỀN MẶT (CASH)</strong>.
-                    {!isCounterTicket && <><br />• Vé này là vé mua Online (Customer App/Web).</>}
-                    {!isCashPayment && <><br />• Phương thức thanh toán là Chuyển khoản QR / VNPay / Thẻ (không phải Tiền Mặt).</>}
-                    {isTicketCancelled && <><br />• Vé này ĐÃ ĐƯỢC HỦY trước đó (Trạng thái: Cancelled).</>}
-                  </p>
-                </div>
-              ) : (
-                /* Eligible Action: Single HỦY VÉ Button */
-                actionMode === "SELECT" && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => { setActionMode("CANCEL_TICKET"); setStaffRefundConfirmed(false); }}
-                      className="w-full p-5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white border-2 border-red-500 rounded-2xl text-left transition-all active:scale-98 shadow-md flex items-center justify-between group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">
-                          <MdCancel />
-                        </div>
-                        <div>
-                          <h5 className="font-black text-white text-lg">❌ HỦY HÓA ĐƠN & HOÀN TIỀN MẶT</h5>
-                          <p className="text-xs text-red-100 font-medium mt-0.5">Hủy hóa đơn, vô hiệu mã vé/đơn hàng & hoàn 100% tiền mặt cho khách.</p>
-                        </div>
+              {/* Chỉ hỗ trợ đổi ghế tại quầy */}
+              {actionMode === "SELECT" && (
+                <div className="pt-2 grid grid-cols-1 gap-3">
+                  <button
+                    type="button"
+                    onClick={handleOpenChangeSeat}
+                    className="p-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white border-2 border-blue-500 rounded-2xl text-left transition-all active:scale-98 shadow-md flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
+                        <MdEventSeat />
                       </div>
-                      <span className="px-4 py-2.5 bg-white text-red-700 font-black text-xs rounded-xl shadow group-hover:bg-red-50 flex-shrink-0">
-                        Bấm để Hủy ➔
-                      </span>
-                    </button>
-                  </div>
-                )
+                      <div>
+                        <h5 className="font-extrabold text-white text-base">💺 ĐỔI GHẾ TẠI QUẦY</h5>
+                        <p className="text-[11px] text-blue-100 font-medium mt-0.5">Đổi sang ghế khác cùng giá hoặc giá cao hơn</p>
+                      </div>
+                    </div>
+                  </button>
+
+                </div>
               )}
 
               {/* Action Mode 1: CHANGE SEAT */}
               {actionMode === "CHANGE_SEAT" && (
-                <div className="space-y-4 pt-2 border-t border-gray-200">
+                <div className="exchange-change-section space-y-3 pt-2 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <h5 className="font-extrabold text-gray-900 text-sm flex items-center gap-1.5">
                       <MdEventSeat className="text-blue-600 text-lg" /> CHỌN GHẾ MỚI CHO VÉ:
@@ -617,12 +797,10 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                       Đang tải sơ đồ ghế...
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="bg-gray-900 text-white p-3 rounded-xl text-center text-xs font-bold tracking-widest uppercase">
-                        📺 MÀN HÌNH CHIẾU
-                      </div>
+                    <div className="exchange-seat-workspace space-y-3">
+                      <div className="bv-screen mx-auto">MÀN HÌNH</div>
 
-                      <div className="max-h-72 overflow-y-auto p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 text-white shadow-inner">
+                      <div className="exchange-seat-map max-h-[430px] overflow-auto p-5 bg-[#0f0f13] border border-[#27272a] rounded-2xl text-white shadow-inner">
                         {(() => {
                           // 1. Group seats by row
                           const grouped = {};
@@ -648,7 +826,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                           }
 
                           return (
-                            <div className="space-y-2.5">
+                            <div className="bv-seat-rows exchange-seat-rows">
                               {rowKeys.map((row) => {
                                 const rowSeats = grouped[row].sort((a, b) => {
                                   const nA = Number(String(a.seatNumber || a.SeatNumber || 0).replace(/\D/g, ""));
@@ -657,10 +835,10 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                                 });
 
                                 return (
-                                  <div key={row} className="flex items-center gap-2">
-                                    <span className="w-5 text-center text-xs font-black text-blue-400 flex-shrink-0">{row}</span>
-                                    <div className="flex flex-wrap gap-1.5 flex-1">
-                                      {rowSeats.map((seat) => {
+                                  <div key={row} className="bv-seat-row">
+                                    <span className="bv-row-letter">{row}</span>
+                                    <div className="bv-seat-cols">
+                                      {rowSeats.map((seat, seatIndex) => {
                                         const seatId = Number(seat.seatId || seat.id);
                                         const numStr = String(seat.seatNumber || seat.SeatNumber || "").trim();
                                         const cleanNum = numStr.replace(/^[A-Za-z]+/, "");
@@ -697,31 +875,41 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                                           isAvailable = !isOccupiedByOther;
                                         }
 
-                                        const isSelected = selectedNewSeat && (Number(selectedNewSeat.seatId || selectedNewSeat.id) === seatId);
-
                                         // Color badge by type (bright POS style)
                                         const isVip = seatType.includes("vip");
                                         const isCouple = seatType.includes("couple") || seatType.includes("sweetbox") || seatType.includes("đôi");
+                                        const coupleGroupId = seat.coupleGroupId ?? seat.CoupleGroupId;
+                                        const partnerSeat = isCouple && coupleGroupId
+                                          ? rowSeats.find((candidate) => String(candidate.coupleGroupId ?? candidate.CoupleGroupId ?? "") === String(coupleGroupId)
+                                              && Number(candidate.seatId || candidate.id || candidate.SeatId) !== seatId)
+                                          : null;
+                                        const partnerId = Number(partnerSeat?.seatId || partnerSeat?.id || partnerSeat?.SeatId || 0);
+                                        const partnerAvailable = !isCouple || (partnerSeat && (availableSeatList || []).some((av) =>
+                                          Number(av.seatId ?? av.SeatId ?? av.id ?? av.Id) === partnerId));
+                                        if (isCouple && !partnerAvailable) isAvailable = false;
+                                        const selectedGroupId = selectedNewSeat?.coupleGroupId ?? selectedNewSeat?.CoupleGroupId;
+                                        const isSelected = selectedNewSeat && (
+                                          Number(selectedNewSeat.seatId || selectedNewSeat.id) === seatId ||
+                                          (isCouple && coupleGroupId && String(selectedGroupId) === String(coupleGroupId))
+                                        );
+                                        const typeOf = (value) => String(value?.seatType || value?.SeatType || value?.type || value?.Type || "").toLowerCase();
+                                        const previousIsCouple = seatIndex > 0 && /couple|sweetbox|đôi/.test(typeOf(rowSeats[seatIndex - 1]));
+                                        const nextIsCouple = seatIndex < rowSeats.length - 1 && /couple|sweetbox|đôi/.test(typeOf(rowSeats[seatIndex + 1]));
 
-                                        let seatBtnStyle = "bg-white border-2 border-gray-300 text-gray-900 hover:border-blue-600 hover:bg-blue-50 hover:scale-105 active:scale-95 shadow-sm font-extrabold";
-                                        if (isVip) seatBtnStyle = "bg-pink-50 border-2 border-pink-400 text-pink-700 hover:bg-pink-100 hover:border-pink-600 hover:scale-105 active:scale-95 shadow-sm font-extrabold";
-                                        if (isCouple) seatBtnStyle = "bg-purple-50 border-2 border-purple-400 text-purple-700 hover:bg-purple-100 hover:border-purple-600 hover:scale-105 active:scale-95 shadow-sm font-extrabold";
-
-                                        if (isSelected) {
-                                          seatBtnStyle = "bg-green-600 border-2 border-green-700 text-white font-black ring-4 ring-green-200 scale-105 shadow-lg z-10";
-                                        } else if (isCurrentSeat) {
-                                          seatBtnStyle = "bg-amber-500 border-2 border-amber-600 text-white font-black shadow-md cursor-not-allowed opacity-90";
-                                        } else if (!isAvailable) {
-                                          seatBtnStyle = "bg-gray-200 border border-gray-300 text-gray-400 opacity-40 cursor-not-allowed";
-                                        }
+                                        let seatBtnStyle = `counter-seat-btn ${isVip ? "seat-vip" : isCouple ? "seat-couple" : "seat-standard"}`;
+                                        if (isCouple && !previousIsCouple && nextIsCouple) seatBtnStyle += " seat-couple-left";
+                                        if (isCouple && previousIsCouple && !nextIsCouple) seatBtnStyle += " seat-couple-right";
+                                        if (isSelected) seatBtnStyle += " seat-selected";
+                                        else if (isCurrentSeat) seatBtnStyle += " exchange-seat-current";
+                                        else if (!isAvailable) seatBtnStyle += " seat-taken";
 
                                         return (
                                           <button
                                             key={seatId}
                                             type="button"
                                             disabled={!isAvailable}
-                                            onClick={() => setSelectedNewSeat(seat)}
-                                            className={`h-8 min-w-[34px] px-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center justify-center ${seatBtnStyle}`}
+                                            onClick={() => setSelectedNewSeat(isSelected ? null : seat)}
+                                            className={seatBtnStyle}
                                             title={
                                               isCurrentSeat
                                                 ? `Ghế hiện tại (${code})`
@@ -737,6 +925,7 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                                         );
                                       })}
                                     </div>
+                                    <span className="bv-row-letter">{row}</span>
                                   </div>
                                 );
                               })}
@@ -746,17 +935,24 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
                       </div>
 
                       {/* Legend footer matching POS layout */}
-                      <div className="flex flex-wrap gap-4 justify-center items-center text-[11px] font-bold text-gray-600 pt-1">
-                        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-gray-400 bg-white"></span> Thường</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-pink-500 bg-pink-100"></span> VIP</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded border border-purple-500 bg-purple-100"></span> Couple</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-amber-500 text-white"></span> Ghế cũ ({selectedTicket.seatCode})</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-green-600 text-white"></span> Ghế mới chọn</span>
+                      <div className="bv-legend mt-3">
+                        <span className="bv-legend-item"><span className="bv-legend-box legend-standard"></span>Thường</span>
+                        <span className="bv-legend-item"><span className="bv-legend-box legend-vip"></span>VIP</span>
+                        <span className="bv-legend-item"><span className="bv-legend-box legend-couple"></span>Couple</span>
+                        <span className="bv-legend-item"><span className="bv-legend-box exchange-legend-current"></span>Ghế cũ ({selectedTicket.seatCode})</span>
+                        <span className="bv-legend-item"><span className="bv-legend-box legend-selected"></span>Ghế mới chọn</span>
+                        <span className="bv-legend-item bv-legend-dim"><span className="bv-legend-box legend-taken"></span>Đã bán</span>
                       </div>
 
                       {/* Price Difference Calculation Box */}
+                      <div className="exchange-summary-card">
+                        <div><span>Ghế cũ</span><strong>{selectedTicket.seatCode || selectedTicket.seatNumber || "N/A"}</strong></div>
+                        <div><span>Ghế mới</span><strong>{selectedNewSeat ? `${selectedNewSeat.seatRow || selectedNewSeat.SeatRow || ""}${selectedNewSeat.seatNumber || selectedNewSeat.SeatNumber || ""}` : "Chưa chọn"}</strong></div>
+                        <div><span>Chênh lệch giá</span><strong>{selectedNewSeat ? `${priceDifference > 0 ? "+" : ""}${priceDifference.toLocaleString("vi-VN")}đ` : "—"}</strong></div>
+                        <div className="exchange-summary-total"><span>Tổng tiền cần trả thêm</span><strong>{selectedNewSeat ? `${Math.max(0, priceDifference).toLocaleString("vi-VN")}đ` : "0đ"}</strong></div>
+                      </div>
                       {selectedNewSeat && (
-                        <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl space-y-3">
+                        <div className="exchange-old-price-box p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl space-y-3">
                           <div className="flex justify-between items-center text-xs font-bold text-gray-700">
                             <span>Ghế cũ ({selectedTicket.seatCode}): <strong>{oldSeatPrice.toLocaleString("vi-VN")}đ</strong></span>
                             <span>➔</span>
@@ -765,91 +961,29 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
 
                           <div className="pt-2 border-t border-amber-200 flex justify-between items-center">
                             <span className="font-extrabold text-sm text-gray-900">CHÊNH LỆCH TIỀN MẶT:</span>
-                            <span className={`text-base font-extrabold ${priceDifference > 0 ? "text-red-600" : priceDifference < 0 ? "text-green-600" : "text-gray-700"}`}>
+                            <span className={`text-base font-extrabold ${priceDifference > 0 ? "text-red-600" : priceDifference < 0 ? "text-red-500 line-through" : "text-gray-700"}`}>
                               {priceDifference > 0 && `+ THU THÊM ${priceDifference.toLocaleString("vi-VN")}đ (TIỀN MẶT)`}
-                              {priceDifference < 0 && `- HOÀN LẠI ${Math.abs(priceDifference).toLocaleString("vi-VN")}đ (TIỀN MẶT)`}
-                              {priceDifference === 0 && "0đ (BẰNG GIÁ)"}
+                              {priceDifference < 0 && `KHÔNG CHO ĐỔI (GHẾ GIÁ THẤP HƠN)`}
+                              {priceDifference === 0 && "0đ (CÙNG GIÁ)"}
                             </span>
                           </div>
-
-                          {/* Staff Confirmation Checkbox */}
-                          <label className="flex items-center gap-2 pt-1 text-xs font-bold text-amber-900 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={staffMoneyConfirmed}
-                              onChange={(e) => setStaffMoneyConfirmed(e.target.checked)}
-                              className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
-                            />
-                            <span>Staff xác nhận ĐÃ THU THÊM / HOÀN ĐỦ tiền mặt chênh lệch với khách.</span>
-                          </label>
                         </div>
                       )}
 
                       <button
                         type="button"
-                        disabled={!selectedNewSeat || !staffMoneyConfirmed || processing}
+                        disabled={!selectedNewSeat || priceDifference < 0 || processing}
                         onClick={handleConfirmChangeSeat}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all active:scale-98"
+                        className="exchange-confirm-button w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all active:scale-98 cursor-pointer"
                       >
-                        {processing ? "Đang xử lý đổi ghế..." : "XÁC NHẬN ĐỔI GHẾ & IN VÉ MỚI"}
+                        {processing ? "Đang xử lý đổi ghế..." : priceDifference > 0 ? "TIẾN HÀNH ĐỔI GHẾ (CẦN THU TIỀN MẶT)" : "XÁC NHẬN ĐỔI GHẾ (CÙNG GIÁ)"}
                       </button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Action Mode 2: CANCEL TICKET */}
-              {actionMode === "CANCEL_TICKET" && (
-                <div className="space-y-4 pt-2 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <h5 className="font-extrabold text-red-700 text-sm flex items-center gap-1.5">
-                      <MdCancel className="text-red-600 text-lg" /> XÁC NHẬN HỦY HÓA ĐƠN & HOÀN TIỀN MẶT
-                    </h5>
-                    <button
-                      type="button"
-                      onClick={() => setActionMode("SELECT")}
-                      className="text-xs font-bold text-gray-500 hover:text-gray-700 underline"
-                    >
-                      Quay lại chọn
-                    </button>
-                  </div>
-
-                  <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl space-y-3">
-                    <div className="flex justify-between items-center text-sm font-extrabold text-gray-900">
-                      <span>SỐ TIỀN HOÀN LẠI CHO KHÁCH:</span>
-                      <span className="text-xl text-red-600 font-extrabold">{Number(selectedTicket.totalAmount || selectedTicket.price || oldSeatPrice || 0).toLocaleString("vi-VN")} VNĐ</span>
-                    </div>
-                    <p className="text-xs font-semibold text-red-700">
-                      • Mã hóa đơn {selectedTicket.ticketCode || selectedTicket.code} sẽ bị hủy vĩnh viễn.<br />
-                      {selectedTicket.seatCode && selectedTicket.seatCode !== "Không mua vé" && selectedTicket.seatCode !== "Chỉ mua đồ ăn" && (
-                        <>• Ghế {selectedTicket.seatCode} sẽ được giải phóng trở về trạng thái trống.<br /></>
-                      )}
-                    </p>
-
-                    {/* Staff Confirmation Checkbox */}
-                    <label className="flex items-center gap-2 pt-2 border-t border-red-200 text-xs font-extrabold text-red-900 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={staffRefundConfirmed}
-                        onChange={(e) => setStaffRefundConfirmed(e.target.checked)}
-                        className="w-4 h-4 accent-red-600 rounded cursor-pointer"
-                      />
-                      <span>Staff xác nhận ĐÃ HOÀN TRẢ ĐỦ {Number(selectedTicket.totalAmount || selectedTicket.price || oldSeatPrice || 0).toLocaleString("vi-VN")}đ TIỀN MẶT cho khách.</span>
-                    </label>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!staffRefundConfirmed || processing}
-                    onClick={handleConfirmCancelTicket}
-                    className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-extrabold text-sm rounded-xl shadow-lg transition-all active:scale-98 cursor-pointer"
-                  >
-                    {processing ? "Đang xử lý hủy hóa đơn..." : "XÁC NHẬN HỦY HÓA ĐƠN & HOÀN TIỀN"}
-                  </button>
-                </div>
-              )}
-
-              {/* Action Mode 3: SUCCESS */}
+              {/* Action Mode 2: SUCCESS */}
               {actionMode === "SUCCESS" && (
                 <div className="p-6 bg-green-50 border-2 border-green-200 rounded-2xl text-center space-y-4 animate-in fade-in">
                   <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center text-2xl mx-auto shadow-lg">
@@ -869,6 +1003,114 @@ export default function TicketExchangeModal({ isOpen, onClose, onRefreshData }) 
           )}
         </div>
       </div>
+
+      {/* Cash Payment Modal for Seat Exchange */}
+      {cashPaymentModalOpen && pendingExchange && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-5 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-xl font-bold">
+                  💵
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base leading-tight">THANH TOÁN ĐỔI GHẾ (TIỀN MẶT)</h3>
+                  <p className="text-xs text-emerald-100">Thu tiền mặt chênh lệch trực tiếp tại quầy</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCashPaymentModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+              >
+                <MdClose className="text-xl" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Payment Method (Fixed Cash) */}
+              <div>
+                <label className="block text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-1">
+                  Phương thức thanh toán
+                </label>
+                <div className="p-3 bg-gray-100 border border-gray-300 rounded-xl font-black text-gray-800 text-sm flex items-center justify-between select-none">
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                    💵 Tiền mặt (Cash at Counter)
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded">Cố định</span>
+                </div>
+              </div>
+
+              {/* Amount to collect */}
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex justify-between items-center">
+                <span className="text-xs font-extrabold text-emerald-900 uppercase">Số tiền cần thu (Chênh lệch):</span>
+                <span className="text-xl font-black text-emerald-700">
+                  {pendingExchange.additionalAmount.toLocaleString("vi-VN")} VNĐ
+                </span>
+              </div>
+
+              {/* Customer Paid Input */}
+              <div>
+                <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-1">
+                  Số tiền khách đưa (VNĐ):
+                </label>
+                <input
+                  type="number"
+                  min={pendingExchange.additionalAmount}
+                  value={customerPaidAmount}
+                  onChange={(e) => setCustomerPaidAmount(e.target.value)}
+                  className="w-full border-2 border-emerald-500 rounded-xl px-4 py-3 text-lg font-black text-gray-900 bg-white focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                  placeholder="Nhập số tiền..."
+                />
+              </div>
+
+              {/* Change Calculation */}
+              {(() => {
+                const paid = Number(customerPaidAmount) || 0;
+                const change = Math.max(0, paid - pendingExchange.additionalAmount);
+                const isSufficient = paid >= pendingExchange.additionalAmount;
+
+                return (
+                  <div className={`p-4 rounded-2xl border ${isSufficient ? "bg-blue-50 border-blue-200" : "bg-red-50 border-red-200"}`}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-extrabold text-gray-700 uppercase">Tiền thừa trả khách:</span>
+                      <span className={`text-lg font-black ${isSufficient ? "text-blue-700" : "text-red-600"}`}>
+                        {isSufficient ? `${change.toLocaleString("vi-VN")} VNĐ` : "Số tiền chưa đủ"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {cashPaymentError && (
+                <p className="text-xs font-bold text-red-600 flex items-center gap-1">
+                  <MdWarning className="text-sm" /> {cashPaymentError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCashPaymentModalOpen(false)}
+                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-extrabold text-xs rounded-xl"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={Number(customerPaidAmount) < pendingExchange.additionalAmount || processing}
+                  onClick={handleConfirmCashPayment}
+                  className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-extrabold text-xs rounded-xl shadow-lg cursor-pointer"
+                >
+                  {processing ? "Đang xử lý..." : "XÁC NHẬN ĐÃ THU TIỀN MẶT"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

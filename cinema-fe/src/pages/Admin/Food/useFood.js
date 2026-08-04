@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { fetchFoods, createFood, updateFood, deleteFood, fetchCombos, createCombo, updateCombo, deleteCombo, fetchBookingsForInventory, fetchOrdersForInventory } from "./foodService";
+import { useState, useEffect, useRef } from "react";
+import { createFood, updateFood, createCombo, updateCombo, receiveFoodStock, loadFoodInventory, loadFoodStatistics, loadFoodRevenue, loadTopSellingFoods, deleteCinemaFood, updateCinemaFoodSaleStatus, updateCinemaComboSaleStatus } from "./foodService";
 
 function toList(value) {
   if (Array.isArray(value)) return value;
@@ -157,26 +157,9 @@ function calculateItemSales(bookings, orders, selectedCinemaId, showtimeCinemaMa
   return { foodStatsMap, comboStatsMap };
 }
 
-// ─── Dữ liệu mẫu khớp với database thật (fallback khi API chưa trả về) ───
-const MOCK_FOODS = [
-  { id: 1, itemType: 'food', name: 'Trà Sữa',     category: 'Nước Uống', price: 50000, quantity: 98,  imageUrl: '/img/trasua.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 2, itemType: 'food', name: 'Trà Đào',      category: 'Nước Uống', price: 45000, quantity: 100, imageUrl: '/img/tradao.jpg',       isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 3, itemType: 'food', name: 'Bắp Caramel',  category: 'Bắp Rang',  price: 60000, quantity: 0,   imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 4, itemType: 'food', name: 'Bắp Ngọt Lớn', category: 'Bắp Rang',  price: 60000, quantity: 89,  imageUrl: '/img/bapngot.jpg',      isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 5, itemType: 'food', name: '7up',           category: 'Nước Uống', price: 35000, quantity: 90,  imageUrl: '/img/7up.jpg',          isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 6, itemType: 'food', name: 'Sting',         category: 'Nước Uống', price: 35000, quantity: 86,  imageUrl: '/img/sting.jpg',        isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 8, itemType: 'food', name: 'Pepsi',         category: 'Nước Uống', price: 35000, quantity: 96,  imageUrl: '/img/pepsi.jpg',        isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-  { id: 9, itemType: 'food', name: 'Mirinda Cam',   category: 'Nước Uống', price: 35000, quantity: 97,  imageUrl: '/img/MirindaCam.jpg',   isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: {} },
-];
-
-const MOCK_COMBOS = [
-  { id: 1, itemType: 'combo', name: 'Combo Solo',   category: 'Combo', price: 100000, quantity: 96, imageUrl: '/img/combosolo.jpg',   isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ vừa và 1 nước ngọt cỡ vừa' } },
-  { id: 4, itemType: 'combo', name: 'Combo Couple', category: 'Combo', price: 139000, quantity: 98, imageUrl: '/img/combocouple.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '1 bắp rang bơ cỡ lớn và 2 nước ngọt cỡ vừa' } },
-  { id: 6, itemType: 'combo', name: 'Combo Family', category: 'Combo', price: 229000, quantity: 58, imageUrl: '/img/combofamily.jpg', isAvailable: true,  soldThisMonth: 0, revenueThisMonth: 0, soldThisWeek: 0, revenueThisWeek: 0, soldToday: 0, revenueToday: 0, trend: 0, revenue: 0, originalData: { description: '2 bắp rang bơ cỡ lớn và 4 nước ngọt cỡ vừa' } },
-];
-
 export function useFood() {
-  const [items, setItems] = useState([...MOCK_FOODS, ...MOCK_COMBOS]);
+  const loadRequestRef = useRef(0);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,6 +171,8 @@ export function useFood() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [saleStatusDraft, setSaleStatusDraft] = useState("ACTIVE");
   
   // Filter category & status
   const [activeCategory, setActiveCategory] = useState("Tất cả");
@@ -199,6 +184,8 @@ export function useFood() {
   
   // Import state
   const [importQuantity, setImportQuantity] = useState(1);
+  const [importDetails, setImportDetails] = useState({ unitCost: 0, receivedAt: new Date().toISOString().slice(0, 10), expirationDate: "", notes: "" });
+  const [comboFoodItems, setComboFoodItems] = useState([]);
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -208,210 +195,83 @@ export function useFood() {
     price: 0,
     quantity: 0,
     imageUrl: "",
-    isAvailable: true
+    isAvailable: true,
+    allowsCustomization: true,
+    drinkSlotCount: 1,
+    popcornSlotCount: 1
   });
 
   // Cinema filter
   const [cinemas, setCinemas] = useState([]);
   const [selectedCinemaId, setSelectedCinemaId] = useState("");
+  const [serverRevenue, setServerRevenue] = useState({ totalSold: 0, totalRevenue: 0 });
+  const [serverTopSelling, setServerTopSelling] = useState([]);
 
   const loadData = async () => {
+    if (!selectedCinemaId) return;
+    const requestId = ++loadRequestRef.current;
     setLoading(true);
     setError("");
+    setItems([]);
+    setServerRevenue({ totalSold: 0, totalRevenue: 0 });
+    setServerTopSelling([]);
+    setCurrentPage(1);
     try {
-      const headers = {
-        "Authorization": `${localStorage.getItem("tokenType") || "Bearer"} ${localStorage.getItem("token") || ""}`
-      };
-      const [foodsData, combosData, bookingsData, ordersData, cinemasRes, showtimesRes, roomsRes] = await Promise.all([
-        fetchFoods().catch(() => null),
-        fetchCombos().catch(() => null),
-        fetchBookingsForInventory().catch(() => []),
-        fetchOrdersForInventory().catch(() => []),
-        fetch(`${import.meta.env.VITE_API_URL}/Cinemas`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${import.meta.env.VITE_API_URL}/Showtimes`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${import.meta.env.VITE_API_URL}/Rooms`, { headers }).then(r => r.ok ? r.json() : []).catch(() => [])
+      const [inventory, statistics, topSelling, revenue] = await Promise.all([
+        loadFoodInventory(selectedCinemaId),
+        loadFoodStatistics(selectedCinemaId, timeFilter),
+        loadTopSellingFoods(selectedCinemaId, timeFilter),
+        loadFoodRevenue(selectedCinemaId, timeFilter)
       ]);
-
-      const rawCList = cinemasRes?.$values || cinemasRes?.data || (Array.isArray(cinemasRes) ? cinemasRes : []);
-      const cList = Array.isArray(rawCList) && rawCList.length > 0
-        ? rawCList
-        : [
-            { cinemaId: 1, name: "CinemaHCM Đồng Khởi" },
-            { cinemaId: 2, name: "CinemaHN Hoàn Kiếm" },
-            { cinemaId: 3, name: "CinemaDN Hải Châu" }
-          ];
-      setCinemas(cList);
-      let activeCinemaId = selectedCinemaId;
-      if (!activeCinemaId && cList.length > 0) {
-        activeCinemaId = String(cList[0].cinemaId || cList[0].id);
-        setSelectedCinemaId(activeCinemaId);
-      }
-
-      const rawShowtimes = showtimesRes?.$values || showtimesRes?.data || (Array.isArray(showtimesRes) ? showtimesRes : []);
-      const rawRooms = roomsRes?.$values || roomsRes?.data || (Array.isArray(roomsRes) ? roomsRes : []);
-
-      const showtimeCinemaMap = new Map();
-      rawShowtimes.forEach(st => {
-        const rId = st.roomId ?? st.RoomId;
-        const room = rawRooms.find(r => String(r.roomId ?? r.id) === String(rId));
-        const cId = st.cinemaId ?? st.CinemaId ?? room?.cinemaId ?? room?.CinemaId;
-        if (cId) {
-          showtimeCinemaMap.set(String(st.showtimeId ?? st.id), String(cId));
-        }
-      });
-
-      const { foodStatsMap, comboStatsMap } = calculateItemSales(bookingsData, ordersData, activeCinemaId, showtimeCinemaMap);
-
-      let qtyOverrides = {};
-      try {
-        qtyOverrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-      } catch (e) {}
-
-      const apiFoodMap = new Map();
-      if (Array.isArray(foodsData)) {
-        foodsData.forEach(f => {
-          const fId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
-          if (fId) apiFoodMap.set(String(fId), f);
-        });
-      }
-
-      const allFoodsData = Array.isArray(foodsData) ? [...foodsData] : [];
-      MOCK_FOODS.forEach(mockItem => {
-        if (!apiFoodMap.has(String(mockItem.id))) {
-          allFoodsData.push({
-            foodId: mockItem.id,
-            foodName: mockItem.name,
-            category: mockItem.category,
-            price: mockItem.price,
-            quantity: mockItem.quantity,
-            imageUrl: mockItem.imageUrl,
-            isAvailable: mockItem.isAvailable
-          });
-        }
-      });
-
-      const normalizedFoods = allFoodsData.map(f => {
-        const foodId = f.foodId ?? f.FoodId ?? f.id ?? f.Id;
-        const stat = foodStatsMap.get(String(foodId)) || { month: 0, week: 0, today: 0 };
-        const price = Number(f.price ?? f.Price ?? 0);
-        
-        const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(f.soldThisMonth ?? f.SoldThisMonth ?? 0), stat.month);
-        const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(f.soldThisWeek ?? f.SoldThisWeek ?? 0), stat.week);
-        const soldToday = selectedCinemaId ? stat.today : Math.max(Number(f.soldToday ?? f.SoldToday ?? 0), stat.today);
-
-        const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 30) - 10) : 0;
-
-        const rawQty = Number(f.quantity ?? f.Quantity ?? 0);
-        const key = `food_${foodId}_c${activeCinemaId}`;
-        const initialQty = qtyOverrides[key] !== undefined
-          ? Number(qtyOverrides[key])
-          : rawQty;
-        const finalQty = Math.max(0, initialQty - soldThisMonth);
-
-        const availKey = `food_avail_${foodId}_c${activeCinemaId}`;
-        const isAvailable = qtyOverrides[availKey] !== undefined
-          ? Boolean(qtyOverrides[availKey])
-          : (f.isAvailable ?? f.IsAvailable ?? true);
-
+      const statList = toList(statistics);
+      const statMap = new Map(statList.map(x => [`${x.foodId ? 'food' : 'combo'}_${x.foodId ?? x.comboId}`, x]));
+      const normalize = (x, itemType) => {
+        const id = itemType === 'food' ? (x.foodId ?? x.FoodId) : (x.comboId ?? x.ComboId);
+        const stat = statMap.get(`${itemType}_${id}`) || {};
         return {
-          id: foodId,
-          itemType: 'food',
-          name: f.foodName ?? f.FoodName ?? f.name,
-          category: f.category ?? f.Category ?? "Khác",
-          price: price,
-          quantity: finalQty,
-          imageUrl: f.imageUrl ?? f.ImageUrl ?? f.image,
-          isAvailable: isAvailable,
-          soldThisMonth: soldThisMonth,
-          revenueThisMonth: soldThisMonth * price,
-          soldThisWeek: soldThisWeek,
-          revenueThisWeek: soldThisWeek * price,
-          soldToday: soldToday,
-          revenueToday: soldToday * price,
-          trend: trend,
-          revenue: soldThisMonth * price,
-          originalData: f
+          id, itemType, name: itemType === 'food' ? (x.foodName ?? x.FoodName) : (x.comboName ?? x.ComboName),
+          category: itemType === 'food' ? (x.category ?? x.Category ?? 'Khác') : 'Combo',
+          price: Number(x.price ?? x.Price ?? 0), quantity: Number(x.quantity ?? x.Quantity ?? 0),
+          minStock: Number(x.minStock ?? x.MinStock ?? 0),
+          saleStatus: String(x.saleStatus ?? x.SaleStatus ?? (itemType === 'combo' && !(x.isAvailable ?? x.IsAvailable) ? 'INACTIVE' : 'ACTIVE')).toUpperCase(),
+          stockStatus: String(x.stockStatus ?? x.StockStatus ?? x.status ?? x.Status ?? 'OUT_OF_STOCK').toUpperCase(),
+          imageUrl: x.imageUrl ?? x.ImageUrl, isAvailable: Boolean(x.isAvailable ?? x.IsAvailable),
+          foodItems: toList(x.foodItems ?? x.FoodItems),
+          sold: Number(stat.quantity ?? stat.Quantity ?? 0), revenue: Number(stat.revenue ?? stat.Revenue ?? 0),
+          trend: 0, originalData: x
         };
-      });
-
-      const apiComboMap = new Map();
-      if (Array.isArray(combosData)) {
-        combosData.forEach(c => {
-          const cId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
-          if (cId) apiComboMap.set(String(cId), c);
-        });
-      }
-
-      const allCombosData = Array.isArray(combosData) ? [...combosData] : [];
-      MOCK_COMBOS.forEach(mockItem => {
-        if (!apiComboMap.has(String(mockItem.id))) {
-          allCombosData.push({
-            comboId: mockItem.id,
-            comboName: mockItem.name,
-            price: mockItem.price,
-            quantity: mockItem.quantity,
-            imageUrl: mockItem.imageUrl,
-            isAvailable: mockItem.isAvailable,
-            description: mockItem.originalData?.description || mockItem.category
-          });
-        }
-      });
-
-      const normalizedCombos = allCombosData.map(c => {
-        const comboId = c.comboId ?? c.ComboId ?? c.id ?? c.Id;
-        const stat = comboStatsMap.get(String(comboId)) || { month: 0, week: 0, today: 0 };
-        const price = Number(c.price ?? c.Price ?? 0);
-
-        const soldThisMonth = selectedCinemaId ? stat.month : Math.max(Number(c.soldThisMonth ?? c.SoldThisMonth ?? 0), stat.month);
-        const soldThisWeek = selectedCinemaId ? stat.week : Math.max(Number(c.soldThisWeek ?? c.SoldThisWeek ?? 0), stat.week);
-        const soldToday = selectedCinemaId ? stat.today : Math.max(Number(c.soldToday ?? c.SoldToday ?? 0), stat.today);
-
-        const trend = soldThisMonth > 0 ? (Math.floor(Math.random() * 20) - 5) : 0;
-
-        const rawQty = Number(c.quantity ?? c.Quantity ?? 0);
-        const key = `combo_${comboId}_c${activeCinemaId}`;
-        const initialQty = qtyOverrides[key] !== undefined
-          ? Number(qtyOverrides[key])
-          : rawQty;
-        const finalQty = Math.max(0, initialQty - soldThisMonth);
-
-        const availKey = `combo_avail_${comboId}_c${activeCinemaId}`;
-        const isAvailable = qtyOverrides[availKey] !== undefined
-          ? Boolean(qtyOverrides[availKey])
-          : (c.isAvailable ?? c.IsAvailable ?? true);
-
-        return {
-          id: comboId,
-          itemType: 'combo',
-          name: c.comboName ?? c.ComboName ?? c.name,
-          category: "Combo",
-          price: price,
-          quantity: finalQty,
-          imageUrl: c.imageUrl ?? c.ImageUrl ?? c.image,
-          isAvailable: isAvailable,
-          soldThisMonth: soldThisMonth,
-          revenueThisMonth: soldThisMonth * price,
-          soldThisWeek: soldThisWeek,
-          revenueThisWeek: soldThisWeek * price,
-          soldToday: soldToday,
-          revenueToday: soldToday * price,
-          trend: trend,
-          revenue: soldThisMonth * price,
-          originalData: c
-        };
-      });
-
-      setItems([...normalizedFoods, ...normalizedCombos].sort((a, b) => a.id - b.id));
+      };
+      const nextItems = [
+        ...toList(inventory?.foods).map(x => normalize(x, 'food')),
+        ...toList(inventory?.combos).map(x => normalize(x, 'combo'))
+      ].sort((a, b) => a.itemType.localeCompare(b.itemType) || a.id - b.id);
+      if (requestId !== loadRequestRef.current) return;
+      setItems(nextItems);
+      setServerRevenue({ totalSold: Number(revenue?.totalSold ?? 0), totalRevenue: Number(revenue?.totalRevenue ?? 0) });
+      setServerTopSelling(toList(topSelling));
     } catch (err) {
+      if (requestId !== loadRequestRef.current) return;
       setError(err.message || "Lỗi khi tải dữ liệu");
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-  }, [selectedCinemaId]);
+  }, [selectedCinemaId, timeFilter]);
+
+  useEffect(() => {
+    const loadCinemas = async () => {
+      const headers = { "Authorization": `${localStorage.getItem("tokenType") || "Bearer"} ${localStorage.getItem("token") || ""}` };
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/Cinemas`, { headers });
+      const data = response.ok ? await response.json() : [];
+      const list = toList(data).map(cinema => ({ id: cinema.cinemaId ?? cinema.id, name: cinema.cinemaName ?? cinema.name }));
+      setCinemas(list);
+      if (list.length) setSelectedCinemaId(current => current || String(list[0].id));
+    };
+    loadCinemas().catch(err => setError(err.message));
+  }, []);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -465,7 +325,8 @@ export function useFood() {
 
   // Add Mode
   const openAddModal = () => {
-    setFormData({ itemType: "food", name: "", category: "Nước Uống", price: 0, quantity: 0, imageUrl: "", isAvailable: true });
+    setComboFoodItems([]);
+    setFormData({ itemType: "food", name: "", category: "Nước Uống", price: 0, quantity: 0, imageUrl: "", isAvailable: true, allowsCustomization: true, drinkSlotCount: 1, popcornSlotCount: 1 });
     setShowAddModal(true);
   };
 
@@ -489,7 +350,11 @@ export function useFood() {
           quantity: Number(formData.quantity),
           imageUrl: formData.imageUrl,
           isAvailable: formData.isAvailable,
-          description: formData.category
+          allowsCustomization: formData.allowsCustomization,
+          drinkSlotCount: Number(formData.drinkSlotCount),
+          popcornSlotCount: Number(formData.popcornSlotCount),
+          description: formData.category,
+          foodItems: comboFoodItems.map(x => ({ foodId: Number(x.foodId), quantity: 0 }))
         });
       }
       setShowAddModal(false);
@@ -511,8 +376,14 @@ export function useFood() {
       price: item.price,
       quantity: item.quantity,
       imageUrl: item.imageUrl || "",
-      isAvailable: item.isAvailable
+      isAvailable: item.isAvailable,
+      allowsCustomization: Boolean(item.originalData?.allowsCustomization ?? item.originalData?.AllowsCustomization),
+      drinkSlotCount: Number(item.originalData?.drinkSlotCount ?? item.originalData?.DrinkSlotCount ?? 0),
+      popcornSlotCount: Number(item.originalData?.popcornSlotCount ?? item.originalData?.PopcornSlotCount ?? 0)
     });
+    setComboFoodItems(item.itemType === 'combo' ? (item.foodItems || []).map(x => ({
+      foodId: Number(x.foodId ?? x.FoodId), quantity: Number(x.quantity ?? x.Quantity ?? 1)
+    })) : []);
     setShowEditModal(true);
   };
 
@@ -537,19 +408,13 @@ export function useFood() {
           quantity: Number(formData.quantity),
           imageUrl: formData.imageUrl,
           isAvailable: formData.isAvailable,
+          allowsCustomization: formData.allowsCustomization,
+          drinkSlotCount: Number(formData.drinkSlotCount),
+          popcornSlotCount: Number(formData.popcornSlotCount),
           description: formData.category
+          ,foodItems: comboFoodItems.map(x => ({ foodId: Number(x.foodId), quantity: 0 }))
         });
       }
-      const key = `${selectedItem.itemType}_${selectedItem.id}_c${selectedCinemaId}`;
-      const availKey = `${selectedItem.itemType}_avail_${selectedItem.id}_c${selectedCinemaId}`;
-      try {
-        const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-        const sold = selectedItem.soldThisMonth || 0;
-        overrides[key] = Number(formData.quantity) + sold;
-        overrides[availKey] = formData.isAvailable;
-        localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
-      } catch (e) {}
-
       setShowEditModal(false);
       loadData();
     } catch (err) {
@@ -572,6 +437,7 @@ export function useFood() {
       isAvailable: item.isAvailable
     });
     setImportQuantity(10);
+    setImportDetails({ unitCost: item.price, receivedAt: new Date().toISOString().slice(0, 10), expirationDate: "", notes: "" });
     setShowImportModal(true);
   };
 
@@ -580,33 +446,13 @@ export function useFood() {
     if (!selectedItem || importQuantity <= 0) return;
     try {
       setLoading(true);
-      const newQuantity = selectedItem.quantity + Number(importQuantity);
-      if (selectedItem.itemType === 'food') {
-        await updateFood(selectedItem.id, {
-          foodName: selectedItem.name,
-          category: selectedItem.originalData?.category || selectedItem.category,
-          price: selectedItem.price,
-          quantity: newQuantity,
-          imageUrl: selectedItem.imageUrl,
-          isAvailable: selectedItem.isAvailable
-        });
-      } else {
-        await updateCombo(selectedItem.id, {
-          comboName: selectedItem.name,
-          price: selectedItem.price,
-          quantity: newQuantity,
-          imageUrl: selectedItem.imageUrl,
-          isAvailable: selectedItem.isAvailable,
-          description: selectedItem.originalData?.description || selectedItem.category
-        });
-      }
-      const key = `${selectedItem.itemType}_${selectedItem.id}_c${selectedCinemaId}`;
-      try {
-        const overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-        const sold = selectedItem.soldThisMonth || 0;
-        overrides[key] = newQuantity + sold;
-        localStorage.setItem("inventory_qty_overrides", JSON.stringify(overrides));
-      } catch (e) {}
+      if (selectedItem.itemType !== 'food') throw new Error("Combo được tính tồn kho từ từng món thành phần; hãy nhập từng món.");
+      await receiveFoodStock({
+        cinemaId: Number(selectedCinemaId), foodId: Number(selectedItem.id), quantity: Number(importQuantity),
+        unitCost: Number(importDetails.unitCost),
+        receivedAt: new Date(importDetails.receivedAt).toISOString(),
+        expirationDate: importDetails.expirationDate || null, notes: importDetails.notes || null
+      });
 
       setShowImportModal(false);
       loadData();
@@ -627,13 +473,41 @@ export function useFood() {
     if (!selectedItem) return;
     try {
       setLoading(true);
-      if (selectedItem.itemType === 'food') {
-        await deleteFood(selectedItem.id);
-      } else {
-        await deleteCombo(selectedItem.id);
-      }
+      const result = await deleteCinemaFood(Number(selectedCinemaId), Number(selectedItem.id));
       setShowDeleteModal(false);
-      loadData();
+      setSelectedItem(null);
+      alert(result?.message || "Xóa món thành công.");
+      await loadData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openStatusModal = (item) => {
+    setSelectedItem(item);
+    setSaleStatusDraft(item.saleStatus === "INACTIVE" ? "INACTIVE" : "ACTIVE");
+    setShowStatusModal(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!selectedItem || !['food', 'combo'].includes(selectedItem.itemType)) return;
+    const cinemaId = Number(selectedCinemaId);
+    const itemId = Number(selectedItem.id);
+    if (!Number.isInteger(cinemaId) || cinemaId <= 0 || !Number.isInteger(itemId) || itemId <= 0) {
+      alert("Không xác định được rạp hoặc món cần cập nhật.");
+      return;
+    }
+    try {
+      setLoading(true);
+      const result = selectedItem.itemType === 'combo'
+        ? await updateCinemaComboSaleStatus(cinemaId, itemId, saleStatusDraft)
+        : await updateCinemaFoodSaleStatus(cinemaId, itemId, saleStatusDraft);
+      setShowStatusModal(false);
+      setSelectedItem(null);
+      alert(result?.message || "Cập nhật trạng thái thành công.");
+      await loadData();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -659,20 +533,20 @@ export function useFood() {
   const currentItems = filteredItems;
 
   // Computed Stats for Dashboard
-  const isMonth = timeFilter === 'month';
-  const isWeek = timeFilter === 'week';
-  const getSold = (item) => isMonth ? item.soldThisMonth : (isWeek ? item.soldThisWeek : item.soldToday);
-  const getRev = (item) => isMonth ? item.revenueThisMonth : (isWeek ? item.revenueThisWeek : item.revenueToday);
+  const getSold = (item) => Number(item.sold || 0);
+  const getRev = (item) => Number(item.revenue || 0);
 
   const totalStock = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalSold = items.reduce((sum, item) => sum + getSold(item), 0);
-  const totalRevenue = items.reduce((sum, item) => sum + getRev(item), 0);
+  const totalSold = serverRevenue.totalSold;
+  const totalRevenue = serverRevenue.totalRevenue;
   
   // Top selling items
-  const topSelling = [...items].filter(a => getSold(a) > 0).sort((a, b) => getSold(b) - getSold(a)).slice(0, 5);
+  const topKeys = serverTopSelling.map(x => `${x.foodId ? 'food' : 'combo'}_${x.foodId ?? x.comboId}`);
+  const itemMap = new Map(items.map(x => [`${x.itemType}_${x.id}`, x]));
+  const topSelling = topKeys.map(key => itemMap.get(key)).filter(Boolean).slice(0, 5);
   
   // Low stock alerts
-  const lowStockItems = items.filter(i => i.quantity < 100);
+  const lowStockItems = items.filter(i => i.itemType === 'food' && i.quantity <= i.minStock);
 
   // Category chart data
   const categoryStats = items.reduce((acc, item) => {
@@ -709,11 +583,13 @@ export function useFood() {
     showAddModal, setShowAddModal, openAddModal, handleAddSubmit,
     showEditModal, setShowEditModal, openEditModal, handleEditSubmit,
     showDeleteModal, setShowDeleteModal, openDeleteModal, confirmDelete,
-    showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity,
+    showImportModal, setShowImportModal, openImportModal, handleImportSubmit, importQuantity, setImportQuantity, importDetails, setImportDetails,
+    showStatusModal, setShowStatusModal, openStatusModal, confirmStatusChange, saleStatusDraft, setSaleStatusDraft,
     
     timeFilter, setTimeFilter, getSold, getRev,
     statusFilter, setStatusFilter,
     formData, setFormData, handleInputChange, handleFileChange, selectedItem,
+    comboFoodItems, setComboFoodItems, availableFoods: items.filter(x => x.itemType === 'food'),
     cinemas, selectedCinemaId, setSelectedCinemaId
   };
 }

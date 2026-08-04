@@ -3,6 +3,7 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  clearApiCache,
 } from "../../services/apiHelper";
 
 const API_URL = getApiUrl();
@@ -37,6 +38,7 @@ async function apiGet(url) {
 }
 
 async function apiPost(url, body) {
+  clearApiCache();
   const response = await fetch(url, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -60,6 +62,7 @@ async function apiPost(url, body) {
 }
 
 async function apiDelete(url, body) {
+  clearApiCache();
   const response = await fetch(url, {
     method: "DELETE",
     headers: getAuthHeaders(),
@@ -269,11 +272,11 @@ export async function releaseSeat(holdKey) {
   return unwrapData(data);
 }
 
-export async function getCombos() {
+export async function getCombos(cinemaId) {
   // Hàm fetch an toàn - chỉ dùng token, không thử lại không có auth vì API luôn cần đăng nhập
   const fetchSafe = async (url) => {
     try {
-      const res = await fetch(url, { method: "GET", headers: getAuthHeaders() });
+      const res = await fetch(url, { method: "GET", headers: getAuthHeaders(), cache: "no-store" });
 
       if (!res.ok) {
         console.warn(`[getCombos] API trả về ${res.status} cho ${url}`);
@@ -301,17 +304,11 @@ export async function getCombos() {
     }
   };
 
-  const [combosRaw, foodsRaw] = await Promise.all([
-    fetchSafe(`${API_URL}/Combos/Available`),
-    fetchSafe(`${API_URL}/Foods/Available`),
-  ]);
-
-  const combos = normalizeArray(combosRaw);
-  const foods  = normalizeArray(foodsRaw);
-
-  console.log("[getCombos] Combos:", combos.length, "| Foods:", foods.length);
-
-  return [...combos, ...foods];
+  if (cinemaId) {
+    const menu = await fetchSafe(`${API_URL}/food-inventory/menu?cinemaId=${encodeURIComponent(cinemaId)}`);
+    return [...normalizeArray(menu?.combos), ...normalizeArray(menu?.foods)];
+  }
+  return [];
 }
 
 

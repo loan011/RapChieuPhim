@@ -3,11 +3,13 @@ import {
   readResponse,
   getErrorMessage,
   getAuthHeaders,
+  clearApiCache,
 } from "../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
 async function apiPost(url, body) {
+  clearApiCache();
   const response = await fetch(url, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -91,4 +93,18 @@ export async function updatePaymentStatus(paymentId, status, notes = "") {
     throw new Error(getErrorMessage?.(data) || "Cập nhật trạng thái thanh toán thất bại!");
   }
   return data;
+}
+
+export async function getPaymentByBooking(bookingId) {
+  const response = await fetch(`${API_URL}/Payments/ByBooking/${bookingId}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  const data = await readResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage?.(data) || "Không tải được chi tiết hóa đơn từ máy chủ.");
+  }
+  const payload = data?.data ?? data?.result ?? data;
+  const list = Array.isArray(payload) ? payload : (payload?.$values ?? []);
+  return list.sort((a, b) => Number(b.paymentId ?? b.PaymentId ?? 0) - Number(a.paymentId ?? a.PaymentId ?? 0))[0] ?? null;
 }

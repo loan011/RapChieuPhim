@@ -1135,9 +1135,9 @@ export default function DoanhThu() {
                       title={!isFullDayAllowed ? "Cần kết ca Ca 1 & Ca 2 trước" : "Cả ngày (08:00 - 24:00)"}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs">Cả ngày</span>
+    
                         {!isFullDayAllowed ? (
-                          <span className="text-[10px] text-red-500 font-bold">🔒 Khóa (Chờ Ca 1 & 2)</span>
+                          <span className="text-[10px] text-red-500 font-bold"> Cả ngày 🔒 (Chờ Ca 1 & 2)</span>
                         ) : (
                           <span className="text-[10px] text-purple-600 font-bold">✓ Sẵn sàng</span>
                         )}
@@ -1422,12 +1422,31 @@ export default function DoanhThu() {
                       </div>
                       <div className="space-y-2 text-xs">
                         {selectedBill.concessions.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-start">
-                            <div className="max-w-[200px]">
-                              <span className="font-semibold text-gray-700">{item.name}</span>
-                              <span className="text-gray-400 ml-1.5">x{item.quantity}</span>
+                          <div key={item.id ?? idx} className="space-y-1">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="max-w-[210px]">
+                                <span className="font-semibold text-gray-700">{item.name}</span>
+                                <span className="text-gray-400 ml-1.5">x{item.quantity}</span>
+                              </div>
+                              <span className="font-medium whitespace-nowrap">{formatVND(item.subtotal)}</span>
                             </div>
-                            <span className="font-medium">{formatVND(item.subtotal)}</span>
+                            <div className="text-[11px] text-gray-500">
+                              {formatVND(item.unitPrice)} × {item.quantity} = {formatVND(item.subtotal)}
+                            </div>
+                            {item.itemType === "COMBO" && item.comboSelections?.length > 0 && (
+                              <div className="pl-3 text-[11px] text-gray-500 space-y-0.5">
+                                {item.comboSelections.map((selection, selectionIndex) => (
+                                  <div key={`${selection.foodId ?? selection.name}-${selectionIndex}`}>
+                                    • {selection.name} x{selection.quantity}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {item.itemType === "COMBO" && item.comboSelectionDataUnavailable && (
+                              <div className="pl-3 text-[11px] italic text-gray-400">
+                                Không có dữ liệu thành phần Combo do đây là đơn cũ.
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

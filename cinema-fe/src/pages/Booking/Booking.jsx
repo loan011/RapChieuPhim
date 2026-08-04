@@ -10,6 +10,7 @@ import {
 import "../../styles/Booking.css";
 import CustomerProfileDropdown from "../../components/CustomerProfileDropdown";
 import { useBooking } from "./usebooking";
+import { useSellingShift } from "../../utils/sellingShift";
 
 import {
   getCinemaId,
@@ -36,6 +37,7 @@ import {
   isSeatAvailable,
   getSeatPrice,
   groupSeatsByRow,
+  getCoupleGroupId,
   getCinemaNameById,
 } from "./usebooking";
 
@@ -83,6 +85,7 @@ function renderComboImage(image, name) {
 }
 
 export default function Booking() {
+  const { isSelling, message: sellingTimeMessage } = useSellingShift();
   const navigate = useNavigate();
 
   const {
@@ -106,6 +109,7 @@ export default function Booking() {
     handleDateChange,
     handleShowtimeClick,
     handleSeatClick,
+    handleCoupleSeatClick,
     isSeatHeldByOther,
     totalAmount,
     rowsKeys,
@@ -122,6 +126,8 @@ export default function Booking() {
     totalCombosAmount,
     finalTotalAmount,
     updateComboQuantity,
+    comboSelections,
+    updateComboSelection,
     handleConfirmBooking,
 
     // Customer Coupon states
@@ -194,7 +200,7 @@ export default function Booking() {
         const nextSeatType = nextSeat ? getSeatType(nextSeat) : "";
         const nextSeatClassType = nextSeat ? normalizeSeatClassType(nextSeatType) : "";
 
-        if (nextSeat && nextSeatClassType === "couple") {
+        if (nextSeat && nextSeatClassType === "couple" && getCoupleGroupId(seat) && String(getCoupleGroupId(seat)) === String(getCoupleGroupId(nextSeat))) {
           const seatId1 = getSeatId(seat);
           const seatId2 = getSeatId(nextSeat);
 
@@ -227,16 +233,16 @@ export default function Booking() {
               onClick={async () => {
                 if (!available) return;
                 // Gọi tuần tự để đảm bảo state và API hoạt động chuẩn xác
-                await handleSeatClick(seat);
-                await handleSeatClick(nextSeat);
+                await handleCoupleSeatClick(seat, nextSeat);
               }}
-              title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ)`}
+              title={`Ghế đôi ${getSeatRow(seat)}${num1}-${getSeatRow(nextSeat)}${num2} (Couple - ${(getSeatPrice(seat, selectedShowtime, rooms) + getSeatPrice(nextSeat, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ)`}
             >
-              {selected ? (
-                <span className="selected-checkmark">✓</span>
-              ) : (
-                `${getSeatRow(seat)}${num1} ${getSeatRow(nextSeat)}${num2}`
-              )}
+              <span className="couple-seat-half">
+                {getSeatRow(seat)}{num1}
+              </span>
+              <span className="couple-seat-half">
+                {getSeatRow(nextSeat)}{num2}
+              </span>
             </button>
           );
 
@@ -297,6 +303,7 @@ export default function Booking() {
 
   return (
     <div className="booking-page-layout">
+      {!isSelling && <div className="booking-error-banner">{sellingTimeMessage}</div>}
       {/* Top Login Bar */}
       <div className="movie-top-login">
         <div className="top-login-content">
@@ -430,7 +437,7 @@ export default function Booking() {
                   <div className="legend-item">
                     <div className="seat-node legend-box couple"></div>
                     <span>
-                      Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms) * 2).toLocaleString("vi-VN")}đ
+                      Ghế Couple / {Number(getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms) + getSeatPrice({ seatType: "couple" }, selectedShowtime, rooms)).toLocaleString("vi-VN")}đ
                     </span>
                   </div>
 
@@ -624,7 +631,7 @@ export default function Booking() {
                 type="button"
                 className="booking-checkout-submit-btn bk-btn-checkout"
                 onClick={handleCheckout}
-                disabled={selectedSeats.length === 0 || !selectedShowtime}
+                disabled={!isSelling || selectedSeats.length === 0 || !selectedShowtime}
               >
                 <MdPayment style={{ marginRight: "8px" }} /> TIẾP TỤC THANH TOÁN
               </button>
@@ -827,17 +834,18 @@ export default function Booking() {
                       <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
                         <p style={{ fontSize: '0.8rem', color: '#aaa', margin: '0 0 8px 0' }}>Tùy chọn nước ngọt cho Combo:</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                          {['Pepsi', '7up', 'Mirinda Cam', 'Trà Đào'].map(drink => (
-                            <label key={drink} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
-                              <input 
-                                type="radio" 
-                                name={`drink_${itemId}`} 
-                                defaultChecked={drink === 'Pepsi'} 
-                                style={{ accentColor: '#e50914', cursor: 'pointer', width: '14px', height: '14px' }} 
-                              />
-                              {drink}
-                            </label>
-                          ))}
+                          {(comboSelections[itemId] || []).map((slot, slotIndex) => {
+                            const normalized = String(slot.category || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                            const group = normalized.includes('nuoc') ? 'nuoc' : 'bap';
+                            const options = (item.allowedItems || []).filter(food => String(food.category ?? food.Category ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(group));
+                            return <label key={`slot-${slotIndex}`} style={{display:'grid',gap:4,minWidth:180,fontSize:'0.8rem'}}>
+                              {group === 'nuoc' ? 'Nước uống' : 'Bắp rang'}
+                              <select value={slot.foodId || ''} onChange={e => updateComboSelection(itemId,slotIndex,e.target.value)} style={{padding:8,borderRadius:6,background:'#333',color:'#fff'}}>
+                                <option value="">-- Chọn --</option>
+                                {options.map(food => <option key={food.foodId ?? food.FoodId} value={food.foodId ?? food.FoodId}>{food.foodName ?? food.FoodName}</option>)}
+                              </select>
+                            </label>;
+                          })}
                         </div>
                       </div>
                     )}
@@ -874,7 +882,7 @@ export default function Booking() {
                     type="button"
                     className="bk-coupon-apply-btn"
                     onClick={() => handleApplyCoupon(couponInput)}
-                    disabled={!couponInput.trim()}
+                    disabled={!isSelling || !couponInput.trim()}
                   >
                     Áp dụng
                   </button>
@@ -941,6 +949,7 @@ export default function Booking() {
                 <button
                   type="button"
                   onClick={handleConfirmBooking}
+                  disabled={!isSelling}
                   style={{
                     background: "#e50914",
                     color: "#fff",

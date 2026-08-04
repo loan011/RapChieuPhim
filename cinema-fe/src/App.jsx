@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Chatbot from "./components/Chatbot";
 
 // Lazy-loaded Public / Customer pages
 const Home = lazy(() => import("./pages/Home"));
@@ -33,6 +34,7 @@ const ThongBao = lazy(() => import("./pages/Admin/Notice/Notice"));
 const Food = lazy(() => import("./pages/Admin/Food/Food"));
 const BaoCao = lazy(() => import("./pages/Admin/BaoCao/BaoCao"));
 const Discount = lazy(() => import("./pages/Admin/Discount/Discount"));
+const StudentVerification = lazy(() => import("./pages/Admin/StudentVerification/StudentVerification"));
 
 // Lazy-loaded Staff pages
 const StaffLayout = lazy(() => import("./layouts/StaffLayout"));
@@ -193,11 +195,13 @@ function App() {
             <Route path="do-an" element={<Food />} />
             <Route path="bao-cao" element={<BaoCao />} />
             <Route path="thong-bao" element={<ThongBao />} />
+            <Route path="xac-minh-sinh-vien" element={<StudentVerification />} />
           </Route>
 
           {/* Wrong path */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Chatbot />
       </Suspense>
     </BrowserRouter>
   );

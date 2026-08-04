@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "../../../styles/Customer/CustomerPages.css";
 import {
@@ -79,10 +79,20 @@ const normalizeFoodsForDisplay = (foods) => {
 
       if (typeof food === "object") {
         const candidate = food.food ?? food.Food ?? food;
-        const name = food.name || food.Name || food.foodName || food.FoodName || candidate?.name || candidate?.Name || candidate?.foodName || candidate?.FoodName || "Đồ ăn kèm";
+        const name = food.itemNameSnapshot || food.ItemNameSnapshot || food.name || food.Name || food.foodName || food.FoodName || candidate?.name || candidate?.Name || candidate?.foodName || candidate?.FoodName || "Đồ ăn kèm";
         const quantity = Number(food.quantity ?? food.Quantity ?? food.qty ?? food.Qty ?? candidate?.quantity ?? candidate?.Quantity ?? 1);
-        const price = Number(food.price ?? food.Price ?? food.unitPrice ?? food.UnitPrice ?? candidate?.price ?? candidate?.Price ?? candidate?.unitPrice ?? candidate?.UnitPrice ?? 0);
-        return [{ name, quantity: quantity > 0 ? quantity : 1, price }];
+        const price = Number(food.unitPriceSnapshot ?? food.UnitPriceSnapshot ?? food.price ?? food.Price ?? food.unitPrice ?? food.UnitPrice ?? candidate?.price ?? candidate?.Price ?? candidate?.unitPrice ?? candidate?.UnitPrice ?? 0);
+        const comboSelections = food.comboSelections?.$values ?? food.comboSelections ?? food.ComboSelections?.$values ?? food.ComboSelections ?? [];
+        return [{ name, quantity: quantity > 0 ? quantity : 1, price,
+          lineTotal: Number(food.lineTotal ?? food.LineTotal ?? price * quantity),
+          itemType: food.itemType ?? food.ItemType ?? (food.comboId || food.ComboId ? "COMBO" : "FOOD"),
+          comboSelectionDataUnavailable: Boolean(food.comboSelectionDataUnavailable ?? food.ComboSelectionDataUnavailable),
+          comboSelections: comboSelections.map((selection) => ({
+            foodId: selection.foodId ?? selection.FoodId,
+            name: selection.foodNameSnapshot ?? selection.FoodNameSnapshot ?? selection.foodName ?? selection.FoodName ?? selection.name ?? selection.Name ?? "Món trong Combo",
+            quantity: Number(selection.quantity ?? selection.Quantity ?? 0)
+          }))
+        }];
       }
 
       return [];
@@ -101,19 +111,9 @@ const normalizeFoodsForDisplay = (foods) => {
 
 const getQrDataText = (ticket) => {
   if (!ticket) return "";
-  const primaryCode = Array.isArray(ticket.ticketCodes) && ticket.ticketCodes.length > 0
+  return Array.isArray(ticket.ticketCodes) && ticket.ticketCodes.length > 0
     ? ticket.ticketCodes[0]
     : (typeof ticket.id === "string" ? ticket.id.split(",")[0].trim() : ticket.id);
-  const seatInfo = Array.isArray(ticket.seats) ? ticket.seats.join(", ") : (ticket.seats || "N/A");
-  const foodItems = normalizeFoodsForDisplay(ticket.foods);
-  const foodInfo = foodItems.map((f) => `${f.name}x${f.quantity}`).join(",");
-  const showtimeInfo = `${ticket.date || "N/A"} ${ticket.time || "N/A"}`;
-  
-  let text = `VE:${primaryCode}|PHIM:${ticket.movie}|SUAT:${showtimeInfo}|GHE:${seatInfo}|GIA:${ticket.price}|TRANG_THAI:Active`;
-  if (foodInfo) {
-    text += `|DO_AN:${foodInfo}`;
-  }
-  return text;
 };
 
 export default function Ticket() {
@@ -127,6 +127,10 @@ export default function Ticket() {
   } = useTicket();
 
   const [selectedTicket, setSelectedTicket] = useState(null);
+
+  useEffect(() => {
+    if (selectedTicket) console.log("Ticket popup data:", selectedTicket);
+  }, [selectedTicket]);
 
   return (
     <>
@@ -317,7 +321,7 @@ export default function Ticket() {
                     }}
                   >
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrDataText(selectedTicket))}`}
+                      src={selectedTicket?.qrCodeUrl || selectedTicket?.QrCodeUrl || selectedTicket?.rawBooking?.qrCodeUrl || selectedTicket?.rawBooking?.QrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrDataText(selectedTicket))}`}
                       alt="Ticket QR Code"
                       data-darkreader-ignore="true"
                       style={{ width: "150px", height: "150px", objectFit: "contain", display: "block", filter: "none" }}
@@ -354,12 +358,20 @@ export default function Ticket() {
                     {selectedTicket?.purchaseTime || "Chưa rõ"}
                   </span>
                 </div>
-                <div className="detail-info-row">
+                <div className="detail-info-row detail-info-row--ticket">
                   <span className="info-label">Thông tin vé:</span>
-                  <span className="info-value">
-                    {selectedTicket.seats.length} x Vé ({selectedTicket.ticketPrice || selectedTicket.price} -{" "}
-                    {selectedTicket.seats.join(", ")})
-                  </span>
+                  <div className="ticket-seat-summary">
+                    <strong>{selectedTicket.seats.length} vé</strong>
+                    <div className="ticket-seat-details">
+                      {(selectedTicket.seatDetails?.length > 0 ? selectedTicket.seatDetails : selectedTicket.seats.map((seat) => ({ seatCode: seat, seatType: "Chưa rõ", price: selectedTicket.ticketPrice }))).map((seat, seatIndex) => (
+                        <div key={`${seat.seatCode}-${seatIndex}`} className="ticket-seat-detail">
+                          <span>Ghế {seat.seatCode}</span>
+                          <span>Loại ghế {seat.seatType}</span>
+                          <span>{Number(seat.price || 0).toLocaleString("vi-VN")}đ/vé</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 {(() => {
                   const foodItems = normalizeFoodsForDisplay(selectedTicket.foods);
@@ -375,9 +387,23 @@ export default function Ticket() {
                                 <span className="detail-food-qty">x{food.quantity}</span>
                                 <span className="detail-food-price">
                                   {food.price > 0
-                                    ? `${(food.price * food.quantity).toLocaleString("vi-VN")}đ`
+                                    ? `${Number(food.lineTotal ?? food.price * food.quantity).toLocaleString("vi-VN")}đ`
                                     : ""}
                                 </span>
+                                {food.itemType === "COMBO" && food.comboSelections?.length > 0 && (
+                                  <div className="detail-food-components">
+                                    {food.comboSelections.map((selection, selectionIndex) => (
+                                      <div key={`${selection.foodId ?? selection.name}-${selectionIndex}`}>
+                                        • {selection.name} x{selection.quantity}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {food.itemType === "COMBO" && food.comboSelectionDataUnavailable && (
+                                  <div className="detail-food-components">
+                                    Không có dữ liệu thành phần Combo do đây là đơn cũ.
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

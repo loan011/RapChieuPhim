@@ -10,100 +10,29 @@ function normalizeArray(arr) {
 }
 
 export async function getCombosList() {
-  let combosData = [];
-  let foodsData = [];
-
-  // 1. Fetch Combos
-  try {
-    const raw = await cachedFetch(`${API_URL}/Combos/Available`);
-    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-    combosData = normalizeArray(unwrapped);
-  } catch (err) {
-    console.warn("[Combo] Failed to load combos:", err);
-  }
-
-  // 2. Fetch Foods
-  try {
-    const raw = await cachedFetch(`${API_URL}/Foods/Available`);
-    const unwrapped = raw?.data ?? raw?.Data ?? raw?.result ?? raw?.Result ?? raw;
-    foodsData = normalizeArray(unwrapped);
-  } catch (err) {
-    console.warn("[Combo] Failed to load foods:", err);
-  }
-
-  console.log("[Combo] Combos:", combosData.length, "| Foods:", foodsData.length);
-
-  let activeCinemaId = "1";
-  try {
+  {
     const userObj = JSON.parse(localStorage.getItem("user") || "{}");
-    const cid = userObj.cinemaId ?? userObj.CinemaId;
-    if (cid) activeCinemaId = String(cid);
-  } catch (e) {}
-
-  let overrides = {};
-  try {
-    overrides = JSON.parse(localStorage.getItem("inventory_qty_overrides") || "{}");
-  } catch (e) {}
-
-  const combos = combosData.map(c => {
-    const rawId = c.comboId ?? c.ComboId;
-    const baseQty = Number(c.quantity ?? c.Quantity ?? 0);
-    const key = `combo_${rawId}_c${activeCinemaId}`;
-    const availKey = `combo_avail_${rawId}_c${activeCinemaId}`;
-    
-    const isAvail = overrides[availKey] !== undefined ? Boolean(overrides[availKey]) : (c.isAvailable ?? c.IsAvailable ?? true);
-    const finalQty = isAvail ? (overrides[key] !== undefined ? Number(overrides[key]) : baseQty) : 0;
-
-    return {
-      uid: `combo-${rawId}`,   // unique React key
-      id: rawId,               // numeric ID dùng cho API
-      type: "combo",
-      name: c.comboName ?? c.ComboName ?? "",
-      description: c.description ?? c.Description ?? "",
-      price: Number(c.price ?? c.Price ?? 0),
-      imageUrl: c.imageUrl ?? c.ImageUrl ?? null,
-      imageEmoji: "🍿🥤",
-      quantity: finalQty,
-      category: "combo",
-    };
-  });
-
-  const foods = foodsData.map(f => {
-    const rawId = f.foodId ?? f.FoodId;
-    const cat = (f.category ?? f.Category ?? "").toLowerCase();
-    const isDrink = cat.includes("nước") || cat.includes("uống");
-    const baseQty = Number(f.quantity ?? f.Quantity ?? 0);
-    const key = `food_${rawId}_c${activeCinemaId}`;
-    const availKey = `food_avail_${rawId}_c${activeCinemaId}`;
-
-    const isAvail = overrides[availKey] !== undefined ? Boolean(overrides[availKey]) : (f.isAvailable ?? f.IsAvailable ?? true);
-    const finalQty = isAvail ? (overrides[key] !== undefined ? Number(overrides[key]) : baseQty) : 0;
-
-    return {
-      uid: `food-${rawId}`,    // unique React key
-      id: rawId,               // numeric ID dùng cho API
-      type: "food",
-      name: f.foodName ?? f.FoodName ?? "",
-      description: f.category ?? f.Category ?? "",
-      price: Number(f.price ?? f.Price ?? 0),
-      imageUrl: f.imageUrl ?? f.ImageUrl ?? null,
-      imageEmoji: isDrink ? "🥤" : "🍿",
-      quantity: finalQty,
-      category: isDrink ? "drink" : "food",
-    };
-  });
-
-  if (combos.length === 0 && foods.length === 0) {
-    return [
-      { uid: "combo-1", id: 1, type: "combo", name: "Combo Solo",   description: "1 Bắp ngọt lớn + 1 Nước ngọt lớn", price: 85000,  imageUrl: null, imageEmoji: "🍿🥤",       quantity: 99 },
-      { uid: "combo-2", id: 2, type: "combo", name: "Combo Couple", description: "1 Bắp ngọt lớn + 2 Nước ngọt lớn", price: 115000, imageUrl: null, imageEmoji: "🍿🥤🥤",     quantity: 99 },
-      { uid: "combo-3", id: 3, type: "combo", name: "Combo Family", description: "2 Bắp ngọt lớn + 3 Nước ngọt lớn", price: 185000, imageUrl: null, imageEmoji: "🍿🍿🥤🥤🥤", quantity: 99 },
-      { uid: "food-4",  id: 4, type: "food",  name: "Bắp Ngọt Lớn",   description: "Bắp ngọt giòn thơm nóng hổi cỡ lớn",        price: 60000, imageUrl: null, imageEmoji: "🍿", quantity: 99 },
-      { uid: "food-5",  id: 5, type: "food",  name: "Nước Ngọt Lớn",  description: "Ly nước ngọt 32oz mát lạnh",                  price: 35000, imageUrl: null, imageEmoji: "🥤", quantity: 99 },
-    ];
+    const cinemaId = userObj.cinemaId ?? userObj.CinemaId;
+    if (!cinemaId) throw new Error("Tài khoản nhân viên chưa được gán rạp.");
+    const response = await fetch(`${API_URL}/food-inventory/menu?cinemaId=${encodeURIComponent(cinemaId)}`, {
+      headers: getAuthHeaders(), cache: "no-store"
+    });
+    const menu = await readResponse(response);
+    if (!response.ok) throw new Error(menu?.message || menu?.Message || "Không tải được tồn kho rạp.");
+    const foods = normalizeArray(menu?.foods).map(f => ({ uid:`food-${f.foodId}`, id:f.foodId, type:"food", name:f.foodName,
+      description:f.category || "", price:Number(f.price || 0), imageUrl:f.imageUrl, quantity:Number(f.quantity || 0),
+      category:String(f.category || "").toLowerCase().includes("nước") ? "drink" : "food", rawCategory:f.category || "", isAvailable:Boolean(f.isAvailable) }));
+    const combos = normalizeArray(menu?.combos).map(c => ({ uid:`combo-${c.comboId}`, id:c.comboId, type:"combo", name:c.comboName,
+      description:c.description || "", price:Number(c.price || 0), imageUrl:c.imageUrl, quantity:Number(c.quantity || 0),
+      category:"combo", isAvailable:Boolean(c.isAvailable), allowsCustomization:Boolean(c.allowsCustomization),
+      drinkSlotCount:Number(c.drinkSlotCount || 0), popcornSlotCount:Number(c.popcornSlotCount || 0),
+      foodItems:normalizeArray(c.foodItems).map(x => ({ foodId:x.foodId, foodName:x.foodName, category:x.category, itemType:x.itemType })),
+      availableOptions:normalizeArray(c.foodItems).map(x => {
+        const inventory = foods.find(f => Number(f.id) === Number(x.foodId));
+        return inventory ? {...inventory, itemType:x.itemType} : {id:x.foodId,name:x.foodName,rawCategory:x.category,quantity:0,isAvailable:false,itemType:x.itemType};
+      }) }));
+    return [...combos, ...foods];
   }
-
-  return [...combos, ...foods];
 }
 
 
@@ -128,7 +57,8 @@ export async function createPendingOrder(payload) {
     items: payload.items.map(item => ({
       foodId: item.type === "food" ? item.id : null,
       comboId: item.type === "combo" ? item.id : null,
-      quantity: item.quantity
+      quantity: item.quantity,
+      selectedComponents: item.type === "combo" ? (item.selectedComponents || []).map(x => ({ foodId:x.foodId, quantity:x.quantity })) : null
     })),
     paymentMethod: payload.paymentMethod || "QR"
   };
@@ -374,7 +304,8 @@ export async function sellCombo(payload) {
     items: payload.items.map(item => ({
       foodId: item.type === "food" ? item.id : null,
       comboId: item.type === "combo" ? item.id : null,
-      quantity: item.quantity
+      quantity: item.quantity,
+      selectedComponents: item.type === "combo" ? (item.selectedComponents || []).map(x => ({ foodId:x.foodId, quantity:x.quantity })) : null
     })),
     paymentMethod: payload.paymentMethod || "Cash"
   };
@@ -429,9 +360,6 @@ export async function sellCombo(payload) {
   if (!confirmRes.ok) {
     throw new Error("Xác nhận thanh toán đơn hàng thất bại!");
   }
-
-  // 3. Deduct stock in Database (Foods / Combos)
-  await deductInventory(payload.items);
 
   return {
     success: true,

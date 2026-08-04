@@ -17,6 +17,9 @@ export function useCombo() {
   const [paymentMethod, setPaymentMethod] = useState("cash"); // "cash" | "qr"
   const [cashReceived, setCashReceived] = useState("");
   const [showQRModal, setShowQRModal] = useState(false);
+  const [comboSelections, setComboSelections] = useState({});
+  const [customizingCombo, setCustomizingCombo] = useState(null);
+  const [componentSlots, setComponentSlots] = useState([]);
 
   // QR payment state
   const [qrPendingOrderId, setQrPendingOrderId] = useState(null);
@@ -32,7 +35,11 @@ export function useCombo() {
     loadData();
     // Lắng nghe event cập nhật tồn kho từ các trang khác (vd: khi hủy đơn ở DoanhThu)
     window.addEventListener("inventoryUpdated", loadData);
-    return () => window.removeEventListener("inventoryUpdated", loadData);
+    window.addEventListener("focus", loadData);
+    return () => {
+      window.removeEventListener("inventoryUpdated", loadData);
+      window.removeEventListener("focus", loadData);
+    };
   }, []);
 
   // Dọn dẹp polling khi unmount
@@ -43,6 +50,35 @@ export function useCombo() {
   }, []);
 
   function handleQuantityChange(uid, delta) {
+    const target = combos.find(c => c.uid === uid);
+    if (delta > 0 && target?.type === 'combo') {
+      const nextQuantity = Math.min(target.quantity, (quantities[uid] || 0) + 1);
+      const existing = (comboSelections[uid] || []).flatMap(part => Array.from({length:part.quantity}, () => ({...part,quantity:1})));
+      const normalized = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const drinkExisting = existing.filter(x => normalized(x.category).includes('nuoc'));
+      const popcornExisting = existing.filter(x => normalized(x.category).includes('bap'));
+      const slots = [
+        ...Array.from({length:target.drinkSlotCount * nextQuantity}, (_,i) => drinkExisting[i] || {foodId:null,foodName:'',category:'Nước Uống',itemType:'DRINK',quantity:1}),
+        ...Array.from({length:target.popcornSlotCount * nextQuantity}, (_,i) => popcornExisting[i] || {foodId:null,foodName:'',category:'Bắp Rang',itemType:'POPCORN',quantity:1})
+      ];
+      setCustomizingCombo({...target,targetQuantity:nextQuantity});
+      setComponentSlots(slots);
+      return;
+    }
+    if (false && delta > 0 && target?.type === 'combo' && target.allowsCustomization && !(quantities[uid] > 0) && !comboSelections[uid]) {
+      const groups = Object.values((target.foodItems || []).reduce((result, part) => {
+        const category = String(part.category || '').toLowerCase();
+        const key = category.includes('nước') ? 'DRINK' : category.includes('bắp') ? 'POPCORN' : category;
+        if (!result[key] || Number(part.quantity) > Number(result[key].quantity)) result[key] = part;
+        return result;
+      }, {}));
+      const slots = groups.flatMap(part => Array.from({ length: Number(part.quantity) || 1 }, () => ({
+        foodId: null, foodName: '', category: part.category, quantity: 1
+      })));
+      setCustomizingCombo(target);
+      setComponentSlots(slots);
+      return;
+    }
     setQuantities(prev => {
       const item = combos.find(c => c.uid === uid);
       const current = prev[uid] || 0;
@@ -52,7 +88,27 @@ export function useCombo() {
     });
   }
 
-  const selectedItems = combos.filter(item => (quantities[item.uid] || 0) > 0);
+  function updateComponentSlot(index, foodId) {
+    const option = customizingCombo?.availableOptions?.find(x => Number(x.id) === Number(foodId));
+    setComponentSlots(slots => slots.map((slot, i) => i === index ? {...slot, foodId:Number(foodId), foodName:option?.name || slot.foodName, category:option?.rawCategory || slot.category} : slot));
+  }
+
+  function confirmComboComponents() {
+    if (!customizingCombo || componentSlots.some(x => !x.foodId)) return;
+    const grouped = Object.values(componentSlots.reduce((acc, slot) => {
+      const key = String(slot.foodId);
+      acc[key] = acc[key] ? {...acc[key], quantity:acc[key].quantity + 1} : {...slot, quantity:1};
+      return acc;
+    }, {}));
+    setComboSelections(current => ({...current, [customizingCombo.uid]:grouped}));
+    setQuantities(current => ({...current, [customizingCombo.uid]:customizingCombo.targetQuantity}));
+    setCustomizingCombo(null);
+    setComponentSlots([]);
+  }
+
+  const selectedItems = combos.filter(item => (quantities[item.uid] || 0) > 0).map(item => ({
+    ...item, selectedComponents: comboSelections[item.uid] || item.foodItems || []
+  }));
   const totalAmount = selectedItems.reduce((sum, item) => sum + (item.price * quantities[item.uid]), 0);
 
   /**
@@ -101,6 +157,8 @@ export function useCombo() {
           name: item.name,
           quantity: quantities[item.uid],
           price: item.price
+          ,foodItems: item.selectedComponents || item.foodItems || []
+          ,selectedComponents: item.selectedComponents || []
         })),
         totalAmount,
         paymentMethod
@@ -115,6 +173,7 @@ export function useCombo() {
       });
       setCashReceived("");
       setQuantities({});
+      setComboSelections({});
       setShowQRModal(false);
       await loadData();
     } catch (err) {
@@ -204,7 +263,8 @@ export function useCombo() {
             type: item.type,
             name: item.name,
             quantity: quantities[item.uid],
-            price: item.price
+            price: item.price,
+            selectedComponents: item.selectedComponents || []
           })),
           totalAmount,
           paymentMethod: "QR"
@@ -244,6 +304,7 @@ export function useCombo() {
     // QR payment
     qrPendingOrderId,
     qrPaymentStatus,
+    customizingCombo, componentSlots, updateComponentSlot, confirmComboComponents, setCustomizingCombo,
     executeQrConfirm,
     handleCancelQr,
   };

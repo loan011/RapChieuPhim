@@ -17,6 +17,7 @@ import {
   MdDashboard,
   MdAssignment,
   MdLocalOffer,
+  MdBadge,
 } from "react-icons/md";
 import { useState, useEffect } from "react";
 import { getApiUrl, getAuthHeaders, readResponse } from "../services/apiHelper";
@@ -31,6 +32,7 @@ const navItems = [
   { to: "/admin/bao-cao",               label: "Báo Cáo",                icon: <MdAssignment /> },
   { to: "/admin/thong-bao",             label: "Thông Báo",              icon: <MdNotifications /> },
   { to: "/admin/do-an",                 label: "Đồ Ăn & Combo",          icon: <MdFastfood /> },
+  { to: "/admin/xac-minh-sinh-vien",   label: "Xác minh thẻ SV",       icon: <MdBadge /> },
 ];
 
 export default function AdminLayout() {

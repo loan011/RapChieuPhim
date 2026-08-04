@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./RatingModal.css";
-import { fetchReviewsByMovie, postMovieReview, computeAccurateRating } from "../services/reviewService";
+import { fetchReviewsByMovie, postMovieReview, computeAccurateRating, checkUserTicketEligibility } from "../services/reviewService";
 
 const RATING_LABELS = {
   10: "10/10 - Siêu phẩm xuất sắc! 🏆",
@@ -27,6 +27,7 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
   const [reviews, setReviews] = useState([]);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [eligibility, setEligibility] = useState({ eligible: true, message: "" });
 
   const savedUser = (() => {
     try {
@@ -43,8 +44,14 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
   useEffect(() => {
     if (movieId) {
       loadReviews();
+      checkEligibility();
     }
   }, [movieId]);
+
+  async function checkEligibility() {
+    const res = await checkUserTicketEligibility(movieId, userId, movieTitle);
+    setEligibility(res);
+  }
 
   async function loadReviews() {
     const list = await fetchReviewsByMovie(movieId);
@@ -52,11 +59,17 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
   }
 
   const handleStarClick = (score) => {
+    if (!eligibility.eligible) return;
     setRating(score);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!eligibility.eligible) {
+      setErrorMsg(eligibility.message || "Bạn chưa đủ điều kiện để đánh giá phim này.");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -109,6 +122,23 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
           </div>
         </div>
 
+        {!eligibility.eligible && (
+          <div style={{
+            background: "rgba(239, 68, 68, 0.15)",
+            border: "1px solid rgba(239, 68, 68, 0.4)",
+            color: "#fca5a5",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            fontSize: "0.88rem",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}>
+            {eligibility.message}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="rm-form">
           <label className="rm-form-label">Chọn điểm số của bạn:</label>
           <div className="rm-stars-row" onMouseLeave={() => setHoverRating(0)}>
@@ -118,6 +148,7 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
                 <button
                   key={star}
                   type="button"
+                  disabled={!eligibility.eligible}
                   className={`rm-star-btn ${active ? "active" : ""}`}
                   onMouseEnter={() => setHoverRating(star)}
                   onClick={() => handleStarClick(star)}
@@ -137,6 +168,7 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
               className="rm-textarea"
               placeholder="Viết nhận xét của bạn về nội dung, diễn xuất, kỹ xảo..."
               value={comment}
+              disabled={!eligibility.eligible}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
             />
@@ -145,7 +177,7 @@ export default function RatingModal({ movie, onClose, onRatingUpdated }) {
           {successMsg && <div className="rm-msg success">{successMsg}</div>}
           {errorMsg && <div className="rm-msg error">{errorMsg}</div>}
 
-          <button type="submit" className="rm-submit-btn" disabled={loading}>
+          <button type="submit" className="rm-submit-btn" disabled={loading || !eligibility.eligible}>
             {loading ? "Đang gửi..." : "GỬI ĐÁNH GIÁ NGAY"}
           </button>
         </form>

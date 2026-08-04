@@ -685,6 +685,74 @@
   opacity: 1 !important;
 }
 
+.counter-seat-btn.exchange-seat-current {
+  border-color: #f59e0b !important;
+  background: #f59e0b !important;
+  color: #fff !important;
+  cursor: not-allowed;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.45);
+}
+
+.exchange-legend-current {
+  border-color: #d97706 !important;
+  background: #f59e0b !important;
+}
+
+/* Seat exchange modal: readable fixed sizing without clipping the first seats. */
+.exchange-seat-map .exchange-seat-rows {
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+}
+
+.exchange-seat-map .bv-seat-row {
+  width: max-content;
+  min-width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.exchange-seat-map .bv-row-letter {
+  width: 24px;
+  min-width: 24px;
+  font-size: 12px;
+}
+
+.exchange-seat-map .bv-seat-cols {
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.exchange-seat-map .counter-seat-btn {
+  width: 38px;
+  min-width: 38px;
+  max-width: 38px;
+  height: 34px;
+  aspect-ratio: auto;
+  padding: 0 3px;
+  font-size: 10px;
+  border-radius: 8px;
+}
+
+.exchange-seat-map .bv-seat-cols > .counter-seat-btn.seat-couple-left + .counter-seat-btn.seat-couple-right {
+  margin-left: -6px;
+}
+
+@media (max-width: 760px) {
+  .exchange-seat-map {
+    padding: 14px !important;
+  }
+
+  .exchange-seat-map .counter-seat-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 31px !important;
+  }
+}
+
 /* Couple pair */
 .bv-couple-pair {
   display: flex;
@@ -711,6 +779,10 @@
   border-bottom-left-radius: 0 !important;
 }
 
+.bv-seat-cols > .counter-seat-btn.seat-couple-left + .counter-seat-btn.seat-couple-right {
+  margin-left: -0.6cqw;
+}
+
 /* Legend */
 .bv-legend {
   display: flex;
@@ -723,6 +795,221 @@
   border-top: 1px solid rgba(39,39,42,0.8);
   color: #a1a1aa;
   font-size: 11px;
+}
+
+/* ===== Ticket exchange modal: compact responsive layout ===== */
+.ticket-exchange-shell {
+  width: min(1100px, calc(100vw - 32px));
+  max-width: 1100px;
+  max-height: 92vh;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ticket-exchange-header {
+  flex: 0 0 auto;
+  min-height: 68px;
+  padding: 12px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.ticket-exchange-header h3 { font-size: 17px; }
+.ticket-exchange-header p { line-height: 1.25; }
+
+.ticket-exchange-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px 20px;
+  scrollbar-gutter: stable;
+}
+
+.exchange-search-card { padding: 12px 14px; }
+.exchange-search-card label { margin-bottom: 6px; }
+.exchange-search-card input,
+.exchange-search-card button { height: 42px; }
+.exchange-search-card button { min-width: 112px; justify-content: center; }
+
+.exchange-ticket-card { padding: 14px 16px; }
+.exchange-ticket-card .grid { column-gap: 24px; row-gap: 6px; }
+.exchange-change-section { margin-top: 4px; }
+
+.exchange-seat-workspace {
+  width: 100%;
+  min-width: 0;
+}
+
+.exchange-seat-workspace > .bv-screen {
+  width: min(680px, 72%);
+  margin-bottom: 10px;
+}
+
+.exchange-seat-map {
+  width: 100%;
+  max-height: 420px;
+  overflow: auto;
+  padding: 18px 20px 20px;
+  scrollbar-gutter: stable;
+}
+
+.exchange-seat-map .exchange-seat-rows {
+  width: max-content;
+  min-width: 100%;
+  margin-inline: auto;
+  align-items: center;
+}
+
+.exchange-seat-map .bv-seat-row {
+  min-width: max-content;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px max-content 24px;
+  justify-content: center;
+  column-gap: 10px;
+  margin-bottom: 7px;
+}
+
+.exchange-seat-map .bv-seat-cols {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 40px;
+  gap: 6px;
+  justify-content: center;
+}
+
+.exchange-seat-map .counter-seat-btn {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  height: 34px;
+  font-size: 10px;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-standard {
+  color: #e5e7eb;
+  border-color: #6b7280;
+  background: #27272a;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-vip {
+  color: #fecdd3;
+  border-color: #e11d48;
+  background: #4c0519;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-couple {
+  color: #fbcfe8;
+  border-color: #db2777;
+  background: #500724;
+}
+
+.exchange-seat-map .counter-seat-btn.exchange-seat-current {
+  color: #fff;
+  border-color: #f59e0b;
+  background: #f59e0b;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-selected {
+  color: #fff;
+  border-color: #22c55e;
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, .2);
+}
+
+.exchange-seat-map .counter-seat-btn.seat-taken,
+.exchange-seat-map .counter-seat-btn:disabled:not(.exchange-seat-current) {
+  color: #52525b;
+  border-color: #27272a;
+  background: #09090b;
+  opacity: .72;
+  cursor: not-allowed;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-couple-left {
+  border-radius: 8px 0 0 8px !important;
+  border-right: 1px solid rgba(251, 207, 232, .45) !important;
+}
+
+.exchange-seat-map .counter-seat-btn.seat-couple-right {
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.exchange-seat-map .bv-seat-cols > .counter-seat-btn.seat-couple-left + .counter-seat-btn.seat-couple-right {
+  margin-left: -6px;
+}
+
+.exchange-seat-workspace > .bv-legend {
+  margin-top: 12px;
+  padding: 10px 8px 4px;
+  gap: 12px 18px;
+}
+
+.exchange-summary-card {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #e5e7eb;
+}
+
+.exchange-summary-card > div {
+  min-width: 0;
+  padding: 11px 13px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.exchange-summary-card span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.exchange-summary-card strong {
+  color: #111827;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.exchange-summary-card .exchange-summary-total { background: #eff6ff; }
+.exchange-summary-card .exchange-summary-total strong { color: #1d4ed8; }
+.exchange-old-price-box { display: none; }
+
+.exchange-confirm-button {
+  position: sticky;
+  bottom: -1px;
+  z-index: 25;
+  min-height: 46px;
+  margin-top: 14px;
+  box-shadow: 0 -8px 18px rgba(255, 255, 255, .96), 0 8px 20px rgba(30, 64, 175, .18);
+}
+
+@media (max-width: 900px) {
+  .ticket-exchange-overlay { padding: 8px; }
+  .ticket-exchange-shell {
+    width: calc(100vw - 16px);
+    max-height: 96vh;
+    border-radius: 16px;
+  }
+  .ticket-exchange-body { padding: 12px; }
+  .exchange-summary-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .ticket-exchange-header { padding: 10px 12px; }
+  .ticket-exchange-header p { display: none; }
+  .exchange-search-card .flex { align-items: stretch; }
+  .exchange-search-card button { min-width: 96px; padding-inline: 10px; }
+  .exchange-ticket-card .grid { grid-template-columns: 1fr; }
+  .exchange-ticket-card .grid > div { grid-column: auto; }
+  .exchange-seat-map { padding: 14px 10px 16px; }
 }
 
 .bv-legend-item {
@@ -981,6 +1268,10 @@
   justify-content: center;
   z-index: 1000;
   animation: bvFadeIn 0.2s ease;
+}
+
+.bv-combo-config-overlay {
+  z-index: 1010;
 }
 
 @keyframes bvFadeIn {

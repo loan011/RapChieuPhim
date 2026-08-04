@@ -1,4 +1,4 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, clearApiCache } from "../../../services/apiHelper";
 
 const API_URL = getApiUrl();
 
@@ -50,6 +50,80 @@ export async function fetchOrdersForInventory() {
   } catch (e) {
     return [];
   }
+}
+
+export async function fetchCinemaInventory(cinemaId) {
+  if (!cinemaId) return [];
+  const response = await fetch(`${API_URL}/food-inventory?cinemaId=${encodeURIComponent(cinemaId)}`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Không tải được tồn kho của rạp");
+  return normalizeList(data);
+}
+
+export async function fetchCinemaInventoryMenu(cinemaId) {
+  const response = await fetch(`${API_URL}/food-inventory/menu?cinemaId=${encodeURIComponent(cinemaId)}`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Không tải được menu tồn kho của rạp");
+  return data;
+}
+
+function periodQuery(period) {
+  if (!period) return "";
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(period);
+  return isDate ? `?date=${encodeURIComponent(period)}` : `?period=${encodeURIComponent(period)}`;
+}
+
+async function getCinemaFoodEndpoint(cinemaId, endpoint, period) {
+  if (!cinemaId) throw new Error("Chưa chọn rạp.");
+  const response = await fetch(`${API_URL}/cinemas/${encodeURIComponent(cinemaId)}/${endpoint}${periodQuery(period)}`, { headers: getAuthHeaders() });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Không tải được dữ liệu đồ ăn theo rạp");
+  return data;
+}
+
+export const loadFoodInventory = (cinemaId) => getCinemaFoodEndpoint(cinemaId, "food-inventory");
+export const loadFoodStatistics = (cinemaId, period) => getCinemaFoodEndpoint(cinemaId, "food-statistics", period);
+export const loadFoodRevenue = (cinemaId, period) => getCinemaFoodEndpoint(cinemaId, "food-revenue", period);
+export const loadTopSellingFoods = (cinemaId, period) => getCinemaFoodEndpoint(cinemaId, "top-selling-foods", period);
+
+export async function deleteCinemaFood(cinemaId, foodId) {
+  const response = await fetch(`${API_URL}/cinemas/${encodeURIComponent(cinemaId)}/foods/${encodeURIComponent(foodId)}`, {
+    method: "DELETE", headers: getAuthHeaders()
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Xóa món thất bại");
+  return data;
+}
+
+export async function updateCinemaFoodSaleStatus(cinemaId, foodId, saleStatus) {
+  clearApiCache("food-inventory/menu");
+  const response = await fetch(`${API_URL}/cinemas/${encodeURIComponent(cinemaId)}/foods/${encodeURIComponent(foodId)}/status`, {
+    method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ saleStatus })
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Cập nhật trạng thái món thất bại");
+  clearApiCache("food-inventory/menu");
+  return data;
+}
+
+export async function updateCinemaComboSaleStatus(cinemaId, comboId, saleStatus) {
+  clearApiCache("food-inventory/menu");
+  const response = await fetch(`${API_URL}/cinemas/${encodeURIComponent(cinemaId)}/combos/${encodeURIComponent(comboId)}/status`, {
+    method: "PATCH", headers: getAuthHeaders(), body: JSON.stringify({ saleStatus })
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Cập nhật trạng thái Combo thất bại");
+  clearApiCache("food-inventory/menu");
+  return data;
+}
+
+export async function receiveFoodStock(payload) {
+  const response = await fetch(`${API_URL}/food-inventory/receive`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(payload)
+  });
+  const data = await readResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data) || "Nhập hàng thất bại");
+  return data;
 }
 
 export async function createFood(foodData) {

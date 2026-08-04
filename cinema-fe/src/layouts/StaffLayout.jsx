@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { getUser } from "../services/authService";
 import { getCinemaList } from "../pages/Admin/Cinema/cinemaService";
 import { getMyProfile } from "../pages/Admin/Personnel/employeeService";
+import { useSellingShift } from "../utils/sellingShift";
 
 const navItems = [
   { to: "/staff/ban-ve", label: "Bán vé", icon: <MdLocalActivity /> },
@@ -25,6 +26,7 @@ const navItems = [
 ];
 
 export default function StaffLayout() {
+  const { currentShift, isSelling, message: sellingTimeMessage } = useSellingShift();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -45,6 +47,10 @@ export default function StaffLayout() {
   const [timeError, setTimeError] = useState("");
 
   const user = getUser();
+
+  useEffect(() => {
+    if (currentShift) setSelectedShift(currentShift.name);
+  }, [currentShift?.shiftId]);
 
   // Lắng nghe thay đổi trạng thái ca từ các tab/trang khác
   useEffect(() => {
@@ -118,6 +124,8 @@ export default function StaffLayout() {
 
   // Hàm kiểm tra thời gian vào ca (Cho phép kích hoạt bất cứ lúc nào)
   function validateShiftTime(shift) {
+    if (!isSelling) return sellingTimeMessage;
+    if (shift !== currentShift?.name) return "Chỉ được kích hoạt ca làm việc hiện tại.";
     return null;
   }
 
@@ -154,7 +162,15 @@ export default function StaffLayout() {
 
   // Quyết định nội dung hiển thị trong main view
   let mainContent;
-  if (isSalesPath && shiftState.status === "NOT_STARTED") {
+  if (isSalesPath && !isSelling) {
+    mainContent = (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-red-200 shadow-sm max-w-xl mx-auto my-8">
+        <MdLockOutline className="text-red-500" style={{ fontSize: "3rem" }} />
+        <h3 className="text-xl font-bold text-gray-800 mt-4 mb-2">Ngoài thời gian bán vé</h3>
+        <p className="text-sm text-red-600 text-center">{sellingTimeMessage}</p>
+      </div>
+    );
+  } else if (isSalesPath && shiftState.status === "NOT_STARTED") {
     mainContent = (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-xl mx-auto my-8">
         <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-4 animate-pulse">
@@ -168,17 +184,16 @@ export default function StaffLayout() {
         <div className="w-full space-y-4 px-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Chọn Ca Làm Việc</label>
-            <select
-              value={selectedShift}
-              onChange={(e) => {
-                setSelectedShift(e.target.value);
-                setTimeError("");
-              }}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-50/50 transition-all duration-200"
-            >
-              <option value="Ca 1 (08:00 - 16:00)">Ca 1 (08:00 - 16:00)</option>
-              <option value="Ca 2 (16:00 - 24:00)">Ca 2 (16:00 - 24:00)</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              {[{ id: 1, name: "Ca 1 (08:00 - 16:00)" }, { id: 2, name: "Ca 2 (16:00 - 24:00)" }].map((shift) => {
+                const active = currentShift?.shiftId === shift.id;
+                return <button key={shift.id} type="button" disabled={!active}
+                  onClick={() => active && setSelectedShift(shift.name)}
+                  className={`rounded-xl px-3 py-2.5 text-sm font-semibold border ${active ? "bg-blue-600 text-white border-blue-600" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"}`}>
+                  {shift.name}
+                </button>;
+              })}
+            </div>
           </div>
 
 
@@ -192,6 +207,7 @@ export default function StaffLayout() {
 
           <button
             onClick={handleStartShift}
+            disabled={!isSelling}
             className="w-full bg-green-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-green-700 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-md shadow-green-200 mt-2"
           >
             Kích Hoạt & Bắt Đầu Ca

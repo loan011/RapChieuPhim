@@ -324,7 +324,8 @@ export function useQuetQRDoAn() {
           });
         }
       } else {
-        // Resolve flat items with catalog names and prices
+        // Resolve order items. The combo components come from the order snapshot,
+        // so they represent the customer's selected food rather than the current catalog.
         const resolvedItems = [];
         let totalAmount = 0;
 
@@ -336,6 +337,15 @@ export function useQuetQRDoAn() {
             const foodId = item.foodId || item.FoodId;
             const comboId = item.comboId || item.ComboId;
             const qty = Number(item.quantity ?? item.Quantity ?? item.qty ?? item.count ?? 1);
+            const comboItems = normalizeArray(
+              item.comboItems ?? item.ComboItems ?? item.comboSelections ?? item.ComboSelections ?? item.comboComponents ?? item.ComboComponents
+            ).map((comboItem) => ({
+              name: comboItem.itemName ?? comboItem.ItemName ?? comboItem.foodName ?? comboItem.FoodName ?? "Món trong combo",
+              quantity: Number(comboItem.quantity ?? comboItem.Quantity ?? 1),
+              price: Number(comboItem.unitPrice ?? comboItem.UnitPrice ?? comboItem.unitPriceSnapshot ?? comboItem.UnitPriceSnapshot ?? 0),
+              flavorName: comboItem.flavorName ?? comboItem.FlavorName ?? "",
+              sizeName: comboItem.sizeName ?? comboItem.SizeName ?? ""
+            }));
 
             let name =
               item.name ||
@@ -375,6 +385,7 @@ export function useQuetQRDoAn() {
               quantity: qty,
               price,
               subtotal: price * qty,
+              comboItems,
               status: isCompleted ? "Completed" : "Pending",
               isExpired
             });

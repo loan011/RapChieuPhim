@@ -16,8 +16,12 @@ import {
   getSeatStatus,
   getRoomFullName,
 } from "../Seat/useSeat";
-import { updateSeat } from "../Seat/seatService";
-import { fetchActiveTicketPricings } from "../../Ticket/ticketPriceService";
+import { updateRoomSeatLayout } from "../Seat/seatService";
+import {
+  fetchActiveTicketPricings,
+  fetchRoomTicketPricings,
+  updateRoomTicketPricings,
+} from "../../Ticket/ticketPriceService";
 
 const DEFAULT_TEXT = {
   roomName: "Chưa có tên phòng",
@@ -551,7 +555,7 @@ function deduplicateRooms(roomsArray) {
     }));
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e, options = {}) {
     e.preventDefault();
     setFormError("");
 
@@ -559,7 +563,7 @@ function deduplicateRooms(roomsArray) {
 
     if (validateMessage) {
       setFormError(validateMessage);
-      return;
+      return false;
     }
 
     const targetRoomName = String(form.roomName || "").trim().toLowerCase();
@@ -580,7 +584,7 @@ function deduplicateRooms(roomsArray) {
 
       if (isDuplicate) {
         setFormError("Đã có tên phòng chiếu này rồi");
-        return;
+        return false;
       }
     }
 
@@ -590,49 +594,21 @@ function deduplicateRooms(roomsArray) {
       const payload = buildRoomPayload(form, editId);
 
       if (isEditing) {
-        try {
-          await updateRoom(editId, payload);
-        } catch (apiErr) {
-          console.warn("Cập nhật phòng qua API thất bại, lưu cục bộ:", apiErr);
-          setRooms(prev => prev.map(r => String(r.roomId || r.RoomId || r.id) === String(editId) ? { ...r, ...payload } : r));
-        }
+        await updateRoom(editId, payload);
       } else {
-        const newRoomObj = {
-          id: Date.now(),
-          roomId: Date.now(),
-          cinemaId: Number(form.cinemaId) || form.cinemaId,
-          roomName: String(form.roomName).trim(),
-          roomType: form.roomType || "4DX",
-          totalSeats: Number(form.totalSeats) || 150,
-          isActive: form.isActive === true || form.isActive === "true" || form.isActive === "Hoạt động",
-          statusText: form.isActive ? "Hoạt động" : "Ngừng hoạt động",
-          normalDayNormalSeatPrice: Number(form.normalDayNormalSeatPrice || 90000),
-          weekendNormalSeatPrice: Number(form.weekendNormalSeatPrice || 100000),
-          normalDayVipSeatPrice: Number(form.normalDayVipSeatPrice || 120000),
-          weekendVipSeatPrice: Number(form.weekendVipSeatPrice || 140000),
-          normalDayCoupleSeatPrice: Number(form.normalDayCoupleSeatPrice || 160000),
-          weekendCoupleSeatPrice: Number(form.weekendCoupleSeatPrice || 200000),
-        };
-        try {
-          await createRoom(payload);
-        } catch (apiErr) {
-          console.warn("Thêm phòng qua API thất bại, lưu cục bộ:", apiErr);
-        }
-        const customRooms = JSON.parse(localStorage.getItem("custom_added_rooms") || "[]");
-        // Deduplicate before saving
-        const filteredCustom = customRooms.filter(r => String(r.roomName).toLowerCase().trim() !== String(newRoomObj.roomName).toLowerCase().trim());
-        filteredCustom.unshift(newRoomObj);
-        localStorage.setItem("custom_added_rooms", JSON.stringify(filteredCustom));
+        await createRoom(payload);
       }
 
-      closeModal();
+      if (options.closeAfter !== false) closeModal();
       await fetchData().catch(() => null);
 
       if (!selectedCinemaId && form.cinemaId) {
         setSelectedCinemaId(String(form.cinemaId));
       }
+      return true;
     } catch (err) {
       setFormError(err?.message || "Không thể thực hiện thao tác này. Vui lòng thử lại!");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -677,8 +653,10 @@ function deduplicateRooms(roomsArray) {
 
     showModal,
     isEditing,
+    editId,
     form,
     formError,
+    setFormError,
     submitting,
     roomTypeOptions: ROOM_TYPE_OPTIONS,
     roomStatusOptions: ROOM_STATUS_OPTIONS,
@@ -760,14 +738,21 @@ export function useRoomAdmin() {
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
 
-  const [priceStdWeekday, setPriceStdWeekday] = useState("");
-  const [priceStdWeekend, setPriceStdWeekend] = useState("");
-  const [priceVipWeekday, setPriceVipWeekday] = useState("");
-  const [priceVipWeekend, setPriceVipWeekend] = useState("");
-  const [priceCoupleWeekday, setPriceCoupleWeekday] = useState("");
-  const [priceCoupleWeekend, setPriceCoupleWeekend] = useState("");
+  const [priceStdWeekday, setPriceStdWeekday] = useState(null);
+  const [priceStdWeekend, setPriceStdWeekend] = useState(null);
+  const [priceVipWeekday, setPriceVipWeekday] = useState(null);
+  const [priceVipWeekend, setPriceVipWeekend] = useState(null);
+  const [priceCoupleWeekday, setPriceCoupleWeekday] = useState(null);
+  const [priceCoupleWeekend, setPriceCoupleWeekend] = useState(null);
+  const [roomPricingMissing, setRoomPricingMissing] = useState(false);
+  const [roomPricingLoading, setRoomPricingLoading] = useState(false);
   const [syncAllRooms, setSyncAllRooms] = useState(false);
   const [activePricings, setActivePricings] = useState([]);
+
+  const parsePrice = (value) => Number(String(value ?? "").replace(/[^0-9]/g, ""));
+  const formatInputPrice = (value) => value === null || value === undefined
+    ? ""
+    : new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
 
   useEffect(() => {
     fetchActiveTicketPricings()
@@ -780,7 +765,49 @@ export function useRoomAdmin() {
   }, []);
 
   useEffect(() => {
-    if (showRoomModal && roomForm) {
+    if (!showRoomModal || !isEditingRoom || !roomHook.editId) return;
+    const editingRoomId = roomHook.editId;
+    setRoomPricingLoading(true);
+    setRoomPricingMissing(false);
+    setPriceStdWeekday(null); setPriceStdWeekend(null);
+    setPriceVipWeekday(null); setPriceVipWeekend(null);
+    setPriceCoupleWeekday(null); setPriceCoupleWeekend(null);
+    fetchRoomTicketPricings(editingRoomId)
+      .then((items) => {
+        const roomItems = Array.isArray(items) ? items.filter(p =>
+          String(p.roomId ?? p.RoomId ?? "") === String(editingRoomId)
+        ) : [];
+        setActivePricings((current) => [
+          ...current.filter(p => String(p.roomId ?? p.RoomId ?? "") !== String(editingRoomId)),
+          ...roomItems,
+        ]);
+        const find = (seatType, dayType) => {
+          const matched = roomItems.find(p =>
+            String(p.seatType ?? p.SeatType).toLowerCase() === seatType.toLowerCase() &&
+            String(p.dayType ?? p.DayType).toLowerCase() === dayType.toLowerCase()
+          );
+          return Number(matched?.price ?? matched?.Price ?? 0);
+        };
+        setRoomPricingMissing(roomItems.length === 0);
+        setPriceStdWeekday(find("Standard", "Weekday"));
+        setPriceStdWeekend(find("Standard", "Weekend"));
+        setPriceVipWeekday(find("VIP", "Weekday"));
+        setPriceVipWeekend(find("VIP", "Weekend"));
+        setPriceCoupleWeekday(find("Couple", "Weekday"));
+        setPriceCoupleWeekend(find("Couple", "Weekend"));
+      })
+      .catch((error) => {
+        setRoomPricingMissing(false);
+        setPriceStdWeekday(null); setPriceStdWeekend(null);
+        setPriceVipWeekday(null); setPriceVipWeekend(null);
+        setPriceCoupleWeekday(null); setPriceCoupleWeekend(null);
+        setLayoutError(error.message);
+      })
+      .finally(() => setRoomPricingLoading(false));
+  }, [showRoomModal, isEditingRoom, roomHook.editId]);
+
+  useEffect(() => {
+    if (showRoomModal && roomForm && !isEditingRoom) {
       const getDbFormatted = (rType, sType, isWe) => {
         let dbPricings = activePricings;
         if ((!dbPricings || dbPricings.length === 0) && typeof localStorage !== "undefined") {
@@ -794,10 +821,13 @@ export function useRoomAdmin() {
         const dayTarget = isWe ? "weekend" : "weekday";
 
         const item = dbPricings.find(p => {
+          const pRoomId = p.roomId ?? p.RoomId;
           const pRoom = String(p.roomType || p.RoomType || "").trim().toUpperCase();
           const pSeat = String(p.seatType || p.SeatType || "").trim().toLowerCase();
           const pDay = String(p.dayType || p.DayType || (p.isWeekend ? "Weekend" : "Weekday")).trim().toLowerCase();
-          const matchRoom = (isImaxType && pRoom.includes("IMAX")) || (!isImaxType && pRoom === rTypeUpper) || (!pRoom && rTypeUpper === "2D");
+          const matchRoom = pRoomId
+            ? String(pRoomId) === String(roomHook.editId)
+            : ((isImaxType && pRoom.includes("IMAX")) || (!isImaxType && pRoom === rTypeUpper));
           const matchSeat = pSeat.includes(targetSeat);
           const matchDay = pDay === dayTarget;
           return matchRoom && matchSeat && matchDay;
@@ -808,14 +838,6 @@ export function useRoomAdmin() {
       const cId = roomForm.cinemaId;
       const rName = roomForm.roomName;
       const currentType = roomForm.roomType || "2D";
-      const isImax = String(currentType).toUpperCase().includes("IMAX");
-
-      const stdWd = isEditingRoom ? localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`) : null;
-      const stdWe = isEditingRoom ? localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`) : null;
-      const vipWd = isEditingRoom ? localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`) : null;
-      const vipWe = isEditingRoom ? localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`) : null;
-      const cpWd = isEditingRoom ? localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`) : null;
-      const cpWe = isEditingRoom ? localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`) : null;
 
       const dbStdWd = getDbFormatted(currentType, "standard", false);
       const dbStdWe = getDbFormatted(currentType, "standard", true);
@@ -824,12 +846,12 @@ export function useRoomAdmin() {
       const dbCpWd = getDbFormatted(currentType, "couple", false);
       const dbCpWe = getDbFormatted(currentType, "couple", true);
 
-      setPriceStdWeekday(stdWd || dbStdWd || (isImax ? "150.000" : "70.000"));
-      setPriceStdWeekend(stdWe || dbStdWe || (isImax ? "180.000" : "90.000"));
-      setPriceVipWeekday(vipWd || dbVipWd || (isImax ? "180.000" : "90.000"));
-      setPriceVipWeekend(vipWe || dbVipWe || (isImax ? "220.000" : "120.000"));
-      setPriceCoupleWeekday(cpWd || dbCpWd || (isImax ? "200.000" : "130.000"));
-      setPriceCoupleWeekend(cpWe || dbCpWe || (isImax ? "250.000" : "160.000"));
+      setPriceStdWeekday(dbStdWd || "");
+      setPriceStdWeekend(dbStdWe || "");
+      setPriceVipWeekday(dbVipWd || "");
+      setPriceVipWeekend(dbVipWe || "");
+      setPriceCoupleWeekday(dbCpWd || "");
+      setPriceCoupleWeekend(dbCpWe || "");
     }
   }, [showRoomModal, isEditingRoom, roomForm?.cinemaId, roomForm?.roomName, activePricings]);
 
@@ -861,7 +883,6 @@ export function useRoomAdmin() {
 
       const targetForm = roomForm || {};
       const currentType = targetForm.roomType || "2D";
-      const isImax = String(currentType).toUpperCase().includes("IMAX");
 
       const dbStdWd = getDbFormatted(currentType, "standard", false);
       const dbStdWe = getDbFormatted(currentType, "standard", true);
@@ -870,51 +891,58 @@ export function useRoomAdmin() {
       const dbCpWd = getDbFormatted(currentType, "couple", false);
       const dbCpWe = getDbFormatted(currentType, "couple", true);
 
-      setPriceStdWeekday(dbStdWd || (isImax ? "150.000" : "70.000"));
-      setPriceStdWeekend(dbStdWe || (isImax ? "180.000" : "90.000"));
-      setPriceVipWeekday(dbVipWd || (isImax ? "180.000" : "90.000"));
-      setPriceVipWeekend(dbVipWe || (isImax ? "220.000" : "120.000"));
-      setPriceCoupleWeekday(dbCpWd || (isImax ? "200.000" : "130.000"));
-      setPriceCoupleWeekend(dbCpWe || (isImax ? "250.000" : "160.000"));
+      setPriceStdWeekday(dbStdWd || "");
+      setPriceStdWeekend(dbStdWe || "");
+      setPriceVipWeekday(dbVipWd || "");
+      setPriceVipWeekend(dbVipWe || "");
+      setPriceCoupleWeekday(dbCpWd || "");
+      setPriceCoupleWeekend(dbCpWe || "");
     }
   }, [roomForm?.roomType, showRoomModal, isEditingRoom, activePricings]);
 
   const handleCustomRoomSubmit = async (e) => {
     e.preventDefault();
     const targetForm = roomForm || {};
-    const cId = targetForm.cinemaId || selectedCinemaFilter || "";
-    const rName = targetForm.roomName || "";
-    const currentRoomType = targetForm.roomType || "2D";
-
-    if (cId && rName) {
-      localStorage.setItem(`room_price_std_wd_c${cId}_r${rName}`, priceStdWeekday);
-      localStorage.setItem(`room_price_std_we_c${cId}_r${rName}`, priceStdWeekend);
-      localStorage.setItem(`room_price_vip_wd_c${cId}_r${rName}`, priceVipWeekday);
-      localStorage.setItem(`room_price_vip_we_c${cId}_r${rName}`, priceVipWeekend);
-      localStorage.setItem(`room_price_cp_wd_c${cId}_r${rName}`, priceCoupleWeekday);
-      localStorage.setItem(`room_price_cp_we_c${cId}_r${rName}`, priceCoupleWeekend);
-
-      if (syncAllRooms && rooms && rooms.length > 0) {
-        rooms.forEach(room => {
-          const roomCinemaId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
-          const type = room?.roomType ?? room?.RoomType ?? "2D";
-          const name = room?.roomName ?? room?.RoomName ?? "";
-          if (String(roomCinemaId) === String(cId) && String(type).toUpperCase() === String(currentRoomType).toUpperCase()) {
-            localStorage.setItem(`room_price_std_wd_c${cId}_r${name}`, priceStdWeekday);
-            localStorage.setItem(`room_price_std_we_c${cId}_r${name}`, priceStdWeekend);
-            localStorage.setItem(`room_price_vip_wd_c${cId}_r${name}`, priceVipWeekday);
-            localStorage.setItem(`room_price_vip_we_c${cId}_r${name}`, priceVipWeekend);
-            localStorage.setItem(`room_price_cp_wd_c${cId}_r${name}`, priceCoupleWeekday);
-            localStorage.setItem(`room_price_cp_we_c${cId}_r${name}`, priceCoupleWeekend);
-          }
-        });
-      }
+    const prices = [
+      ["Standard", "Weekday", priceStdWeekday], ["Standard", "Weekend", priceStdWeekend],
+      ["VIP", "Weekday", priceVipWeekday], ["VIP", "Weekend", priceVipWeekend],
+      ["Couple", "Weekday", priceCoupleWeekday], ["Couple", "Weekend", priceCoupleWeekend],
+    ].map(([seatType, dayType, value]) => ({ seatType, dayType, price: parsePrice(value) }));
+    if (prices.some(item => item.price <= 0)) {
+      roomHook.setFormError?.("Tất cả mức giá vé phải lớn hơn 0.");
+      return;
     }
 
+    const editingRoomId = roomHook.editId;
+    let roomSaved = false;
     if (typeof handleRoomSubmit === "function") {
-      await handleRoomSubmit(e);
+      roomSaved = await handleRoomSubmit(e, { closeAfter: !isEditingRoom });
     } else if (typeof handleSubmit === "function") {
-      await handleSubmit(e);
+      roomSaved = await handleSubmit(e);
+    }
+    if (!roomSaved) return;
+
+    if (isEditingRoom && editingRoomId) {
+      const result = await updateRoomTicketPricings(editingRoomId, prices);
+      if (syncAllRooms) {
+        const currentType = String(targetForm.roomType || "").toUpperCase();
+        const currentCinemaId = String(targetForm.cinemaId || "");
+        const siblingRoomIds = rooms
+          .filter(room =>
+            String(room?.cinemaId ?? room?.CinemaId ?? "") === currentCinemaId &&
+            String(room?.roomType ?? room?.RoomType ?? "").toUpperCase() === currentType &&
+            String(getRoomId(room)) !== String(editingRoomId))
+          .map(getRoomId);
+        await Promise.all(siblingRoomIds.map(roomId => updateRoomTicketPricings(roomId, prices)));
+      }
+      const refreshed = await fetchRoomTicketPricings(editingRoomId);
+      setActivePricings(current => [
+        ...current.filter(p => String(p.roomId ?? p.RoomId ?? "") !== String(editingRoomId)),
+        ...refreshed,
+      ]);
+      setRoomPricingMissing(false);
+      try { window.dispatchEvent(new CustomEvent("ticketPricingUpdated", { detail: result })); } catch {}
+      roomHook.closeModal();
     }
   };
 
@@ -978,7 +1006,7 @@ export function useRoomAdmin() {
   const activeRoom = rooms.find(r => String(getRoomId(r)) === selectedRoomId);
   const activeRoomType = activeRoom?.roomType ?? activeRoom?.RoomType ?? "2D";
 
-  const getDbPricingValue = (rType, sType, isWeekendDay) => {
+  const getDbPricingValue = (rType, sType, isWeekendDay, roomId = selectedRoomId) => {
     let dbPricings = activePricings;
     if ((!dbPricings || dbPricings.length === 0) && typeof localStorage !== "undefined") {
       try { dbPricings = JSON.parse(localStorage.getItem("active_ticket_pricings") || "[]"); } catch(e) {}
@@ -991,10 +1019,13 @@ export function useRoomAdmin() {
     const dayTarget = isWeekendDay ? "weekend" : "weekday";
 
     const item = dbPricings.find(p => {
+      const pRoomId = p.roomId ?? p.RoomId;
       const pRoom = String(p.roomType || p.RoomType || "").trim().toUpperCase();
       const pSeat = String(p.seatType || p.SeatType || "").trim().toLowerCase();
       const pDay = String(p.dayType || p.DayType || (p.isWeekend ? "Weekend" : "Weekday")).trim().toLowerCase();
-      const matchRoom = (isImaxType && pRoom.includes("IMAX")) || (!isImaxType && pRoom === rTypeUpper) || (!pRoom && rTypeUpper === "2D");
+      const matchRoom = pRoomId
+        ? String(pRoomId) === String(roomId)
+        : ((isImaxType && pRoom.includes("IMAX")) || (!isImaxType && pRoom === rTypeUpper));
       const matchSeat = pSeat.includes(targetSeat);
       const matchDay = pDay === dayTarget;
       return matchRoom && matchSeat && matchDay;
@@ -1010,10 +1041,7 @@ export function useRoomAdmin() {
   };
 
   const getRoomPriceText = (room, type) => {
-    const cId = room?.cinemaId ?? room?.CinemaId ?? room?.cinema?.cinemaId ?? "";
-    const rName = room?.roomName ?? room?.RoomName ?? "";
     const roomType = String(room?.roomType ?? room?.RoomType ?? "2D").trim().toUpperCase();
-    const isImax = roomType.includes("IMAX");
 
     const formatShorthand = (val, def) => {
       if (val === undefined || val === null || val === "") return def;
@@ -1023,32 +1051,13 @@ export function useRoomAdmin() {
     };
 
     const targetSeat = type === "std" ? "Standard" : (type === "vip" ? "VIP" : "Couple");
-    const dbWd = getDbPricingValue(roomType, targetSeat, false);
-    const dbWe = getDbPricingValue(roomType, targetSeat, true);
+    const dbWd = getDbPricingValue(roomType, targetSeat, false, getRoomId(room));
+    const dbWe = getDbPricingValue(roomType, targetSeat, true, getRoomId(room));
 
     if (dbWd && dbWe) {
       return `${formatShorthand(dbWd, "0")} / ${formatShorthand(dbWe, "0")}`;
     }
 
-    const stdWd = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
-    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
-    const vipWd = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
-    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
-    const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
-    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
-
-    if (type === "std") {
-      if (stdWd || stdWe) return `${formatShorthand(stdWd, "0")} / ${formatShorthand(stdWe, "0")}`;
-      return isImax ? "150k / 180k" : "70k / 90k";
-    }
-    if (type === "vip") {
-      if (vipWd || vipWe) return `${formatShorthand(vipWd, "0")} / ${formatShorthand(vipWe, "0")}`;
-      return isImax ? "180k / 220k" : "90k / 120k";
-    }
-    if (type === "couple") {
-      if (cpWd || cpWe) return `${formatShorthand(cpWd, "0")} / ${formatShorthand(cpWe, "0")}`;
-      return isImax ? "200k / 250k" : "130k / 160k";
-    }
     return "—";
   };
 
@@ -1062,27 +1071,7 @@ export function useRoomAdmin() {
       return `${formatPriceVND(dbWd)} / ${formatPriceVND(dbWe)}`;
     }
 
-    const cId = activeRoom?.cinemaId ?? activeRoom?.CinemaId ?? "";
-    const rName = activeRoom?.roomName ?? activeRoom?.RoomName ?? "";
-    const stdWd = localStorage.getItem(`room_price_std_wd_c${cId}_r${rName}`);
-    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
-    const vipWd = localStorage.getItem(`room_price_vip_wd_c${cId}_r${rName}`);
-    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
-    const cpWd = localStorage.getItem(`room_price_cp_wd_c${cId}_r${rName}`);
-    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
-
-    const isImax = String(roomType).toUpperCase().includes("IMAX");
-
-    if (type === "vip") {
-      if (vipWd || vipWe) return `${formatPriceVND(vipWd || 90000)} / ${formatPriceVND(vipWe || 120000)}`;
-      return isImax ? "180.000 đ / 220.000 đ" : "90.000 đ / 120.000 đ";
-    }
-    if (type === "couple" || type === "sweetbox") {
-      if (cpWd || cpWe) return `${formatPriceVND(cpWd || 130000)} / ${formatPriceVND(cpWe || 160000)}`;
-      return isImax ? "200.000 đ / 250.000 đ" : "130.000 đ / 160.000 đ";
-    }
-    if (stdWd || stdWe) return `${formatPriceVND(stdWd || 70000)} / ${formatPriceVND(stdWe || 90000)}`;
-    return isImax ? "150.000 đ / 180.000 đ" : "70.000 đ / 90.000 đ";
+    return "Chưa cấu hình";
   };
 
   const getLateSeatPrice = (seatType, roomType = "2D") => {
@@ -1094,24 +1083,7 @@ export function useRoomAdmin() {
       return formatPriceVND(dbWe);
     }
 
-    const cId = activeRoom?.cinemaId ?? activeRoom?.CinemaId ?? "";
-    const rName = activeRoom?.roomName ?? activeRoom?.RoomName ?? "";
-    const stdWe = localStorage.getItem(`room_price_std_we_c${cId}_r${rName}`);
-    const vipWe = localStorage.getItem(`room_price_vip_we_c${cId}_r${rName}`);
-    const cpWe = localStorage.getItem(`room_price_cp_we_c${cId}_r${rName}`);
-
-    const isImax = String(roomType).toUpperCase().includes("IMAX");
-
-    if (type === "vip") {
-      if (vipWe) return formatPriceVND(vipWe);
-      return isImax ? "220.000 đ" : "120.000 đ";
-    }
-    if (type === "couple" || type === "sweetbox") {
-      if (cpWe) return formatPriceVND(cpWe);
-      return isImax ? "250.000 đ" : "160.000 đ";
-    }
-    if (stdWe) return formatPriceVND(stdWe);
-    return isImax ? "180.000 đ" : "90.000 đ";
+    return "Chưa cấu hình";
   };
 
   const seatsWithFutureBookings = useMemo(() => {
@@ -1143,30 +1115,15 @@ export function useRoomAdmin() {
       setFilterRoom(String(targetRoomId));
     }
 
-    let savedOverrides = {};
-    if (targetRoomId) {
-      try {
-        savedOverrides = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${targetRoomId}`) || "{}");
-      } catch (e) {}
-    }
-
     const rowTypes = {};
     activeLayout.forEach(row => {
-      const savedRowVal = savedOverrides.rows ? (
-        savedOverrides.rows[row.rowName] ||
-        savedOverrides.rows[row.rowName.toUpperCase()] ||
-        savedOverrides.rows[row.rowName.toLowerCase()]
-      ) : null;
-      if (savedRowVal) {
-        rowTypes[row.rowName] = savedRowVal;
-      } else {
-        const types = new Set(row.seats.map(s => String(getSeatType(s) || 'Standard').toLowerCase()));
-        rowTypes[row.rowName] = types.size === 1 ? [...types][0] : 'mixed';
-      }
+      const types = new Set(row.seats.map(s => String(getSeatType(s) || 'Standard').toLowerCase()));
+      const allInactive = row.seats.every(s => (s?.isActive ?? s?.IsActive) === false);
+      rowTypes[row.rowName] = allInactive ? 'inactive' : (types.size === 1 ? [...types][0] : 'mixed');
     });
 
     setLayoutRowTypes(rowTypes);
-    setSeatOverrides(savedOverrides.seats || {});
+    setSeatOverrides({});
     setEditMode('row');
     setExpandedRow(null);
     setLayoutError('');
@@ -1219,6 +1176,30 @@ export function useRoomAdmin() {
       ...prev,
       [rowName]: newType,
     }));
+
+    if (newType && newType !== "mixed") {
+      setSeatOverrides(prev => {
+        const next = { ...prev };
+        const rowObj = activeLayout.find(r => r.rowName === rowName);
+        if (rowObj && rowObj.seats) {
+          rowObj.seats.forEach(s => {
+            const sId = String(getSeatId(s) || "");
+            const sCode = getSeatCode(s);
+            if (next[sId]) {
+              const { status, ...rest } = next[sId];
+              if (Object.keys(rest).length > 0) next[sId] = rest;
+              else delete next[sId];
+            }
+            if (next[sCode]) {
+              const { status, ...rest } = next[sCode];
+              if (Object.keys(rest).length > 0) next[sCode] = rest;
+              else delete next[sCode];
+            }
+          });
+        }
+        return next;
+      });
+    }
   }
 
   function handleSeatTypeOverride(seat, newType) {
@@ -1227,10 +1208,6 @@ export function useRoomAdmin() {
   }
 
   function handleSeatStatusOverride(seat, newStatus) {
-    if ((newStatus === 'maintenance' || newStatus === 'inactive') && isSeatBooked(seat)) {
-      setLayoutError(`Ghế ${getSeatCode(seat)} có vé tương lai, không thể thay đổi trạng thái.`);
-      return;
-    }
     setLayoutError('');
     const sId = String(getSeatId(seat) || '');
     setSeatOverrides(prev => ({ ...prev, [sId]: { ...(prev[sId]||{}), status: newStatus } }));
@@ -1240,11 +1217,10 @@ export function useRoomAdmin() {
     setLayoutSaving(true);
     setLayoutError('');
     try {
-      const roomId = selectedRoomId || filterRoom || (selectedRoom ? getRoomId(selectedRoom) : null) || "global";
+      const roomId = selectedRoomId || filterRoom || (activeRoom ? getRoomId(activeRoom) : null);
+      if (!roomId) throw new Error("Vui lòng chọn phòng.");
       const typeMap = { standard:'Standard', vip:'VIP', couple:'Couple', sweetbox:'Couple', maintenance:'Standard', inactive:'Standard' };
       const statusMap = { active:true, maintenance:false, inactive:false };
-      const changeLog = [];
-      const now = new Date().toISOString();
 
       const seatsToProcess = [];
       activeLayout.forEach(r => {
@@ -1254,21 +1230,7 @@ export function useRoomAdmin() {
         seatsToProcess.push(...selectedRoomSeats);
       }
 
-      const savedMap = {
-        rows: { ...layoutRowTypes },
-        seats: { ...seatOverrides }
-      };
-
-      try {
-        if (roomId) {
-          localStorage.setItem(`rapchieuphim_seat_overrides_${roomId}`, JSON.stringify(savedMap));
-          localStorage.setItem(`rapchieuphim_seat_overrides_room_${roomId}`, JSON.stringify(savedMap));
-        }
-        localStorage.setItem("rapchieuphim_seat_overrides_latest", JSON.stringify(savedMap));
-        localStorage.setItem("rapchieuphim_seat_overrides_global", JSON.stringify(savedMap));
-      } catch(e) {}
-
-      const toUpdate = [];
+      const changes = [];
       for (const seat of seatsToProcess) {
         const row = String(getSeatRow(seat)).toUpperCase();
         const sId = String(getSeatId(seat) || '');
@@ -1284,56 +1246,23 @@ export function useRoomAdmin() {
 
         let newActive = true;
         if (override?.status !== undefined) {
-          if ((override.status === 'maintenance' || override.status === 'inactive') && isSeatBooked(seat))
-            throw new Error(`Ghế ${sCode} có vé tương lai, không thể thay đổi trạng thái.`);
           newActive = statusMap[override.status] ?? true;
         } else if (rowType === 'inactive' || rowType === 'maintenance') {
           newActive = false;
         }
 
-        seat.seatType = newType;
-        seat.SeatType = newType;
-        seat.isActive = newActive;
-        seat.IsActive = newActive;
-
         if (newType !== oldType || newActive !== oldActive) {
-          changeLog.push({ seatCode: sCode, oldType, newType, oldActive, newActive, changedAt: now });
-          toUpdate.push({ seat, sId, newType, newActive });
+          changes.push({ seatId: Number(sId), seatType: newType, isActive: newActive });
         }
       }
 
-      for (const { seat, sId, newType, newActive } of toUpdate) {
-        if (!sId || String(sId).startsWith('mock-')) continue;
-        const seatRow = getSeatRow(seat);
-        const seatNumber = String(seat?.seatNumber ?? seat?.SeatNumber ?? seat?.col ?? '');
-        const rId = seat?.roomId ?? seat?.RoomId ?? seat?.room?.roomId ?? roomId;
-
-        try {
-          await updateSeat(sId, {
-            seatId: sId,
-            roomId: Number(rId),
-            seatRow: seatRow,
-            seatNumber: seatNumber,
-            seatType: newType,
-            isActive: newActive,
-          });
-        } catch (apiErr) {
-          console.warn(`Cập nhật ghế ${sId} qua API thất bại, đã lưu cục bộ:`, apiErr);
-        }
-      }
-
-      if (changeLog.length > 0) {
-        let hist = [];
-        try { hist = JSON.parse(localStorage.getItem('rapchieuphim_seat_history') || '[]'); } catch(e) {}
-        hist.unshift(...changeLog);
-        localStorage.setItem('rapchieuphim_seat_history', JSON.stringify(hist.slice(0, 200)));
-      }
+      if (changes.length > 0) await updateRoomSeatLayout(roomId, changes);
 
       if (seatHook?.refetchSeats) {
-        await seatHook.refetchSeats().catch(() => null);
+        await seatHook.refetchSeats(roomId);
       }
 
-      try { window.dispatchEvent(new Event('storage')); } catch(e) {}
+      try { window.dispatchEvent(new CustomEvent('seatLayoutUpdated', { detail: { roomId } })); } catch {}
       setShowLayoutEditor(false);
     } catch(err) {
       setLayoutError(err.message || 'Có lỗi xảy ra khi lưu.');
@@ -1426,6 +1355,10 @@ export function useRoomAdmin() {
     setPriceCoupleWeekday,
     priceCoupleWeekend,
     setPriceCoupleWeekend,
+    roomPricingMissing,
+    roomPricingLoading,
+    parsePrice,
+    formatInputPrice,
     syncAllRooms,
     setSyncAllRooms,
 

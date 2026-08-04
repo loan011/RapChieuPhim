@@ -180,13 +180,42 @@ export default function StaffCombo() {
     qrPaymentStatus,
     executeQrConfirm,
     handleCancelQr,
+    customizingCombo, componentSlots, updateComponentSlot, confirmComboComponents, setCustomizingCombo,
   } = useCombo();
+
+  const componentGroup = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes('nuoc') ? 'drink' : 'popcorn';
 
   return (
     <div className="staff-combo-container">
       <h4 className="font-bold text-2xl text-gray-805 mb-6 flex items-center gap-2">
         <MdFastfood className="text-green-600" /> Bán Combo & Thức Ăn Kèm
       </h4>
+
+      {customizingCombo && (
+        <div className="qr-modal-overlay">
+          <div className="qr-modal-card" style={{ maxWidth: 520 }}>
+            <button onClick={() => setCustomizingCombo(null)} className="qr-close-btn"><MdClose /></button>
+            <h3 className="qr-modal-title">Chọn thành phần Combo</h3>
+            <p className="qr-modal-subtitle">{customizingCombo.name} — chọn đúng số lượng nước và bắp đã cấu hình.</p>
+            <div className="space-y-3 my-5 text-left">
+              {componentSlots.map((slot, index) => {
+                const group = componentGroup(slot.category);
+                const options = (customizingCombo.availableOptions || []).filter(x => componentGroup(x.rawCategory) === group && x.quantity > 0 && x.isAvailable);
+                return <div key={index} className="p-3 rounded-xl border border-gray-200 bg-gray-50">
+                  <label className="block text-xs font-bold text-gray-600 mb-1">{group === 'drink' ? `Nước ${index + 1}` : `Bắp ${index + 1}`}</label>
+                  <select className="w-full border rounded-lg p-2" value={slot.foodId} onChange={e => updateComponentSlot(index, e.target.value)}>
+                    {options.map(food => <option key={food.id} value={food.id}>{food.name} — còn {food.quantity}</option>)}
+                  </select>
+                </div>;
+              })}
+            </div>
+            <div className="qr-modal-actions">
+              <button className="qr-btn-cancel" onClick={() => setCustomizingCombo(null)}>Hủy</button>
+              <button className="qr-btn-confirm" onClick={confirmComboComponents}>Xác nhận thành phần</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success banner */}
       {success && (
@@ -203,10 +232,13 @@ export default function StaffCombo() {
               </div>
               <div className="space-y-1.5 border-b border-green-100 pb-3 mb-2">
                 {success.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between">
-                    <span>{item.name} x {item.quantity}</span>
-                    <span>{(item.price * item.quantity).toLocaleString("vi-VN")} đ</span>
-                  </div>
+                  <React.Fragment key={idx}>
+                    <div className="flex justify-between">
+                      <span>{item.name} x {item.quantity}</span>
+                      <span>{(item.price * item.quantity).toLocaleString("vi-VN")} đ</span>
+                    </div>
+                    {item.type === 'combo' && item.foodItems?.map(part => <div key={part.foodId} className="text-xs text-green-700 pl-3">- {part.foodName} x{part.quantity * item.quantity}</div>)}
+                  </React.Fragment>
                 ))}
               </div>
               <div className="flex justify-between items-center text-base font-extrabold text-green-800">
@@ -258,6 +290,9 @@ export default function StaffCombo() {
                         <div>
                           <h6 className="font-semibold text-gray-800 text-sm">{item.name}</h6>
                           <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                          {item.type === 'combo' && <div className="text-xs text-gray-500 mt-1">
+                            {item.foodItems?.map(part => <div key={part.foodId}>- {part.category}: {part.foodName} x{part.quantity}</div>)}
+                          </div>}
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-sm font-bold text-green-700">
                               {item.price.toLocaleString("vi-VN")} đ
@@ -309,13 +344,12 @@ export default function StaffCombo() {
             ) : (
               <div className="space-y-3 mb-6">
                 {selectedItems.map(item => (
-                  <div key={item.uid} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700 font-medium">
-                      {item.name} <span className="text-gray-400 font-normal">x{quantities[item.uid]}</span>
-                    </span>
-                    <span className="text-gray-800 font-semibold">
-                      {(item.price * quantities[item.uid]).toLocaleString("vi-VN")} đ
-                    </span>
+                  <div key={item.uid}>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-700 font-medium">{item.name} <span className="text-gray-400 font-normal">x{quantities[item.uid]}</span></span>
+                      <span className="text-gray-800 font-semibold">{(item.price * quantities[item.uid]).toLocaleString("vi-VN")} đ</span>
+                    </div>
+                    {item.type === 'combo' && item.selectedComponents?.map(part => <div key={part.foodId} className="text-xs text-gray-500 pl-3">- {part.foodName} x{part.quantity * quantities[item.uid]}</div>)}
                   </div>
                 ))}
                 <div className="border-t border-gray-100 pt-3 mt-3 flex justify-between items-center">

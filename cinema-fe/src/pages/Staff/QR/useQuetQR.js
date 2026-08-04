@@ -257,6 +257,58 @@ export function useQuetQR() {
         }
 
         // Tính ngày giờ chiếu từ dữ liệu API
+        // Luôn ưu tiên ghế và giá mới nhất sau khi đổi ghế. Dữ liệu trong
+        // ticket/hóa đơn có thể vẫn là ảnh chụp trước lúc thực hiện exchange.
+        const exchangedSeat = found.newSeat ?? found.NewSeat ?? booking?.newSeat ?? booking?.NewSeat;
+        const currentSeat = exchangedSeat ?? booking?.seat ?? booking?.Seat ?? found.seat ?? found.Seat;
+        const currentSeatRow = String(
+          currentSeat?.seatRow ?? currentSeat?.SeatRow ??
+          booking?.seatRow ?? booking?.SeatRow ??
+          found.newSeatRow ?? found.NewSeatRow ?? ""
+        ).trim();
+        const currentSeatNumber = String(
+          currentSeat?.seatNumber ?? currentSeat?.SeatNumber ??
+          booking?.seatNumber ?? booking?.SeatNumber ??
+          found.newSeatNumber ?? found.NewSeatNumber ?? ""
+        ).trim();
+        const currentSeatCode = String(
+          found.newSeatCode ?? found.NewSeatCode ??
+          booking?.newSeatCode ?? booking?.NewSeatCode ??
+          savedInfo.seatCode ?? savedInfo.SeatCode ??
+          currentSeat?.seatCode ?? currentSeat?.SeatCode ??
+          booking?.seatCode ?? booking?.SeatCode ?? ""
+        ).trim() || (
+          currentSeatRow && currentSeatNumber
+            ? (currentSeatNumber.toUpperCase().startsWith(currentSeatRow.toUpperCase())
+              ? currentSeatNumber
+              : `${currentSeatRow}${currentSeatNumber}`)
+            : ""
+        );
+        const currentSeatPrice = Number(
+          found.newSeatPrice ?? found.NewSeatPrice ??
+          booking?.newSeatPrice ?? booking?.NewSeatPrice ??
+          savedInfo.ticketPrice ?? savedInfo.seatPrice ??
+          booking?.ticketPrice ?? booking?.TicketPrice ??
+          booking?.seatPrice ?? booking?.SeatPrice ??
+          currentSeat?.price ?? currentSeat?.Price ?? 0
+        );
+
+        if (currentSeatCode) {
+          seatCodeVal = currentSeatCode;
+          ticketCount = 1;
+        }
+        if (currentSeatPrice > 0) {
+          totalTicketPrice = currentSeatPrice * ticketCount;
+          const recalculatedFoodTotal = foodsVal.reduce(
+            (sum, food) => sum + (
+              Number(food.price ?? food.Price ?? food.unitPrice ?? food.UnitPrice ?? 0) *
+              Number(food.quantity ?? food.Quantity ?? 1)
+            ),
+            0
+          );
+          finalTotalVal = Math.max(0, totalTicketPrice + recalculatedFoodTotal - discountAmtVal);
+        }
+
         let showDateVal = "";
         let startTimeVal = "";
         if (startDate && !isNaN(startDate.getTime())) {

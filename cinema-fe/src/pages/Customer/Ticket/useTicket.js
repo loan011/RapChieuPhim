@@ -115,18 +115,32 @@ function normalizeFoodsList(rawFoods, catalogs = { foods: [], combos: [] }) {
     const catalogItem = findCatalogItem(item);
     const foodObj = item.food ?? item.Food ?? item.combo ?? item.Combo ?? item;
     const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
-    const directName = isCombo
+    const directName = item.itemNameSnapshot ?? item.ItemNameSnapshot ?? (isCombo
       ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? foodObj?.comboName ?? foodObj?.ComboName ?? "Combo")
-      : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? foodObj?.foodName ?? foodObj?.FoodName ?? foodObj?.name ?? foodObj?.Name ?? item.name ?? item.Name);
+      : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? foodObj?.foodName ?? foodObj?.FoodName ?? foodObj?.name ?? foodObj?.Name ?? item.name ?? item.Name));
     const catalogName = catalogItem?.foodName ?? catalogItem?.FoodName ?? catalogItem?.comboName ?? catalogItem?.ComboName ?? catalogItem?.name ?? catalogItem?.Name;
     const name = String(directName || "").trim().toLowerCase() === "string"
       ? (catalogName || "Đồ ăn kèm")
       : (directName || catalogName || "Đồ ăn kèm");
     const qty = Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 1);
-    const price = Number(item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? foodObj?.price ?? foodObj?.Price ?? catalogItem?.price ?? catalogItem?.Price ?? 0);
+    const price = Number(item.unitPriceSnapshot ?? item.UnitPriceSnapshot ?? item.price ?? item.Price ?? item.unitPrice ?? item.UnitPrice ?? foodObj?.price ?? foodObj?.Price ?? catalogItem?.price ?? catalogItem?.Price ?? 0);
+    const lineTotal = Number(item.lineTotal ?? item.LineTotal ?? item.subtotal ?? item.Subtotal ?? price * qty);
+    const rawSelections = item.comboSelections?.$values ?? item.comboSelections
+      ?? item.ComboSelections?.$values ?? item.ComboSelections
+      ?? item.comboComponents?.$values ?? item.comboComponents
+      ?? item.ComboComponents?.$values ?? item.ComboComponents ?? [];
+    const comboSelections = rawSelections.map((selection) => ({
+      foodId: selection.foodId ?? selection.FoodId,
+      name: selection.foodNameSnapshot ?? selection.FoodNameSnapshot ?? selection.foodName ?? selection.FoodName ?? "Món trong Combo",
+      quantity: Number(selection.quantity ?? selection.Quantity ?? 0)
+    }));
 
     if (qty > 0) {
-      parsedFoods.push({ name, quantity: qty, price });
+      parsedFoods.push({ name, quantity: qty, price, lineTotal,
+        itemType: item.itemType ?? item.ItemType ?? (isCombo ? "COMBO" : "FOOD"),
+        comboSelections,
+        comboSelectionDataUnavailable: Boolean(item.comboSelectionDataUnavailable ?? item.ComboSelectionDataUnavailable)
+      });
     }
   });
 
@@ -208,7 +222,13 @@ export function useTicket() {
             
             // Lấy thông tin ghế
             const seat = booking.seat ?? booking.Seat;
-            const seatLabel = t.seatNumber ?? t.SeatNumber ?? (seat ? `${seat.seatRow ?? seat.SeatRow ?? ""}${seat.seatNumber ?? seat.SeatNumber ?? ""}` : "") ?? t.seatCode ?? t.SeatCode ?? "";
+            const seatRow = String(t.seatRow ?? t.SeatRow ?? seat?.seatRow ?? seat?.SeatRow ?? "").trim();
+            const seatNumber = String(t.seatNumber ?? t.SeatNumber ?? seat?.seatNumber ?? seat?.SeatNumber ?? "").trim();
+            const apiSeatCode = String(t.seatCode ?? t.SeatCode ?? "").trim();
+            const seatLabel = seatRow && seatNumber
+              ? (seatNumber.toUpperCase().startsWith(seatRow.toUpperCase()) ? seatNumber : `${seatRow}${seatNumber}`)
+              : (apiSeatCode || seatNumber);
+            const seatType = t.seatType ?? t.SeatType ?? seat?.seatType ?? seat?.SeatType ?? "Chưa rõ";
             
             // Lấy mã vé
             let ticketCode =
@@ -258,17 +278,20 @@ export function useTicket() {
               } catch(e) {}
             }
 
-            const itemPrice = savedInfo.seatPrice > 0
-              ? savedInfo.seatPrice
-              : (rawBookingAmount > 0 ? rawBookingAmount : explicitSeatPrice);
+            const itemPrice = Number(t.price ?? t.Price ?? t.ticketPrice ?? t.TicketPrice ?? explicitSeatPrice ?? rawBookingAmount);
+            const seatDetail = { seatCode: seatLabel, seatType, price: itemPrice };
 
-            const parsedFoods = (savedInfo.foodsList && savedInfo.foodsList.length > 0)
-              ? savedInfo.foodsList
-              : normalizeFoodsList(rawFoods, catalogs);
+            // API lưu snapshot món trong combo (bắp, nước...) chính xác theo lúc đặt vé.
+            // Chỉ dùng dữ liệu local cũ khi API không trả về đồ ăn.
+            const foodsFromApi = normalizeFoodsList(rawFoods, catalogs);
+            const parsedFoods = foodsFromApi.length > 0
+              ? foodsFromApi
+              : (savedInfo.foodsList || []);
 
             if (existingGroup) {
               if (seatLabel && !existingGroup.seatsList.includes(seatLabel)) {
                 existingGroup.seatsList.push(seatLabel);
+                existingGroup.seatDetails.push(seatDetail);
               }
               existingGroup.totalPriceSum += itemPrice;
               if (ticketCode && !existingGroup.ticketCodes.includes(ticketCode)) {
@@ -290,6 +313,7 @@ export function useTicket() {
               groupedList.push({
                 ...t,
                 seatsList: seatLabel ? [seatLabel] : [],
+                seatDetails: seatLabel ? [seatDetail] : [],
                 totalPriceSum: itemPrice,
                 ticketCodes: ticketCode ? [ticketCode] : [],
                 bookingIds: currentBId ? [currentBId] : [],
@@ -375,7 +399,9 @@ export function useTicket() {
                 "00:00";
 
               let formattedDate = "Chưa rõ";
-              let formattedTime = extractedTime;
+              let formattedTime = String(extractedTime || "").includes("T")
+                ? String(extractedTime).split("T")[1].slice(0, 5)
+                : extractedTime;
               let datePartForCompare = "";
               let parsedDtObj = null;
 
@@ -566,12 +592,14 @@ export function useTicket() {
                 cinema: t.cinemaName ?? t.CinemaName ?? cinema?.cinemaName ?? cinema?.CinemaName ?? cinema?.name ?? cinema?.Name ?? "Rạp chiếu phim",
                 hall: t.roomName ?? t.RoomName ?? room?.roomName ?? room?.RoomName ?? room?.name ?? room?.Name ?? "Phòng chiếu",
                 seats: t.seatsList,
+                seatDetails: t.seatDetails || [],
                 ticketPrice: ticketPriceAmount.toLocaleString("vi-VN") + "đ",
                 rawPrice: rawTotalAmount.toLocaleString("vi-VN") + "đ",
                 discountAmount: discountAmount,
                 discountCode: discountCode,
                 price: finalTotalAmount.toLocaleString("vi-VN") + "đ",
                 status: finalStatus,
+                qrCodeUrl: t.qrCodeUrl ?? t.QrCodeUrl ?? booking.qrCodeUrl ?? booking.QrCodeUrl ?? null,
                 foods: t.foodsList || [],
                 bookingIds: t.bookingIds || [],
                 rawBooking: t,

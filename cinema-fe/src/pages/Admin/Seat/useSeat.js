@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getSeatList,
+  getSeatsByRoom,
   createSeat,
+  createSeatRange,
   updateSeat,
   deleteSeat,
 } from "./seatService";
@@ -204,44 +206,6 @@ export function getSeatNumber(seat) {
 }
 
 export function getSeatType(seat) {
-  const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
-  const sId = String(getSeatId(seat) || "");
-  const row = normalizeSeatRow(getSeatRow(seat));
-  const code = getSeatCode(seat);
-
-  try {
-    const keys = [
-      roomId ? `rapchieuphim_seat_overrides_${roomId}` : null,
-      roomId ? `rapchieuphim_seat_overrides_room_${roomId}` : null,
-      "rapchieuphim_seat_overrides_latest",
-      "rapchieuphim_seat_overrides_global",
-    ].filter(Boolean);
-
-    for (const key of keys) {
-      const item = localStorage.getItem(key);
-      if (!item) continue;
-      const saved = JSON.parse(item);
-
-      if (sId && saved.seats && saved.seats[sId]?.type) {
-        const t = String(saved.seats[sId].type).toLowerCase();
-        return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
-      }
-      if (code && saved.seats && saved.seats[code]?.type) {
-        const t = String(saved.seats[code].type).toLowerCase();
-        return t === "vip" ? "VIP" : t === "couple" ? "Couple" : "Standard";
-      }
-      if (row && saved.rows) {
-        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
-        if (rType && rType !== "mixed") {
-          const lowerRType = String(rType).toLowerCase();
-          if (lowerRType === "vip") return "VIP";
-          if (lowerRType === "couple") return "Couple";
-          if (lowerRType === "standard") return "Standard";
-        }
-      }
-    }
-  } catch (e) {}
-
   const raw = seat?.seatType ?? seat?.SeatType ?? seat?.type ?? "Standard";
   const lowerRaw = String(raw).toLowerCase();
   if (lowerRaw === "couple") return "Couple";
@@ -259,37 +223,6 @@ export function getSeatCode(seat) {
 }
 
 export function getSeatStatus(seat) {
-  const roomId = getSeatRoomId(seat) || seat?.roomId || seat?.RoomId;
-  const sId = String(getSeatId(seat) || "");
-  const row = normalizeSeatRow(getSeatRow(seat));
-  const code = getSeatCode(seat);
-
-  try {
-    const keys = [
-      roomId ? `rapchieuphim_seat_overrides_${roomId}` : null,
-      roomId ? `rapchieuphim_seat_overrides_room_${roomId}` : null,
-      "rapchieuphim_seat_overrides_latest",
-      "rapchieuphim_seat_overrides_global",
-    ].filter(Boolean);
-
-    for (const key of keys) {
-      const item = localStorage.getItem(key);
-      if (!item) continue;
-      const saved = JSON.parse(item);
-
-      const st = saved.seats?.[sId]?.status || saved.seats?.[code]?.status;
-      if (st === "active") return "Hoạt động";
-      if (st === "maintenance") return "Bảo trì";
-      if (st === "inactive") return "Ngừng dùng";
-
-      if (row && saved.rows) {
-        const rType = saved.rows[row] || saved.rows[row.toUpperCase()] || saved.rows[row.toLowerCase()];
-        if (rType === "maintenance") return "Bảo trì";
-        if (rType === "inactive") return "Ngừng dùng";
-      }
-    }
-  } catch (e) {}
-
   const isActive = seat?.isActive ?? seat?.IsActive;
 
   if (isActive === true) return "Hoạt động";
@@ -391,6 +324,20 @@ export function useSeat() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  async function refetchSeatsByRoom(roomId = filterRoom) {
+    if (!roomId) return;
+    const roomSeats = await getSeatsByRoom(roomId);
+    setList(current => [
+      ...current.filter(seat => String(getSeatRoomId(seat)) !== String(roomId)),
+      ...roomSeats,
+    ]);
+  }
+
+  useEffect(() => {
+    if (!filterRoom) return;
+    refetchSeatsByRoom(filterRoom).catch(err => setError(err?.message || "Không tải được sơ đồ ghế."));
+  }, [filterRoom]);
 
   async function fetchData() {
     try {
@@ -532,18 +479,18 @@ export function useSeat() {
 
   /* ── Dynamic Seat Map Layout Builder ── */
   const seatMapLayout = useMemo(() => {
-    if (selectedRoomSeats.length === 0) return [];
+    const activeSeats = selectedRoomSeats;
 
-    // ── Step 1: Deduplicate by seatId (remove exact duplicates from API) ──
+    // ── Step 1: Deduplicate by seatId ──
     const seenIds = new Set();
-    const uniqueById = selectedRoomSeats.filter((seat) => {
+    const uniqueById = activeSeats.filter((seat) => {
       const id = String(getSeatId(seat));
       if (seenIds.has(id)) return false;
       seenIds.add(id);
       return true;
     });
 
-    // ── Step 2: Deduplicate by (row + seatNumber) – keep first occurrence ──
+    // ── Step 2: Deduplicate by (row + seatNumber) ──
     const seenPositions = new Set();
     const uniqueSeats = uniqueById.filter((seat) => {
       const row = getSeatRow(seat) || "A";
@@ -576,7 +523,7 @@ export function useSeat() {
         seats: sortedSeats,
       };
     });
-  }, [selectedRoomSeats]);
+  }, [selectedRoomSeats, filterRoom, rooms]);
 
   /* ── Mock Seat Map Layout ── */
   const mockSeatLayout = useMemo(() => {
@@ -732,23 +679,20 @@ export function useSeat() {
         await updateSeat(editId, payload);
       } else {
         const startNum = Number(form.seatNumber) || 1;
-        const endNum = Number(form.endSeatNumber) && Number(form.endSeatNumber) >= startNum
-          ? Number(form.endSeatNumber)
-          : startNum;
-
-        for (let num = startNum; num <= endNum; num++) {
-          const singleForm = { ...form, seatNumber: String(num) };
-          const payload = buildSeatPayload(singleForm, null);
-          try {
-            await createSeat(payload);
-          } catch (err) {
-            console.warn(`Thêm ghế ${form.seatRow}${num} qua API thất bại:`, err);
-          }
-        }
+        const endNum = Number(form.endSeatNumber) || startNum;
+        await createSeatRange({
+          roomId: Number(form.roomId),
+          seatRow: form.seatRow,
+          fromSeat: startNum,
+          toSeat: endNum,
+          seatType: form.seatType,
+          isActive: Boolean(form.isActive),
+        });
       }
 
       closeModal();
-      fetchData();
+      await refetchSeatsByRoom(form.roomId || filterRoom);
+      try { window.dispatchEvent(new CustomEvent("seatLayoutUpdated", { detail: { roomId: form.roomId || filterRoom } })); } catch {}
     } catch (err) {
       console.error("Lỗi lưu ghế:", err);
       setFormError(err?.message || "Lưu ghế thất bại.");
@@ -760,23 +704,8 @@ export function useSeat() {
   async function handleDelete(id) {
     if (!window.confirm("Bạn có chắc muốn ẩn ghế này? (Ghế sẽ được ẩn khỏi sơ đồ, dữ liệu trong CSDL vẫn được giữ nguyên)")) return;
 
-    try {
-      await updateSeat(id, { isActive: false });
-    } catch (err) {
-      console.warn("Soft delete ghế qua API thất bại, lưu trạng thái ẩn cục bộ:", err);
-    }
-
-    if (filterRoom) {
-      try {
-        const saved = JSON.parse(localStorage.getItem(`rapchieuphim_seat_overrides_${filterRoom}`) || "{}");
-        saved.seats = saved.seats || {};
-        saved.seats[String(id)] = { ...(saved.seats[String(id)] || {}), status: "inactive" };
-        localStorage.setItem(`rapchieuphim_seat_overrides_${filterRoom}`, JSON.stringify(saved));
-        window.dispatchEvent(new Event("storage"));
-      } catch (e) {}
-    }
-
-    fetchData();
+    await deleteSeat(id);
+    await refetchSeatsByRoom(filterRoom);
   }
 
   return {
@@ -816,7 +745,7 @@ export function useSeat() {
     formError,
     openAddModal,
     openEditModal,
-    refetchSeats: fetchData,
+    refetchSeats: refetchSeatsByRoom,
     closeModal,
     handleChange,
     handleSubmit,

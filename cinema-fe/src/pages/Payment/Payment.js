@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPayment, checkPaymentStatus } from "./PaymentService.js";
 import { cancelBooking } from "../Booking/bookingService.js";
+import { isSellingTime, SELLING_TIME_MESSAGE } from "../../utils/sellingShift";
 
 export function usePayment() {
   const location = useLocation();
@@ -60,7 +61,7 @@ export function usePayment() {
           0,
           Math.round((rawTot - combosTotal) / seatCount)
         );
-        const resolvedSeatPrice = calcSeatPrice > 0 ? calcSeatPrice : Number(bookingData.selectedShowtime?.basePrice || 70000);
+        const resolvedSeatPrice = calcSeatPrice > 0 ? calcSeatPrice : Number(bookingData.selectedShowtime?.basePrice || 0);
 
         const formattedFoods = (bookingData.selectedCombos || []).map(c => ({
           name: c.name || c.comboName || c.foodName || "Món ăn",
@@ -160,6 +161,10 @@ export function usePayment() {
   async function handlePaymentSubmit(e) {
     if (e) e.preventDefault();
     if (!bookingData) return;
+    if (!isSellingTime()) {
+      setPaymentError(SELLING_TIME_MESSAGE);
+      return;
+    }
 
     setLoading(true);
     setPaymentError("");

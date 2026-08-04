@@ -1,4 +1,4 @@
-import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch } from "../../../services/apiHelper";
+import { getApiUrl, readResponse, getErrorMessage, getAuthHeaders, cachedFetch, clearApiCache } from "../../../services/apiHelper";
 import { getUser } from "../../../services/authService";
 
 const API_URL = getApiUrl();
@@ -74,6 +74,12 @@ function normalizeArray(data) {
 
 export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
   const headers = getAuthHeaders();
+
+  // Hóa đơn phải luôn lấy Order/OrderItems mới nhất sau khi vừa thanh toán.
+  clearApiCache("/Payments");
+  clearApiCache("/Bookings");
+  clearApiCache("/Orders");
+  clearApiCache("/Tickets");
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
@@ -330,11 +336,7 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
 
       const seatCode = isFoodOnlyEntry ? "" : (info.seatCode || info.seatNumber || (info.seatsList ? info.seatsList.join(", ") : ""));
       const seatRow = seatCode ? String(seatCode).trim().charAt(0).toUpperCase() : "";
-      let defaultSeatPrice = 70000;
-      if (seatRow === "C") defaultSeatPrice = 90000;
-      else if (seatRow === "D" || seatRow === "E") defaultSeatPrice = 130000;
-
-      const seatPrice = isFoodOnlyEntry ? 0 : Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : defaultSeatPrice));
+      const seatPrice = isFoodOnlyEntry ? 0 : Number(info.seatPrice > 0 ? info.seatPrice : (info.price > 0 ? info.price : 0));
       const movieTitle = isFoodOnlyEntry ? "" : (info.movieTitle || "");
       const roomName = isFoodOnlyEntry ? "" : (info.roomName || "");
       
@@ -421,7 +423,8 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         roomName: b.roomName || "N/A",
         seatNumber: b.seatNumber || "N/A",
         showtime: b.startTime || "",
-        price: b.ticketPrice || 0
+        price: b.ticketPrice || 0,
+        cinemaName: b.cinemaName || b.CinemaName || ""
       }));
 
       ticketSubtotal = batchBookings.reduce((sum, b) => sum + (b.ticketPrice || 0), 0);
@@ -439,53 +442,81 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
 
     if (order) {
       concessionSubtotal = order.totalAmount || 0;
-      const items = order.items?.$values ?? order.items ?? [];
+      const items = order.items?.$values ?? order.items ?? order.Items?.$values ?? order.Items ?? [];
       concessionsInBill = items.map((item, idx) => {
         const isCombo = item.comboId || item.ComboId || item.combo || item.Combo;
-        const itemName = isCombo 
+        const itemName = item.itemNameSnapshot ?? item.ItemNameSnapshot ?? (isCombo
           ? (item.comboName ?? item.ComboName ?? item.combo?.comboName ?? item.Combo?.ComboName ?? "Combo")
-          : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? "N/A");
+          : (item.foodName ?? item.FoodName ?? item.food?.foodName ?? item.Food?.FoodName ?? "N/A"));
+        const comboSelections = item.comboSelections?.$values ?? item.comboSelections
+          ?? item.ComboSelections?.$values ?? item.ComboSelections
+          ?? item.comboComponents?.$values ?? item.comboComponents
+          ?? item.ComboComponents?.$values ?? item.ComboComponents ?? [];
 
         return {
-          id: item.foodId || item.comboId || idx,
+          id: item.foodOrderDetailId ?? item.FoodOrderDetailId ?? item.orderItemId ?? item.OrderItemId ?? idx,
+          foodId: item.foodId ?? item.FoodId ?? null,
+          comboId: item.comboId ?? item.ComboId ?? null,
+          itemType: item.itemType ?? item.ItemType ?? (isCombo ? "COMBO" : "FOOD"),
           name: itemName,
-          quantity: item.quantity || 0,
-          unitPrice: item.unitPrice || 0,
-          subtotal: item.subtotal || 0
+          quantity: Number(item.quantity ?? item.Quantity ?? 0),
+          unitPrice: Number(item.unitPriceSnapshot ?? item.UnitPriceSnapshot ?? item.unitPrice ?? item.UnitPrice ?? 0),
+          subtotal: Number(item.lineTotal ?? item.LineTotal ?? item.subtotal ?? item.Subtotal ?? 0),
+          comboSelectionDataUnavailable: Boolean(item.comboSelectionDataUnavailable ?? item.ComboSelectionDataUnavailable),
+          comboSelections: comboSelections.map((selection) => ({
+            foodId: selection.foodId ?? selection.FoodId,
+            name: selection.foodNameSnapshot ?? selection.FoodNameSnapshot ?? selection.foodName ?? selection.FoodName ?? "Món trong Combo",
+            quantity: Number(selection.quantity ?? selection.Quantity ?? 0)
+          }))
         };
       });
+      concessionSubtotal = concessionsInBill.reduce((sum, item) => sum + item.subtotal, 0);
     }
 
-    // 4. Build bill details (recalculate totalAmount to sum ticket + concession minus discounts)
+    // 4. Payment từ Backend là nguồn tiền duy nhất của hóa đơn.
+    const backendSubTotal = Number(payment.subTotal ?? payment.SubTotal ?? 0);
+    const backendFinalAmount = Number(payment.totalAmount ?? payment.TotalAmount ?? 0);
     let discountAmt = Number(
       payment.discountAmt ??
       payment.DiscountAmt ??
       payment.discountAmount ??
       payment.DiscountAmount ??
-      rootBooking?.discountAmt ??
-      rootBooking?.discountAmount ??
       0
     );
 
-    if (!discountAmt && typeof window !== "undefined") {
-      try {
-        const savedDiscounts = JSON.parse(localStorage.getItem("customer_ticket_discounts") || "{}");
-        const bId = rootBooking?.bookingId || payment.bookingId;
-        if (bId && savedDiscounts[bId]) {
-          discountAmt = Number(savedDiscounts[bId].discountAmount || savedDiscounts[bId].totalDiscountAmount || 0);
-        }
-      } catch (e) {}
+    const isExchangePayment = String(payment.notes || payment.Notes || "").toLowerCase().includes("đổi ghế") ||
+                              String(payment.Notes || payment.notes || "").toLowerCase().includes("chênh lệch");
+
+    if (isExchangePayment) {
+      ticketSubtotal = payment.TotalAmount || payment.totalAmount || 0;
+      concessionSubtotal = 0;
+      discountAmt = 0;
+      if (ticketsInBill.length > 0) {
+        ticketsInBill = ticketsInBill.map(t => ({
+          ...t,
+          price: ticketSubtotal
+        }));
+      }
+    } else if (backendSubTotal > 0) {
+      // SubTotal = giá vé trước giảm + đồ ăn. Không dùng TotalAmount đã giảm làm giá vé.
+      ticketSubtotal = Math.max(0, backendSubTotal - concessionSubtotal);
     }
 
-    const rawTotalAmount = ticketSubtotal + concessionSubtotal;
-    const finalTotalAmount = Math.max(0, rawTotalAmount - discountAmt);
+    const calculatedSubTotal = ticketSubtotal + concessionSubtotal;
+    const rawTotalAmount = Math.max(backendSubTotal, calculatedSubTotal);
+    const backendMissedConcession = concessionSubtotal > 0 && backendSubTotal < calculatedSubTotal;
+    const finalTotalAmount = backendMissedConcession
+      ? Math.max(0, calculatedSubTotal - discountAmt)
+      : (backendFinalAmount > 0 || rawTotalAmount === discountAmt
+          ? backendFinalAmount
+          : Math.max(0, rawTotalAmount - discountAmt));
     
     // Resolve ticket code for this booking to display in place of billCode
-    let resolvedBillCode = `BILL${String(payment.paymentId).padStart(6, '0')}`;
+    let resolvedBillCode = `BILL${String(payment.paymentId || payment.PaymentId).padStart(6, '0')}`;
     if (rootBooking) {
       const ticketObj = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(rootBooking.bookingId || rootBooking.BookingId));
-      if (ticketObj && (ticketObj.ticketCode || ticketObj.code)) {
-        resolvedBillCode = ticketObj.ticketCode || ticketObj.code;
+      if (ticketObj) {
+        resolvedBillCode = ticketObj.ticketCode || ticketObj.TicketCode || ticketObj.code || ticketObj.Code || resolvedBillCode;
       }
     } else if (order) {
       const orderIdVal = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
@@ -493,6 +524,54 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
         resolvedBillCode = `CB${orderIdVal}`;
       }
     }
+
+    // Resolve cinema information
+    let resolvedCinemaId = payment.cinemaId || payment.CinemaId || "";
+    if (!resolvedCinemaId && order) {
+      resolvedCinemaId = order.cinemaId ?? order.CinemaId ?? order.staff?.cinemaId ?? order.staff?.CinemaId ?? order.Staff?.cinemaId ?? order.Staff?.CinemaId;
+      if (!resolvedCinemaId) {
+        const oid = order.orderId ?? order.OrderId ?? order.id ?? order.Id;
+        if (oid && orderCinemaMap[String(oid)]) resolvedCinemaId = String(orderCinemaMap[String(oid)]);
+      }
+    }
+    if (!resolvedCinemaId && rootBooking) {
+      const showtimeObj = rootBooking.showTime ?? rootBooking.showtime ?? rootBooking.ShowTime ?? rootBooking.Showtime;
+      const roomObj = showtimeObj?.room ?? showtimeObj?.Room;
+      resolvedCinemaId =
+        rootBooking.cinemaId ??
+        rootBooking.CinemaId ??
+        showtimeObj?.cinemaId ??
+        showtimeObj?.CinemaId ??
+        roomObj?.cinemaId ??
+        roomObj?.CinemaId;
+    }
+    if (!resolvedCinemaId && payment.bookingId) {
+      const ticket = (ticketsList || []).find(t => String(t.bookingId || t.BookingId) === String(payment.bookingId));
+      if (ticket) {
+        const showtimeObj = ticket.showTime ?? ticket.showtime ?? ticket.ShowTime ?? ticket.Showtime;
+        const roomObj = showtimeObj?.room ?? showtimeObj?.Room;
+        resolvedCinemaId =
+          ticket.cinemaId ??
+          ticket.CinemaId ??
+          ticket.cinema?.cinemaId ??
+          ticket.cinema?.CinemaId ??
+          showtimeObj?.cinemaId ??
+          showtimeObj?.CinemaId ??
+          roomObj?.cinemaId ??
+          roomObj?.CinemaId;
+      }
+    }
+    resolvedCinemaId = resolvedCinemaId ? String(resolvedCinemaId) : "";
+
+    const resolvedCinemaName = String(
+      payment.cinemaName ||
+      payment.CinemaName ||
+      order?.cinemaName ||
+      order?.CinemaName ||
+      rootBooking?.cinemaName ||
+      rootBooking?.CinemaName ||
+      ""
+    );
 
     // Resolve if this is a counter purchase (either tickets booked by staff or combo sold by staff)
     const isCounter = (rootBooking && rootBooking.bookingType === "Staff") || 
@@ -577,7 +656,9 @@ export async function getDailyRevenue(dateOrFilter, targetCinemaId = "") {
       concessions: concessionsInBill,
       concessionSubtotal: concessionSubtotal,
       status: isCancelled ? "Cancelled" : "Paid",
-      isCancelled: isCancelled
+      isCancelled: isCancelled,
+      cinemaId: resolvedCinemaId,
+      cinemaName: resolvedCinemaName
     };
 
     if (!isCancelled) {

@@ -302,6 +302,7 @@ function extractStudentInfo(text) {
 }
 
 function StudentVerifyModal({ onConfirm, onCancel, getStudentMonthlyUsage }) {
+  const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [imagePreview, setImagePreview] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -380,6 +381,7 @@ function StudentVerifyModal({ onConfirm, onCancel, getStudentMonthlyUsage }) {
 
   function handleImageChange(e) {
     const file = e.target.files?.[0];
+    setImageFile(file || null);
     if (!file) return;
     // Reset toàn bộ state cũ trước khi quét ảnh mới
     setStudentId("");
@@ -416,7 +418,7 @@ function StudentVerifyModal({ onConfirm, onCancel, getStudentMonthlyUsage }) {
     }
 
     setIsSubmitting(true);
-    const result = onConfirm({ studentId: studentId.trim(), school: school.trim(), expiryDate, imageUrl });
+    const result = onConfirm({ studentId: studentId.trim(), school: school.trim(), expiryDate, imageUrl, imageFile });
     setIsSubmitting(false);
     if (result && !result.ok) {
       setError(result.error);
@@ -670,6 +672,7 @@ export default function StaffBanVe() {
     selectedFoodsList,
     foodTotalAmount,
     handleFoodQuantityChange,
+    configuringCombo, setConfiguringCombo, comboSlots, setComboSlots, confirmComboSlots,
     cashReceived,
     setCashReceived,
     isStudent,
@@ -703,6 +706,13 @@ export default function StaffBanVe() {
         <div className="bv-header-left">
           <MdMovie className="bv-header-icon" />
           <h4 className="bv-header-title">Bán Vé Tại Quầy</h4>
+          <button 
+            type="button"
+            onClick={() => setShowExchangeModal(true)}
+            className="ml-6 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-extrabold hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            🔄 Đổi Ghế Tại Quầy
+          </button>
         </div>
 
         {/* Date tabs */}
@@ -892,7 +902,9 @@ export default function StaffBanVe() {
                             const nextClassName = getSeatClassName(nextSeat);
                             const isNextCouple = nextClassName.includes("seat-couple");
 
-                            if (isNextCouple) {
+                            const groupId = seat?.coupleGroupId ?? seat?.CoupleGroupId;
+                            const nextGroupId = nextSeat?.coupleGroupId ?? nextSeat?.CoupleGroupId;
+                            if (isNextCouple && groupId && String(groupId) === String(nextGroupId)) {
                               const seatId1 = getSeatId(seat);
                               const seatId2 = getSeatId(nextSeat);
                               const label1 = getSeatDisplayLabel(seat, row);
@@ -903,7 +915,7 @@ export default function StaffBanVe() {
                                 <div key={`${seatId1}_${seatId2}_pair`} className="bv-couple-pair">
                                   <button
                                     type="button"
-                                    disabled={booked1}
+                                    disabled={booked1 || booked2}
                                     onClick={() => handleSeatClick(seat)}
                                     className={seatClassName + " seat-couple-left"}
                                     title={`${label1} (Couple - ${formatMoney(getSeatPrice(seat, selectedShowtime))} đ)`}
@@ -912,7 +924,7 @@ export default function StaffBanVe() {
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={booked2}
+                                    disabled={booked1 || booked2}
                                     onClick={() => handleSeatClick(nextSeat)}
                                     className={nextClassName + " seat-couple-right"}
                                     title={`${label2} (Couple - ${formatMoney(getSeatPrice(nextSeat, selectedShowtime))} đ)`}
@@ -1232,6 +1244,22 @@ export default function StaffBanVe() {
       )}
 
       {/* ───── FOOD MODAL ───── */}
+      {configuringCombo && (
+        <div className="bv-modal-overlay bv-combo-config-overlay">
+          <div className="bv-modal-box bv-food-modal">
+            <div className="bv-food-modal-header"><h3>CHỌN THÀNH PHẦN COMBO</h3><button onClick={()=>setConfiguringCombo(null)}>×</button></div>
+            <div className="bv-food-items" style={{display:'grid',gap:10,padding:18}}>
+              {comboSlots.map((slot,index)=><label key={index} style={{display:'grid',gap:5}}>{slot.itemType==='DRINK'?'Nước uống':'Bắp rang'}
+                <select value={slot.foodId||''} onChange={e=>setComboSlots(rows=>rows.map((x,i)=>i===index?{...x,foodId:Number(e.target.value)}:x))}>
+                  <option value="">-- Chọn --</option>
+                  {(configuringCombo.allowedItems||[]).filter(x=>(x.itemType??x.ItemType)===slot.itemType).map(x=><option key={x.foodId??x.FoodId} value={x.foodId??x.FoodId} disabled={x.isAvailable === false || Number(x.quantity) <= 0}>{x.foodName??x.FoodName}{x.isAvailable === false || Number(x.quantity) <= 0 ? ' (Hết hàng)' : ''}</option>)}
+                </select>
+              </label>)}
+            </div>
+            <div className="bv-food-modal-footer"><button className="bv-food-confirm-btn" disabled={comboSlots.some(x=>!x.foodId)} onClick={confirmComboSlots}>Xác nhận lựa chọn</button></div>
+          </div>
+        </div>
+      )}
       {showFoodModal && (
         <div className="bv-modal-overlay">
           <div className="bv-modal-box bv-food-modal">
@@ -1307,7 +1335,7 @@ export default function StaffBanVe() {
                       <div className="bv-qty-control">
                         <button type="button" onClick={() => handleFoodQuantityChange(item, -1)} className="bv-qty-btn">−</button>
                         <span className="bv-qty-num">{qty}</span>
-                        <button type="button" onClick={() => handleFoodQuantityChange(item, 1)} className="bv-qty-btn">＋</button>
+                        <button type="button" onClick={() => handleFoodQuantityChange(item, 1)} className="bv-qty-btn" disabled={item.isAvailable === false || (Number(item.quantity) > 0 && qty >= Number(item.quantity))}>＋</button>
                       </div>
                     </div>
                   );
@@ -1423,6 +1451,14 @@ export default function StaffBanVe() {
           onConfirm={handleStudentVerifyConfirm}
           onCancel={handleStudentVerifyCancel}
           getStudentMonthlyUsage={getStudentMonthlyUsage}
+        />
+      )}
+
+      {/* ───── TICKET EXCHANGE MODAL ───── */}
+      {showExchangeModal && (
+        <TicketExchangeModal
+          isOpen={showExchangeModal}
+          onClose={() => setShowExchangeModal(false)}
         />
       )}
 
